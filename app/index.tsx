@@ -13,24 +13,24 @@ import { useReviews } from '@/src/hooks/useReviews';
 import { useNearbyPlaces } from '@/src/hooks/useNearbyPlaces';
 import { useTopRated } from '@/src/hooks/useTopRated';
 
-const GRAND_RAPIDS: Region = {
-    latitude: 42.9634,
-    longitude: -85.6681,
-    latitudeDelta: 0.15,
-    longitudeDelta: 0.15,
-};
-
-// const SAN_FRANCISCO: Region = {
-//     latitude: 37.7749,
-//     longitude: -122.4194,
+// const GRAND_RAPIDS: Region = {
+//     latitude: 42.9634,
+//     longitude: -85.6681,
 //     latitudeDelta: 0.15,
 //     longitudeDelta: 0.15,
 // };
 
+const SAN_FRANCISCO: Region = {
+    latitude: 37.7749,
+    longitude: -122.4194,
+    latitudeDelta: 0.15,
+    longitudeDelta: 0.15,
+};
+
 export default function Index() {
     const mapRef = useRef<MapView | null>(null);
-    const mapRegionRef = useRef<Region>(GRAND_RAPIDS);
-    const preModalRegionRef = useRef<Region>(GRAND_RAPIDS);
+    const mapRegionRef = useRef<Region>(SAN_FRANCISCO);
+    const preModalRegionRef = useRef<Region>(SAN_FRANCISCO);
 
     const autoCenterRef = useRef(true);
     const markerRefs = useRef<Record<string, MapMarker | null>>({});
@@ -267,8 +267,8 @@ export default function Index() {
 
             <MapView
                 ref={mapRef}
-                style={{ flex: 1 }}
-                initialRegion={GRAND_RAPIDS}
+                style={{ flex: 1, marginBottom: -34 }}
+                initialRegion={SAN_FRANCISCO}
                 onPanDrag={() => {
                     autoCenterRef.current = false;
                 }}
@@ -291,7 +291,7 @@ export default function Index() {
                 {spots.map((s) => (
                     <Marker
                         ref={(ref) => { markerRefs.current[s.id] = ref; }}
-                        key={`${s.id}-${s.id === highlightSpotId ? "hl" : "n"}`}
+                        key={s.id}
                         coordinate={{ latitude: s.lat, longitude: s.lng }}
                         title={s.name}
                         description={s.description ?? undefined}
