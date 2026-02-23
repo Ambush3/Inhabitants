@@ -1,5 +1,15 @@
 import React from 'react';
-import { View, Text, Button, Modal, TextInput, Pressable } from 'react-native';
+import {
+    View,
+    Text,
+    Button,
+    Modal,
+    TextInput,
+    Pressable,
+    Platform,
+    KeyboardAvoidingView,
+    ScrollView
+} from 'react-native';
 import { Stars } from '@/src/components/Stars';
 
 type Props = {
@@ -21,49 +31,56 @@ export function CreateSpotModal({
                                 }: Props) {
     return (
         <Modal visible={visible} transparent animationType="slide" onRequestClose={onCancel}>
-            <Pressable
-                style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'flex-end' }}
-                onPress={onCancel}
+            <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                style={{ flex: 1 }}
             >
                 <Pressable
-                    style={{ backgroundColor: 'white', padding: 16, borderTopLeftRadius: 16, borderTopRightRadius: 16 }}
-                    onPress={() => {}}
+                    style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'flex-end' }}
+                    onPress={onCancel}
                 >
-                    <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12 }}>Create spot</Text>
+                    <Pressable
+                        style={{ backgroundColor: 'white', padding: 16, borderTopLeftRadius: 16, borderTopRightRadius: 16 }}
+                        onPress={() => {}}
+                    >
+                        <ScrollView keyboardShouldPersistTaps="handled">
+                            <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12 }}>Create spot</Text>
 
-                    {pendingCoord ? (
-                        <Text style={{ marginBottom: 12 }}>
-                            {pendingCoord.lat.toFixed(5)}, {pendingCoord.lng.toFixed(5)}
-                        </Text>
-                    ) : null}
+                            {pendingCoord ? (
+                                <Text style={{ marginBottom: 12 }}>
+                                    {pendingCoord.lat.toFixed(5)}, {pendingCoord.lng.toFixed(5)}
+                                </Text>
+                            ) : null}
 
-                    <Text style={{ marginBottom: 6 }}>Name</Text>
-                    <TextInput
-                        value={spotName}
-                        onChangeText={onChangeName}
-                        placeholder="e.g. Downtown ledges"
-                        autoFocus
-                        style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 10, marginBottom: 12 }}
-                    />
+                            <Text style={{ marginBottom: 6 }}>Name</Text>
+                            <TextInput
+                                value={spotName}
+                                onChangeText={onChangeName}
+                                placeholder="e.g. Downtown ledges"
+                                autoFocus
+                                style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 10, marginBottom: 12 }}
+                            />
 
-                    <Text style={{ marginBottom: 6 }}>Description (optional)</Text>
-                    <TextInput
-                        value={spotDesc}
-                        onChangeText={onChangeDesc}
-                        placeholder="Surface, obstacles, best time to skate, etc."
-                        multiline
-                        style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 10, height: 90, marginBottom: 12 }}
-                    />
+                            <Text style={{ marginBottom: 6 }}>Description (optional)</Text>
+                            <TextInput
+                                value={spotDesc}
+                                onChangeText={onChangeDesc}
+                                placeholder="Surface, obstacles, best time to skate, etc."
+                                multiline
+                                style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 10, height: 90, marginBottom: 12 }}
+                            />
 
-                    <Text style={{ marginBottom: 6 }}>Rating (optional)</Text>
-                    <Stars value={spotRating} onChange={onChangeRating} />
+                            <Text style={{ marginBottom: 6 }}>Rating (optional)</Text>
+                            <Stars value={spotRating} onChange={onChangeRating} />
 
-                    <View style={{ flexDirection: 'row', gap: 12, justifyContent: 'flex-end', marginTop: 12 }}>
-                        <Button title="Cancel" onPress={onCancel} />
-                        <Button title="Create" onPress={onCreate} />
-                    </View>
+                            <View style={{ flexDirection: 'row', gap: 12, justifyContent: 'flex-end', marginTop: 12 }}>
+                                <Button title="Cancel" onPress={onCancel} />
+                                <Button title="Create" onPress={onCreate} />
+                            </View>
+                        </ScrollView>
+                    </Pressable>
                 </Pressable>
-            </Pressable>
+            </KeyboardAvoidingView>
         </Modal>
     );
 }
