@@ -1,6 +1,5 @@
 import React from 'react';
-import { View, Text, Button, Modal, TextInput, Pressable, ScrollView } from 'react-native';
-import { KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, Button, Modal, TextInput, Pressable, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { Stars } from '@/src/components/Stars';
 import { Spot, Review } from '@/src/types';
 
@@ -24,17 +23,17 @@ export function SpotDetailsModal({
                                  }: Props) {
     return (
         <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-            <Pressable
-                style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'flex-end' }}
-                onPress={onClose}
+            <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                style={{ flex: 1 }}
             >
                 <Pressable
-                    style={{ backgroundColor: 'white', padding: 16, borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '80%' }}
-                    onPress={() => {}}
+                    style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'flex-end' }}
+                    onPress={onClose}
                 >
-                    <KeyboardAvoidingView
-                        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                        keyboardVerticalOffset={20}
+                    <Pressable
+                        style={{ backgroundColor: 'white', padding: 16, borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '80%' }}
+                        onPress={() => {}}
                     >
                         <ScrollView keyboardShouldPersistTaps="handled">
                             <Text style={{ fontSize: 18, fontWeight: '600' }}>{spot?.name ?? 'Spot'}</Text>
@@ -85,9 +84,9 @@ export function SpotDetailsModal({
                                 {spot ? <Button title="Delete spot" onPress={() => onDelete(spot)} color="red" /> : null}
                             </View>
                         </ScrollView>
-                    </KeyboardAvoidingView>
+                    </Pressable>
                 </Pressable>
-            </Pressable>
+            </KeyboardAvoidingView>
         </Modal>
     );
 }
