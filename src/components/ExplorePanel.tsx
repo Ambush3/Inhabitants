@@ -12,11 +12,12 @@ type Props = {
     onLoadSkateparks: () => void;
     onLoadTopRated: () => void;
     onSelectSpot: (spot: Spot) => void;
+    onSignOut: () => void;
 };
 
 export function ExplorePanel({
                                  visible, onClose, placesLoading, topLoading,
-                                 topRated, onLoadSkateparks, onLoadTopRated, onSelectSpot,
+                                 topRated, onLoadSkateparks, onLoadTopRated, onSelectSpot, onSignOut,
                              }: Props) {
     const insets = useSafeAreaInsets();
 
@@ -63,6 +64,14 @@ export function ExplorePanel({
                             </Pressable>
                         ))}
                     </ScrollView>
+                    <View style={{ borderTopWidth: 1, borderColor: '#eee', paddingTop: 16, marginTop: 16 }}>
+                        <Pressable
+                            onPress={onSignOut}
+                            style={{ padding: 12, borderRadius: 8, backgroundColor: '#f5f5f5', alignItems: 'center' }}
+                        >
+                            <Text style={{ color: 'red', fontWeight: '600' }}>Sign out</Text>
+                        </Pressable>
+                    </View>
                 </Pressable>
             </Pressable>
         </Modal>

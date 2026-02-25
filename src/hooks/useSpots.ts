@@ -48,6 +48,7 @@ export function useSpots() {
                 description: (description ?? '').trim() || null,
                 lat,
                 lng,
+                user_id: (await supabase.auth.getUser()).data.user?.id,
             })
             .select()
             .single();

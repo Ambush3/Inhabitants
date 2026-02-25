@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Text, View, Button, ScrollView, Platform, Alert } from 'react-native';
+import {Text, View, Button, ScrollView, Platform, Alert, Pressable} from 'react-native';
 import MapView, { Marker, Region, LongPressEvent, MapMarker } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { SkateMarker } from '@/src/components/SkateMarker';
@@ -12,6 +12,8 @@ import { useSpots } from '@/src/hooks/useSpots';
 import { useReviews } from '@/src/hooks/useReviews';
 import { useNearbyPlaces } from '@/src/hooks/useNearbyPlaces';
 import { useTopRated } from '@/src/hooks/useTopRated';
+import { useAuth } from '@/src/hooks/useAuth';
+import { Ionicons } from '@expo/vector-icons';
 
 // const GRAND_RAPIDS: Region = {
 //     latitude: 42.9634,
@@ -47,6 +49,7 @@ export default function Index() {
         submitReview,
         resetReviews,
     } = useReviews();
+    const { signOut } = useAuth();
     const { places, placesLoading, error: nearbyError, loadNearbySkateParks } = useNearbyPlaces();
     const { topRated, topLoading, error: topRatedError, loadTopRatedSpotsInArea } = useTopRated();
 
@@ -222,20 +225,20 @@ export default function Index() {
                 </Text>
             ) : null}
 
-            <View
-                style={{
-                    paddingHorizontal: 12,
-                    paddingVertical: 10,
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    borderBottomWidth: 1,
-                    borderColor: "#e5e5e5",
-                    backgroundColor: "white",
-                }}
-            >
+            <View style={{
+                paddingHorizontal: 12,
+                paddingVertical: 10,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                borderBottomWidth: 1,
+                borderColor: "#e5e5e5",
+                backgroundColor: "white",
+            }}>
+                <Pressable onPress={() => setPanelOpen(true)} style={{ padding: 8 }}>
+                    <Ionicons name="menu" size={24} color="#000" />
+                </Pressable>
                 <Text style={{ fontSize: 16, fontWeight: "600" }}>Spots</Text>
-                <Button title="Explore" onPress={() => setPanelOpen(true)} />
             </View>
 
             <ExplorePanel
@@ -262,6 +265,10 @@ export default function Index() {
                     setHighlightSpotId(s.id);
                     animateToSpotWithModalOffset(s.lat, s.lng);
                     openSpotDetails(s);
+                }}
+                onSignOut={async () => {
+                    await signOut();
+                    setPanelOpen(false);
                 }}
             />
 
