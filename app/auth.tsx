@@ -68,7 +68,7 @@ export default function AuthScreen() {
                     </Text>
 
                     <Text style={{ opacity: 0.5, marginBottom: 32 }}>
-                        {isLogin ? 'Sign in to your account' : 'Sign up to start adding spots'}
+                        {isLogin ? 'Sign in to your account' : 'Sign up to start adding skate spots'}
                     </Text>
 
                     {error ? (
