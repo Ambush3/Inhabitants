@@ -5,12 +5,17 @@ export type Spot = {
     lat: number;
     lng: number;
     created_at: string;
+    user_id: string | null;
+    tags: string[];
 };
 
 export type Review = {
     id: string;
     spot_id: string;
     rating: number;
+    comment: string | null;
+    text: string | null;
+    user_id: string | null;
     created_at: string;
 };
 

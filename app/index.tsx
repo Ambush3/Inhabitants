@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Text, View, Button, ScrollView, Platform, Alert } from 'react-native';
+import {Text, View, Button, ScrollView, Platform, Alert, Pressable, TextInput} from 'react-native';
 import MapView, { Marker, Region, LongPressEvent, MapMarker } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { SkateMarker } from '@/src/components/SkateMarker';
@@ -12,30 +12,24 @@ import { useSpots } from '@/src/hooks/useSpots';
 import { useReviews } from '@/src/hooks/useReviews';
 import { useNearbyPlaces } from '@/src/hooks/useNearbyPlaces';
 import { useTopRated } from '@/src/hooks/useTopRated';
+import { useAuth } from '@/src/hooks/useAuth';
+import { Ionicons } from '@expo/vector-icons';
 
-// const GRAND_RAPIDS: Region = {
-//     latitude: 42.9634,
-//     longitude: -85.6681,
-//     latitudeDelta: 0.15,
-//     longitudeDelta: 0.15,
-// };
-
-const SAN_FRANCISCO: Region = {
-    latitude: 37.7749,
-    longitude: -122.4194,
+const DEFAULT_REGION: Region = {
+    latitude: 0,
+    longitude: 0,
     latitudeDelta: 0.15,
     longitudeDelta: 0.15,
 };
 
 export default function Index() {
     const mapRef = useRef<MapView | null>(null);
-    const mapRegionRef = useRef<Region>(SAN_FRANCISCO);
-    const preModalRegionRef = useRef<Region>(SAN_FRANCISCO);
+    const mapRegionRef = useRef<Region>(DEFAULT_REGION);
+    const preModalRegionRef = useRef<Region>(DEFAULT_REGION);
 
     const autoCenterRef = useRef(true);
     const markerRefs = useRef<Record<string, MapMarker | null>>({});
 
-    const { spots, loading, error, setError, reload, createSpotAt, deleteSpotById } = useSpots();
     const {
         reviews: spotReviews,
         avgRating,
@@ -46,7 +40,9 @@ export default function Index() {
         loadReviews,
         submitReview,
         resetReviews,
+        existingReviewId
     } = useReviews();
+    const { signOut, session } = useAuth();
     const { places, placesLoading, error: nearbyError, loadNearbySkateParks } = useNearbyPlaces();
     const { topRated, topLoading, error: topRatedError, loadTopRatedSpotsInArea } = useTopRated();
 
@@ -65,6 +61,12 @@ export default function Index() {
 
     const [spotName, setSpotName] = useState('');
     const [spotDesc, setSpotDesc] = useState('');
+
+    const [spotTags, setSpotTags] = useState<string[]>([]);
+
+    const { spots, loading, error, setError, reload, createSpotAt, deleteSpotById, searchResults, searching, searchByTag, clearSearch } = useSpots();
+
+    const visibleSpots = searchResults.length > 0 ? searchResults : spots;
 
     const displayError = error ?? nearbyError ?? topRatedError;
 
@@ -199,7 +201,7 @@ export default function Index() {
                 </Text>
 
                 <ScrollView>
-                    {spots.map((s) => (
+                    {visibleSpots.map((s) => (
                         <View key={s.id} style={{ paddingVertical: 10, borderBottomWidth: 1, borderColor: '#ddd' }}>
                             <Text style={{ fontWeight: '600' }}>{s.name}</Text>
                             {s.description ? <Text>{s.description}</Text> : null}
@@ -222,20 +224,20 @@ export default function Index() {
                 </Text>
             ) : null}
 
-            <View
-                style={{
-                    paddingHorizontal: 12,
-                    paddingVertical: 10,
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    borderBottomWidth: 1,
-                    borderColor: "#e5e5e5",
-                    backgroundColor: "white",
-                }}
-            >
+            <View style={{
+                paddingHorizontal: 12,
+                paddingVertical: 10,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                borderBottomWidth: 1,
+                borderColor: "#e5e5e5",
+                backgroundColor: "white",
+            }}>
+                <Pressable onPress={() => setPanelOpen(true)} style={{ padding: 8 }}>
+                    <Ionicons name="menu" size={24} color="#000" />
+                </Pressable>
                 <Text style={{ fontSize: 16, fontWeight: "600" }}>Spots</Text>
-                <Button title="Explore" onPress={() => setPanelOpen(true)} />
             </View>
 
             <ExplorePanel
@@ -263,12 +265,20 @@ export default function Index() {
                     animateToSpotWithModalOffset(s.lat, s.lng);
                     openSpotDetails(s);
                 }}
+                onSignOut={async () => {
+                    await signOut();
+                    setPanelOpen(false);
+                }}
+                searchResults={searchResults}
+                onSearch={(tag) => searchByTag(tag)}
+                onClearSearch={clearSearch}
+                hasSearchResults={searchResults.length > 0}
             />
 
             <MapView
                 ref={mapRef}
                 style={{ flex: 1, marginBottom: -34 }}
-                initialRegion={SAN_FRANCISCO}
+                initialRegion={DEFAULT_REGION}
                 onPanDrag={() => {
                     autoCenterRef.current = false;
                 }}
@@ -318,10 +328,13 @@ export default function Index() {
                 onChangeName={setSpotName}
                 onChangeDesc={setSpotDesc}
                 onChangeRating={setSpotRating}
+                spotTags={spotTags}
+                onAddTag={(tag) => setSpotTags(prev => prev.includes(tag) ? prev : [...prev, tag])}
+                onRemoveTag={(tag) => setSpotTags(prev => prev.filter(t => t !== tag))}
                 onCancel={closeCreateModal}
                 onCreate={async () => {
                     if (!pendingCoord) return;
-                    await createSpotAt(pendingCoord.lat, pendingCoord.lng, spotName, spotDesc, spotRating);
+                    await createSpotAt(pendingCoord.lat, pendingCoord.lng, spotName, spotDesc, spotRating, spotTags);
                     closeCreateModal();
                 }}
             />
@@ -331,6 +344,7 @@ export default function Index() {
                 visible={detailsOpen}
                 spot={selectedSpot}
                 reviews={spotReviews}
+                existingReviewId={existingReviewId}
                 avgRating={avgRating}
                 newRating={newReviewRating}
                 newComment={newReviewComment}
@@ -342,6 +356,7 @@ export default function Index() {
                     if (err) setError(err);
                 }}
                 onClose={closeDetailsModal}
+                currentUserId={session?.user.id ?? null}
                 onDelete={confirmDelete}
             />
         </SafeAreaView>
