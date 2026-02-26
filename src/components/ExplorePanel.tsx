@@ -2,6 +2,7 @@ import React, {useState} from 'react';
 import { View, Text, Button, Modal, ScrollView, Pressable, TextInput } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Spot } from '@/src/types';
+import {Ionicons} from "@expo/vector-icons";
 
 type Props = {
     visible: boolean;
@@ -17,15 +18,19 @@ type Props = {
     onClearSearch: () => void;
     hasSearchResults: boolean;
     searchResults: Spot[];
+    favorites: Spot[];
+    favLoading: boolean;
 };
 
 export function ExplorePanel({
                                  visible, onClose, placesLoading, topLoading,
-                                 topRated, onLoadSkateparks, onLoadTopRated, onSelectSpot, onSignOut, onSearch, onClearSearch, hasSearchResults, searchResults
+                                 topRated, onLoadSkateparks, onLoadTopRated, onSelectSpot, onSignOut, onSearch, onClearSearch, hasSearchResults, searchResults,
+                                 favorites, favLoading
                              }: Props) {
 
     const insets = useSafeAreaInsets();
     const [searchQuery, setSearchQuery] = useState('');
+    const [favoritesOpen, setFavoritesOpen] = useState(false);
 
     function handleSearch() {
         if (!searchQuery.trim()) return;
@@ -39,7 +44,7 @@ export function ExplorePanel({
 
     return (
         <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-            <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)' }} onPress={onClose}>
+            <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)' }} onPress={() => { setFavoritesOpen(false); onClose(); }}>
                 <Pressable
                     style={{
                         paddingTop: insets.top,
@@ -97,6 +102,42 @@ export function ExplorePanel({
                                 ))}
                             </ScrollView>
                         </View>
+                    ) : null}
+
+                    <Pressable
+                        onPress={() => setFavoritesOpen(prev => !prev)}
+                        style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderColor: '#eee', marginBottom: 8 }}
+                    >
+                        <Text style={{ fontWeight: '600' }}>
+                            {favLoading ? 'Loading...' : `Favorite Spots (${favorites.length})`}
+                        </Text>
+                        <Ionicons name={favoritesOpen ? 'chevron-up' : 'chevron-down'} size={16} color="#999" />
+                    </Pressable>
+
+                    {favoritesOpen ? (
+                        favorites.length > 0 ? (
+                            <ScrollView style={{ maxHeight: 160, marginBottom: 16 }}>
+                                {favorites.map(s => (
+                                    <Pressable
+                                        key={s.id}
+                                        style={{ paddingVertical: 10, borderBottomWidth: 1, borderColor: '#eee' }}
+                                        onPress={() => {
+                                            setFavoritesOpen(false);
+                                            onSelectSpot(s);
+                                        }}
+                                    >
+                                        <Text style={{ fontWeight: '600' }}>{s.name}</Text>
+                                        {s.tags?.length > 0 ? (
+                                            <Text style={{ opacity: 0.6, fontSize: 12, marginTop: 2 }}>
+                                                {s.tags.map(t => `#${t}`).join(' ')}
+                                            </Text>
+                                        ) : null}
+                                    </Pressable>
+                                ))}
+                            </ScrollView>
+                        ) : (
+                            <Text style={{ opacity: 0.5, fontSize: 13, marginBottom: 16 }}>No favorites yet</Text>
+                        )
                     ) : null}
 
                     <Button

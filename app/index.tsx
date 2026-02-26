@@ -13,6 +13,7 @@ import { useReviews } from '@/src/hooks/useReviews';
 import { useNearbyPlaces } from '@/src/hooks/useNearbyPlaces';
 import { useTopRated } from '@/src/hooks/useTopRated';
 import { useAuth } from '@/src/hooks/useAuth';
+import { useFavorites } from '@/src/hooks/useFavorites';
 import { Ionicons } from '@expo/vector-icons';
 
 const DEFAULT_REGION: Region = {
@@ -43,6 +44,7 @@ export default function Index() {
         existingReviewId
     } = useReviews();
     const { signOut, session } = useAuth();
+    const { favorites, loading: favLoading, loadFavorites, toggleFavorite, isFavorite } = useFavorites();
     const { places, placesLoading, error: nearbyError, loadNearbySkateParks } = useNearbyPlaces();
     const { topRated, topLoading, error: topRatedError, loadTopRatedSpotsInArea } = useTopRated();
 
@@ -144,6 +146,7 @@ export default function Index() {
 
     useEffect(() => {
         reload();
+        loadFavorites();
     }, []);
 
     useEffect(() => {
@@ -273,6 +276,8 @@ export default function Index() {
                 onSearch={(tag) => searchByTag(tag)}
                 onClearSearch={clearSearch}
                 hasSearchResults={searchResults.length > 0}
+                favorites={favorites}
+                favLoading={favLoading}
             />
 
             <MapView
@@ -298,7 +303,7 @@ export default function Index() {
                         pinColor="orange"
                     />
                 ) : null}
-                {spots.map((s) => (
+                {visibleSpots.map((s) => (
                     <Marker
                         ref={(ref) => { markerRefs.current[s.id] = ref; }}
                         key={s.id}
@@ -358,6 +363,11 @@ export default function Index() {
                 onClose={closeDetailsModal}
                 currentUserId={session?.user.id ?? null}
                 onDelete={confirmDelete}
+                isFavorite={selectedSpot ? isFavorite(selectedSpot.id) : false}
+                onToggleFavorite={async () => {
+                    if (!selectedSpot) return;
+                    await toggleFavorite(selectedSpot.id);
+                }}
             />
         </SafeAreaView>
     );

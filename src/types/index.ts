@@ -17,6 +17,7 @@ export type Review = {
     text: string | null;
     user_id: string | null;
     created_at: string;
+    user_id: string | null;
 };
 
 export type Place = {

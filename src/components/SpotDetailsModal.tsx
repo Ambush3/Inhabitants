@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, Button, Modal, TextInput, Pressable, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { Stars } from '@/src/components/Stars';
 import { Spot, Review } from '@/src/types';
+import { Ionicons } from '@expo/vector-icons';
 
 type Props = {
     visible: boolean;
@@ -17,11 +18,14 @@ type Props = {
     onDelete: (spot: Spot) => void;
     currentUserId: string | null;
     existingReviewId: string | null;
+    isFavorite: boolean;
+    onToggleFavorite: () => void;
 };
 
 export function SpotDetailsModal({
                                      visible, spot, reviews, avgRating, newRating, newComment,
-                                     onChangeRating, onChangeComment, onSubmitReview, onClose, onDelete, currentUserId, existingReviewId
+                                     onChangeRating, onChangeComment, onSubmitReview, onClose, onDelete, currentUserId, existingReviewId,
+                                     isFavorite, onToggleFavorite,
                                  }: Props) {
 
     function getRatingHint(rating: number): string {
@@ -48,7 +52,16 @@ export function SpotDetailsModal({
                         onPress={() => {}}
                     >
                         <ScrollView keyboardShouldPersistTaps="handled">
-                            <Text style={{ fontSize: 18, fontWeight: '600' }}>{spot?.name ?? 'Spot'}</Text>
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <Text style={{ fontSize: 18, fontWeight: '600', flex: 1 }}>{spot?.name ?? 'Spot'}</Text>
+                                <Pressable onPress={onToggleFavorite} style={{ padding: 4 }}>
+                                    <Ionicons
+                                        name={isFavorite ? 'star' : 'star-outline'}
+                                        size={24}
+                                        color={isFavorite ? '#f5a623' : '#ccc'}
+                                    />
+                                </Pressable>
+                            </View>
 
                             {spot?.description ? (
                                 <Text style={{ marginTop: 6 }}>{spot.description}</Text>
@@ -57,10 +70,7 @@ export function SpotDetailsModal({
                             {spot?.tags && spot.tags.length > 0 ? (
                                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
                                     {spot.tags.map(tag => (
-                                        <View
-                                            key={tag}
-                                            style={{ backgroundColor: '#f0f0f0', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 }}
-                                        >
+                                        <View key={tag} style={{ backgroundColor: '#f0f0f0', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 }}>
                                             <Text style={{ fontSize: 12, opacity: 0.7 }}>#{tag}</Text>
                                         </View>
                                     ))}
