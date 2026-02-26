@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useState} from 'react';
 import {
     View,
     Text,
@@ -18,17 +18,30 @@ type Props = {
     spotName: string;
     spotDesc: string;
     spotRating: number;
+    spotTags: string[];
     onChangeName: (v: string) => void;
     onChangeDesc: (v: string) => void;
     onChangeRating: (v: number) => void;
+    onAddTag: (tag: string) => void;
+    onRemoveTag: (tag: string) => void;
     onCancel: () => void;
     onCreate: () => void;
 };
 
 export function CreateSpotModal({
-                                    visible, pendingCoord, spotName, spotDesc, spotRating,
-                                    onChangeName, onChangeDesc, onChangeRating, onCancel, onCreate,
+                                    visible, pendingCoord, spotName, spotDesc, spotRating, spotTags,
+                                    onChangeName, onChangeDesc, onChangeRating, onAddTag, onRemoveTag, onCancel, onCreate,
                                 }: Props) {
+
+    const [tagInput, setTagInput] = useState('');
+
+    function handleAddTag() {
+        const cleaned = tagInput.trim().toLowerCase().replace(/\s+/g, '_');
+        if (!cleaned) return;
+        onAddTag(cleaned);
+        setTagInput('');
+    }
+
     return (
         <Modal visible={visible} transparent animationType="slide" onRequestClose={onCancel}>
             <KeyboardAvoidingView
@@ -69,6 +82,37 @@ export function CreateSpotModal({
                                 multiline
                                 style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 10, height: 90, marginBottom: 12 }}
                             />
+
+                            <Text style={{ marginBottom: 6 }}>Tags (optional)</Text>
+                            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
+                                <TextInput
+                                    value={tagInput}
+                                    onChangeText={setTagInput}
+                                    placeholder="e.g. stairs, ledges, rails"
+                                    autoCapitalize="none"
+                                    returnKeyType="done"
+                                    onSubmitEditing={handleAddTag}
+                                    style={{ flex: 1, borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 10 }}
+                                />
+                                <Pressable
+                                    onPress={handleAddTag}
+                                    style={{ backgroundColor: '#000', borderRadius: 8, padding: 10, justifyContent: 'center' }}
+                                >
+                                    <Text style={{ color: 'white', fontWeight: '600' }}>Add</Text>
+                                </Pressable>
+                            </View>
+                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+                                {spotTags.map(tag => (
+                                    <Pressable
+                                        key={tag}
+                                        onPress={() => onRemoveTag(tag)}
+                                        style={{ backgroundColor: '#f0f0f0', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6, flexDirection: 'row', alignItems: 'center', gap: 6 }}
+                                    >
+                                        <Text style={{ fontSize: 13 }}>#{tag}</Text>
+                                        <Text style={{ fontSize: 13, opacity: 0.5 }}>✕</Text>
+                                    </Pressable>
+                                ))}
+                            </View>
 
                             <Text style={{ marginBottom: 6 }}>Rating (optional)</Text>
                             <Stars value={spotRating} onChange={onChangeRating} />
