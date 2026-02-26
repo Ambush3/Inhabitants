@@ -7,6 +7,9 @@ export function useSpots() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+    const [searchResults, setSearchResults] = useState<Spot[]>([]);
+    const [searching, setSearching] = useState(false);
+
     async function reload() {
         setError(null);
         setLoading(true);
@@ -31,7 +34,8 @@ export function useSpots() {
         lng: number,
         name: string,
         description?: string,
-        initialRating?: number
+        initialRating?: number,
+        tags: string[] = []
     ) {
         setError(null);
 
@@ -48,6 +52,8 @@ export function useSpots() {
                 description: (description ?? '').trim() || null,
                 lat,
                 lng,
+                user_id: (await supabase.auth.getUser()).data.user?.id,
+                tags,
             })
             .select()
             .single();
@@ -63,6 +69,7 @@ export function useSpots() {
             const { error: reviewErr } = await supabase.from('reviews').insert({
                 spot_id: spot.id,
                 rating: initialRating,
+                user_id: (await supabase.auth.getUser()).data.user?.id,
             });
 
             if (reviewErr) {
@@ -87,5 +94,24 @@ export function useSpots() {
         onDeleted?.();
     }
 
-    return { spots, loading, error, setError, reload, createSpotAt, deleteSpotById };
+    async function searchByTag(tag: string) {
+        setSearching(true);
+        const { data, error } = await supabase
+            .from('spots')
+            .select('*')
+            .contains('tags', [tag.trim().toLowerCase()]);
+
+        setSearching(false);
+        if (error) {
+            setError(error.message);
+            return;
+        }
+        setSearchResults((data ?? []) as Spot[]);
+    }
+
+    function clearSearch() {
+        setSearchResults([]);
+    }
+
+    return { spots, loading, error, setError, reload, createSpotAt, deleteSpotById, searchResults, searching, searchByTag, clearSearch };
 }
