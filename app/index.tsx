@@ -40,6 +40,7 @@ export default function Index() {
         setNewComment: setNewReviewComment,
         loadReviews,
         submitReview,
+        deleteReview,
         resetReviews,
         existingReviewId
     } = useReviews();
@@ -63,18 +64,18 @@ export default function Index() {
 
     const [spotName, setSpotName] = useState('');
     const [spotDesc, setSpotDesc] = useState('');
-
     const [spotTags, setSpotTags] = useState<string[]>([]);
 
     const { spots, loading, error, setError, reload, createSpotAt, deleteSpotById, searchResults, searching, searchByTag, clearSearch } = useSpots();
 
     const visibleSpots = searchResults.length > 0 ? searchResults : spots;
-
     const displayError = error ?? nearbyError ?? topRatedError;
+    const openedFromPanelRef = useRef(false);
 
     function closeCreateModal() {
         setCreateOpen(false);
         setPendingCoord(null);
+        setSpotTags([]);
     }
 
     function closeDetailsModal() {
@@ -83,10 +84,13 @@ export default function Index() {
         }
         setDetailsOpen(false);
         setSelectedSpot(null);
-        resetReviews()
+        resetReviews();
         setHighlightSpotId(null);
 
-        mapRef.current?.animateToRegion(preModalRegionRef.current, 400);
+        if (!openedFromPanelRef.current) {
+            mapRef.current?.animateToRegion(preModalRegionRef.current, 400);
+        }
+        openedFromPanelRef.current = false;
     }
 
     function animateToSpotWithModalOffset(lat: number, lng: number) {
@@ -265,6 +269,7 @@ export default function Index() {
                 onSelectSpot={(s) => {
                     setPanelOpen(false);
                     setHighlightSpotId(s.id);
+                    openedFromPanelRef.current = true;
                     animateToSpotWithModalOffset(s.lat, s.lng);
                     openSpotDetails(s);
                 }}
@@ -313,6 +318,7 @@ export default function Index() {
                         pinColor={s.id === highlightSpotId ? "gold" : "red"}
                         onPress={() => {
                             setHighlightSpotId(s.id);
+                            openedFromPanelRef.current = false;
                             animateToSpotWithModalOffset(s.lat, s.lng);
                             openSpotDetails(s);
                         }}
@@ -322,6 +328,28 @@ export default function Index() {
                     <SkateMarker key={p.id} id={p.id} lat={p.lat} lng={p.lng} name={p.name} />
                 ))}
             </MapView>
+
+            <Pressable
+                onPress={() => {
+                    autoCenterRef.current = true;
+                    setUseDeviceLocation(true);
+                }}
+                style={{
+                    position: 'absolute',
+                    bottom: 50,
+                    right: 16,
+                    backgroundColor: 'white',
+                    borderRadius: 30,
+                    padding: 12,
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.2,
+                    shadowRadius: 4,
+                    elevation: 4,
+                }}
+            >
+                <Ionicons name="navigate" size={22} color="#007AFF" />
+            </Pressable>
 
             {/* Create A Spot Modal */}
             <CreateSpotModal
@@ -357,6 +385,7 @@ export default function Index() {
                 onChangeComment={setNewReviewComment}
                 onSubmitReview={async () => {
                     if (!selectedSpot) return;
+                    setError(null);
                     const err = await submitReview(selectedSpot.id);
                     if (err) setError(err);
                 }}
@@ -367,6 +396,12 @@ export default function Index() {
                 onToggleFavorite={async () => {
                     if (!selectedSpot) return;
                     await toggleFavorite(selectedSpot.id);
+                }}
+                onEditReview={() => {}}
+                onDeleteReview={async (reviewId) => {
+                    if (!selectedSpot) return;
+                    const err = await deleteReview(reviewId, selectedSpot.id);
+                    if (err) setError(err);
                 }}
             />
         </SafeAreaView>
