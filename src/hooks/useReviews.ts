@@ -31,7 +31,7 @@ export function useReviews() {
             if (existing) {
                 setExistingReviewId(existing.id);
                 setNewRating(existing.rating);
-                setNewComment(existing.comment ?? existing.text ?? '');
+                setNewComment('');
             } else {
                 setExistingReviewId(null);
                 setNewRating(0);
@@ -72,6 +72,13 @@ export function useReviews() {
         return null;
     }
 
+    async function deleteReview(reviewId: string, spotId: string): Promise<string | null> {
+        const { error } = await supabase.from('reviews').delete().eq('id', reviewId);
+        if (error) return error.message;
+        await loadReviews(spotId);
+        return null;
+    }
+
     function resetReviews() {
         setReviews([]);
         setNewRating(0);
@@ -79,5 +86,5 @@ export function useReviews() {
         setExistingReviewId(null);
     }
 
-    return { reviews, avgRating, newRating, setNewRating, newComment, setNewComment, loadReviews, submitReview, resetReviews, existingReviewId };
+    return { reviews, avgRating, newRating, setNewRating, newComment, setNewComment, loadReviews, submitReview, deleteReview, resetReviews, existingReviewId };
 }

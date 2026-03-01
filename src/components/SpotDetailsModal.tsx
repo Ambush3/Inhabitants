@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import { View, Text, Button, Modal, TextInput, Pressable, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { Stars } from '@/src/components/Stars';
 import { Spot, Review } from '@/src/types';
@@ -20,13 +20,25 @@ type Props = {
     existingReviewId: string | null;
     isFavorite: boolean;
     onToggleFavorite: () => void;
+    onEditReview: () => void;
+    onDeleteReview: (reviewId: string) => void;
 };
 
 export function SpotDetailsModal({
                                      visible, spot, reviews, avgRating, newRating, newComment,
                                      onChangeRating, onChangeComment, onSubmitReview, onClose, onDelete, currentUserId, existingReviewId,
-                                     isFavorite, onToggleFavorite,
+                                     isFavorite, onToggleFavorite, onEditReview, onDeleteReview
                                  }: Props) {
+
+    const scrollRef = useRef<ScrollView>(null);
+    const commentInputRef = useRef<TextInput>(null);
+    const [scrollEnabled, setScrollEnabled] = useState(false);
+
+    useEffect(() => {
+        if (!visible) {
+            setScrollEnabled(false);
+        }
+    }, [visible]);
 
     function getRatingHint(rating: number): string {
         if (rating === 1) return 'What made this spot difficult or disappointing?';
@@ -38,7 +50,7 @@ export function SpotDetailsModal({
     }
 
     return (
-        <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+        <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} onShow={() => setScrollEnabled(true)}>
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={{ flex: 1 }}
@@ -48,10 +60,10 @@ export function SpotDetailsModal({
                     onPress={onClose}
                 >
                     <Pressable
-                        style={{ backgroundColor: 'white', padding: 16, borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '80%' }}
+                        style={{ backgroundColor: 'white', padding: 16, borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '60%' }}
                         onPress={() => {}}
                     >
-                        <ScrollView keyboardShouldPersistTaps="handled">
+                        <ScrollView ref={scrollRef} keyboardShouldPersistTaps="handled" scrollEnabled={scrollEnabled}>
                             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <Text style={{ fontSize: 18, fontWeight: '600', flex: 1 }}>{spot?.name ?? 'Spot'}</Text>
                                 <Pressable onPress={onToggleFavorite} style={{ padding: 4 }}>
@@ -91,11 +103,16 @@ export function SpotDetailsModal({
                                 </Text>
                                 <Stars value={newRating} onChange={onChangeRating} />
                                 <TextInput
+                                    ref={commentInputRef}
                                     value={newComment}
                                     onChangeText={onChangeComment}
                                     placeholder={getRatingHint(newRating)}
                                     multiline
+                                    returnKeyType="done"
+                                    submitBehavior="blurAndSubmit"
+                                    onSubmitEditing={onSubmitReview}
                                     style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 10, height: 80, marginTop: 10 }}
+                                    autoCapitalize="sentences"
                                 />
                                 <View style={{ marginTop: 10, alignSelf: 'flex-start' }}>
                                     <Button
@@ -107,19 +124,29 @@ export function SpotDetailsModal({
 
                             <View style={{ marginTop: 16 }}>
                                 <Text style={{ fontWeight: '600', marginBottom: 8 }}>Reviews</Text>
-                                <ScrollView>
-                                    {reviews.map((r) => (
-                                        <View key={r.id} style={{ paddingVertical: 10, borderBottomWidth: 1, borderColor: '#eee' }}>
-                                            <Text>{'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}</Text>
-                                            {r.comment || r.text ? (
-                                                <Text style={{ marginTop: 4 }}>{r.comment ?? r.text}</Text>
-                                            ) : null}
-                                            <Text style={{ marginTop: 4, opacity: 0.6, fontSize: 12 }}>
-                                                {new Date(r.created_at).toLocaleString()}
-                                            </Text>
-                                        </View>
-                                    ))}
-                                </ScrollView>
+                                {reviews.map((r) => (
+                                    <View key={r.id} style={{ paddingVertical: 10, borderBottomWidth: 1, borderColor: '#eee' }}>
+                                        <Text>{'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}</Text>
+                                        {r.comment || r.text ? (
+                                            <Text style={{ marginTop: 4 }}>{r.comment ?? r.text}</Text>
+                                        ) : null}
+                                        <Text style={{ marginTop: 4, opacity: 0.6, fontSize: 12 }}>
+                                            {new Date(r.created_at).toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                        </Text>
+                                        {r.user_id === currentUserId ? (
+                                            <View style={{ flexDirection: 'row', gap: 12, marginTop: 6 }}>
+                                                <Pressable onPress={() => {
+                                                    scrollRef.current?.scrollTo({ y: 0, animated: true });
+                                                }}>
+                                                    <Text style={{ fontSize: 12, color: '#007AFF' }}>Edit</Text>
+                                                </Pressable>
+                                                <Pressable onPress={() => onDeleteReview(r.id)}>
+                                                    <Text style={{ fontSize: 12, color: 'red' }}>Delete</Text>
+                                                </Pressable>
+                                            </View>
+                                        ) : null}
+                                    </View>
+                                ))}
                             </View>
 
                             <View style={{ marginTop: 12, flexDirection: 'row', justifyContent: 'space-between' }}>
