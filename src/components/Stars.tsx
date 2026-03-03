@@ -16,7 +16,6 @@ export function Stars({ value, onChange, size = 26, disabled = false }: Props) {
                     key={n}
                     disabled={disabled}
                     onPress={() => onChange(n)}
-                    hitSlop={8}
                 >
                     <Text style={{ fontSize: size }}>
                         {n <= value ? '★' : '☆'}

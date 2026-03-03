@@ -1,14 +1,16 @@
-import React, {useState} from 'react';
+import React, {useState, useRef, useEffect} from 'react';
+
 import {
     View,
     Text,
     Button,
     Modal,
-    TextInput,
+    TextInput as RNTextInput,
     Pressable,
     Platform,
     KeyboardAvoidingView,
-    ScrollView
+    ScrollView,
+    TextInput
 } from 'react-native';
 import { Stars } from '@/src/components/Stars';
 
@@ -34,12 +36,23 @@ export function CreateSpotModal({
                                 }: Props) {
 
     const [tagInput, setTagInput] = useState('');
+    const descRef = useRef<RNTextInput>(null);
+    const tagInputRef = useRef<RNTextInput>(null);
+
+    useEffect(() => {
+        if (!visible) {
+            setTagInput('');
+        }
+    }, [visible]);
 
     function handleAddTag() {
         const cleaned = tagInput.trim().toLowerCase().replace(/\s+/g, '_');
         if (!cleaned) return;
         onAddTag(cleaned);
         setTagInput('');
+        requestAnimationFrame(() => {
+            tagInputRef.current?.focus();
+        });
     }
 
     return (
@@ -71,27 +84,40 @@ export function CreateSpotModal({
                                 onChangeText={onChangeName}
                                 placeholder="e.g. Downtown ledges"
                                 autoFocus
+                                returnKeyType="next"
+                                onSubmitEditing={() => descRef.current?.focus()}
                                 style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 10, marginBottom: 12 }}
+                                autoCapitalize="sentences"
                             />
 
                             <Text style={{ marginBottom: 6 }}>Description (optional)</Text>
                             <TextInput
+                                ref={descRef}
                                 value={spotDesc}
                                 onChangeText={onChangeDesc}
                                 placeholder="Surface, obstacles, best time to skate, etc."
                                 multiline
+                                returnKeyType="done"
+                                submitBehavior="blurAndSubmit"
                                 style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 10, height: 90, marginBottom: 12 }}
+                                autoCapitalize="sentences"
                             />
 
                             <Text style={{ marginBottom: 6 }}>Tags (optional)</Text>
                             <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
                                 <TextInput
+                                    ref={tagInputRef}
                                     value={tagInput}
-                                    onChangeText={setTagInput}
+                                    onChangeText={(text) => {
+                                        if (text.endsWith('\n')) {
+                                            handleAddTag();
+                                        } else {
+                                            setTagInput(text);
+                                        }
+                                    }}
                                     placeholder="e.g. stairs, ledges, rails"
                                     autoCapitalize="none"
-                                    returnKeyType="done"
-                                    onSubmitEditing={handleAddTag}
+                                    multiline
                                     style={{ flex: 1, borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 10 }}
                                 />
                                 <Pressable
