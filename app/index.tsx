@@ -6,8 +6,9 @@ import * as Location from 'expo-location';
 import { SkateMarker } from '@/src/components/SkateMarker';
 import { CreateSpotModal } from '@/src/components/CreateSpotModal';
 import { SpotDetailsModal } from '@/src/components/SpotDetailsModal';
+import { SkateShopDetailsModal} from "@/src/components/SkateShopDetailsModal";
 import { ExplorePanel } from '@/src/components/ExplorePanel';
-import { Spot } from '@/src/types';
+import {Place, Spot} from '@/src/types';
 import { useSpots } from '@/src/hooks/useSpots';
 import { useReviews } from '@/src/hooks/useReviews';
 import { useNearbyPlaces } from '@/src/hooks/useNearbyPlaces';
@@ -40,13 +41,17 @@ export default function Index() {
         setNewComment: setNewReviewComment,
         loadReviews,
         submitReview,
+        deleteReview,
         resetReviews,
         existingReviewId
     } = useReviews();
     const { signOut, session } = useAuth();
     const { favorites, loading: favLoading, loadFavorites, toggleFavorite, isFavorite } = useFavorites();
-    const { places, placesLoading, error: nearbyError, loadNearbySkateParks } = useNearbyPlaces();
+    const { places, parksLoading, shopsLoading, error: nearbyError, loadNearbySkateParks, loadNearbySkateShops } = useNearbyPlaces();
     const { topRated, topLoading, error: topRatedError, loadTopRatedSpotsInArea } = useTopRated();
+
+    const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
+    const [placeDetailsOpen, setPlaceDetailsOpen] = useState(false);
 
     const [panelOpen, setPanelOpen] = useState(false);
 
@@ -63,18 +68,18 @@ export default function Index() {
 
     const [spotName, setSpotName] = useState('');
     const [spotDesc, setSpotDesc] = useState('');
-
     const [spotTags, setSpotTags] = useState<string[]>([]);
 
     const { spots, loading, error, setError, reload, createSpotAt, deleteSpotById, searchResults, searching, searchByTag, clearSearch } = useSpots();
 
     const visibleSpots = searchResults.length > 0 ? searchResults : spots;
-
     const displayError = error ?? nearbyError ?? topRatedError;
+    const openedFromPanelRef = useRef(false);
 
     function closeCreateModal() {
         setCreateOpen(false);
         setPendingCoord(null);
+        setSpotTags([]);
     }
 
     function closeDetailsModal() {
@@ -83,10 +88,13 @@ export default function Index() {
         }
         setDetailsOpen(false);
         setSelectedSpot(null);
-        resetReviews()
+        resetReviews();
         setHighlightSpotId(null);
 
-        mapRef.current?.animateToRegion(preModalRegionRef.current, 400);
+        if (!openedFromPanelRef.current) {
+            mapRef.current?.animateToRegion(preModalRegionRef.current, 400);
+        }
+        openedFromPanelRef.current = false;
     }
 
     function animateToSpotWithModalOffset(lat: number, lng: number) {
@@ -246,12 +254,17 @@ export default function Index() {
             <ExplorePanel
                 visible={panelOpen}
                 onClose={() => setPanelOpen(false)}
-                placesLoading={placesLoading}
+                parksLoading={parksLoading}
+                shopsLoading={shopsLoading}
                 topLoading={topLoading}
                 topRated={topRated}
                 onLoadSkateparks={() => {
                     setPanelOpen(false);
                     loadNearbySkateParks(mapRegionRef.current.latitude, mapRegionRef.current.longitude, 20000);
+                }}
+                onLoadSkateShops={() => {
+                    setPanelOpen(false);
+                    loadNearbySkateShops(mapRegionRef.current.latitude, mapRegionRef.current.longitude, 20000);
                 }}
                 onLoadTopRated={async () => {
                     const topSpot = await loadTopRatedSpotsInArea(mapRegionRef.current, 10);
@@ -265,6 +278,7 @@ export default function Index() {
                 onSelectSpot={(s) => {
                     setPanelOpen(false);
                     setHighlightSpotId(s.id);
+                    openedFromPanelRef.current = true;
                     animateToSpotWithModalOffset(s.lat, s.lng);
                     openSpotDetails(s);
                 }}
@@ -313,15 +327,41 @@ export default function Index() {
                         pinColor={s.id === highlightSpotId ? "gold" : "red"}
                         onPress={() => {
                             setHighlightSpotId(s.id);
+                            openedFromPanelRef.current = false;
                             animateToSpotWithModalOffset(s.lat, s.lng);
                             openSpotDetails(s);
                         }}
                     />
                 ))}
                 {places.map((p) => (
-                    <SkateMarker key={p.id} id={p.id} lat={p.lat} lng={p.lng} name={p.name} />
+                    <SkateMarker key={p.id} id={p.id} lat={p.lat} lng={p.lng} name={p.name} type={p.type} onPress={() => {
+                        setSelectedPlace(p);
+                        setPlaceDetailsOpen(true);
+                    }}/>
                 ))}
             </MapView>
+
+            <Pressable
+                onPress={() => {
+                    autoCenterRef.current = true;
+                    setUseDeviceLocation(true);
+                }}
+                style={{
+                    position: 'absolute',
+                    bottom: 50,
+                    right: 16,
+                    backgroundColor: 'white',
+                    borderRadius: 30,
+                    padding: 12,
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.2,
+                    shadowRadius: 4,
+                    elevation: 4,
+                }}
+            >
+                <Ionicons name="navigate" size={22} color="#007AFF" />
+            </Pressable>
 
             {/* Create A Spot Modal */}
             <CreateSpotModal
@@ -357,12 +397,31 @@ export default function Index() {
                 onChangeComment={setNewReviewComment}
                 onSubmitReview={async () => {
                     if (!selectedSpot) return;
+                    setError(null);
                     const err = await submitReview(selectedSpot.id);
                     if (err) setError(err);
                 }}
                 onClose={closeDetailsModal}
                 currentUserId={session?.user.id ?? null}
                 onDelete={confirmDelete}
+                isFavorite={selectedSpot ? isFavorite(selectedSpot.id) : false}
+                onToggleFavorite={async () => {
+                    if (!selectedSpot) return;
+                    await toggleFavorite(selectedSpot.id);
+                }}
+                onDeleteReview={async (reviewId) => {
+                    if (!selectedSpot) return;
+                    const err = await deleteReview(reviewId, selectedSpot.id);
+                    if (err) setError(err);
+                }}
+            />
+            <SkateShopDetailsModal
+                visible={placeDetailsOpen}
+                place={selectedPlace}
+                onClose={() => {
+                    setPlaceDetailsOpen(false);
+                    setSelectedPlace(null);
+                }}
                 isFavorite={selectedSpot ? isFavorite(selectedSpot.id) : false}
                 onToggleFavorite={async () => {
                     if (!selectedSpot) return;

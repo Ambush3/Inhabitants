@@ -7,7 +7,6 @@ import {Ionicons} from "@expo/vector-icons";
 type Props = {
     visible: boolean;
     onClose: () => void;
-    placesLoading: boolean;
     topLoading: boolean;
     topRated: (Spot & { avg: number; count: number })[];
     onLoadSkateparks: () => void;
@@ -20,11 +19,14 @@ type Props = {
     searchResults: Spot[];
     favorites: Spot[];
     favLoading: boolean;
+    onLoadSkateShops: () => void;
+    parksLoading: boolean;
+    shopsLoading: boolean;
 };
 
 export function ExplorePanel({
-                                 visible, onClose, placesLoading, topLoading,
-                                 topRated, onLoadSkateparks, onLoadTopRated, onSelectSpot, onSignOut, onSearch, onClearSearch, hasSearchResults, searchResults,
+                                 visible, onClose, topLoading,
+                                 topRated, onLoadSkateparks, shopsLoading, parksLoading, onLoadSkateShops, onLoadTopRated, onSelectSpot, onSignOut, onSearch, onClearSearch, hasSearchResults, searchResults,
                                  favorites, favLoading
                              }: Props) {
 
@@ -141,9 +143,17 @@ export function ExplorePanel({
                     ) : null}
 
                     <Button
-                        title={placesLoading ? 'Searching...' : 'Local Skateparks'}
+                        title={parksLoading ? 'Searching...' : 'Local Skate Parks'}
                         onPress={onLoadSkateparks}
-                        disabled={placesLoading}
+                        disabled={parksLoading}
+                        />
+
+                    <View style={{ height: 12 }} />
+
+                    <Button
+                        title={shopsLoading ? 'Searching...' : 'Local Skate Shops'}
+                        onPress={onLoadSkateShops}
+                        disabled={shopsLoading}
                     />
 
                     <View style={{ height: 12 }} />
