@@ -120,5 +120,46 @@ export function useNearbyPlaces() {
         }
     }
 
-    return { places, parksLoading, shopsLoading, error, loadNearbySkateParks, loadNearbySkateShops };
+    async function fetchPlaceById(placeId: string): Promise<Place | null> {
+        const [type, id] = placeId.split('-') as ['node' | 'way' | 'relation', string];
+
+        const query = `
+        [out:json][timeout:15];
+        ${type}(${id});
+        out center tags;
+    `.trim();
+
+        for (const endpoint of OVERPASS_ENDPOINTS) {
+            try {
+                const resp = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+                    body: `data=${encodeURIComponent(query)}`,
+                });
+                if (!resp.ok) continue;
+
+                const json = await resp.json();
+                const el = json.elements?.[0];
+                if (!el) return null;
+
+                const pLat = el.lat ?? el.center?.lat;
+                const pLng = el.lon ?? el.center?.lon;
+                if (typeof pLat !== 'number' || typeof pLng !== 'number') return null;
+
+                return {
+                    id: placeId,
+                    name: el.tags?.name ?? 'Skate Location',
+                    type: (el.tags?.shop === 'skate' || el.tags?.shop === 'sports') ? 'skateshop' : 'skatepark',
+                    lat: pLat,
+                    lng: pLng,
+                    tags: el.tags ?? {},
+                } as Place;
+            } catch {
+                continue;
+            }
+        }
+        return null;
+    }
+
+    return { places, setPlaces, parksLoading, shopsLoading, error, loadNearbySkateParks, loadNearbySkateShops, fetchPlaceById };
 }

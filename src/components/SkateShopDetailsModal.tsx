@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useState} from 'react';
 import { View, Text, Modal, Pressable, ScrollView, Linking, StyleSheet, ActionSheetIOS, Share } from 'react-native';
 import { Place } from '@/src/types';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,8 +12,9 @@ type Props = {
 };
 
 export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorite, isFavorite }: Props) {
-    const tags = place?.tags ?? {};
+    const [sharing, setSharing] = useState(false);
 
+    const tags = place?.tags ?? {};
     const phone = tags['phone'] ?? tags['contact:phone'] ?? null;
     const website = tags['website'] ?? tags['contact:website'] ?? null;
     const hours = tags['opening_hours'] ?? null;
@@ -27,7 +28,7 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
         if (!place) return;
         ActionSheetIOS.showActionSheetWithOptions(
             {
-                options: ['Cancel', 'Open in Apple Maps', 'Open in Google Maps'],
+                options: ['Cancel', 'Open in Apple Maps', 'Open in Google Maps', 'Share Location'],
                 cancelButtonIndex: 0,
             },
             async (buttonIndex) => {
@@ -43,7 +44,7 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
                     }
                 } else if (buttonIndex === 3) {
                     await Share.share({
-                    message: `Check out this skate location: ${place.name}\nhttps://maps.apple.com/?q=${place.lat},${place.lng}`,
+                        message: `Check out this skate location: ${place.name}\nhttps://maps.apple.com/?q=${place.lat},${place.lng}`,
                     });
                 }
             }
@@ -76,7 +77,6 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
                             <Pressable onPress={handleDirections} style={{ padding: 4 }}>
                                 <Ionicons name="share-outline" size={24} color="#007AFF" />
                             </Pressable>
-
                             <Pressable onPress={onToggleFavorite} style={{ padding: 4 }}>
                                 <Ionicons
                                     name={isFavorite ? 'star' : 'star-outline'}
