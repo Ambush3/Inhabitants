@@ -6,8 +6,9 @@ import * as Location from 'expo-location';
 import { SkateMarker } from '@/src/components/SkateMarker';
 import { CreateSpotModal } from '@/src/components/CreateSpotModal';
 import { SpotDetailsModal } from '@/src/components/SpotDetailsModal';
+import { SkateShopDetailsModal} from "@/src/components/SkateShopDetailsModal";
 import { ExplorePanel } from '@/src/components/ExplorePanel';
-import { Spot } from '@/src/types';
+import {Place, Spot} from '@/src/types';
 import { useSpots } from '@/src/hooks/useSpots';
 import { useReviews } from '@/src/hooks/useReviews';
 import { useNearbyPlaces } from '@/src/hooks/useNearbyPlaces';
@@ -46,8 +47,11 @@ export default function Index() {
     } = useReviews();
     const { signOut, session } = useAuth();
     const { favorites, loading: favLoading, loadFavorites, toggleFavorite, isFavorite } = useFavorites();
-    const { places, placesLoading, error: nearbyError, loadNearbySkateParks } = useNearbyPlaces();
+    const { places, parksLoading, shopsLoading, error: nearbyError, loadNearbySkateParks, loadNearbySkateShops } = useNearbyPlaces();
     const { topRated, topLoading, error: topRatedError, loadTopRatedSpotsInArea } = useTopRated();
+
+    const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
+    const [placeDetailsOpen, setPlaceDetailsOpen] = useState(false);
 
     const [panelOpen, setPanelOpen] = useState(false);
 
@@ -250,12 +254,17 @@ export default function Index() {
             <ExplorePanel
                 visible={panelOpen}
                 onClose={() => setPanelOpen(false)}
-                placesLoading={placesLoading}
+                parksLoading={parksLoading}
+                shopsLoading={shopsLoading}
                 topLoading={topLoading}
                 topRated={topRated}
                 onLoadSkateparks={() => {
                     setPanelOpen(false);
                     loadNearbySkateParks(mapRegionRef.current.latitude, mapRegionRef.current.longitude, 20000);
+                }}
+                onLoadSkateShops={() => {
+                    setPanelOpen(false);
+                    loadNearbySkateShops(mapRegionRef.current.latitude, mapRegionRef.current.longitude, 20000);
                 }}
                 onLoadTopRated={async () => {
                     const topSpot = await loadTopRatedSpotsInArea(mapRegionRef.current, 10);
@@ -325,7 +334,10 @@ export default function Index() {
                     />
                 ))}
                 {places.map((p) => (
-                    <SkateMarker key={p.id} id={p.id} lat={p.lat} lng={p.lng} name={p.name} />
+                    <SkateMarker key={p.id} id={p.id} lat={p.lat} lng={p.lng} name={p.name} type={p.type} onPress={() => {
+                        setSelectedPlace(p);
+                        setPlaceDetailsOpen(true);
+                    }}/>
                 ))}
             </MapView>
 
@@ -397,11 +409,23 @@ export default function Index() {
                     if (!selectedSpot) return;
                     await toggleFavorite(selectedSpot.id);
                 }}
-                onEditReview={() => {}}
                 onDeleteReview={async (reviewId) => {
                     if (!selectedSpot) return;
                     const err = await deleteReview(reviewId, selectedSpot.id);
                     if (err) setError(err);
+                }}
+            />
+            <SkateShopDetailsModal
+                visible={placeDetailsOpen}
+                place={selectedPlace}
+                onClose={() => {
+                    setPlaceDetailsOpen(false);
+                    setSelectedPlace(null);
+                }}
+                isFavorite={selectedSpot ? isFavorite(selectedSpot.id) : false}
+                onToggleFavorite={async () => {
+                    if (!selectedSpot) return;
+                    await toggleFavorite(selectedSpot.id);
                 }}
             />
         </SafeAreaView>

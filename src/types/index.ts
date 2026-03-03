@@ -24,5 +24,6 @@ export type Place = {
     name: string;
     lat: number;
     lng: number;
-    tags?: Record<string, string>;
+    tags: Record<string, string>;
+    type: 'skatepark' | 'skateshop';
 };
