@@ -16,12 +16,12 @@ export type Review = {
     comment: string | null;
     text: string | null;
     created_at: string;
-    user_id: string | null;
 };
 
 export type Place = {
     id: string;
     name: string;
+    type: string;
     lat: number;
     lng: number;
     tags: Record<string, string>;

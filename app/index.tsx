@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import {Text, View, Button, ScrollView, Platform, Alert, Pressable, TextInput} from 'react-native';
+import {Text, View, Button, ScrollView, Platform, Alert, Pressable } from 'react-native';
 import MapView, { Marker, Region, LongPressEvent, MapMarker } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { SkateMarker } from '@/src/components/SkateMarker';
@@ -16,6 +16,7 @@ import { useTopRated } from '@/src/hooks/useTopRated';
 import { useAuth } from '@/src/hooks/useAuth';
 import { useFavorites } from '@/src/hooks/useFavorites';
 import { Ionicons } from '@expo/vector-icons';
+import {usePlaceFavorites} from "@/src/hooks/usePlaceFavorites";
 
 const DEFAULT_REGION: Region = {
     latitude: 0,
@@ -47,8 +48,10 @@ export default function Index() {
     } = useReviews();
     const { signOut, session } = useAuth();
     const { favorites, loading: favLoading, loadFavorites, toggleFavorite, isFavorite } = useFavorites();
-    const { places, parksLoading, shopsLoading, error: nearbyError, loadNearbySkateParks, loadNearbySkateShops } = useNearbyPlaces();
+    const { places, setPlaces, parksLoading, shopsLoading, error: nearbyError, loadNearbySkateParks, loadNearbySkateShops, fetchPlaceById } = useNearbyPlaces();
     const { topRated, topLoading, error: topRatedError, loadTopRatedSpotsInArea } = useTopRated();
+
+    const { placeFavorites, placeFavLoading, loadPlaceFavorites, togglePlaceFavorite, isPlaceFavorite } = usePlaceFavorites();
 
     const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
     const [placeDetailsOpen, setPlaceDetailsOpen] = useState(false);
@@ -155,6 +158,7 @@ export default function Index() {
     useEffect(() => {
         reload();
         loadFavorites();
+        loadPlaceFavorites();
     }, []);
 
     useEffect(() => {
@@ -292,6 +296,20 @@ export default function Index() {
                 hasSearchResults={searchResults.length > 0}
                 favorites={favorites}
                 favLoading={favLoading}
+                placeFavorites={placeFavorites}
+                placeFavLoading={placeFavLoading}
+                onSelectPlace={async (p) => {
+                    setPanelOpen(false);
+                    mapRef.current?.animateToRegion(
+                        { latitude: p.lat, longitude: p.lng, latitudeDelta: 0.03, longitudeDelta: 0.03 },
+                        600
+                    );
+                    const full = await fetchPlaceById(p.id);
+                    const resolved = full ?? p;
+                    setSelectedPlace(resolved);
+                    setPlaceDetailsOpen(true);
+                    setPlaces(prev => prev.some(x => x.id === resolved.id) ? prev : [...prev, resolved]);
+                }}
             />
 
             <MapView
@@ -327,17 +345,24 @@ export default function Index() {
                         pinColor={s.id === highlightSpotId ? "gold" : "red"}
                         onPress={() => {
                             setHighlightSpotId(s.id);
-                            openedFromPanelRef.current = false;
                             animateToSpotWithModalOffset(s.lat, s.lng);
                             openSpotDetails(s);
                         }}
                     />
                 ))}
                 {places.map((p) => (
-                    <SkateMarker key={p.id} id={p.id} lat={p.lat} lng={p.lng} name={p.name} type={p.type} onPress={() => {
-                        setSelectedPlace(p);
-                        setPlaceDetailsOpen(true);
-                    }}/>
+                    <SkateMarker
+                        key={p.id}
+                        id={p.id}
+                        lat={p.lat}
+                        lng={p.lng}
+                        name={p.name}
+                        type={p.type as 'skatepark' | 'skateshop'}
+                        onPress={() => {
+                            setSelectedPlace(p);
+                            setPlaceDetailsOpen(true);
+                        }}
+                    />
                 ))}
             </MapView>
 
@@ -422,10 +447,10 @@ export default function Index() {
                     setPlaceDetailsOpen(false);
                     setSelectedPlace(null);
                 }}
-                isFavorite={selectedSpot ? isFavorite(selectedSpot.id) : false}
+                isFavorite={selectedPlace ? isPlaceFavorite(selectedPlace.id) : false}
                 onToggleFavorite={async () => {
-                    if (!selectedSpot) return;
-                    await toggleFavorite(selectedSpot.id);
+                    if (!selectedPlace) return;
+                    await togglePlaceFavorite(selectedPlace);
                 }}
             />
         </SafeAreaView>
