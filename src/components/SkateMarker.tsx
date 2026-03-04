@@ -24,7 +24,7 @@ export function SkateMarker({ id, lat, lng, name, type = 'skatepark', onPress }:
         >
             <View
                 style={{
-                    backgroundColor: isShop ? '#FF6B35' : '#FFD700',
+                    backgroundColor: isShop ? '#22c55e' : '#3b82f6',
                     borderRadius: 20,
                     padding: 4,
                     borderWidth: 2,

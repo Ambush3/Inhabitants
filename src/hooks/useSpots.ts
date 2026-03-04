@@ -36,7 +36,7 @@ export function useSpots() {
         description?: string,
         initialRating?: number,
         tags: string[] = []
-    ) {
+    ): Promise<Spot | undefined> {
         setError(null);
 
         const trimmedName = name.trim();
@@ -78,6 +78,7 @@ export function useSpots() {
         }
 
         setSpots((prev) => [spot, ...prev]);
+        return spot;
     }
 
     async function deleteSpotById(id: string, onDeleted?: () => void) {

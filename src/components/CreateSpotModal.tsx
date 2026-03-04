@@ -10,9 +10,11 @@ import {
     Platform,
     KeyboardAvoidingView,
     ScrollView,
-    TextInput
+    TextInput,
+    Image
 } from 'react-native';
 import { Stars } from '@/src/components/Stars';
+import * as ImagePicker from 'expo-image-picker';
 
 type Props = {
     visible: boolean;
@@ -21,18 +23,22 @@ type Props = {
     spotDesc: string;
     spotRating: number;
     spotTags: string[];
+    pendingImages: string[];
     onChangeName: (v: string) => void;
     onChangeDesc: (v: string) => void;
     onChangeRating: (v: number) => void;
     onAddTag: (tag: string) => void;
     onRemoveTag: (tag: string) => void;
+    onAddImage: (uri: string) => void;
+    onRemoveImage: (uri: string) => void;
     onCancel: () => void;
     onCreate: () => void;
 };
 
 export function CreateSpotModal({
-                                    visible, pendingCoord, spotName, spotDesc, spotRating, spotTags,
-                                    onChangeName, onChangeDesc, onChangeRating, onAddTag, onRemoveTag, onCancel, onCreate,
+                                    visible, pendingCoord, spotName, spotDesc, spotRating, spotTags, pendingImages,
+                                    onChangeName, onChangeDesc, onChangeRating, onAddTag, onRemoveTag,
+                                    onAddImage, onRemoveImage, onCancel, onCreate,
                                 }: Props) {
 
     const [tagInput, setTagInput] = useState('');
@@ -55,6 +61,21 @@ export function CreateSpotModal({
         });
     }
 
+    async function handlePickImages() {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') return;
+
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsMultipleSelection: true,
+            quality: 1,
+            selectionLimit: 5,
+        });
+
+        if (result.canceled) return;
+        result.assets.forEach(asset => onAddImage(asset.uri));
+    }
+
     return (
         <Modal visible={visible} transparent animationType="slide" onRequestClose={onCancel}>
             <KeyboardAvoidingView
@@ -66,7 +87,7 @@ export function CreateSpotModal({
                     onPress={onCancel}
                 >
                     <Pressable
-                        style={{ backgroundColor: 'white', padding: 16, borderTopLeftRadius: 16, borderTopRightRadius: 16 }}
+                        style={{ backgroundColor: 'white', padding: 16, borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '75%' }}
                         onPress={() => {}}
                     >
                         <ScrollView keyboardShouldPersistTaps="handled">
@@ -99,7 +120,7 @@ export function CreateSpotModal({
                                 multiline
                                 returnKeyType="done"
                                 submitBehavior="blurAndSubmit"
-                                style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 10, height: 90, marginBottom: 12 }}
+                                style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 10, height: 60, marginBottom: 12 }}
                                 autoCapitalize="sentences"
                             />
 
@@ -138,6 +159,33 @@ export function CreateSpotModal({
                                         <Text style={{ fontSize: 13, opacity: 0.5 }}>✕</Text>
                                     </Pressable>
                                 ))}
+                            </View>
+
+                            <Text style={{ marginBottom: 6 }}>Photos (optional)</Text>
+                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+                                {pendingImages.map(uri => (
+                                    <View key={uri} style={{ position: 'relative' }}>
+                                        <Image
+                                            source={{ uri }}
+                                            style={{ width: 80, height: 80, borderRadius: 8 }}
+                                            resizeMode="cover"
+                                        />
+                                        <Pressable
+                                            onPress={() => onRemoveImage(uri)}
+                                            style={{ position: 'absolute', top: 2, right: 2, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 10, padding: 2 }}
+                                        >
+                                            <Text style={{ color: 'white', fontSize: 10 }}>✕</Text>
+                                        </Pressable>
+                                    </View>
+                                ))}
+                                {pendingImages.length < 5 ? (
+                                    <Pressable
+                                        onPress={handlePickImages}
+                                        style={{ width: 80, height: 80, borderRadius: 8, borderWidth: 1, borderColor: '#ccc', borderStyle: 'dashed', justifyContent: 'center', alignItems: 'center' }}
+                                    >
+                                        <Text style={{ fontSize: 28, color: '#ccc' }}>+</Text>
+                                    </Pressable>
+                                ) : null}
                             </View>
 
                             <Text style={{ marginBottom: 6 }}>Rating (optional)</Text>
