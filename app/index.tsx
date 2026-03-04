@@ -11,6 +11,7 @@ import { ExplorePanel } from '@/src/components/ExplorePanel';
 import {Place, Spot} from '@/src/types';
 import { useSpots } from '@/src/hooks/useSpots';
 import { useReviews } from '@/src/hooks/useReviews';
+import { useSpotImages } from '@/src/hooks/useSpotImages';
 import { useNearbyPlaces } from '@/src/hooks/useNearbyPlaces';
 import { useTopRated } from '@/src/hooks/useTopRated';
 import { useAuth } from '@/src/hooks/useAuth';
@@ -53,6 +54,9 @@ export default function Index() {
 
     const { placeFavorites, placeFavLoading, loadPlaceFavorites, togglePlaceFavorite, isPlaceFavorite } = usePlaceFavorites();
 
+    const { images, uploading: imagesUploading, loadImages, uploadImages, deleteImage, clearImages } = useSpotImages();
+    const [pendingImages, setPendingImages] = useState<string[]>([]);
+
     const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
     const [placeDetailsOpen, setPlaceDetailsOpen] = useState(false);
 
@@ -83,6 +87,7 @@ export default function Index() {
         setCreateOpen(false);
         setPendingCoord(null);
         setSpotTags([]);
+        setPendingImages([]);
     }
 
     function closeDetailsModal() {
@@ -122,7 +127,8 @@ export default function Index() {
         setSelectedSpot(spot);
         setDetailsOpen(true);
         resetReviews();
-        await loadReviews(spot.id);
+        clearImages();
+        await Promise.all([loadReviews(spot.id), loadImages(spot.id)]);
     }
 
     function confirmDelete(spot: Spot) {
@@ -342,7 +348,11 @@ export default function Index() {
                         coordinate={{ latitude: s.lat, longitude: s.lng }}
                         title={s.name}
                         description={s.description ?? undefined}
-                        pinColor={s.id === highlightSpotId ? "gold" : "red"}
+                        pinColor={
+                            s.id === highlightSpotId ? 'gold' :
+                                s.user_id === session?.user.id ? '#f5a623' :
+                                    'red'
+                        }
                         onPress={() => {
                             setHighlightSpotId(s.id);
                             animateToSpotWithModalOffset(s.lat, s.lng);
@@ -404,9 +414,15 @@ export default function Index() {
                 onCancel={closeCreateModal}
                 onCreate={async () => {
                     if (!pendingCoord) return;
-                    await createSpotAt(pendingCoord.lat, pendingCoord.lng, spotName, spotDesc, spotRating, spotTags);
+                    const newSpot = await createSpotAt(pendingCoord.lat, pendingCoord.lng, spotName, spotDesc, spotRating, spotTags);
+                    if (newSpot && pendingImages.length > 0) {
+                        await uploadImages(newSpot.id, pendingImages);
+                    }
                     closeCreateModal();
                 }}
+                pendingImages={pendingImages}
+                onAddImage={(uri) => setPendingImages(prev => prev.includes(uri) ? prev : [...prev, uri])}
+                onRemoveImage={(uri) => setPendingImages(prev => prev.filter(u => u !== uri))}
             />
 
             {/* Details Modal */}
@@ -438,6 +454,16 @@ export default function Index() {
                     if (!selectedSpot) return;
                     const err = await deleteReview(reviewId, selectedSpot.id);
                     if (err) setError(err);
+                }}
+                images={images}
+                imagesLoading={imagesUploading}
+                onDeleteImage={async (url) => {
+                    if (!selectedSpot) return;
+                    await deleteImage(selectedSpot.id, url);
+                }}
+                onUploadImages={async (uris) => {
+                    if (!selectedSpot) return;
+                    await uploadImages(selectedSpot.id, uris);
                 }}
             />
             <SkateShopDetailsModal
