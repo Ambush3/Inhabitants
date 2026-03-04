@@ -1,8 +1,9 @@
 import React, {useEffect, useRef, useState} from 'react';
-import { View, Text, Button, Modal, TextInput, Pressable, ScrollView, KeyboardAvoidingView, Platform, Linking, StyleSheet, ActionSheetIOS, Share } from 'react-native';
+import { View, Text, Button, Modal, TextInput, Pressable, ScrollView, KeyboardAvoidingView, Platform, Linking, StyleSheet, ActionSheetIOS, Share, Image, FlatList } from 'react-native';
 import { Stars } from '@/src/components/Stars';
 import { Spot, Review } from '@/src/types';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 
 type Props = {
     visible: boolean;
@@ -21,17 +22,23 @@ type Props = {
     isFavorite: boolean;
     onToggleFavorite: () => void;
     onDeleteReview: (reviewId: string) => void;
+    images: string[];
+    imagesLoading: boolean;
+    onDeleteImage: (url: string) => void;
+    onUploadImages: (uris: string[]) => Promise<void>;
 };
 
 export function SpotDetailsModal({
                                      visible, spot, reviews, avgRating, newRating, newComment,
                                      onChangeRating, onChangeComment, onSubmitReview, onClose, onDelete, currentUserId, existingReviewId,
-                                     isFavorite, onToggleFavorite, onDeleteReview
+                                     isFavorite, onToggleFavorite, onDeleteReview, images, imagesLoading, onDeleteImage, onUploadImages
                                  }: Props) {
 
     const scrollRef = useRef<ScrollView>(null);
     const commentInputRef = useRef<TextInput>(null);
     const [scrollEnabled, setScrollEnabled] = useState(false);
+    const [selectedImage, setSelectedImage] = useState<string | null>(null);
+    const [pendingImages, setPendingImages] = useState<string[]>([]);
 
     function handleDirections() {
         if (!spot) return;
@@ -78,6 +85,27 @@ export function SpotDetailsModal({
         return 'Optional comment';
     }
 
+    async function handlePickImages() {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') return;
+
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsMultipleSelection: true,
+            quality: 1,
+            selectionLimit: 5,
+        });
+
+        if (result.canceled) return;
+        result.assets.forEach(asset => setPendingImages(prev => prev.includes(asset.uri) ? prev : [...prev, asset.uri]));
+    }
+
+    async function handleUploadPending() {
+        if (!pendingImages.length) return;
+        await onUploadImages(pendingImages);
+        setPendingImages([]);
+    }
+
     return (
         <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, justifyContent: 'flex-end' }}>
@@ -100,7 +128,6 @@ export function SpotDetailsModal({
                                 />
                             </Pressable>
                         </View>
-
                         {spot?.description ? (
                             <Text style={{ marginTop: 6 }}>{spot.description}</Text>
                         ) : null}
@@ -114,6 +141,88 @@ export function SpotDetailsModal({
                                 ))}
                             </View>
                         ) : null}
+
+                        {spot?.user_id === currentUserId ? (
+                            <FlatList
+                                data={[...images, ...pendingImages, 'add']}
+                                horizontal
+                                showsHorizontalScrollIndicator={false}
+                                keyExtractor={(item) => item}
+                                style={{ marginTop: 12, marginBottom: 4 }}
+                                renderItem={({ item }) => {
+                                    if (item === 'add') {
+                                        if (images.length + pendingImages.length >= 5) return null;
+                                        return (
+                                            <Pressable
+                                                onPress={handlePickImages}
+                                                style={{ width: 120, height: 90, borderRadius: 8, borderWidth: 1, borderColor: '#ccc', borderStyle: 'dashed', justifyContent: 'center', alignItems: 'center', marginRight: 8 }}
+                                            >
+                                                <Text style={{ fontSize: 28, color: '#ccc' }}>+</Text>
+                                            </Pressable>
+                                        );
+                                    }
+                                    const isPending = pendingImages.includes(item);
+                                    return (
+                                        <View style={{ marginRight: 8, position: 'relative' }}>
+                                            <Pressable onPress={() => !isPending && setSelectedImage(item)}>
+                                                <Image
+                                                    source={{ uri: item }}
+                                                    style={{ width: 120, height: 90, borderRadius: 8, opacity: isPending ? 0.5 : 1 }}
+                                                    resizeMode="cover"
+                                                />
+                                            </Pressable>
+                                            <Pressable
+                                                onPress={() => isPending
+                                                    ? setPendingImages(prev => prev.filter(u => u !== item))
+                                                    : onDeleteImage(item)
+                                                }
+                                                style={{ position: 'absolute', top: 4, right: 4, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 12, padding: 4 }}
+                                            >
+                                                <Ionicons name="close" size={14} color="white" />
+                                            </Pressable>
+                                            {isPending ? (
+                                                <View style={{ position: 'absolute', bottom: 4, left: 4, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 4, paddingHorizontal: 4, paddingVertical: 2 }}>
+                                                    <Text style={{ color: 'white', fontSize: 9 }}>Pending</Text>
+                                                </View>
+                                            ) : null}
+                                        </View>
+                                    );
+                                }}
+                            />
+                        ) : (
+                            images.length > 0 ? (
+                                <FlatList
+                                    data={images}
+                                    horizontal
+                                    showsHorizontalScrollIndicator={false}
+                                    keyExtractor={(url) => url}
+                                    style={{ marginTop: 12, marginBottom: 4 }}
+                                    renderItem={({ item: url }) => (
+                                        <Pressable onPress={() => setSelectedImage(url)} style={{ marginRight: 8 }}>
+                                            <Image
+                                                source={{ uri: url }}
+                                                style={{ width: 120, height: 90, borderRadius: 8 }}
+                                                resizeMode="cover"
+                                            />
+                                        </Pressable>
+                                    )}
+                                />
+                            ) : null
+                        )}
+
+                        {pendingImages.length > 0 && spot?.user_id === currentUserId ? (
+                            <Pressable
+                                onPress={handleUploadPending}
+                                style={{ backgroundColor: '#000', borderRadius: 8, padding: 10, alignItems: 'center', marginTop: 8, marginBottom: 4 }}
+                            >
+                                <Text style={{ color: 'white', fontWeight: '600' }}>Upload {pendingImages.length} photo{pendingImages.length > 1 ? 's' : ''}</Text>
+                            </Pressable>
+                        ) : null}
+
+                        {imagesLoading ? (
+                            <Text style={{ opacity: 0.4, fontSize: 12, marginTop: 8 }}>Loading images...</Text>
+                        ) : null}
+
 
                         <View style={{ marginTop: 12 }}>
                             <Text style={{ marginBottom: 6, fontWeight: '600' }}>Rating ({reviews.length})</Text>
@@ -181,6 +290,26 @@ export function SpotDetailsModal({
                     </ScrollView>
                 </View>
             </KeyboardAvoidingView>
+            <Modal visible={!!selectedImage} transparent animationType="fade" onRequestClose={() => setSelectedImage(null)}>
+                <Pressable
+                    style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.95)', justifyContent: 'center', alignItems: 'center' }}
+                    onPress={() => setSelectedImage(null)}
+                >
+                    {selectedImage ? (
+                        <Image
+                            source={{ uri: selectedImage }}
+                            style={{ width: '100%', height: '80%' }}
+                            resizeMode="contain"
+                        />
+                    ) : null}
+                    <Pressable
+                        onPress={() => setSelectedImage(null)}
+                        style={{ position: 'absolute', top: 60, right: 20 }}
+                    >
+                        <Ionicons name="close-circle" size={36} color="white" />
+                    </Pressable>
+                </Pressable>
+            </Modal>
         </Modal>
     );
 }
