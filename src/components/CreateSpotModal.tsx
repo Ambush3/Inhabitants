@@ -1,20 +1,11 @@
 import React, {useState, useRef, useEffect} from 'react';
-
 import {
-    View,
-    Text,
-    Button,
-    Modal,
-    TextInput as RNTextInput,
-    Pressable,
-    Platform,
-    KeyboardAvoidingView,
-    ScrollView,
-    TextInput,
-    Image
+    View, Text, Button, Modal, TextInput as RNTextInput, Pressable,
+    Platform, KeyboardAvoidingView, ScrollView, TextInput, Image
 } from 'react-native';
 import { Stars } from '@/src/components/Stars';
 import * as ImagePicker from 'expo-image-picker';
+import { useTheme } from '@/src/context/ThemeContext';
 
 type Props = {
     visible: boolean;
@@ -41,14 +32,14 @@ export function CreateSpotModal({
                                     onAddImage, onRemoveImage, onCancel, onCreate,
                                 }: Props) {
 
+    const { theme } = useTheme();
+    const c = theme.colors;
     const [tagInput, setTagInput] = useState('');
     const descRef = useRef<RNTextInput>(null);
     const tagInputRef = useRef<RNTextInput>(null);
 
     useEffect(() => {
-        if (!visible) {
-            setTagInput('');
-        }
+        if (!visible) setTagInput('');
     }, [visible]);
 
     function handleAddTag() {
@@ -56,75 +47,72 @@ export function CreateSpotModal({
         if (!cleaned) return;
         onAddTag(cleaned);
         setTagInput('');
-        requestAnimationFrame(() => {
-            tagInputRef.current?.focus();
-        });
+        requestAnimationFrame(() => tagInputRef.current?.focus());
     }
 
     async function handlePickImages() {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (status !== 'granted') return;
-
         const result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
             allowsMultipleSelection: true,
             quality: 1,
             selectionLimit: 5,
         });
-
         if (result.canceled) return;
         result.assets.forEach(asset => onAddImage(asset.uri));
     }
 
     return (
         <Modal visible={visible} transparent animationType="slide" onRequestClose={onCancel}>
-            <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                style={{ flex: 1 }}
-            >
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
                 <Pressable
                     style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'flex-end' }}
                     onPress={onCancel}
                 >
                     <Pressable
-                        style={{ backgroundColor: 'white', padding: 16, borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '75%' }}
+                        style={{ backgroundColor: c.surface, padding: 16, borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '75%' }}
                         onPress={() => {}}
                     >
                         <ScrollView keyboardShouldPersistTaps="handled">
-                            <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12 }}>Create spot</Text>
+                            <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: c.text }}>Create spot</Text>
 
                             {pendingCoord ? (
-                                <Text style={{ marginBottom: 12 }}>
+                                <Text style={{ marginBottom: 12, color: c.subtext }}>
                                     {pendingCoord.lat.toFixed(5)}, {pendingCoord.lng.toFixed(5)}
                                 </Text>
                             ) : null}
 
-                            <Text style={{ marginBottom: 6 }}>Name</Text>
+                            <Text style={{ marginBottom: 6, color: c.text }}>Name</Text>
                             <TextInput
                                 value={spotName}
                                 onChangeText={onChangeName}
                                 placeholder="e.g. Downtown ledges"
+                                placeholderTextColor={c.placeholder}
                                 autoFocus
+                                autoCorrect={true}
                                 returnKeyType="next"
                                 onSubmitEditing={() => descRef.current?.focus()}
-                                style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 10, marginBottom: 12 }}
+                                style={{ borderWidth: 1, borderColor: c.inputBorder, borderRadius: 8, padding: 10, marginBottom: 12, color: c.text, backgroundColor: c.surface }}
                                 autoCapitalize="sentences"
                             />
 
-                            <Text style={{ marginBottom: 6 }}>Description (optional)</Text>
+                            <Text style={{ marginBottom: 6, color: c.text }}>Description (optional)</Text>
                             <TextInput
                                 ref={descRef}
                                 value={spotDesc}
                                 onChangeText={onChangeDesc}
                                 placeholder="Surface, obstacles, best time to skate, etc."
+                                placeholderTextColor={c.placeholder}
+                                autoCorrect={true}
                                 multiline
                                 returnKeyType="done"
                                 submitBehavior="blurAndSubmit"
-                                style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 10, height: 60, marginBottom: 12 }}
+                                style={{ borderWidth: 1, borderColor: c.inputBorder, borderRadius: 8, padding: 10, height: 60, marginBottom: 12, color: c.text, backgroundColor: c.surface }}
                                 autoCapitalize="sentences"
                             />
 
-                            <Text style={{ marginBottom: 6 }}>Tags (optional)</Text>
+                            <Text style={{ marginBottom: 6, color: c.text }}>Tags (optional)</Text>
                             <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
                                 <TextInput
                                     ref={tagInputRef}
@@ -137,31 +125,33 @@ export function CreateSpotModal({
                                         }
                                     }}
                                     placeholder="e.g. stairs, ledges, rails"
+                                    placeholderTextColor={c.placeholder}
                                     autoCapitalize="none"
                                     multiline
-                                    style={{ flex: 1, borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 10 }}
+                                    style={{ flex: 1, borderWidth: 1, borderColor: c.inputBorder, borderRadius: 8, padding: 10, color: c.text, backgroundColor: c.surface }}
                                 />
                                 <Pressable
                                     onPress={handleAddTag}
-                                    style={{ backgroundColor: '#000', borderRadius: 8, padding: 10, justifyContent: 'center' }}
+                                    style={{ backgroundColor: c.buttonBg, borderRadius: 8, padding: 10, justifyContent: 'center' }}
                                 >
-                                    <Text style={{ color: 'white', fontWeight: '600' }}>Add</Text>
+                                    <Text style={{ color: c.background, fontWeight: '600' }}>Add</Text>
                                 </Pressable>
                             </View>
+
                             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
                                 {spotTags.map(tag => (
                                     <Pressable
                                         key={tag}
                                         onPress={() => onRemoveTag(tag)}
-                                        style={{ backgroundColor: '#f0f0f0', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6, flexDirection: 'row', alignItems: 'center', gap: 6 }}
+                                        style={{ backgroundColor: c.tagBg, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6, flexDirection: 'row', alignItems: 'center', gap: 6 }}
                                     >
-                                        <Text style={{ fontSize: 13 }}>#{tag}</Text>
-                                        <Text style={{ fontSize: 13, opacity: 0.5 }}>✕</Text>
+                                        <Text style={{ fontSize: 13, color: c.text }}>#{tag}</Text>
+                                        <Text style={{ fontSize: 13, opacity: 0.5, color: c.text }}>✕</Text>
                                     </Pressable>
                                 ))}
                             </View>
 
-                            <Text style={{ marginBottom: 6 }}>Photos (optional)</Text>
+                            <Text style={{ marginBottom: 6, color: c.text }}>Photos (optional)</Text>
                             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
                                 {pendingImages.map(uri => (
                                     <View key={uri} style={{ position: 'relative' }}>
@@ -181,14 +171,14 @@ export function CreateSpotModal({
                                 {pendingImages.length < 5 ? (
                                     <Pressable
                                         onPress={handlePickImages}
-                                        style={{ width: 80, height: 80, borderRadius: 8, borderWidth: 1, borderColor: '#ccc', borderStyle: 'dashed', justifyContent: 'center', alignItems: 'center' }}
+                                        style={{ width: 80, height: 80, borderRadius: 8, borderWidth: 1, borderColor: c.inputBorder, borderStyle: 'dashed', justifyContent: 'center', alignItems: 'center' }}
                                     >
-                                        <Text style={{ fontSize: 28, color: '#ccc' }}>+</Text>
+                                        <Text style={{ fontSize: 28, color: c.subtext }}>+</Text>
                                     </Pressable>
                                 ) : null}
                             </View>
 
-                            <Text style={{ marginBottom: 6 }}>Rating (optional)</Text>
+                            <Text style={{ marginBottom: 6, color: c.text }}>Rating (optional)</Text>
                             <Stars value={spotRating} onChange={onChangeRating} />
 
                             <View style={{ flexDirection: 'row', gap: 12, justifyContent: 'flex-end', marginTop: 12 }}>

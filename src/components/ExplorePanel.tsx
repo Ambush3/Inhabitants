@@ -3,6 +3,7 @@ import { View, Text, Button, Modal, ScrollView, Pressable, TextInput } from 'rea
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {Place, Spot} from '@/src/types';
 import {Ionicons} from "@expo/vector-icons";
+import { useTheme } from '@/src/context/ThemeContext';
 
 type PlaceFavorite = {
     place_id: string;
@@ -33,15 +34,18 @@ type Props = {
     placeFavorites: PlaceFavorite[];
     placeFavLoading: boolean;
     onSelectPlace: (place: Place) => void;
+    onOpenSettings: () => void;
 };
 
 export function ExplorePanel({
                                  visible, onClose, parksLoading, shopsLoading, topLoading,
                                  topRated, onLoadSkateparks, onLoadSkateShops, onLoadTopRated, onSelectSpot, onSignOut, onSearch, onClearSearch, hasSearchResults, searchResults,
-                                 favorites, favLoading, placeFavorites, placeFavLoading, onSelectPlace
+                                 favorites, favLoading, placeFavorites, placeFavLoading, onSelectPlace, onOpenSettings
                              }: Props) {
 
     const insets = useSafeAreaInsets();
+    const { theme } = useTheme();
+    const c = theme.colors;
     const [searchQuery, setSearchQuery] = useState('');
     const [favoritesOpen, setFavoritesOpen] = useState(false);
     const [parkFavoritesOpen, setParkFavoritesOpen] = useState(false);
@@ -59,54 +63,54 @@ export function ExplorePanel({
 
     return (
         <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-            <Pressable style={{flex: 1, backgroundColor: 'rgba(0,0,0,0.3)'}} onPress={onClose}>
+            <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)' }} onPress={onClose}>
                 <Pressable
                     style={{
                         paddingTop: insets.top,
                         width: 280,
                         height: '100%',
-                        backgroundColor: 'white',
+                        backgroundColor: c.panelBg,
                         padding: 16,
                         flexDirection: 'column',
                     }}
-                    onPress={() => {
-                    }}
+                    onPress={() => {}}
                 >
                     <ScrollView showsVerticalScrollIndicator={false}>
-                        <Text style={{fontSize: 18, fontWeight: '600', marginBottom: 12}}>Explore</Text>
+                        <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: c.text }}>Explore</Text>
 
-                        <Text style={{fontSize: 10, fontWeight: '600', marginBottom: 12}}>Search By Tag</Text>
-                        <View style={{flexDirection: 'row', gap: 8, marginBottom: 16}}>
+                        <Text style={{ fontSize: 10, fontWeight: '600', marginBottom: 12, color: c.text }}>Search By Tag</Text>
+                        <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
                             <TextInput
                                 value={searchQuery}
                                 onChangeText={setSearchQuery}
                                 placeholder="Search by tag..."
+                                placeholderTextColor={c.placeholder}
                                 autoCapitalize="none"
                                 returnKeyType="search"
                                 onSubmitEditing={handleSearch}
-                                style={{flex: 1, borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 10}}
+                                style={{ flex: 1, borderWidth: 1, borderColor: c.inputBorder, borderRadius: 8, padding: 10, color: c.text, backgroundColor: c.surface }}
                             />
                             {hasSearchResults ? (
-                                <Pressable onPress={handleClear} style={{justifyContent: 'center', padding: 8}}>
-                                    <Text style={{color: 'red'}}>Clear</Text>
+                                <Pressable onPress={handleClear} style={{ justifyContent: 'center', padding: 8 }}>
+                                    <Text style={{ color: c.danger }}>Clear</Text>
                                 </Pressable>
                             ) : null}
                         </View>
 
                         {searchResults.length > 0 ? (
-                            <View style={{marginBottom: 16}}>
-                                <Text style={{fontWeight: '600', marginBottom: 8}}>
+                            <View style={{ marginBottom: 16 }}>
+                                <Text style={{ fontWeight: '600', marginBottom: 8, color: c.text }}>
                                     Search Results ({searchResults.length})
                                 </Text>
                                 {searchResults.map(s => (
                                     <Pressable
                                         key={s.id}
-                                        style={{paddingVertical: 10, borderBottomWidth: 1, borderColor: '#eee'}}
+                                        style={{ paddingVertical: 10, borderBottomWidth: 1, borderColor: c.border }}
                                         onPress={() => onSelectSpot(s)}
                                     >
-                                        <Text style={{fontWeight: '600'}}>{s.name}</Text>
+                                        <Text style={{ fontWeight: '600', color: c.text }}>{s.name}</Text>
                                         {s.tags.length > 0 ? (
-                                            <Text style={{opacity: 0.6, fontSize: 12, marginTop: 2}}>
+                                            <Text style={{ opacity: 0.6, fontSize: 12, marginTop: 2, color: c.text }}>
                                                 {s.tags.map(t => `#${t}`).join(' ')}
                                             </Text>
                                         ) : null}
@@ -117,20 +121,12 @@ export function ExplorePanel({
 
                         <Pressable
                             onPress={() => setFavoritesOpen(prev => !prev)}
-                            style={{
-                                flexDirection: 'row',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                paddingVertical: 10,
-                                borderBottomWidth: 1,
-                                borderColor: '#eee',
-                                marginBottom: 8
-                            }}
+                            style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderColor: c.border, marginBottom: 8 }}
                         >
-                            <Text style={{fontWeight: '800'}}>
+                            <Text style={{ fontWeight: '800', color: c.text }}>
                                 {favLoading ? 'Loading...' : `Favorite Spots (${favorites.length})`}
                             </Text>
-                            <Ionicons name={favoritesOpen ? 'chevron-up' : 'chevron-down'} size={16} color="#999"/>
+                            <Ionicons name={favoritesOpen ? 'chevron-up' : 'chevron-down'} size={16} color={c.subtext} />
                         </Pressable>
 
                         {favoritesOpen ? (
@@ -138,41 +134,30 @@ export function ExplorePanel({
                                 favorites.map(s => (
                                     <Pressable
                                         key={s.id}
-                                        style={{paddingVertical: 10, borderBottomWidth: 1, borderColor: '#eee'}}
-                                        onPress={() => {
-                                            setFavoritesOpen(false);
-                                            onSelectSpot(s);
-                                        }}
+                                        style={{ paddingVertical: 10, borderBottomWidth: 1, borderColor: c.border }}
+                                        onPress={() => { setFavoritesOpen(false); onSelectSpot(s); }}
                                     >
-                                        <Text style={{fontWeight: '600'}}>{s.name}</Text>
+                                        <Text style={{ fontWeight: '600', color: c.text }}>{s.name}</Text>
                                         {s.tags?.length > 0 ? (
-                                            <Text style={{opacity: 0.6, fontSize: 12, marginTop: 2}}>
+                                            <Text style={{ opacity: 0.6, fontSize: 12, marginTop: 2, color: c.text }}>
                                                 {s.tags.map(t => `#${t}`).join(' ')}
                                             </Text>
                                         ) : null}
                                     </Pressable>
                                 ))
                             ) : (
-                                <Text style={{opacity: 0.5, fontSize: 13, marginBottom: 16}}>No favorites yet</Text>
+                                <Text style={{ opacity: 0.5, fontSize: 13, marginBottom: 16, color: c.text }}>No favorites yet</Text>
                             )
                         ) : null}
 
                         <Pressable
                             onPress={() => setParkFavoritesOpen(prev => !prev)}
-                            style={{
-                                flexDirection: 'row',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                paddingVertical: 10,
-                                borderBottomWidth: 1,
-                                borderColor: '#eee',
-                                marginBottom: 8
-                            }}
+                            style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderColor: c.border, marginBottom: 8 }}
                         >
-                            <Text style={{fontWeight: '800'}}>
+                            <Text style={{ fontWeight: '800', color: c.text }}>
                                 {placeFavLoading ? 'Loading...' : `Favorite Skate Parks (${placeFavorites.filter(f => f.place_type === 'skatepark').length})`}
                             </Text>
-                            <Ionicons name={parkFavoritesOpen ? 'chevron-up' : 'chevron-down'} size={16} color="#999"/>
+                            <Ionicons name={parkFavoritesOpen ? 'chevron-up' : 'chevron-down'} size={16} color={c.subtext} />
                         </Pressable>
 
                         {parkFavoritesOpen ? (
@@ -180,43 +165,28 @@ export function ExplorePanel({
                                 placeFavorites.filter(f => f.place_type === 'skatepark').map(f => (
                                     <Pressable
                                         key={f.place_id}
-                                        style={{paddingVertical: 10, borderBottomWidth: 1, borderColor: '#eee'}}
+                                        style={{ paddingVertical: 10, borderBottomWidth: 1, borderColor: c.border }}
                                         onPress={() => {
                                             setParkFavoritesOpen(false);
-                                            onSelectPlace({
-                                                id: f.place_id,
-                                                name: f.place_name,
-                                                type: f.place_type as 'skatepark' | 'skateshop',
-                                                lat: f.lat,
-                                                lng: f.lng,
-                                                tags: {}
-                                            });
+                                            onSelectPlace({ id: f.place_id, name: f.place_name, type: f.place_type as 'skatepark' | 'skateshop', lat: f.lat, lng: f.lng, tags: {} });
                                         }}
                                     >
-                                        <Text style={{fontWeight: '600'}}>{f.place_name}</Text>
+                                        <Text style={{ fontWeight: '600', color: c.text }}>{f.place_name}</Text>
                                     </Pressable>
                                 ))
                             ) : (
-                                <Text style={{opacity: 0.5, fontSize: 13, marginBottom: 16}}>No favorites yet</Text>
+                                <Text style={{ opacity: 0.5, fontSize: 13, marginBottom: 16, color: c.text }}>No favorites yet</Text>
                             )
                         ) : null}
 
                         <Pressable
                             onPress={() => setShopFavoritesOpen(prev => !prev)}
-                            style={{
-                                flexDirection: 'row',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                paddingVertical: 10,
-                                borderBottomWidth: 1,
-                                borderColor: '#eee',
-                                marginBottom: 8
-                            }}
+                            style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderColor: c.border, marginBottom: 8 }}
                         >
-                            <Text style={{fontWeight: '800'}}>
+                            <Text style={{ fontWeight: '800', color: c.text }}>
                                 {placeFavLoading ? 'Loading...' : `Favorite Skate Shops (${placeFavorites.filter(f => f.place_type === 'skateshop').length})`}
                             </Text>
-                            <Ionicons name={shopFavoritesOpen ? 'chevron-up' : 'chevron-down'} size={16} color="#999"/>
+                            <Ionicons name={shopFavoritesOpen ? 'chevron-up' : 'chevron-down'} size={16} color={c.subtext} />
                         </Pressable>
 
                         {shopFavoritesOpen ? (
@@ -224,55 +194,79 @@ export function ExplorePanel({
                                 placeFavorites.filter(f => f.place_type === 'skateshop').map(f => (
                                     <Pressable
                                         key={f.place_id}
-                                        style={{paddingVertical: 10, borderBottomWidth: 1, borderColor: '#eee'}}
+                                        style={{ paddingVertical: 10, borderBottomWidth: 1, borderColor: c.border }}
                                         onPress={() => {
                                             setShopFavoritesOpen(false);
-                                            onSelectPlace({
-                                                id: f.place_id,
-                                                name: f.place_name,
-                                                type: f.place_type as 'skatepark' | 'skateshop',
-                                                lat: f.lat,
-                                                lng: f.lng,
-                                                tags: {}
-                                            });
+                                            onSelectPlace({ id: f.place_id, name: f.place_name, type: f.place_type as 'skatepark' | 'skateshop', lat: f.lat, lng: f.lng, tags: {} });
                                         }}
                                     >
-                                        <Text style={{fontWeight: '600'}}>{f.place_name}</Text>
+                                        <Text style={{ fontWeight: '600', color: c.text }}>{f.place_name}</Text>
                                     </Pressable>
                                 ))
                             ) : (
-                                <Text style={{opacity: 0.5, fontSize: 13, marginBottom: 16}}>No favorites yet</Text>
+                                <Text style={{ opacity: 0.5, fontSize: 13, marginBottom: 16, color: c.text }}>No favorites yet</Text>
                             )
                         ) : null}
 
-                        <View style={{height: 12}}/>
-                        <Button title={parksLoading ? 'Searching...' : 'Local Skate Parks'} onPress={onLoadSkateparks}
-                                disabled={parksLoading}/>
-                        <View style={{height: 12}}/>
-                        <Button title={shopsLoading ? 'Searching...' : 'Local Skate Shops'} onPress={onLoadSkateShops}
-                                disabled={shopsLoading}/>
-                        <View style={{height: 12}}/>
-                        <Button title={topLoading ? 'Loading...' : 'Top Rated Nearby'} onPress={onLoadTopRated}
-                                disabled={topLoading}/>
-                        <View style={{height: 16}}/>
+                        <View style={{ height: 12 }} />
+                        <Pressable
+                            onPress={onLoadSkateparks}
+                            disabled={parksLoading}
+                            style={{ backgroundColor: c.tagBg, borderRadius: 8, padding: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: parksLoading ? 0.6 : 1, marginBottom: 12 }}
+                        >
+                            <Ionicons name="flag-outline" size={16} color={c.text} />
+                            <Text style={{ color: c.text, fontWeight: '600' }}>
+                                {parksLoading ? 'Searching...' : 'Local Skate Parks'}
+                            </Text>
+                        </Pressable>
+
+                        <Pressable
+                            onPress={onLoadSkateShops}
+                            disabled={shopsLoading}
+                            style={{ backgroundColor: c.tagBg, borderRadius: 8, padding: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: shopsLoading ? 0.6 : 1, marginBottom: 12 }}
+                        >
+                            <Ionicons name="storefront-outline" size={16} color={c.text} />
+                            <Text style={{ color: c.text, fontWeight: '600' }}>
+                                {shopsLoading ? 'Searching...' : 'Local Skate Shops'}
+                            </Text>
+                        </Pressable>
+
+                        <Pressable
+                            onPress={onLoadTopRated}
+                            disabled={topLoading}
+                            style={{ backgroundColor: c.tagBg, borderRadius: 8, padding: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: topLoading ? 0.6 : 1, marginBottom: 16 }}
+                        >
+                            <Ionicons name="star-outline" size={16} color={c.text} />
+                            <Text style={{ color: c.text, fontWeight: '600' }}>
+                                {topLoading ? 'Loading...' : 'Top Rated Nearby'}
+                            </Text>
+                        </Pressable>
 
                         {topRated.map(s => (
                             <Pressable
                                 key={s.id}
-                                style={{paddingVertical: 10, borderBottomWidth: 1, borderColor: '#eee'}}
+                                style={{ paddingVertical: 10, borderBottomWidth: 1, borderColor: c.border }}
                                 onPress={() => onSelectSpot(s)}
                             >
-                                <Text style={{fontWeight: '600'}}>{s.name}</Text>
-                                <Text style={{opacity: 0.7}}>{s.avg.toFixed(1)} ★ ({s.count})</Text>
+                                <Text style={{ fontWeight: '600', color: c.text }}>{s.name}</Text>
+                                <Text style={{ opacity: 0.7, color: c.text }}>{s.avg.toFixed(1)} ★ ({s.count})</Text>
                             </Pressable>
                         ))}
                     </ScrollView>
-                    <View style={{borderTopWidth: 1, borderColor: '#eee', paddingTop: 16, marginTop: 19}}>
+
+                    <View style={{ borderTopWidth: 1, borderColor: c.border, paddingTop: 16, marginTop: 19 }}>
+                        <Pressable
+                            onPress={onOpenSettings}
+                            style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 14, borderTopWidth: 1, borderColor: c.border }}
+                        >
+                            <Ionicons name="settings-outline" size={18} color={c.text} />
+                            <Text style={{ fontSize: 15, color: c.text }}>Settings</Text>
+                        </Pressable>
                         <Pressable
                             onPress={onSignOut}
-                            style={{padding: 12, borderRadius: 8, backgroundColor: '#f5f5f5', alignItems: 'center'}}
+                            style={{ padding: 12, borderRadius: 8, backgroundColor: c.tagBg, alignItems: 'center' }}
                         >
-                            <Text style={{color: 'red', fontWeight: '600'}}>Sign out</Text>
+                            <Text style={{ color: c.danger, fontWeight: '600' }}>Sign out</Text>
                         </Pressable>
                     </View>
                 </Pressable>
