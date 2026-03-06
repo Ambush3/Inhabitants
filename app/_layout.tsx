@@ -2,13 +2,14 @@ import { useEffect } from 'react';
 import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useAuth } from '@/src/hooks/useAuth';
+import { ThemeProvider, useTheme } from '@/src/context/ThemeContext';
 
-export default function RootLayout() {
+function RootLayoutInner() {
     const { session, loading } = useAuth();
+    const { darkMode, theme } = useTheme();
 
     useEffect(() => {
         if (loading) return;
-
         if (session) {
             router.replace('/');
         } else {
@@ -18,8 +19,16 @@ export default function RootLayout() {
 
     return (
         <>
-            <StatusBar style="dark" backgroundColor="#000000" />
+            <StatusBar style={darkMode ? 'light' : 'dark'} />
             <Stack screenOptions={{ headerShown: false }} />
         </>
+    );
+}
+
+export default function RootLayout() {
+    return (
+        <ThemeProvider>
+            <RootLayoutInner />
+        </ThemeProvider>
     );
 }

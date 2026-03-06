@@ -1,14 +1,17 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {Text, View, Button, ScrollView, Platform, Alert, Pressable } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapView, { Marker, Region, LongPressEvent, MapMarker } from 'react-native-maps';
 import * as Location from 'expo-location';
+
 import { SkateMarker } from '@/src/components/SkateMarker';
 import { CreateSpotModal } from '@/src/components/CreateSpotModal';
 import { SpotDetailsModal } from '@/src/components/SpotDetailsModal';
 import { SkateShopDetailsModal} from "@/src/components/SkateShopDetailsModal";
 import { ExplorePanel } from '@/src/components/ExplorePanel';
-import {Place, Spot} from '@/src/types';
+import { SettingsPanel } from '@/src/components/SettingsPanel';
+
 import { useSpots } from '@/src/hooks/useSpots';
 import { useReviews } from '@/src/hooks/useReviews';
 import { useSpotImages } from '@/src/hooks/useSpotImages';
@@ -16,8 +19,12 @@ import { useNearbyPlaces } from '@/src/hooks/useNearbyPlaces';
 import { useTopRated } from '@/src/hooks/useTopRated';
 import { useAuth } from '@/src/hooks/useAuth';
 import { useFavorites } from '@/src/hooks/useFavorites';
-import { Ionicons } from '@expo/vector-icons';
 import {usePlaceFavorites} from "@/src/hooks/usePlaceFavorites";
+
+import { useTheme } from '@/src/context/ThemeContext';
+
+import { Ionicons } from '@expo/vector-icons';
+import {Place, Spot} from '@/src/types';
 
 const DEFAULT_REGION: Region = {
     latitude: 0,
@@ -76,6 +83,13 @@ export default function Index() {
     const [spotName, setSpotName] = useState('');
     const [spotDesc, setSpotDesc] = useState('');
     const [spotTags, setSpotTags] = useState<string[]>([]);
+
+    const [settingsOpen, setSettingsOpen] = useState(false);
+
+    const { theme } = useTheme();
+    const c = theme.colors;
+
+    const insets = useSafeAreaInsets();
 
     const { spots, loading, error, setError, reload, createSpotAt, deleteSpotById, searchResults, searching, searchByTag, clearSearch } = useSpots();
 
@@ -211,7 +225,7 @@ export default function Index() {
 
     if (Platform.OS === 'web') {
         return (
-            <SafeAreaView style={{ flex: 1, padding: 16 }}>
+            <SafeAreaView style={{ flex: 1, backgroundColor: c.headerBg }}>
                 {/*<View style={{ flexDirection: 'row', gap: 12, marginBottom: 12 }}>*/}
                 {/*    <Button title={loading ? 'Loading…' : 'Reload'} onPress={reload} />*/}
                 {/*</View>*/}
@@ -238,7 +252,9 @@ export default function Index() {
     }
 
     return (
-        <SafeAreaView style={{ flex: 1 }}>
+        <View style={{ flex: 1, backgroundColor: c.headerBg }}>
+            <View style={{ height: insets.top, backgroundColor: c.headerBg }} />
+
             {displayError ? (
                 <Text style={{ color: "red", paddingHorizontal: 12, paddingTop: 8 }}>
                     {displayError}
@@ -252,18 +268,25 @@ export default function Index() {
                 alignItems: "center",
                 justifyContent: "space-between",
                 borderBottomWidth: 1,
-                borderColor: "#e5e5e5",
-                backgroundColor: "white",
+                borderColor: c.border,
+                backgroundColor: c.headerBg,
             }}>
                 <Pressable onPress={() => setPanelOpen(true)} style={{ padding: 8 }}>
-                    <Ionicons name="menu" size={24} color="#000" />
+                    <Ionicons name="menu" size={24} color={c.text} />
                 </Pressable>
-                <Text style={{ fontSize: 16, fontWeight: "600" }}>Spots</Text>
+                <Text style={{ fontSize: 16, fontWeight: "600", color: c.text }}>Spots</Text>
+                <Pressable onPress={() => setSettingsOpen(true)} style={{ padding: 8 }}>
+                    <Ionicons name="settings-outline" size={24} color={c.text} />
+                </Pressable>
             </View>
 
             <ExplorePanel
                 visible={panelOpen}
                 onClose={() => setPanelOpen(false)}
+                onOpenSettings={() => {
+                    setPanelOpen(false);
+                    setSettingsOpen(true);
+                }}
                 parksLoading={parksLoading}
                 shopsLoading={shopsLoading}
                 topLoading={topLoading}
@@ -349,9 +372,9 @@ export default function Index() {
                         title={s.name}
                         description={s.description ?? undefined}
                         pinColor={
-                            s.id === highlightSpotId ? 'gold' :
-                                s.user_id === session?.user.id ? '#f5a623' :
-                                    'red'
+                            s.id === highlightSpotId
+                                ? (s.user_id === session?.user.id ? '#f5a623' : 'purple')
+                                : (s.user_id === session?.user.id ? '#f5a623' : 'red')
                         }
                         onPress={() => {
                             setHighlightSpotId(s.id);
@@ -385,7 +408,7 @@ export default function Index() {
                     position: 'absolute',
                     bottom: 50,
                     right: 16,
-                    backgroundColor: 'white',
+                    backgroundColor: c.surface,
                     borderRadius: 30,
                     padding: 12,
                     shadowColor: '#000',
@@ -479,6 +502,15 @@ export default function Index() {
                     await togglePlaceFavorite(selectedPlace);
                 }}
             />
-        </SafeAreaView>
+
+            <SettingsPanel
+                visible={settingsOpen}
+                onClose={() => setSettingsOpen(false)}
+                onSignOut={async () => {
+                    await signOut();
+                    setSettingsOpen(false);
+                }}
+            />
+        </View>
     );
 }

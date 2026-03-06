@@ -17,15 +17,15 @@ export function useNearbyPlaces() {
 
     const abortRef = useRef<AbortController | null>(null);
 
-    async function loadNearbySkateParks(lat: number, lng: number, radiusMeters = 8000) {
+    async function loadNearbySkateParks(lat: number, lng: number, radiusMeters = 8000, name?: string) {
         await fetchPlaces(lat, lng, radiusMeters, 'skatepark');
     }
 
-    async function loadNearbySkateShops(lat: number, lng: number, radiusMeters = 8000) {
+    async function loadNearbySkateShops(lat: number, lng: number, radiusMeters = 8000, name?: string) {
         await fetchPlaces(lat, lng, radiusMeters, 'skateshop');
     }
 
-    async function fetchPlaces(lat: number, lng: number, radiusMeters: number, type: 'skatepark' | 'skateshop') {
+    async function fetchPlaces(lat: number, lng: number, radiusMeters: number, type: 'skatepark' | 'skateshop', name?: string) {
         const setLoading = type === 'skatepark' ? setParksLoading : setShopsLoading;
         setLoading(true);
         if (Platform.OS === 'web') {
@@ -40,20 +40,24 @@ export function useNearbyPlaces() {
         abortRef.current = controller;
         const timeoutId = setTimeout(() => controller.abort(), 15000);
 
+
+
+        const nameFilter = name ? `["name"~"${name}",i]` : '';
+
         const query = type === 'skatepark' ? `
             [out:json][timeout:25];
             (
-              nwr(around:${radiusMeters},${lat},${lng})["leisure"="skate_park"];
-              nwr(around:${radiusMeters},${lat},${lng})["leisure"="pitch"]["sport"="skateboard"];
-              nwr(around:${radiusMeters},${lat},${lng})["leisure"="pitch"]["sport"="skateboarding"];
+              nwr(around:${radiusMeters},${lat},${lng})["leisure"="skate_park"]${nameFilter};
+              nwr(around:${radiusMeters},${lat},${lng})["leisure"="pitch"]["sport"="skateboard"]${nameFilter};
+              nwr(around:${radiusMeters},${lat},${lng})["leisure"="pitch"]["sport"="skateboarding"]${nameFilter};
             );
             out center tags;
         `.trim() : `
             [out:json][timeout:25];
             (
-              nwr(around:${radiusMeters},${lat},${lng})["shop"="skate"];
-              nwr(around:${radiusMeters},${lat},${lng})["shop"="sports"]["sport"="skateboard"];
-              nwr(around:${radiusMeters},${lat},${lng})["shop"="sports"]["sport"="skateboarding"];
+              nwr(around:${radiusMeters},${lat},${lng})["shop"="skate"]${nameFilter};
+              nwr(around:${radiusMeters},${lat},${lng})["shop"="sports"]["sport"="skateboard"]${nameFilter};
+              nwr(around:${radiusMeters},${lat},${lng})["shop"="sports"]["sport"="skateboarding"]${nameFilter};
             );
             out center tags;
         `.trim();
