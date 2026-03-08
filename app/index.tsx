@@ -1,9 +1,12 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import {Text, View, Button, ScrollView, Platform, Alert, Pressable } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import {Text, View, Button, ScrollView, Platform, Alert, Pressable, Animated, Easing } from 'react-native';
 import MapView, { Marker, Region, LongPressEvent, MapMarker } from 'react-native-maps';
 import * as Location from 'expo-location';
+import * as Haptics from 'expo-haptics';
+import { useFocusEffect } from 'expo-router';
+
+import { supabase } from '@/src/libs/supabase';
 
 import { SkateMarker } from '@/src/components/SkateMarker';
 import { CreateSpotModal } from '@/src/components/CreateSpotModal';
@@ -59,6 +62,8 @@ export default function Index() {
     const { places, setPlaces, parksLoading, shopsLoading, error: nearbyError, loadNearbySkateParks, loadNearbySkateShops, fetchPlaceById } = useNearbyPlaces();
     const { topRated, topLoading, error: topRatedError, loadTopRatedSpotsInArea } = useTopRated();
 
+    const [spotIsPrivate, setSpotIsPrivate] = useState(false);
+
     const { placeFavorites, placeFavLoading, loadPlaceFavorites, togglePlaceFavorite, isPlaceFavorite } = usePlaceFavorites();
 
     const { images, uploading: imagesUploading, loadImages, uploadImages, deleteImage, clearImages } = useSpotImages();
@@ -84,24 +89,31 @@ export default function Index() {
     const [spotDesc, setSpotDesc] = useState('');
     const [spotTags, setSpotTags] = useState<string[]>([]);
 
+    const [spotCreatorUsername, setSpotCreatorUsername] = useState<string | null>(null);
+
     const [settingsOpen, setSettingsOpen] = useState(false);
+
+    const [refreshing, setRefreshing] = useState(false);
 
     const { theme } = useTheme();
     const c = theme.colors;
 
     const insets = useSafeAreaInsets();
 
-    const { spots, loading, error, setError, reload, createSpotAt, deleteSpotById, searchResults, searching, searchByTag, clearSearch } = useSpots();
+    const { spots, mySpots, mySpotsLoading, error, setError, reload, loadMySpots, createSpotAt, deleteSpotById, searchResults, searchByTag, clearSearch, toggleSpotPrivacy } = useSpots();
 
     const visibleSpots = searchResults.length > 0 ? searchResults : spots;
     const displayError = error ?? nearbyError ?? topRatedError;
     const openedFromPanelRef = useRef(false);
+
+    const spinAnim = useRef(new Animated.Value(0)).current;
 
     function closeCreateModal() {
         setCreateOpen(false);
         setPendingCoord(null);
         setSpotTags([]);
         setPendingImages([]);
+        setSpotIsPrivate(false);
     }
 
     function closeDetailsModal() {
@@ -112,6 +124,7 @@ export default function Index() {
         setSelectedSpot(null);
         resetReviews();
         setHighlightSpotId(null);
+        setSpotCreatorUsername(null);
 
         if (!openedFromPanelRef.current) {
             mapRef.current?.animateToRegion(preModalRegionRef.current, 400);
@@ -142,7 +155,22 @@ export default function Index() {
         setDetailsOpen(true);
         resetReviews();
         clearImages();
+
+        const { data } = await supabase
+            .from('profiles')
+            .select('username')
+            .eq('id', spot.user_id)
+            .single();
+
+        setSpotCreatorUsername(data?.username ?? null);
+
         await Promise.all([loadReviews(spot.id), loadImages(spot.id)]);
+    }
+
+    async function onRefresh() {
+        setRefreshing(true);
+        await Promise.all([reload(), loadMySpots(), loadFavorites(), loadPlaceFavorites()]);
+        setRefreshing(false);
     }
 
     function confirmDelete(spot: Spot) {
@@ -154,11 +182,14 @@ export default function Index() {
                 {
                     text: 'Delete',
                     style: 'destructive',
-                    onPress: () => deleteSpotById(spot.id, () => {
-                        setDetailsOpen(false);
-                        setSelectedSpot(null);
-                        resetReviews();
-                    }),
+                    onPress: () => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+                        deleteSpotById(spot.id, () => {
+                            setDetailsOpen(false);
+                            setSelectedSpot(null);
+                            resetReviews();
+                        });
+                    },
                 },
             ]
         );
@@ -179,7 +210,15 @@ export default function Index() {
         reload();
         loadFavorites();
         loadPlaceFavorites();
+        loadMySpots();
     }, []);
+
+    useFocusEffect(
+        useCallback(() => {
+            loadFavorites();
+            loadPlaceFavorites();
+        }, [])
+    );
 
     useEffect(() => {
         (async () => {
@@ -222,6 +261,22 @@ export default function Index() {
             setUseDeviceLocation(false);
         })();
     }, [useDeviceLocation]);
+
+    useEffect(() => {
+        if (refreshing) {
+            Animated.loop(
+                Animated.timing(spinAnim, {
+                    toValue: 1,
+                    duration: 800,
+                    easing: Easing.linear,
+                    useNativeDriver: true,
+                })
+            ).start();
+        } else {
+            spinAnim.stopAnimation();
+            spinAnim.setValue(0);
+        }
+    }, [refreshing]);
 
     if (Platform.OS === 'web') {
         return (
@@ -275,22 +330,44 @@ export default function Index() {
                     <Ionicons name="menu" size={24} color={c.text} />
                 </Pressable>
                 <Text style={{ fontSize: 16, fontWeight: "600", color: c.text }}>Spots</Text>
-                <Pressable onPress={() => setSettingsOpen(true)} style={{ padding: 8 }}>
-                    <Ionicons name="settings-outline" size={24} color={c.text} />
-                </Pressable>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Pressable onPress={onRefresh} style={{ padding: 8 }} disabled={refreshing}>
+                        <Animated.View style={{
+                            transform: [{
+                                rotate: spinAnim.interpolate({
+                                    inputRange: [0, 1],
+                                    outputRange: ['0deg', '360deg'],
+                                })
+                            }]
+                        }}>
+                            <Ionicons name="refresh" size={20} color={refreshing ? '#007AFF' : c.text} />
+                        </Animated.View>
+                    </Pressable>
+                    <Pressable onPress={() => setSettingsOpen(true)} style={{ padding: 8 }}>
+                        <Ionicons name="settings-outline" size={24} color={c.text} />
+                    </Pressable>
+                </View>
             </View>
 
             <ExplorePanel
                 visible={panelOpen}
-                onClose={() => setPanelOpen(false)}
+                onClose={() => {
+                    setPanelOpen(false);
+                    reload();
+                    loadMySpots();
+                }}
                 onOpenSettings={() => {
                     setPanelOpen(false);
+                    reload();
+                    loadMySpots();
                     setSettingsOpen(true);
                 }}
                 parksLoading={parksLoading}
                 shopsLoading={shopsLoading}
                 topLoading={topLoading}
                 topRated={topRated}
+                mySpots={mySpots}
+                mySpotsLoading={mySpotsLoading}
                 onLoadSkateparks={() => {
                     setPanelOpen(false);
                     loadNearbySkateParks(mapRegionRef.current.latitude, mapRegionRef.current.longitude, 20000);
@@ -373,8 +450,8 @@ export default function Index() {
                         description={s.description ?? undefined}
                         pinColor={
                             s.id === highlightSpotId
-                                ? (s.user_id === session?.user.id ? '#f5a623' : 'purple')
-                                : (s.user_id === session?.user.id ? '#f5a623' : 'red')
+                                ? '#007AFF'
+                                : (s.user_id === session?.user.id ? '#007AFF' : '#8E8E93')
                         }
                         onPress={() => {
                             setHighlightSpotId(s.id);
@@ -435,11 +512,16 @@ export default function Index() {
                 onAddTag={(tag) => setSpotTags(prev => prev.includes(tag) ? prev : [...prev, tag])}
                 onRemoveTag={(tag) => setSpotTags(prev => prev.filter(t => t !== tag))}
                 onCancel={closeCreateModal}
+                isPrivate={spotIsPrivate}
+                onTogglePrivate={() => setSpotIsPrivate(prev => !prev)}
                 onCreate={async () => {
                     if (!pendingCoord) return;
-                    const newSpot = await createSpotAt(pendingCoord.lat, pendingCoord.lng, spotName, spotDesc, spotRating, spotTags);
-                    if (newSpot && pendingImages.length > 0) {
-                        await uploadImages(newSpot.id, pendingImages);
+                    const newSpot = await createSpotAt(pendingCoord.lat, pendingCoord.lng, spotName, spotDesc, spotRating, spotTags, spotIsPrivate);
+                    if (newSpot) {
+                        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                        if (pendingImages.length > 0) {
+                            await uploadImages(newSpot.id, pendingImages);
+                        }
                     }
                     closeCreateModal();
                 }}
@@ -463,7 +545,12 @@ export default function Index() {
                     if (!selectedSpot) return;
                     setError(null);
                     const err = await submitReview(selectedSpot.id);
-                    if (err) setError(err);
+                    if (err) {
+                        setError(err);
+                        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+                    } else {
+                        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                    }
                 }}
                 onClose={closeDetailsModal}
                 currentUserId={session?.user.id ?? null}
@@ -471,6 +558,7 @@ export default function Index() {
                 isFavorite={selectedSpot ? isFavorite(selectedSpot.id) : false}
                 onToggleFavorite={async () => {
                     if (!selectedSpot) return;
+                    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                     await toggleFavorite(selectedSpot.id);
                 }}
                 onDeleteReview={async (reviewId) => {
@@ -488,6 +576,13 @@ export default function Index() {
                     if (!selectedSpot) return;
                     await uploadImages(selectedSpot.id, uris);
                 }}
+                onTogglePrivacy={async () => {
+                    if (!selectedSpot) return;
+                    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    await toggleSpotPrivacy(selectedSpot);
+                    setSelectedSpot(prev => prev ? { ...prev, is_private: !prev.is_private } : prev);
+                }}
+                creatorUsername={spotCreatorUsername ?? undefined}
             />
             <SkateShopDetailsModal
                 visible={placeDetailsOpen}
@@ -499,6 +594,7 @@ export default function Index() {
                 isFavorite={selectedPlace ? isPlaceFavorite(selectedPlace.id) : false}
                 onToggleFavorite={async () => {
                     if (!selectedPlace) return;
+                    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                     await togglePlaceFavorite(selectedPlace);
                 }}
             />

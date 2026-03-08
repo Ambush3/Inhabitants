@@ -7,6 +7,7 @@ export type Spot = {
     created_at: string;
     user_id: string | null;
     tags: string[];
+    is_private: boolean;
 };
 
 export type Review = {
@@ -17,6 +18,7 @@ export type Review = {
     text: string | null;
     created_at: string;
     user_id: string | null;
+    username?: string;
 };
 
 export type Place = {

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Text, TextInput, Pressable, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { Text, TextInput, Pressable, KeyboardAvoidingView, Platform, ScrollView, Keyboard } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@/src/hooks/useAuth';
 import { router } from 'expo-router';
@@ -12,6 +12,7 @@ export default function AuthScreen() {
 
     const [isLogin, setIsLogin] = useState(true);
     const [email, setEmail] = useState('');
+    const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [error, setError] = useState<string | null>(null);
@@ -19,6 +20,7 @@ export default function AuthScreen() {
     const [success, setSuccess] = useState<string | null>(null);
 
     async function handleSubmit() {
+        Keyboard.dismiss();
         setError(null);
         setSuccess(null);
 
@@ -30,8 +32,8 @@ export default function AuthScreen() {
             return;
         }
 
-        if (!isLogin && trimmedPassword !== confirmPassword.trim()) {
-            setError('Passwords do not match.');
+        if (!isLogin && !username.trim()) {
+            setError('Username is required.');
             return;
         }
 
@@ -39,7 +41,7 @@ export default function AuthScreen() {
 
         const err = isLogin
             ? await signIn(trimmedEmail, trimmedPassword)
-            : await signUp(trimmedEmail, trimmedPassword);
+            : await signUp(trimmedEmail, trimmedPassword, username.trim().toLowerCase());
 
         setLoading(false);
 
@@ -61,10 +63,12 @@ export default function AuthScreen() {
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={{ flex: 1 }}
+                keyboardVerticalOffset={0}
             >
                 <ScrollView
                     contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 24 }}
                     keyboardShouldPersistTaps="handled"
+                    keyboardDismissMode="on-drag"
                 >
                     <Text style={{ fontSize: 28, fontWeight: '700', marginBottom: 8, color: c.text }}>
                         {isLogin ? 'Welcome back' : 'Create account'}
@@ -121,13 +125,14 @@ export default function AuthScreen() {
 
                     {!isLogin ? (
                         <>
-                            <Text style={{ marginBottom: 6, fontWeight: '500', color: c.text }}>Confirm Password</Text>
+                            <Text style={{ marginBottom: 6, fontWeight: '500', color: c.text }}>Username</Text>
                             <TextInput
-                                value={confirmPassword}
-                                onChangeText={setConfirmPassword}
-                                placeholder="••••••••"
+                                value={username}
+                                onChangeText={setUsername}
+                                placeholder="e.g. skater123"
                                 placeholderTextColor={c.placeholder}
-                                secureTextEntry
+                                autoCapitalize="none"
+                                autoCorrect={false}
                                 style={{
                                     borderWidth: 1,
                                     borderColor: c.inputBorder,
@@ -162,6 +167,7 @@ export default function AuthScreen() {
                         setIsLogin(prev => !prev);
                         setError(null);
                         setSuccess(null);
+                        setUsername('');
                     }}>
                         <Text style={{ textAlign: 'center', opacity: 0.6, color: c.text }}>
                             {isLogin ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}

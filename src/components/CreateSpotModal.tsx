@@ -6,6 +6,7 @@ import {
 import { Stars } from '@/src/components/Stars';
 import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '@/src/context/ThemeContext';
+import {Ionicons} from "@expo/vector-icons";
 
 type Props = {
     visible: boolean;
@@ -24,12 +25,14 @@ type Props = {
     onRemoveImage: (uri: string) => void;
     onCancel: () => void;
     onCreate: () => void;
+    isPrivate: boolean;
+    onTogglePrivate: () => void;
 };
 
 export function CreateSpotModal({
                                     visible, pendingCoord, spotName, spotDesc, spotRating, spotTags, pendingImages,
                                     onChangeName, onChangeDesc, onChangeRating, onAddTag, onRemoveTag,
-                                    onAddImage, onRemoveImage, onCancel, onCreate,
+                                    onAddImage, onRemoveImage, onCancel, onCreate, isPrivate, onTogglePrivate,
                                 }: Props) {
 
     const { theme } = useTheme();
@@ -75,7 +78,19 @@ export function CreateSpotModal({
                         onPress={() => {}}
                     >
                         <ScrollView keyboardShouldPersistTaps="handled">
-                            <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: c.text }}>Create spot</Text>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                                <Text style={{ fontSize: 18, fontWeight: '600', color: c.text }}>Create spot</Text>
+                                <Pressable onPress={onTogglePrivate} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, padding: 6, backgroundColor: c.tagBg, borderRadius: 8 }}>
+                                    <Ionicons
+                                        name={isPrivate ? 'lock-closed' : 'lock-open'}
+                                        size={16}
+                                        color={isPrivate ? c.danger : c.subtext}
+                                    />
+                                    <Text style={{ fontSize: 12, color: isPrivate ? c.danger : c.subtext, fontWeight: '600' }}>
+                                        {isPrivate ? 'Private' : 'Public'}
+                                    </Text>
+                                </Pressable>
+                            </View>
 
                             {pendingCoord ? (
                                 <Text style={{ marginBottom: 12, color: c.subtext }}>
