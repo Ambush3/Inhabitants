@@ -10,6 +10,25 @@ export function useSpots() {
     const [searchResults, setSearchResults] = useState<Spot[]>([]);
     const [searching, setSearching] = useState(false);
 
+    const [mySpots, setMySpots] = useState<Spot[]>([]);
+    const [mySpotsLoading, setMySpotsLoading] = useState(false);
+
+    async function loadMySpots() {
+        setMySpotsLoading(true);
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) { setMySpotsLoading(false); return; }
+
+        const { data, error } = await supabase
+            .from('spots')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false });
+
+        setMySpotsLoading(false);
+        if (error) return;
+        setMySpots((data ?? []) as Spot[]);
+    }
+
     async function reload() {
         setError(null);
         setLoading(true);
@@ -35,7 +54,8 @@ export function useSpots() {
         name: string,
         description?: string,
         initialRating?: number,
-        tags: string[] = []
+        tags: string[] = [],
+        isPrivate: boolean = false
     ): Promise<Spot | undefined> {
         setError(null);
 
@@ -54,6 +74,7 @@ export function useSpots() {
                 lng,
                 user_id: (await supabase.auth.getUser()).data.user?.id,
                 tags,
+                is_private: isPrivate,
             })
             .select()
             .single();
@@ -79,6 +100,20 @@ export function useSpots() {
 
         setSpots((prev) => [spot, ...prev]);
         return spot;
+    }
+
+    async function toggleSpotPrivacy(spot: Spot) {
+        const { error } = await supabase
+            .from('spots')
+            .update({ is_private: !spot.is_private })
+            .eq('id', spot.id);
+
+        if (error) {
+            setError(error.message);
+            return;
+        }
+
+        setSpots(prev => prev.map(s => s.id === spot.id ? { ...s, is_private: !s.is_private } : s));
     }
 
     async function deleteSpotById(id: string, onDeleted?: () => void) {
@@ -114,5 +149,5 @@ export function useSpots() {
         setSearchResults([]);
     }
 
-    return { spots, loading, error, setError, reload, createSpotAt, deleteSpotById, searchResults, searching, searchByTag, clearSearch };
+    return { spots, mySpots, mySpotsLoading, loading, error, setError, reload, loadMySpots, createSpotAt, deleteSpotById, searchResults, searching, searchByTag, clearSearch, toggleSpotPrivacy };
 }

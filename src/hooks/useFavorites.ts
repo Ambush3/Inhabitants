@@ -17,7 +17,9 @@ export function useFavorites() {
         setLoading(false);
         if (error) return;
 
-        const spots = (data ?? []).map((f: any) => f.spots as Spot);
+        const spots = (data ?? [])
+            .map((f: any) => f.spots as Spot)
+            .filter((s): s is Spot => s != null);
         setFavorites(spots);
         setFavoriteIds(new Set(spots.map(s => s.id)));
     }

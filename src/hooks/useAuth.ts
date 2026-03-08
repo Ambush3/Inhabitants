@@ -19,9 +19,16 @@ export function useAuth() {
         return () => subscription.unsubscribe();
     }, []);
 
-    async function signUp(email: string, password: string): Promise<string | null> {
-        const { error } = await supabase.auth.signUp({ email, password });
-        return error?.message ?? null;
+    async function signUp(email: string, password: string, username: string): Promise<string | null> {
+        const { data, error } = await supabase.auth.signUp({ email, password });
+        if (error) return error.message;
+        if (!data.user) return 'Something went wrong.';
+
+        const { error: profileError } = await supabase
+            .from('profiles')
+            .insert({ id: data.user.id, username });
+
+        return profileError?.message ?? null;
     }
 
     async function signIn(email: string, password: string): Promise<string | null> {

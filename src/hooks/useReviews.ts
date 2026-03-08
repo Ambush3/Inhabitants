@@ -22,7 +22,19 @@ export function useReviews() {
 
         if (error) return error.message;
 
-        const loaded = (data ?? []) as Review[];
+        const userIds = [...new Set((data ?? []).map((r: any) => r.user_id))];
+        const { data: profilesData } = await supabase
+            .from('profiles')
+            .select('id, username')
+            .in('id', userIds);
+
+        const profileMap = Object.fromEntries((profilesData ?? []).map((p: any) => [p.id, p.username]));
+
+        const loaded = (data ?? []).map((r: any) => ({
+            ...r,
+            username: profileMap[r.user_id] ?? null,
+        })) as Review[];
+
         setReviews(loaded);
 
         const { data: { user } } = await supabase.auth.getUser();

@@ -27,12 +27,15 @@ type Props = {
     imagesLoading: boolean;
     onDeleteImage: (url: string) => void;
     onUploadImages: (uris: string[]) => Promise<void>;
+    onTogglePrivacy: () => void;
+    creatorUsername?: string;
 };
 
 export function SpotDetailsModal({
                                      visible, spot, reviews, avgRating, newRating, newComment,
                                      onChangeRating, onChangeComment, onSubmitReview, onClose, onDelete, currentUserId, existingReviewId,
-                                     isFavorite, onToggleFavorite, onDeleteReview, images, imagesLoading, onDeleteImage, onUploadImages
+                                     isFavorite, onToggleFavorite, onDeleteReview, images, imagesLoading, onDeleteImage, onUploadImages, onTogglePrivacy,
+                                     creatorUsername
                                  }: Props) {
 
     const { width } = Dimensions.get('window');
@@ -125,6 +128,15 @@ export function SpotDetailsModal({
                     <ScrollView ref={scrollRef} keyboardShouldPersistTaps="handled" scrollEnabled={scrollEnabled}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                             <Text style={{ fontSize: 18, fontWeight: '600', flex: 1, color: c.text }}>{spot?.name ?? 'Spot'}</Text>
+                            {spot?.user_id === currentUserId ? (
+                                <Pressable onPress={onTogglePrivacy} style={{ padding: 4 }}>
+                                    <Ionicons
+                                        name={spot?.is_private ? 'lock-closed' : 'lock-open'}
+                                        size={22}
+                                        color={spot?.is_private ? c.danger : c.subtext}
+                                    />
+                                </Pressable>
+                            ) : null}
                             <Pressable onPress={handleDirections} style={{ padding: 4 }}>
                                 <Ionicons name="share-outline" size={24} color="#007AFF" />
                             </Pressable>
@@ -136,6 +148,12 @@ export function SpotDetailsModal({
                                 />
                             </Pressable>
                         </View>
+
+                        {creatorUsername ? (
+                            <Text style={{ fontSize: 12, color: c.subtext, marginTop: 2, marginBottom: 4 }}>
+                                Created by @{creatorUsername}
+                            </Text>
+                        ) : null}
 
                         {spot?.user_id === currentUserId ? (
                             <FlatList
@@ -275,7 +293,7 @@ export function SpotDetailsModal({
                                         <Text style={{ marginTop: 4, color: c.text }}>{r.comment ?? r.text}</Text>
                                     ) : null}
                                     <Text style={{ marginTop: 4, opacity: 0.6, fontSize: 12, color: c.text }}>
-                                        {new Date(r.created_at).toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                        {r.username ? `@${r.username} · ` : ''}{new Date(r.created_at).toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                                     </Text>
                                     {r.user_id === currentUserId ? (
                                         <View style={{ flexDirection: 'row', gap: 12, marginTop: 6 }}>
