@@ -4,6 +4,9 @@ import {Text, View, Button, ScrollView, Platform, Alert, Pressable, Animated, Ea
 import MapView, { Marker, Region, LongPressEvent, MapMarker } from 'react-native-maps';
 import * as Location from 'expo-location';
 import * as Haptics from 'expo-haptics';
+import * as ExpoSplashScreen from 'expo-splash-screen'
+import SplashScreen from '../src/components/SplashScreen'
+
 import { useFocusEffect } from 'expo-router';
 
 import { supabase } from '@/src/libs/supabase';
@@ -14,7 +17,6 @@ import { SpotDetailsModal } from '@/src/components/SpotDetailsModal';
 import { SkateShopDetailsModal} from "@/src/components/SkateShopDetailsModal";
 import { ExplorePanel } from '@/src/components/ExplorePanel';
 import { SettingsPanel } from '@/src/components/SettingsPanel';
-import SplashScreen from '../src/components/SplashScreen'
 
 import { useSpots } from '@/src/hooks/useSpots';
 import { useReviews } from '@/src/hooks/useReviews';
@@ -29,6 +31,8 @@ import { useTheme } from '@/src/context/ThemeContext';
 
 import { Ionicons } from '@expo/vector-icons';
 import {Place, Spot} from '@/src/types';
+
+ExpoSplashScreen.preventAutoHideAsync()
 
 const DEFAULT_REGION: Region = {
     latitude: 0,
@@ -78,6 +82,9 @@ export default function Index() {
     const [highlightSpotId, setHighlightSpotId] = useState<string | null>(null);
 
     const [useDeviceLocation, setUseDeviceLocation] = useState(true);
+    const [locationReady, setLocationReady] = useState(false)
+    const [initialRegion, setInitialRegion] = useState<Region>(DEFAULT_REGION)
+
     const [spotRating, setSpotRating] = useState(0);
 
     const [detailsOpen, setDetailsOpen] = useState(false);
@@ -256,9 +263,12 @@ export default function Index() {
                 longitude: pos.coords.longitude,
                 latitudeDelta: 0.08,
                 longitudeDelta: 0.08,
-            };
+            }
 
-            mapRegionRef.current = nextRegion;
+            mapRegionRef.current = nextRegion
+            setInitialRegion(nextRegion)
+            setLocationReady(true)
+            setUseDeviceLocation(false)
             mapRef.current?.animateToRegion(nextRegion, 600);
 
             setUseDeviceLocation(false);
@@ -310,306 +320,317 @@ export default function Index() {
     }
 
     return (
-        <View style={{ flex: 1, backgroundColor: c.headerBg }}>
-            <View style={{ height: insets.top, backgroundColor: c.headerBg }} />
+        <>
+            {showSplash ? (
+                <SplashScreen onFinish={() => setShowSplash(false)} />
+            ) : (
+                <View style={{ flex: 1, backgroundColor: c.headerBg }}>
+                    <View style={{ height: insets.top, backgroundColor: c.headerBg }} />
 
-            {displayError ? (
-                <Text style={{ color: "red", paddingHorizontal: 12, paddingTop: 8 }}>
-                    {displayError}
-                </Text>
-            ) : null}
+                    {displayError ? (
+                        <Text style={{ color: "red", paddingHorizontal: 12, paddingTop: 8 }}>
+                            {displayError}
+                        </Text>
+                    ) : null}
 
-            <View style={{
-                paddingHorizontal: 12,
-                paddingVertical: 10,
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "space-between",
-                borderBottomWidth: 1,
-                borderColor: c.border,
-                backgroundColor: c.headerBg,
-            }}>
-                <Pressable onPress={() => setPanelOpen(true)} style={{ padding: 8 }}>
-                    <Ionicons name="menu" size={24} color={c.text} />
-                </Pressable>
-                <Text style={{ fontSize: 16, fontWeight: "600", color: c.text }}>Spots</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Pressable onPress={onRefresh} style={{ padding: 8 }} disabled={refreshing}>
-                        <Animated.View style={{
-                            transform: [{
-                                rotate: spinAnim.interpolate({
-                                    inputRange: [0, 1],
-                                    outputRange: ['0deg', '360deg'],
-                                })
-                            }]
-                        }}>
-                            <Ionicons name="refresh" size={20} color={refreshing ? '#007AFF' : c.text} />
-                        </Animated.View>
-                    </Pressable>
-                    <Pressable onPress={() => setSettingsOpen(true)} style={{ padding: 8 }}>
-                        <Ionicons name="settings-outline" size={24} color={c.text} />
-                    </Pressable>
-                </View>
-            </View>
+                    <View style={{
+                        paddingHorizontal: 12,
+                        paddingVertical: 10,
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        borderBottomWidth: 1,
+                        borderColor: c.border,
+                        backgroundColor: c.headerBg,
+                    }}>
+                        <Pressable onPress={() => setPanelOpen(true)} style={{ padding: 8 }}>
+                            <Ionicons name="menu" size={24} color={c.text} />
+                        </Pressable>
+                        <Text style={{ fontSize: 16, fontWeight: "600", color: c.text }}>Spots</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <Pressable onPress={onRefresh} style={{ padding: 8 }} disabled={refreshing}>
+                                <Animated.View style={{
+                                    transform: [{
+                                        rotate: spinAnim.interpolate({
+                                            inputRange: [0, 1],
+                                            outputRange: ['0deg', '360deg'],
+                                        })
+                                    }]
+                                }}>
+                                    <Ionicons name="refresh" size={20} color={refreshing ? '#007AFF' : c.text} />
+                                </Animated.View>
+                            </Pressable>
+                            <Pressable onPress={() => setSettingsOpen(true)} style={{ padding: 8 }}>
+                                <Ionicons name="settings-outline" size={24} color={c.text} />
+                            </Pressable>
+                        </View>
+                    </View>
 
-            <ExplorePanel
-                visible={panelOpen}
-                onClose={() => {
-                    setPanelOpen(false);
-                    reload();
-                    loadMySpots();
-                }}
-                onOpenSettings={() => {
-                    setPanelOpen(false);
-                    reload();
-                    loadMySpots();
-                    setSettingsOpen(true);
-                }}
-                parksLoading={parksLoading}
-                shopsLoading={shopsLoading}
-                topLoading={topLoading}
-                topRated={topRated}
-                mySpots={mySpots}
-                mySpotsLoading={mySpotsLoading}
-                onLoadSkateparks={() => {
-                    setPanelOpen(false);
-                    loadNearbySkateParks(mapRegionRef.current.latitude, mapRegionRef.current.longitude, 20000);
-                }}
-                onLoadSkateShops={() => {
-                    setPanelOpen(false);
-                    loadNearbySkateShops(mapRegionRef.current.latitude, mapRegionRef.current.longitude, 20000);
-                }}
-                onLoadTopRated={async () => {
-                    const topSpot = await loadTopRatedSpotsInArea(mapRegionRef.current, 10);
-                    if (topSpot) {
-                        mapRef.current?.animateToRegion(
-                            { latitude: topSpot.lat, longitude: topSpot.lng, latitudeDelta: 0.05, longitudeDelta: 0.05 },
-                            600
-                        );
-                    }
-                }}
-                onSelectSpot={(s) => {
-                    setPanelOpen(false);
-                    setHighlightSpotId(s.id);
-                    openedFromPanelRef.current = true;
-                    animateToSpotWithModalOffset(s.lat, s.lng);
-                    openSpotDetails(s);
-                }}
-                onSignOut={async () => {
-                    await signOut();
-                    setPanelOpen(false);
-                }}
-                searchResults={searchResults}
-                onSearch={(tag) => searchByTag(tag)}
-                onClearSearch={clearSearch}
-                hasSearchResults={searchResults.length > 0}
-                favorites={favorites}
-                favLoading={favLoading}
-                placeFavorites={placeFavorites}
-                placeFavLoading={placeFavLoading}
-                onSelectPlace={async (p) => {
-                    setPanelOpen(false);
-                    mapRef.current?.animateToRegion(
-                        { latitude: p.lat, longitude: p.lng, latitudeDelta: 0.03, longitudeDelta: 0.03 },
-                        600
-                    );
-                    const full = await fetchPlaceById(p.id);
-                    const resolved = full ?? p;
-                    setSelectedPlace(resolved);
-                    setPlaceDetailsOpen(true);
-                    setPlaces(prev => prev.some(x => x.id === resolved.id) ? prev : [...prev, resolved]);
-                }}
-            />
-
-            <MapView
-                ref={mapRef}
-                style={{ flex: 1, marginBottom: -34 }}
-                initialRegion={DEFAULT_REGION}
-                onPanDrag={() => {
-                    autoCenterRef.current = false;
-                }}
-                onRegionChangeComplete={(r) => {
-                    mapRegionRef.current = r;
-                }}
-                showsUserLocation
-                showsMyLocationButton
-                followsUserLocation={false}
-                onLongPress={onLongPress}
-            >
-                {pendingCoord ? (
-                    <Marker
-                        key="pending"
-                        coordinate={{ latitude: pendingCoord.lat, longitude: pendingCoord.lng }}
-                        title="New spot"
-                        pinColor="orange"
-                    />
-                ) : null}
-                {visibleSpots.map((s) => (
-                    <Marker
-                        ref={(ref) => { markerRefs.current[s.id] = ref; }}
-                        key={s.id}
-                        coordinate={{ latitude: s.lat, longitude: s.lng }}
-                        title={s.name}
-                        description={s.description ?? undefined}
-                        pinColor={
-                            s.id === highlightSpotId
-                                ? '#007AFF'
-                                : (s.user_id === session?.user.id ? '#007AFF' : '#8E8E93')
-                        }
-                        onPress={() => {
+                    <ExplorePanel
+                        visible={panelOpen}
+                        onClose={() => {
+                            setPanelOpen(false);
+                            reload();
+                            loadMySpots();
+                        }}
+                        onOpenSettings={() => {
+                            setPanelOpen(false);
+                            reload();
+                            loadMySpots();
+                            setSettingsOpen(true);
+                        }}
+                        parksLoading={parksLoading}
+                        shopsLoading={shopsLoading}
+                        topLoading={topLoading}
+                        topRated={topRated}
+                        mySpots={mySpots}
+                        mySpotsLoading={mySpotsLoading}
+                        onLoadSkateparks={() => {
+                            setPanelOpen(false);
+                            loadNearbySkateParks(mapRegionRef.current.latitude, mapRegionRef.current.longitude, 20000);
+                        }}
+                        onLoadSkateShops={() => {
+                            setPanelOpen(false);
+                            loadNearbySkateShops(mapRegionRef.current.latitude, mapRegionRef.current.longitude, 20000);
+                        }}
+                        onLoadTopRated={async () => {
+                            const topSpot = await loadTopRatedSpotsInArea(mapRegionRef.current, 10);
+                            if (topSpot) {
+                                mapRef.current?.animateToRegion(
+                                    { latitude: topSpot.lat, longitude: topSpot.lng, latitudeDelta: 0.05, longitudeDelta: 0.05 },
+                                    600
+                                );
+                            }
+                        }}
+                        onSelectSpot={(s) => {
+                            setPanelOpen(false);
                             setHighlightSpotId(s.id);
+                            openedFromPanelRef.current = true;
                             animateToSpotWithModalOffset(s.lat, s.lng);
                             openSpotDetails(s);
                         }}
-                    />
-                ))}
-                {places.map((p) => (
-                    <SkateMarker
-                        key={p.id}
-                        id={p.id}
-                        lat={p.lat}
-                        lng={p.lng}
-                        name={p.name}
-                        type={p.type as 'skatepark' | 'skateshop'}
-                        onPress={() => {
-                            setSelectedPlace(p);
+                        onSignOut={async () => {
+                            await signOut();
+                            setPanelOpen(false);
+                        }}
+                        searchResults={searchResults}
+                        onSearch={(tag) => searchByTag(tag)}
+                        onClearSearch={clearSearch}
+                        hasSearchResults={searchResults.length > 0}
+                        favorites={favorites}
+                        favLoading={favLoading}
+                        placeFavorites={placeFavorites}
+                        placeFavLoading={placeFavLoading}
+                        onSelectPlace={async (p) => {
+                            setPanelOpen(false);
+                            mapRef.current?.animateToRegion(
+                                { latitude: p.lat, longitude: p.lng, latitudeDelta: 0.03, longitudeDelta: 0.03 },
+                                600
+                            );
+                            const full = await fetchPlaceById(p.id);
+                            const resolved = full ?? p;
+                            setSelectedPlace(resolved);
                             setPlaceDetailsOpen(true);
+                            setPlaces(prev => prev.some(x => x.id === resolved.id) ? prev : [...prev, resolved]);
                         }}
                     />
-                ))}
-            </MapView>
 
-            <Pressable
-                onPress={() => {
-                    autoCenterRef.current = true;
-                    setUseDeviceLocation(true);
-                }}
-                style={{
-                    position: 'absolute',
-                    bottom: 50,
-                    right: 16,
-                    backgroundColor: c.surface,
-                    borderRadius: 30,
-                    padding: 12,
-                    shadowColor: '#000',
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.2,
-                    shadowRadius: 4,
-                    elevation: 4,
-                }}
-            >
-                <Ionicons name="navigate" size={22} color="#007AFF" />
-            </Pressable>
+                    {locationReady ? (
+                        <MapView
+                            ref={mapRef}
+                            style={{ flex: 1, marginBottom: -34 }}
+                            initialRegion={initialRegion}
+                            onPanDrag={() => {
+                                autoCenterRef.current = false;
+                            }}
+                            onRegionChangeComplete={(r) => {
+                                mapRegionRef.current = r;
+                            }}
+                            showsUserLocation
+                            showsMyLocationButton
+                            followsUserLocation={false}
+                            onLongPress={onLongPress}
+                        >
+                            {pendingCoord ? (
+                                <Marker
+                                    key="pending"
+                                    coordinate={{ latitude: pendingCoord.lat, longitude: pendingCoord.lng }}
+                                    title="New spot"
+                                    pinColor="orange"
+                                />
+                            ) : null}
+                            {visibleSpots.map((s) => (
+                                <Marker
+                                    ref={(ref) => { markerRefs.current[s.id] = ref; }}
+                                    key={s.id}
+                                    coordinate={{ latitude: s.lat, longitude: s.lng }}
+                                    title={s.name}
+                                    description={s.description ?? undefined}
+                                    pinColor={
+                                        s.id === highlightSpotId
+                                            ? '#007AFF'
+                                            : (s.user_id === session?.user.id ? '#007AFF' : '#8E8E93')
+                                    }
+                                    onPress={() => {
+                                        setHighlightSpotId(s.id);
+                                        animateToSpotWithModalOffset(s.lat, s.lng);
+                                        openSpotDetails(s);
+                                    }}
+                                />
+                            ))}
+                            {places.map((p) => (
+                                <SkateMarker
+                                    key={p.id}
+                                    id={p.id}
+                                    lat={p.lat}
+                                    lng={p.lng}
+                                    name={p.name}
+                                    type={p.type as 'skatepark' | 'skateshop'}
+                                    onPress={() => {
+                                        setSelectedPlace(p);
+                                        setPlaceDetailsOpen(true);
+                                    }}
+                                />
+                            ))}
+                        </MapView>
+                    ) : (
+                    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                        <Text style={{ color: c.text }}>Finding your location...</Text>
+                    </View>
+                )}
+                    <Pressable
+                        onPress={() => {
+                            autoCenterRef.current = true;
+                            setUseDeviceLocation(true);
+                        }}
+                        style={{
+                            position: 'absolute',
+                            bottom: 50,
+                            right: 16,
+                            backgroundColor: c.surface,
+                            borderRadius: 30,
+                            padding: 12,
+                            shadowColor: '#000',
+                            shadowOffset: { width: 0, height: 2 },
+                            shadowOpacity: 0.2,
+                            shadowRadius: 4,
+                            elevation: 4,
+                        }}
+                    >
+                        <Ionicons name="navigate" size={22} color="#007AFF" />
+                    </Pressable>
 
-            {/* Create A Spot Modal */}
-            <CreateSpotModal
-                visible={createOpen}
-                pendingCoord={pendingCoord}
-                spotName={spotName}
-                spotDesc={spotDesc}
-                spotRating={spotRating}
-                onChangeName={setSpotName}
-                onChangeDesc={setSpotDesc}
-                onChangeRating={setSpotRating}
-                spotTags={spotTags}
-                onAddTag={(tag) => setSpotTags(prev => prev.includes(tag) ? prev : [...prev, tag])}
-                onRemoveTag={(tag) => setSpotTags(prev => prev.filter(t => t !== tag))}
-                onCancel={closeCreateModal}
-                isPrivate={spotIsPrivate}
-                onTogglePrivate={() => setSpotIsPrivate(prev => !prev)}
-                onCreate={async () => {
-                    if (!pendingCoord) return;
-                    const newSpot = await createSpotAt(pendingCoord.lat, pendingCoord.lng, spotName, spotDesc, spotRating, spotTags, spotIsPrivate);
-                    if (newSpot) {
-                        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                        if (pendingImages.length > 0) {
-                            await uploadImages(newSpot.id, pendingImages);
-                        }
-                    }
-                    closeCreateModal();
-                }}
-                pendingImages={pendingImages}
-                onAddImage={(uri) => setPendingImages(prev => prev.includes(uri) ? prev : [...prev, uri])}
-                onRemoveImage={(uri) => setPendingImages(prev => prev.filter(u => u !== uri))}
-            />
+                    {/* Create A Spot Modal */}
+                    <CreateSpotModal
+                        visible={createOpen}
+                        pendingCoord={pendingCoord}
+                        spotName={spotName}
+                        spotDesc={spotDesc}
+                        spotRating={spotRating}
+                        onChangeName={setSpotName}
+                        onChangeDesc={setSpotDesc}
+                        onChangeRating={setSpotRating}
+                        spotTags={spotTags}
+                        onAddTag={(tag) => setSpotTags(prev => prev.includes(tag) ? prev : [...prev, tag])}
+                        onRemoveTag={(tag) => setSpotTags(prev => prev.filter(t => t !== tag))}
+                        onCancel={closeCreateModal}
+                        isPrivate={spotIsPrivate}
+                        onTogglePrivate={() => setSpotIsPrivate(prev => !prev)}
+                        onCreate={async () => {
+                            if (!pendingCoord) return;
+                            const newSpot = await createSpotAt(pendingCoord.lat, pendingCoord.lng, spotName, spotDesc, spotRating, spotTags, spotIsPrivate);
+                            if (newSpot) {
+                                await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                                if (pendingImages.length > 0) {
+                                    await uploadImages(newSpot.id, pendingImages);
+                                }
+                            }
+                            closeCreateModal();
+                        }}
+                        pendingImages={pendingImages}
+                        onAddImage={(uri) => setPendingImages(prev => prev.includes(uri) ? prev : [...prev, uri])}
+                        onRemoveImage={(uri) => setPendingImages(prev => prev.filter(u => u !== uri))}
+                    />
 
-            {/* Details Modal */}
-            <SpotDetailsModal
-                visible={detailsOpen}
-                spot={selectedSpot}
-                reviews={spotReviews}
-                existingReviewId={existingReviewId}
-                avgRating={avgRating}
-                newRating={newReviewRating}
-                newComment={newReviewComment}
-                onChangeRating={setNewReviewRating}
-                onChangeComment={setNewReviewComment}
-                onSubmitReview={async () => {
-                    if (!selectedSpot) return;
-                    setError(null);
-                    const err = await submitReview(selectedSpot.id);
-                    if (err) {
-                        setError(err);
-                        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-                    } else {
-                        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                    }
-                }}
-                onClose={closeDetailsModal}
-                currentUserId={session?.user.id ?? null}
-                onDelete={confirmDelete}
-                isFavorite={selectedSpot ? isFavorite(selectedSpot.id) : false}
-                onToggleFavorite={async () => {
-                    if (!selectedSpot) return;
-                    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    await toggleFavorite(selectedSpot.id);
-                }}
-                onDeleteReview={async (reviewId) => {
-                    if (!selectedSpot) return;
-                    const err = await deleteReview(reviewId, selectedSpot.id);
-                    if (err) setError(err);
-                }}
-                images={images}
-                imagesLoading={imagesUploading}
-                onDeleteImage={async (url) => {
-                    if (!selectedSpot) return;
-                    await deleteImage(selectedSpot.id, url);
-                }}
-                onUploadImages={async (uris) => {
-                    if (!selectedSpot) return;
-                    await uploadImages(selectedSpot.id, uris);
-                }}
-                onTogglePrivacy={async () => {
-                    if (!selectedSpot) return;
-                    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    await toggleSpotPrivacy(selectedSpot);
-                    setSelectedSpot(prev => prev ? { ...prev, is_private: !prev.is_private } : prev);
-                }}
-                creatorUsername={spotCreatorUsername ?? undefined}
-            />
-            <SkateShopDetailsModal
-                visible={placeDetailsOpen}
-                place={selectedPlace}
-                onClose={() => {
-                    setPlaceDetailsOpen(false);
-                    setSelectedPlace(null);
-                }}
-                isFavorite={selectedPlace ? isPlaceFavorite(selectedPlace.id) : false}
-                onToggleFavorite={async () => {
-                    if (!selectedPlace) return;
-                    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    await togglePlaceFavorite(selectedPlace);
-                }}
-            />
+                    {/* Details Modal */}
+                    <SpotDetailsModal
+                        visible={detailsOpen}
+                        spot={selectedSpot}
+                        reviews={spotReviews}
+                        existingReviewId={existingReviewId}
+                        avgRating={avgRating}
+                        newRating={newReviewRating}
+                        newComment={newReviewComment}
+                        onChangeRating={setNewReviewRating}
+                        onChangeComment={setNewReviewComment}
+                        onSubmitReview={async () => {
+                            if (!selectedSpot) return;
+                            setError(null);
+                            const err = await submitReview(selectedSpot.id);
+                            if (err) {
+                                setError(err);
+                                await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+                            } else {
+                                await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                            }
+                        }}
+                        onClose={closeDetailsModal}
+                        currentUserId={session?.user.id ?? null}
+                        onDelete={confirmDelete}
+                        isFavorite={selectedSpot ? isFavorite(selectedSpot.id) : false}
+                        onToggleFavorite={async () => {
+                            if (!selectedSpot) return;
+                            await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            await toggleFavorite(selectedSpot.id);
+                        }}
+                        onDeleteReview={async (reviewId) => {
+                            if (!selectedSpot) return;
+                            const err = await deleteReview(reviewId, selectedSpot.id);
+                            if (err) setError(err);
+                        }}
+                        images={images}
+                        imagesLoading={imagesUploading}
+                        onDeleteImage={async (url) => {
+                            if (!selectedSpot) return;
+                            await deleteImage(selectedSpot.id, url);
+                        }}
+                        onUploadImages={async (uris) => {
+                            if (!selectedSpot) return;
+                            await uploadImages(selectedSpot.id, uris);
+                        }}
+                        onTogglePrivacy={async () => {
+                            if (!selectedSpot) return;
+                            await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            await toggleSpotPrivacy(selectedSpot);
+                            setSelectedSpot(prev => prev ? { ...prev, is_private: !prev.is_private } : prev);
+                        }}
+                        creatorUsername={spotCreatorUsername ?? undefined}
+                    />
+                    <SkateShopDetailsModal
+                        visible={placeDetailsOpen}
+                        place={selectedPlace}
+                        onClose={() => {
+                            setPlaceDetailsOpen(false);
+                            setSelectedPlace(null);
+                        }}
+                        isFavorite={selectedPlace ? isPlaceFavorite(selectedPlace.id) : false}
+                        onToggleFavorite={async () => {
+                            if (!selectedPlace) return;
+                            await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            await togglePlaceFavorite(selectedPlace);
+                        }}
+                    />
 
-            <SettingsPanel
-                visible={settingsOpen}
-                onClose={() => setSettingsOpen(false)}
-                onSignOut={async () => {
-                    await signOut();
-                    setSettingsOpen(false);
-                }}
-            />
-        </View>
+                    <SettingsPanel
+                        visible={settingsOpen}
+                        onClose={() => setSettingsOpen(false)}
+                        onSignOut={async () => {
+                            await signOut();
+                            setSettingsOpen(false);
+                        }}
+                    />
+                </View>
+            )}
+        </>
     );
 }

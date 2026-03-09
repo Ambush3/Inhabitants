@@ -1,6 +1,7 @@
-import LottieView from 'lottie-react-native'
+import * as ExpoSplashScreen from 'expo-splash-screen'
 import { useEffect, useRef } from 'react'
 import { Animated, StyleSheet, Text, View } from 'react-native'
+import LottieView from 'lottie-react-native'
 
 interface SplashScreenProps {
     onFinish: () => void
@@ -10,6 +11,8 @@ export default function SplashScreen({ onFinish }: SplashScreenProps) {
     const opacity = useRef(new Animated.Value(1)).current
 
     useEffect(() => {
+        ExpoSplashScreen.hideAsync()
+
         const timer = setTimeout(() => {
             Animated.timing(opacity, {
                 toValue: 0,
@@ -24,7 +27,7 @@ export default function SplashScreen({ onFinish }: SplashScreenProps) {
     return (
         <Animated.View style={[styles.container, { opacity }]}>
             <LottieView
-                source={require('../../assets/animations/skate-boy.json')}
+                source={require('../../assets/animations/wheel.json')}
                 autoPlay
                 loop={false}
                 style={styles.animation}
