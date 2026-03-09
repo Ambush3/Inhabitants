@@ -14,6 +14,7 @@ import { SpotDetailsModal } from '@/src/components/SpotDetailsModal';
 import { SkateShopDetailsModal} from "@/src/components/SkateShopDetailsModal";
 import { ExplorePanel } from '@/src/components/ExplorePanel';
 import { SettingsPanel } from '@/src/components/SettingsPanel';
+import SplashScreen from '../src/components/SplashScreen'
 
 import { useSpots } from '@/src/hooks/useSpots';
 import { useReviews } from '@/src/hooks/useReviews';
@@ -94,6 +95,8 @@ export default function Index() {
     const [settingsOpen, setSettingsOpen] = useState(false);
 
     const [refreshing, setRefreshing] = useState(false);
+
+    const [showSplash, setShowSplash] = useState(true)
 
     const { theme } = useTheme();
     const c = theme.colors;
