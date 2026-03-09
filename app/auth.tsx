@@ -61,24 +61,25 @@ export default function AuthScreen() {
 
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: c.background }}>
-            <View style={styles.animationContainer}>
-                <LottieView
-                    source={require('../assets/animations/skate-boy.json')}
-                    autoPlay
-                    loop
-                    style={styles.loginAnimation}
-                />
-            </View>
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={{ flex: 1 }}
                 keyboardVerticalOffset={0}
             >
                 <ScrollView
-                    contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 24 }}
+                    contentContainerStyle={{ flexGrow: 1, justifyContent: 'flex-start', padding: 24 }}
                     keyboardShouldPersistTaps="handled"
                     keyboardDismissMode="on-drag"
                 >
+                    <View style={styles.animationContainer}>
+                        <LottieView
+                            source={require('../assets/animations/skate-boy.json')}
+                            autoPlay
+                            loop
+                            style={styles.loginAnimation}
+                        />
+                    </View>
+
                     <Text style={{ fontSize: 28, fontWeight: '700', marginBottom: 8, color: c.text }}>
                         {isLogin ? 'Welcome back' : 'Create account'}
                     </Text>
@@ -191,7 +192,7 @@ export default function AuthScreen() {
 const styles = StyleSheet.create({
     animationContainer: {
         alignItems: 'center',
-        marginTop: 24,
+        marginBottom: 20,
     },
     loginAnimation: {
         width: 180,
