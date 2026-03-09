@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { Text, TextInput, Pressable, KeyboardAvoidingView, Platform, ScrollView, Keyboard } from 'react-native';
+import { Text, TextInput, Pressable, KeyboardAvoidingView, Platform, ScrollView, Keyboard, View, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@/src/hooks/useAuth';
 import { router } from 'expo-router';
 import { useTheme } from '@/src/context/ThemeContext';
+import LottieView from 'lottie-react-native';
 
 export default function AuthScreen() {
     const { signIn, signUp } = useAuth();
@@ -66,10 +67,19 @@ export default function AuthScreen() {
                 keyboardVerticalOffset={0}
             >
                 <ScrollView
-                    contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 24 }}
+                    contentContainerStyle={{ flexGrow: 1, justifyContent: 'flex-start', padding: 24 }}
                     keyboardShouldPersistTaps="handled"
                     keyboardDismissMode="on-drag"
                 >
+                    <View style={styles.animationContainer}>
+                        <LottieView
+                            source={require('../assets/animations/skate-boy.json')}
+                            autoPlay
+                            loop
+                            style={styles.loginAnimation}
+                        />
+                    </View>
+
                     <Text style={{ fontSize: 28, fontWeight: '700', marginBottom: 8, color: c.text }}>
                         {isLogin ? 'Welcome back' : 'Create account'}
                     </Text>
@@ -178,3 +188,14 @@ export default function AuthScreen() {
         </SafeAreaView>
     );
 }
+
+const styles = StyleSheet.create({
+    animationContainer: {
+        alignItems: 'center',
+        marginBottom: 20,
+    },
+    loginAnimation: {
+        width: 180,
+        height: 180,
+    },
+})
