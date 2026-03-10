@@ -1,5 +1,9 @@
-import React, {useEffect, useRef, useState} from 'react';
-import { View, Text, Button, Modal, TextInput, Pressable, ScrollView, KeyboardAvoidingView, Platform, Linking, StyleSheet, ActionSheetIOS, Share, Image, FlatList, Dimensions } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+    View, Text, Modal, TextInput, Pressable, ScrollView,
+    KeyboardAvoidingView, Platform, Linking, StyleSheet,
+    ActionSheetIOS, Share, Image, FlatList, Dimensions
+} from 'react-native';
 import { Stars } from '@/src/components/Stars';
 import { Spot, Review } from '@/src/types';
 import { Ionicons } from '@expo/vector-icons';
@@ -33,11 +37,11 @@ type Props = {
 
 export function SpotDetailsModal({
                                      visible, spot, reviews, avgRating, newRating, newComment,
-                                     onChangeRating, onChangeComment, onSubmitReview, onClose, onDelete, currentUserId, existingReviewId,
-                                     isFavorite, onToggleFavorite, onDeleteReview, images, imagesLoading, onDeleteImage, onUploadImages, onTogglePrivacy,
-                                     creatorUsername
+                                     onChangeRating, onChangeComment, onSubmitReview, onClose, onDelete,
+                                     currentUserId, existingReviewId, isFavorite, onToggleFavorite,
+                                     onDeleteReview, images, imagesLoading, onDeleteImage, onUploadImages,
+                                     onTogglePrivacy, creatorUsername
                                  }: Props) {
-
     const { width } = Dimensions.get('window');
     const { theme } = useTheme();
     const c = theme.colors;
@@ -48,6 +52,10 @@ export function SpotDetailsModal({
     const [pendingImages, setPendingImages] = useState<string[]>([]);
     const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
     const [currentIndex, setCurrentIndex] = useState(0);
+
+    const reviewFormRef = useRef<View>(null)
+    const reviewFormY = useRef(0)
+
     const viewabilityConfig = useRef({ viewAreaCoveragePercentThreshold: 50 });
     const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
         if (viewableItems.length > 0) setCurrentIndex(viewableItems[0].index ?? 0);
@@ -95,7 +103,7 @@ export function SpotDetailsModal({
         if (rating === 3) return 'What was average about it?';
         if (rating === 4) return 'What did you enjoy about it?';
         if (rating === 5) return 'What made this spot great?';
-        return 'Optional comment';
+        return 'Leave a comment...';
     }
 
     async function handlePickImages() {
@@ -108,7 +116,9 @@ export function SpotDetailsModal({
             selectionLimit: 5,
         });
         if (result.canceled) return;
-        result.assets.forEach(asset => setPendingImages(prev => prev.includes(asset.uri) ? prev : [...prev, asset.uri]));
+        result.assets.forEach(asset =>
+            setPendingImages(prev => prev.includes(asset.uri) ? prev : [...prev, asset.uri])
+        );
     }
 
     async function handleUploadPending() {
@@ -117,60 +127,101 @@ export function SpotDetailsModal({
         setPendingImages([]);
     }
 
+    const isOwner = spot?.user_id === currentUserId;
+
     return (
         <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, justifyContent: 'flex-end' }}>
+            <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                style={{ flex: 1, justifyContent: 'flex-end' }}
+            >
                 <Pressable
-                    style={{ ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.3)' }}
+                    style={{ ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' }}
                     onPress={onClose}
                 />
-                <View style={{ backgroundColor: c.surface, padding: 16, borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '60%' }}>
-                    <ScrollView ref={scrollRef} keyboardShouldPersistTaps="handled" scrollEnabled={scrollEnabled}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                            <Text style={{ fontSize: 18, fontWeight: '600', flex: 1, color: c.text }}>{spot?.name ?? 'Spot'}</Text>
-                            {spot?.user_id === currentUserId ? (
-                                <Pressable onPress={onTogglePrivacy} style={{ padding: 4 }}>
+
+                <View style={[styles.sheet, { backgroundColor: c.surface }]}>
+                    {/* Drag Handle */}
+                    <View style={styles.dragHandleContainer}>
+                        <View style={[styles.dragHandle, { backgroundColor: c.border }]} />
+                    </View>
+
+                    <ScrollView
+                        ref={scrollRef}
+                        keyboardShouldPersistTaps="handled"
+                        scrollEnabled={scrollEnabled}
+                        showsVerticalScrollIndicator={false}
+                        contentContainerStyle={{ paddingBottom: 32 }}
+                    >
+                        {/* Header */}
+                        <View style={styles.header}>
+                            <View style={{ flex: 1, minWidth: 0 }}>
+                                <Text style={[styles.spotName, { color: c.text }]} numberOfLines={1} ellipsizeMode="tail">
+                                    {spot?.name ?? 'Spot'}
+                                </Text>
+                                {creatorUsername ? (
+                                    <Text style={[styles.creatorText, { color: c.subtext }]}>
+                                        @{creatorUsername}
+                                    </Text>
+                                ) : null}
+                            </View>
+
+                            <View style={styles.headerActions}>
+                                {isOwner ? (
+                                    <Pressable onPress={onTogglePrivacy} style={styles.iconBtn}>
+                                        <Ionicons
+                                            name={spot?.is_private ? 'lock-closed' : 'lock-open-outline'}
+                                            size={20}
+                                            color={spot?.is_private ? c.danger : c.subtext}
+                                        />
+                                    </Pressable>
+                                ) : null}
+                                <Pressable onPress={handleDirections} style={styles.iconBtn}>
+                                    <Ionicons name="navigate-outline" size={20} color="#007AFF" />
+                                </Pressable>
+                                <Pressable onPress={onToggleFavorite} style={styles.iconBtn}>
                                     <Ionicons
-                                        name={spot?.is_private ? 'lock-closed' : 'lock-open'}
-                                        size={22}
-                                        color={spot?.is_private ? c.danger : c.subtext}
+                                        name={isFavorite ? 'bookmark' : 'bookmark-outline'}
+                                        size={20}
+                                        color={isFavorite ? '#FF3B30' : c.subtext}
                                     />
                                 </Pressable>
-                            ) : null}
-                            <Pressable onPress={handleDirections} style={{ padding: 4 }}>
-                                <Ionicons name="share-outline" size={24} color="#007AFF" />
-                            </Pressable>
-                            <Pressable onPress={onToggleFavorite} style={{ padding: 4 }}>
-                                <Ionicons
-                                    name={isFavorite ? 'bookmark' : 'bookmark-outline'}
-                                    size={24}
-                                    color={isFavorite ? 'red' : c.subtext}
-                                />
-                            </Pressable>
+                            </View>
                         </View>
 
-                        {creatorUsername ? (
-                            <Text style={{ fontSize: 12, color: c.subtext, marginTop: 2, marginBottom: 4 }}>
-                                Created by @{creatorUsername}
-                            </Text>
+                        {/* Rating Summary Bar */}
+                        {reviews.length > 0 ? (
+                            <View style={[styles.ratingBar, { backgroundColor: c.tagBg }]}>
+                                <Text style={[styles.ratingScore, { color: c.text }]}>
+                                    {avgRating.toFixed(1)}
+                                </Text>
+                                <Text style={{ fontSize: 16, color: '#F5A623', letterSpacing: 2 }}>
+                                    {'★'.repeat(Math.round(avgRating))}{'☆'.repeat(5 - Math.round(avgRating))}
+                                </Text>
+                                <Text style={[styles.ratingCount, { color: c.subtext }]}>
+                                    {reviews.length} review{reviews.length !== 1 ? 's' : ''}
+                                </Text>
+                            </View>
                         ) : null}
 
-                        {spot?.user_id === currentUserId ? (
+                        {/* Images */}
+                        {isOwner ? (
                             <FlatList
                                 data={[...images, ...pendingImages, 'add']}
                                 horizontal
                                 showsHorizontalScrollIndicator={false}
                                 keyExtractor={(item) => item}
-                                style={{ marginTop: 12, marginBottom: 4 }}
+                                style={styles.imageList}
                                 renderItem={({ item }) => {
                                     if (item === 'add') {
                                         if (images.length + pendingImages.length >= 5) return null;
                                         return (
                                             <Pressable
                                                 onPress={handlePickImages}
-                                                style={{ width: 120, height: 90, borderRadius: 8, borderWidth: 1, borderColor: c.inputBorder, borderStyle: 'dashed', justifyContent: 'center', alignItems: 'center', marginRight: 8 }}
+                                                style={[styles.addImageBtn, { borderColor: c.inputBorder }]}
                                             >
-                                                <Text style={{ fontSize: 28, color: c.subtext }}>+</Text>
+                                                <Ionicons name="camera-outline" size={22} color={c.subtext} />
+                                                <Text style={[styles.addImageText, { color: c.subtext }]}>Add</Text>
                                             </Pressable>
                                         );
                                     }
@@ -180,7 +231,7 @@ export function SpotDetailsModal({
                                             <Pressable onPress={() => !isPending && setSelectedImageIndex(images.indexOf(item))}>
                                                 <Image
                                                     source={{ uri: item }}
-                                                    style={{ width: 120, height: 90, borderRadius: 8, opacity: isPending ? 0.5 : 1 }}
+                                                    style={[styles.thumbnail, { opacity: isPending ? 0.5 : 1 }]}
                                                     resizeMode="cover"
                                                 />
                                             </Pressable>
@@ -189,77 +240,71 @@ export function SpotDetailsModal({
                                                     ? setPendingImages(prev => prev.filter(u => u !== item))
                                                     : onDeleteImage(item)
                                                 }
-                                                style={{ position: 'absolute', top: 4, right: 4, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 12, padding: 4 }}
+                                                style={styles.deleteImageBtn}
                                             >
-                                                <Ionicons name="close" size={14} color="white" />
+                                                <Ionicons name="close" size={12} color="white" />
                                             </Pressable>
                                             {isPending ? (
-                                                <View style={{ position: 'absolute', bottom: 4, left: 4, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 4, paddingHorizontal: 4, paddingVertical: 2 }}>
-                                                    <Text style={{ color: 'white', fontSize: 9 }}>Pending</Text>
+                                                <View style={styles.pendingBadge}>
+                                                    <Text style={styles.pendingText}>Pending</Text>
                                                 </View>
                                             ) : null}
                                         </View>
                                     );
                                 }}
                             />
-                        ) : (
-                            images.length > 0 ? (
-                                <FlatList
-                                    data={images}
-                                    horizontal
-                                    showsHorizontalScrollIndicator={false}
-                                    keyExtractor={(url) => url}
-                                    style={{ marginTop: 12, marginBottom: 4 }}
-                                    renderItem={({ item: url }) => (
-                                        <Pressable onPress={() => setSelectedImageIndex(images.indexOf(url))} style={{ marginRight: 8 }}>
-                                            <Image
-                                                source={{ uri: url }}
-                                                style={{ width: 120, height: 90, borderRadius: 8 }}
-                                                resizeMode="cover"
-                                            />
-                                        </Pressable>
-                                    )}
-                                />
-                            ) : null
-                        )}
+                        ) : images.length > 0 ? (
+                            <FlatList
+                                data={images}
+                                horizontal
+                                showsHorizontalScrollIndicator={false}
+                                keyExtractor={(url) => url}
+                                style={styles.imageList}
+                                renderItem={({ item: url }) => (
+                                    <Pressable onPress={() => setSelectedImageIndex(images.indexOf(url))} style={{ marginRight: 8 }}>
+                                        <Image source={{ uri: url }} style={styles.thumbnail} resizeMode="cover" />
+                                    </Pressable>
+                                )}
+                            />
+                        ) : null}
 
-                        {pendingImages.length > 0 && spot?.user_id === currentUserId ? (
+                        {pendingImages.length > 0 && isOwner ? (
                             <Pressable
                                 onPress={handleUploadPending}
-                                style={{ backgroundColor: c.buttonBg, borderRadius: 8, padding: 10, alignItems: 'center', marginTop: 8, marginBottom: 4 }}
+                                style={[styles.uploadBtn, { backgroundColor: c.buttonBg }]}
                             >
-                                <Text style={{ color: c.background, fontWeight: '600' }}>Upload {pendingImages.length} photo{pendingImages.length > 1 ? 's' : ''}</Text>
+                                <Ionicons name="cloud-upload-outline" size={16} color={c.background} />
+                                <Text style={[styles.uploadBtnText, { color: c.background }]}>
+                                    Upload {pendingImages.length} photo{pendingImages.length > 1 ? 's' : ''}
+                                </Text>
                             </Pressable>
                         ) : null}
 
-                        {imagesLoading ? (
-                            <Text style={{ opacity: 0.4, fontSize: 12, marginTop: 8, color: c.text }}>Loading images...</Text>
-                        ) : null}
-
+                        {/* Description */}
                         {spot?.description ? (
-                            <Text style={{ marginTop: 6, color: c.text }}>{spot.description}</Text>
+                            <Text style={[styles.description, { color: c.text }]}>{spot.description}</Text>
                         ) : null}
 
+                        {/* Tags */}
                         {spot?.tags && spot.tags.length > 0 ? (
-                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
+                            <View style={styles.tagsRow}>
                                 {spot.tags.map(tag => (
-                                    <View key={tag} style={{ backgroundColor: c.tagBg, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 }}>
-                                        <Text style={{ fontSize: 12, opacity: 0.7, color: c.text }}>#{tag}</Text>
+                                    <View key={tag} style={[styles.tag, { backgroundColor: c.tagBg }]}>
+                                        <Text style={[styles.tagText, { color: c.subtext }]}>#{tag}</Text>
                                     </View>
                                 ))}
                             </View>
                         ) : null}
 
-                        <View style={{ marginTop: 12 }}>
-                            <Text style={{ marginBottom: 6, fontWeight: '600', color: c.text }}>Rating ({reviews.length})</Text>
-                            <Text style={{ marginTop: 6, opacity: 0.7, color: c.text }}>
-                                {reviews.length === 0 ? 'No reviews yet' : avgRating.toFixed(1) + ' / 5'}
-                            </Text>
-                        </View>
+                        {/* Divider */}
+                        <View style={[styles.divider, { backgroundColor: c.border }]} />
 
-                        <View style={{ marginTop: 16 }}>
-                            <Text style={{ fontWeight: '600', marginBottom: 6, color: c.text }}>
-                                {existingReviewId ? 'Your review' : 'Add a review'}
+                        {/* Review Form */}
+                        <View style={styles.section} ref={reviewFormRef} onLayout={(e) => {
+                            reviewFormY.current = e.nativeEvent.layout.y
+                        }}>
+                            <Text style={[styles.sectionTitle, { color: c.text }]}>
+                                {existingReviewId ? 'Your Review' : 'Leave a Review'}
                             </Text>
                             <Stars value={newRating} onChange={onChangeRating} />
                             <TextInput
@@ -268,58 +313,104 @@ export function SpotDetailsModal({
                                 onChangeText={onChangeComment}
                                 placeholder={getRatingHint(newRating)}
                                 placeholderTextColor={c.placeholder}
-                                autoCorrect={true}
+                                autoCorrect
                                 multiline
                                 returnKeyType="done"
                                 submitBehavior="blurAndSubmit"
                                 onSubmitEditing={onSubmitReview}
-                                style={{ borderWidth: 1, borderColor: c.inputBorder, borderRadius: 8, padding: 10, height: 80, marginTop: 10, color: c.text, backgroundColor: c.surface }}
                                 autoCapitalize="sentences"
+                                onFocus={() => {
+                                    setTimeout(() => {
+                                        scrollRef.current?.scrollTo({ y: reviewFormY.current - 16, animated: true })
+                                    }, 300)
+                                }}
+                                style={[styles.reviewInput, { borderColor: c.inputBorder, color: c.text, backgroundColor: c.surface }]}
                             />
-                            <View style={{ marginTop: 10, alignSelf: 'flex-start' }}>
-                                <Button
-                                    title={existingReviewId ? 'Update review' : 'Submit review'}
-                                    onPress={onSubmitReview}
-                                />
-                            </View>
+                            <Pressable
+                                onPress={onSubmitReview}
+                                style={[styles.submitBtn, { backgroundColor: c.buttonBg }]}
+                            >
+                                <Text style={[styles.submitBtnText, { color: c.background }]}>
+                                    {existingReviewId ? 'Update Review' : 'Submit Review'}
+                                </Text>
+                            </Pressable>
                         </View>
 
-                        <View style={{ marginTop: 16 }}>
-                            <Text style={{ fontWeight: '600', marginBottom: 8, color: c.text }}>Reviews</Text>
-                            {reviews.map((r) => (
-                                <View key={r.id} style={{ paddingVertical: 10, borderBottomWidth: 1, borderColor: c.border }}>
-                                    <Text style={{ color: c.text }}>{'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}</Text>
-                                    {r.comment || r.text ? (
-                                        <Text style={{ marginTop: 4, color: c.text }}>{r.comment ?? r.text}</Text>
-                                    ) : null}
-                                    <Text style={{ marginTop: 4, opacity: 0.6, fontSize: 12, color: c.text }}>
-                                        {r.username ? `@${r.username} · ` : ''}{new Date(r.created_at).toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                                    </Text>
-                                    {r.user_id === currentUserId ? (
-                                        <View style={{ flexDirection: 'row', gap: 12, marginTop: 6 }}>
-                                            <Pressable onPress={() => scrollRef.current?.scrollTo({ y: 0, animated: true })}>
-                                                <Text style={{ fontSize: 12, color: '#007AFF' }}>Edit</Text>
-                                            </Pressable>
-                                            <Pressable onPress={() => onDeleteReview(r.id)}>
-                                                <Text style={{ fontSize: 12, color: c.danger }}>Delete</Text>
-                                            </Pressable>
+                        {/* Divider */}
+                        {reviews.length > 0 ? (
+                            <View style={[styles.divider, { backgroundColor: c.border }]} />
+                        ) : null}
+
+                        {/* Reviews List */}
+                        {reviews.length > 0 ? (
+                            <View style={styles.section}>
+                                <Text style={[styles.sectionTitle, { color: c.text }]}>Reviews</Text>
+                                {reviews.map((r) => (
+                                    <View key={r.id} style={[styles.reviewCard, { backgroundColor: c.tagBg }]}>
+                                        <View style={styles.reviewHeader}>
+                                            <Text style={{ fontSize: 14, color: '#F5A623', letterSpacing: 1 }}>
+                                                {'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}
+                                            </Text>
+                                            <Text style={[styles.reviewDate, { color: c.subtext }]}>
+                                                {new Date(r.created_at).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
+                                            </Text>
                                         </View>
-                                    ) : null}
-                                </View>
-                            ))}
-                        </View>
+                                        {r.comment || r.text ? (
+                                            <Text style={[styles.reviewComment, { color: c.text }]}>
+                                                {r.comment ?? r.text}
+                                            </Text>
+                                        ) : null}
+                                        <View style={styles.reviewFooter}>
+                                            {r.username ? (
+                                                <Text style={[styles.reviewUsername, { color: c.subtext }]}>@{r.username}</Text>
+                                            ) : null}
+                                            {r.user_id === currentUserId ? (
+                                                <View style={styles.reviewActions}>
+                                                    <Pressable onPress={() => {
+                                                        setTimeout(() => {
+                                                            scrollRef.current?.scrollTo({ y: reviewFormY.current - 16, animated: true })
+                                                            commentInputRef.current?.focus()
+                                                        }, 100)
+                                                    }}>
+                                                        <Text style={styles.editText}>Edit</Text>
+                                                    </Pressable>
+                                                    <Pressable onPress={() => onDeleteReview(r.id)}>
+                                                        <Text style={[styles.deleteText, { color: c.danger }]}>Delete</Text>
+                                                    </Pressable>
+                                                </View>
+                                            ) : null}
+                                        </View>
+                                    </View>
+                                ))}
+                            </View>
+                        ) : null}
 
-                        <View style={{ marginTop: 12, flexDirection: 'row', justifyContent: 'space-between' }}>
-                            <Button title="Close" onPress={onClose} />
-                            {spot && spot.user_id === currentUserId ? (
-                                <Button title="Delete spot" onPress={() => onDelete(spot)} color={c.danger} />
+                        {/* Footer Actions */}
+                        <View style={[styles.footerActions, { borderTopColor: c.border }]}>
+                            <Pressable onPress={onClose} style={[styles.closeBtn, { borderColor: c.border }]}>
+                                <Text style={[styles.closeBtnText, { color: c.text }]}>Close</Text>
+                            </Pressable>
+                            {spot && isOwner ? (
+                                <Pressable
+                                    onPress={() => onDelete(spot)}
+                                    style={[styles.deleteSpotBtn, { borderColor: c.danger }]}
+                                >
+                                    <Ionicons name="trash-outline" size={15} color={c.danger} />
+                                    <Text style={[styles.deleteSpotText, { color: c.danger }]}>Delete Spot</Text>
+                                </Pressable>
                             ) : null}
                         </View>
                     </ScrollView>
                 </View>
             </KeyboardAvoidingView>
 
-            <Modal visible={selectedImageIndex !== null} transparent animationType="fade" onRequestClose={() => setSelectedImageIndex(null)}>
+            {/* Fullscreen Image Viewer */}
+            <Modal
+                visible={selectedImageIndex !== null}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setSelectedImageIndex(null)}
+            >
                 <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.95)' }}>
                     <FlatList
                         data={images}
@@ -331,11 +422,7 @@ export function SpotDetailsModal({
                         keyExtractor={(url) => url}
                         renderItem={({ item: url }) => (
                             <View style={{ width, justifyContent: 'center', alignItems: 'center' }}>
-                                <Image
-                                    source={{ uri: url }}
-                                    style={{ width, height: '80%' }}
-                                    resizeMode="contain"
-                                />
+                                <Image source={{ uri: url }} style={{ width, height: '80%' }} resizeMode="contain" />
                             </View>
                         )}
                         onViewableItemsChanged={onViewableItemsChanged.current}
@@ -348,11 +435,11 @@ export function SpotDetailsModal({
                         <Ionicons name="close-circle" size={36} color="white" />
                     </Pressable>
                     {images.length > 1 ? (
-                        <View style={{ position: 'absolute', bottom: 40, width: '100%', flexDirection: 'row', justifyContent: 'center', gap: 6 }}>
+                        <View style={styles.dotRow}>
                             {images.map((_, i) => (
                                 <View
                                     key={i}
-                                    style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: i === currentIndex ? 'white' : 'rgba(255,255,255,0.4)' }}
+                                    style={[styles.dot, { backgroundColor: i === currentIndex ? 'white' : 'rgba(255,255,255,0.35)' }]}
                                 />
                             ))}
                         </View>
@@ -362,3 +449,271 @@ export function SpotDetailsModal({
         </Modal>
     );
 }
+
+const styles = StyleSheet.create({
+    sheet: {
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        maxHeight: '65%',
+        paddingHorizontal: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
+        elevation: 10,
+    },
+    dragHandleContainer: {
+        alignItems: 'center',
+        paddingTop: 10,
+        paddingBottom: 6,
+    },
+    dragHandle: {
+        width: 36,
+        height: 4,
+        borderRadius: 2,
+    },
+    header: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        marginBottom: 10,
+        gap: 8,
+    },
+    spotName: {
+        fontSize: 20,
+        fontWeight: '700',
+        lineHeight: 26,
+    },
+    creatorText: {
+        fontSize: 12,
+        marginTop: 3,
+    },
+    headerActions: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        paddingTop: 2,
+        flexShrink: 0
+    },
+    iconBtn: {
+        padding: 8,
+        borderRadius: 20,
+    },
+    ratingBar: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        borderRadius: 10,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        marginBottom: 12,
+    },
+    ratingScore: {
+        fontSize: 16,
+        fontWeight: '700',
+    },
+    ratingCount: {
+        fontSize: 12,
+        marginLeft: 'auto',
+    },
+    imageList: {
+        marginVertical: 10,
+    },
+    thumbnail: {
+        width: 110,
+        height: 82,
+        borderRadius: 10,
+    },
+    addImageBtn: {
+        width: 110,
+        height: 82,
+        borderRadius: 10,
+        borderWidth: 1.5,
+        borderStyle: 'dashed',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 8,
+        gap: 4,
+    },
+    addImageText: {
+        fontSize: 11,
+        fontWeight: '500',
+    },
+    deleteImageBtn: {
+        position: 'absolute',
+        top: 4,
+        right: 4,
+        backgroundColor: 'rgba(0,0,0,0.6)',
+        borderRadius: 10,
+        padding: 4,
+    },
+    pendingBadge: {
+        position: 'absolute',
+        bottom: 4,
+        left: 4,
+        backgroundColor: 'rgba(0,0,0,0.6)',
+        borderRadius: 4,
+        paddingHorizontal: 4,
+        paddingVertical: 2,
+    },
+    pendingText: {
+        color: 'white',
+        fontSize: 9,
+    },
+    uploadBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        borderRadius: 10,
+        padding: 11,
+        marginTop: 4,
+        marginBottom: 8,
+    },
+    uploadBtnText: {
+        fontWeight: '600',
+        fontSize: 14,
+    },
+    description: {
+        fontSize: 14,
+        lineHeight: 20,
+        marginTop: 4,
+        marginBottom: 8,
+        opacity: 0.85,
+    },
+    tagsRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 6,
+        marginTop: 6,
+        marginBottom: 4,
+    },
+    tag: {
+        borderRadius: 20,
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+    },
+    tagText: {
+        fontSize: 12,
+    },
+    divider: {
+        height: 1,
+        marginVertical: 16,
+        opacity: 0.6,
+    },
+    section: {
+        marginBottom: 4,
+    },
+    sectionTitle: {
+        fontSize: 15,
+        fontWeight: '700',
+        marginBottom: 12,
+        letterSpacing: 0.3,
+    },
+    reviewInput: {
+        borderWidth: 1,
+        borderRadius: 10,
+        padding: 12,
+        height: 80,
+        marginTop: 10,
+        fontSize: 14,
+        textAlignVertical: 'top',
+    },
+    submitBtn: {
+        borderRadius: 10,
+        padding: 13,
+        alignItems: 'center',
+        marginTop: 10,
+    },
+    submitBtnText: {
+        fontWeight: '700',
+        fontSize: 15,
+    },
+    reviewCard: {
+        borderRadius: 10,
+        padding: 12,
+        marginBottom: 8,
+    },
+    reviewHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 4,
+    },
+    reviewDate: {
+        fontSize: 11,
+    },
+    reviewComment: {
+        fontSize: 14,
+        lineHeight: 19,
+        marginBottom: 6,
+    },
+    reviewFooter: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginTop: 2,
+    },
+    reviewUsername: {
+        fontSize: 12,
+    },
+    reviewActions: {
+        flexDirection: 'row',
+        gap: 12,
+    },
+    editText: {
+        fontSize: 12,
+        color: '#007AFF',
+        fontWeight: '500',
+    },
+    deleteText: {
+        fontSize: 12,
+        fontWeight: '500',
+    },
+    footerActions: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginTop: 20,
+        paddingTop: 16,
+        borderTopWidth: 1,
+        gap: 10,
+    },
+    closeBtn: {
+        flex: 1,
+        borderWidth: 1,
+        borderRadius: 10,
+        padding: 12,
+        alignItems: 'center',
+    },
+    closeBtnText: {
+        fontWeight: '600',
+        fontSize: 15,
+    },
+    deleteSpotBtn: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        borderWidth: 1,
+        borderRadius: 10,
+        padding: 12,
+    },
+    deleteSpotText: {
+        fontWeight: '600',
+        fontSize: 15,
+    },
+    dotRow: {
+        position: 'absolute',
+        bottom: 40,
+        width: '100%',
+        flexDirection: 'row',
+        justifyContent: 'center',
+        gap: 6,
+    },
+    dot: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+    },
+})

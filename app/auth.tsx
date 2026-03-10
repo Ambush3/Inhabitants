@@ -195,7 +195,7 @@ const styles = StyleSheet.create({
         marginBottom: 20,
     },
     loginAnimation: {
-        width: 180,
-        height: 180,
+        width: 140,
+        height: 140,
     },
 })

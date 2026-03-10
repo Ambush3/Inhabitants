@@ -85,7 +85,10 @@ export default function Index() {
     const [locationReady, setLocationReady] = useState(false)
     const [initialRegion, setInitialRegion] = useState<Region>(DEFAULT_REGION)
 
+    const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null)
+
     const [spotRating, setSpotRating] = useState(0);
+    const [spotComment, setSpotComment] = useState('')
 
     const [detailsOpen, setDetailsOpen] = useState(false);
     const [selectedSpot, setSelectedSpot] = useState<Spot | null>(null);
@@ -124,6 +127,7 @@ export default function Index() {
         setSpotTags([]);
         setPendingImages([]);
         setSpotIsPrivate(false);
+        setSpotComment('');
     }
 
     function closeDetailsModal() {
@@ -408,6 +412,9 @@ export default function Index() {
                             openedFromPanelRef.current = true;
                             animateToSpotWithModalOffset(s.lat, s.lng);
                             openSpotDetails(s);
+                            setTimeout(() => {
+                                markerRefs.current[s.id]?.showCallout();
+                            }, 650);
                         }}
                         onSignOut={async () => {
                             await signOut();
@@ -423,6 +430,7 @@ export default function Index() {
                         placeFavLoading={placeFavLoading}
                         onSelectPlace={async (p) => {
                             setPanelOpen(false);
+                            setSelectedPlaceId(p.id);
                             mapRef.current?.animateToRegion(
                                 { latitude: p.lat, longitude: p.lng, latitudeDelta: 0.03, longitudeDelta: 0.03 },
                                 600
@@ -432,6 +440,9 @@ export default function Index() {
                             setSelectedPlace(resolved);
                             setPlaceDetailsOpen(true);
                             setPlaces(prev => prev.some(x => x.id === resolved.id) ? prev : [...prev, resolved]);
+                            setTimeout(() => {
+                                markerRefs.current[p.id]?.showCallout();
+                            }, 650);
                         }}
                     />
 
@@ -440,6 +451,12 @@ export default function Index() {
                             ref={mapRef}
                             style={{ flex: 1, marginBottom: -34 }}
                             initialRegion={initialRegion}
+                            onPress={() => {
+                                setHighlightSpotId(null);
+                                setSelectedPlaceId(null);
+                                markerRefs.current[highlightSpotId ?? '']?.hideCallout?.();
+                                markerRefs.current[selectedPlaceId ?? '']?.hideCallout?.();
+                            }}
                             onPanDrag={() => {
                                 autoCenterRef.current = false;
                             }}
@@ -468,8 +485,8 @@ export default function Index() {
                                     description={s.description ?? undefined}
                                     pinColor={
                                         s.id === highlightSpotId
-                                            ? '#007AFF'
-                                            : (s.user_id === session?.user.id ? '#007AFF' : '#8E8E93')
+                                            ? (s.user_id === session?.user.id ? '#22CC00' : '#A0A0A0')
+                                            : (s.user_id === session?.user.id ? '#39FF14' : '#6B6B6B')
                                     }
                                     onPress={() => {
                                         setHighlightSpotId(s.id);
@@ -481,14 +498,19 @@ export default function Index() {
                             {places.map((p) => (
                                 <SkateMarker
                                     key={p.id}
+                                    ref={(ref) => { markerRefs.current[p.id] = ref }}
                                     id={p.id}
                                     lat={p.lat}
                                     lng={p.lng}
                                     name={p.name}
                                     type={p.type as 'skatepark' | 'skateshop'}
                                     onPress={() => {
+                                        setSelectedPlaceId(p.id);
                                         setSelectedPlace(p);
                                         setPlaceDetailsOpen(true);
+                                        setTimeout(() => {
+                                            markerRefs.current[p.id]?.showCallout();
+                                        }, 300);
                                     }}
                                 />
                             ))}
@@ -527,6 +549,8 @@ export default function Index() {
                         spotName={spotName}
                         spotDesc={spotDesc}
                         spotRating={spotRating}
+                        spotComment={spotComment}
+                        onChangeComment={setSpotComment}
                         onChangeName={setSpotName}
                         onChangeDesc={setSpotDesc}
                         onChangeRating={setSpotRating}
@@ -543,6 +567,9 @@ export default function Index() {
                                 await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                                 if (pendingImages.length > 0) {
                                     await uploadImages(newSpot.id, pendingImages);
+                                }
+                                if (spotRating > 0) {
+                                    await submitReview(newSpot.id, spotRating, spotComment);
                                 }
                             }
                             closeCreateModal();
@@ -612,6 +639,8 @@ export default function Index() {
                         onClose={() => {
                             setPlaceDetailsOpen(false);
                             setSelectedPlace(null);
+                            markerRefs.current[selectedPlaceId ?? '']?.hideCallout?.();
+                            setSelectedPlaceId(null);
                         }}
                         isFavorite={selectedPlace ? isPlaceFavorite(selectedPlace.id) : false}
                         onToggleFavorite={async () => {
