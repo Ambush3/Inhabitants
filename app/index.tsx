@@ -21,6 +21,7 @@ import { SettingsPanel } from '@/src/components/SettingsPanel';
 import { useSpots } from '@/src/hooks/useSpots';
 import { useReviews } from '@/src/hooks/useReviews';
 import { useSpotImages } from '@/src/hooks/useSpotImages';
+import { useSpotConditions } from '@/src/hooks/useSpotConditions';
 import { useNearbyPlaces } from '@/src/hooks/useNearbyPlaces';
 import { useTopRated } from '@/src/hooks/useTopRated';
 import { useAuth } from '@/src/hooks/useAuth';
@@ -70,8 +71,8 @@ export default function Index() {
     const [spotIsPrivate, setSpotIsPrivate] = useState(false);
 
     const { placeFavorites, placeFavLoading, loadPlaceFavorites, togglePlaceFavorite, isPlaceFavorite } = usePlaceFavorites();
-
     const { images, uploading: imagesUploading, loadImages, uploadImages, deleteImage, clearImages } = useSpotImages();
+    const { activeConditions, myConditions, loadConditions, toggleCondition, resetConditions } = useSpotConditions();
     const [pendingImages, setPendingImages] = useState<string[]>([]);
 
     const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
@@ -144,6 +145,7 @@ export default function Index() {
             mapRef.current?.animateToRegion(preModalRegionRef.current, 400);
         }
         openedFromPanelRef.current = false;
+        resetConditions();
     }
 
     function animateToSpotWithModalOffset(lat: number, lng: number) {
@@ -178,7 +180,7 @@ export default function Index() {
 
         setSpotCreatorUsername(data?.username ?? null);
 
-        await Promise.all([loadReviews(spot.id), loadImages(spot.id)]);
+        await Promise.all([loadReviews(spot.id), loadImages(spot.id), loadConditions(spot.id)]);
     }
 
     async function onRefresh() {
@@ -632,7 +634,15 @@ export default function Index() {
                             setSelectedSpot(prev => prev ? { ...prev, is_private: !prev.is_private } : prev);
                         }}
                         creatorUsername={spotCreatorUsername ?? undefined}
+                        activeConditions={activeConditions}
+                        myConditions={myConditions}
+                        onToggleCondition={async (condition) => {
+                            if (!selectedSpot) return;
+                            await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            await toggleCondition(selectedSpot.id, condition);
+                        }}
                     />
+
                     <SkateShopDetailsModal
                         visible={placeDetailsOpen}
                         place={selectedPlace}
