@@ -27,12 +27,14 @@ type Props = {
     onCreate: () => void;
     isPrivate: boolean;
     onTogglePrivate: () => void;
+    spotComment: string;
+    onChangeComment: (v: string) => void;
 };
 
 export function CreateSpotModal({
                                     visible, pendingCoord, spotName, spotDesc, spotRating, spotTags, pendingImages,
                                     onChangeName, onChangeDesc, onChangeRating, onAddTag, onRemoveTag,
-                                    onAddImage, onRemoveImage, onCancel, onCreate, isPrivate, onTogglePrivate,
+                                    onAddImage, onRemoveImage, onCancel, onCreate, isPrivate, onTogglePrivate, spotComment, onChangeComment
                                 }: Props) {
 
     const { theme } = useTheme();
@@ -40,6 +42,10 @@ export function CreateSpotModal({
     const [tagInput, setTagInput] = useState('');
     const descRef = useRef<RNTextInput>(null);
     const tagInputRef = useRef<RNTextInput>(null);
+
+    const spotCommentRef = useRef<RNTextInput>(null)
+    const commentFieldY = useRef(0)
+    const scrollRef = useRef<ScrollView>(null)
 
     useEffect(() => {
         if (!visible) setTagInput('');
@@ -77,7 +83,7 @@ export function CreateSpotModal({
                         style={{ backgroundColor: c.surface, padding: 16, borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '75%' }}
                         onPress={() => {}}
                     >
-                        <ScrollView keyboardShouldPersistTaps="handled">
+                        <ScrollView ref={scrollRef} keyboardShouldPersistTaps="handled">
                             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                                 <Text style={{ fontSize: 18, fontWeight: '600', color: c.text }}>Create spot</Text>
                                 <Pressable onPress={onTogglePrivate} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, padding: 6, backgroundColor: c.tagBg, borderRadius: 8 }}>
@@ -101,11 +107,18 @@ export function CreateSpotModal({
                             <Text style={{ marginBottom: 6, color: c.text }}>Name</Text>
                             <TextInput
                                 value={spotName}
-                                onChangeText={onChangeName}
+                                onChangeText={(text) => {
+                                    if (text.length === 1) {
+                                        onChangeName(text.toUpperCase())
+                                    } else {
+                                        onChangeName(text)
+                                    }
+                                }}
                                 placeholder="e.g. Downtown ledges"
                                 placeholderTextColor={c.placeholder}
                                 autoFocus
                                 autoCorrect={true}
+                                spellCheck={true}
                                 returnKeyType="next"
                                 onSubmitEditing={() => descRef.current?.focus()}
                                 style={{ borderWidth: 1, borderColor: c.inputBorder, borderRadius: 8, padding: 10, marginBottom: 12, color: c.text, backgroundColor: c.surface }}
@@ -195,6 +208,44 @@ export function CreateSpotModal({
 
                             <Text style={{ marginBottom: 6, color: c.text }}>Rating (optional)</Text>
                             <Stars value={spotRating} onChange={onChangeRating} />
+
+                            {spotRating > 0 ? (
+                                <View onLayout={(e) => { commentFieldY.current = e.nativeEvent.layout.y }}>
+                                    <TextInput
+                                        ref={spotCommentRef}
+                                        value={spotComment}
+                                        onChangeText={onChangeComment}
+                                        placeholder={
+                                            spotRating === 1 ? 'What made this spot difficult or disappointing?' :
+                                                spotRating === 2 ? 'What could be improved?' :
+                                                    spotRating === 3 ? 'What was average about it?' :
+                                                        spotRating === 4 ? 'What did you enjoy about it?' :
+                                                            'What made this spot great?'
+                                        }
+                                        placeholderTextColor={c.placeholder}
+                                        autoCorrect
+                                        multiline
+                                        returnKeyType="done"
+                                        submitBehavior="blurAndSubmit"
+                                        autoCapitalize="sentences"
+                                        onFocus={() => {
+                                            setTimeout(() => {
+                                                scrollRef.current?.scrollTo({ y: commentFieldY.current - 16, animated: true })
+                                            }, 300)
+                                        }}
+                                        style={{
+                                            borderWidth: 1,
+                                            borderColor: c.inputBorder,
+                                            borderRadius: 8,
+                                            padding: 10,
+                                            height: 70,
+                                            marginTop: 10,
+                                            color: c.text,
+                                            backgroundColor: c.surface,
+                                        }}
+                                    />
+                                </View>
+                            ) : null}
 
                             <View style={{ flexDirection: 'row', gap: 12, justifyContent: 'flex-end', marginTop: 12 }}>
                                 <Button title="Cancel" onPress={onCancel} />

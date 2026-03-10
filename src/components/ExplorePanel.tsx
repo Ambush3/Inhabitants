@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Place, Spot } from '@/src/types';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/src/context/ThemeContext';
+import { AnimatedSpotCard } from '@/src/components/AnimatedSpotCard'
 
 type PlaceFavorite = {
     place_id: string;
@@ -133,19 +134,21 @@ export function ExplorePanel({
                                         <Text style={{ fontWeight: '600', marginBottom: 8, color: c.text }}>
                                             Results ({searchResults.length})
                                         </Text>
-                                        {searchResults.map(s => (
-                                            <Pressable
-                                                key={s.id}
-                                                style={{ paddingVertical: 10, borderBottomWidth: 1, borderColor: c.border }}
-                                                onPress={() => onSelectSpot(s)}
-                                            >
-                                                <Text style={{ fontWeight: '600', color: c.text }}>{s.name}</Text>
-                                                {s.tags.length > 0 ? (
-                                                    <Text style={{ opacity: 0.6, fontSize: 12, marginTop: 2, color: c.text }}>
-                                                        {s.tags.map(t => `#${t}`).join(' ')}
-                                                    </Text>
-                                                ) : null}
-                                            </Pressable>
+                                        {searchResults.map((s, index) => (
+                                            <AnimatedSpotCard key={s.id} index={index}>
+                                                <Pressable
+                                                    key={s.id}
+                                                    style={{ paddingVertical: 10, borderBottomWidth: 1, borderColor: c.border }}
+                                                    onPress={() => onSelectSpot(s)}
+                                                >
+                                                    <Text style={{ fontWeight: '600', color: c.text }}>{s.name}</Text>
+                                                    {s.tags.length > 0 ? (
+                                                        <Text style={{ opacity: 0.6, fontSize: 12, marginTop: 2, color: c.text }}>
+                                                            {s.tags.map(t => `#${t}`).join(' ')}
+                                                        </Text>
+                                                    ) : null}
+                                                </Pressable>
+                                            </AnimatedSpotCard>
                                         ))}
                                     </View>
                                 ) : null}
@@ -178,15 +181,17 @@ export function ExplorePanel({
                                     <Text style={{ color: c.text, fontWeight: '600' }}>{topLoading ? 'Loading...' : 'Top Rated Nearby'}</Text>
                                 </Pressable>
 
-                                {topRated.map(s => (
-                                    <Pressable
-                                        key={s.id}
-                                        style={{ paddingVertical: 10, borderBottomWidth: 1, borderColor: c.border }}
-                                        onPress={() => onSelectSpot(s)}
-                                    >
-                                        <Text style={{ fontWeight: '600', color: c.text }}>{s.name}</Text>
-                                        <Text style={{ opacity: 0.7, fontSize: 12, color: c.text }}>{s.avg.toFixed(1)} ★ ({s.count})</Text>
-                                    </Pressable>
+                                {topRated.map((s, index) => (
+                                    <AnimatedSpotCard key={s.id} index={index}>
+                                        <Pressable
+                                            key={s.id}
+                                            style={{ paddingVertical: 10, borderBottomWidth: 1, borderColor: c.border }}
+                                            onPress={() => onSelectSpot(s)}
+                                        >
+                                            <Text style={{ fontWeight: '600', color: c.text }}>{s.name}</Text>
+                                            <Text style={{ opacity: 0.7, fontSize: 12, color: c.text }}>{s.avg.toFixed(1)} ★ ({s.count})</Text>
+                                        </Pressable>
+                                    </AnimatedSpotCard>
                                 ))}
                             </View>
                         ) : null}
@@ -199,27 +204,29 @@ export function ExplorePanel({
                                 ) : mySpots.length === 0 ? (
                                     <Text style={{ color: c.subtext, fontSize: 13, opacity: 0.6 }}>You haven&apost created any spots yet.</Text>
                                 ) : (
-                                    mySpots.map(s => (
-                                        <Pressable
-                                            key={s.id}
-                                            onPress={() => onSelectSpot(s)}
-                                            style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderColor: c.border, gap: 10 }}
-                                        >
-                                            <View style={{ flex: 1 }}>
-                                                <Text style={{ fontWeight: '600', color: c.text }}>{s.name}</Text>
-                                                {s.tags?.length > 0 ? (
-                                                    <Text style={{ opacity: 0.6, fontSize: 12, marginTop: 2, color: c.text }}>
-                                                        {s.tags.map(t => `#${t}`).join(' ')}
-                                                    </Text>
-                                                ) : null}
-                                            </View>
-                                            {s.is_private ? (
-                                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                                                    <Ionicons name="lock-closed" size={14} color={c.danger} />
-                                                    <Text style={{ fontSize: 11, color: c.danger, fontWeight: '600' }}>Private</Text>
+                                    mySpots.map((s, index) => (
+                                        <AnimatedSpotCard key={s.id} index={index}>
+                                            <Pressable
+                                                key={s.id}
+                                                onPress={() => onSelectSpot(s)}
+                                                style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderColor: c.border, gap: 10 }}
+                                            >
+                                                <View style={{ flex: 1 }}>
+                                                    <Text style={{ fontWeight: '600', color: c.text }}>{s.name}</Text>
+                                                    {s.tags?.length > 0 ? (
+                                                        <Text style={{ opacity: 0.6, fontSize: 12, marginTop: 2, color: c.text }}>
+                                                            {s.tags.map(t => `#${t}`).join(' ')}
+                                                        </Text>
+                                                    ) : null}
                                                 </View>
-                                            ) : null}
-                                        </Pressable>
+                                                {s.is_private ? (
+                                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                                                        <Ionicons name="lock-closed" size={14} color={c.danger} />
+                                                        <Text style={{ fontSize: 11, color: c.danger, fontWeight: '600' }}>Private</Text>
+                                                    </View>
+                                                ) : null}
+                                            </Pressable>
+                                        </AnimatedSpotCard>
                                     ))
                                 )}
                             </View>
@@ -240,19 +247,20 @@ export function ExplorePanel({
                                     <Ionicons name={favoritesOpen ? 'chevron-up' : 'chevron-down'} size={16} color={c.subtext} />
                                 </Pressable>
                                 {favoritesOpen ? (
-                                    favorites.length > 0 ? favorites.filter(s => s != null).map(s => (
-                                        <Pressable
-                                            key={s.id}
-                                            style={{ paddingVertical: 10, borderBottomWidth: 1, borderColor: c.border, paddingLeft: 12 }}
-                                            onPress={() => { setFavoritesOpen(false); onSelectSpot(s); }}
-                                        >
-                                            <Text style={{ fontWeight: '600', color: c.text }}>{s.name}</Text>
-                                            {s.tags?.length > 0 ? (
-                                                <Text style={{ opacity: 0.6, fontSize: 12, marginTop: 2, color: c.text }}>
-                                                    {s.tags.map(t => `#${t}`).join(' ')}
-                                                </Text>
-                                            ) : null}
-                                        </Pressable>
+                                    favorites.length > 0 ? favorites.filter(s => s != null).map((s, index) => (
+                                        <AnimatedSpotCard key={s.id} index={index}>
+                                            <Pressable
+                                                style={{ paddingVertical: 10, borderBottomWidth: 1, borderColor: c.border, paddingLeft: 12 }}
+                                                onPress={() => { setFavoritesOpen(false); onSelectSpot(s); }}
+                                            >
+                                                <Text style={{ fontWeight: '600', color: c.text }}>{s.name}</Text>
+                                                {s.tags?.length > 0 ? (
+                                                    <Text style={{ opacity: 0.6, fontSize: 12, marginTop: 2, color: c.text }}>
+                                                        {s.tags.map(t => `#${t}`).join(' ')}
+                                                    </Text>
+                                                ) : null}
+                                            </Pressable>
+                                        </AnimatedSpotCard>
                                     )) : (
                                         <Text style={{ opacity: 0.5, fontSize: 13, padding: 12, color: c.text }}>No favorites yet</Text>
                                     )
@@ -269,17 +277,18 @@ export function ExplorePanel({
                                 </Pressable>
                                 {parkFavoritesOpen ? (
                                     placeFavorites.filter(f => f.place_type === 'skatepark').length > 0 ?
-                                        placeFavorites.filter(f => f.place_type === 'skatepark').map(f => (
-                                            <Pressable
-                                                key={f.place_id}
-                                                style={{ paddingVertical: 10, borderBottomWidth: 1, borderColor: c.border, paddingLeft: 12 }}
-                                                onPress={() => {
-                                                    setParkFavoritesOpen(false);
-                                                    onSelectPlace({ id: f.place_id, name: f.place_name, type: f.place_type as 'skatepark' | 'skateshop', lat: f.lat, lng: f.lng, tags: {} });
-                                                }}
-                                            >
-                                                <Text style={{ fontWeight: '600', color: c.text }}>{f.place_name}</Text>
-                                            </Pressable>
+                                        placeFavorites.filter(f => f.place_type === 'skatepark').map((f, index) => (
+                                            <AnimatedSpotCard key={f.place_id} index={index}>
+                                                <Pressable
+                                                    style={{ paddingVertical: 10, borderBottomWidth: 1, borderColor: c.border, paddingLeft: 12 }}
+                                                    onPress={() => {
+                                                        setParkFavoritesOpen(false);
+                                                        onSelectPlace({ id: f.place_id, name: f.place_name, type: f.place_type as 'skatepark' | 'skateshop', lat: f.lat, lng: f.lng, tags: {} });
+                                                    }}
+                                                >
+                                                    <Text style={{ fontWeight: '600', color: c.text }}>{f.place_name}</Text>
+                                                </Pressable>
+                                            </AnimatedSpotCard>
                                         )) : (
                                             <Text style={{ opacity: 0.5, fontSize: 13, padding: 12, color: c.text }}>No favorites yet</Text>
                                         )
@@ -296,17 +305,18 @@ export function ExplorePanel({
                                 </Pressable>
                                 {shopFavoritesOpen ? (
                                     placeFavorites.filter(f => f.place_type === 'skateshop').length > 0 ?
-                                        placeFavorites.filter(f => f.place_type === 'skateshop').map(f => (
-                                            <Pressable
-                                                key={f.place_id}
-                                                style={{ paddingVertical: 10, borderBottomWidth: 1, borderColor: c.border, paddingLeft: 12 }}
-                                                onPress={() => {
-                                                    setShopFavoritesOpen(false);
-                                                    onSelectPlace({ id: f.place_id, name: f.place_name, type: f.place_type as 'skatepark' | 'skateshop', lat: f.lat, lng: f.lng, tags: {} });
-                                                }}
-                                            >
-                                                <Text style={{ fontWeight: '600', color: c.text }}>{f.place_name}</Text>
-                                            </Pressable>
+                                        placeFavorites.filter(f => f.place_type === 'skateshop').map((f, index) => (
+                                            <AnimatedSpotCard key={f.place_id} index={index}>
+                                                <Pressable
+                                                    style={{ paddingVertical: 10, borderBottomWidth: 1, borderColor: c.border, paddingLeft: 12 }}
+                                                    onPress={() => {
+                                                        setShopFavoritesOpen(false);
+                                                        onSelectPlace({ id: f.place_id, name: f.place_name, type: f.place_type as 'skatepark' | 'skateshop', lat: f.lat, lng: f.lng, tags: {} });
+                                                    }}
+                                                >
+                                                    <Text style={{ fontWeight: '600', color: c.text }}>{f.place_name}</Text>
+                                                </Pressable>
+                                            </AnimatedSpotCard>
                                         )) : (
                                             <Text style={{ opacity: 0.5, fontSize: 13, padding: 12, color: c.text }}>No favorites yet</Text>
                                         )

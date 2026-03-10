@@ -1,7 +1,6 @@
-import React from 'react';
-import { View, Text, Pressable } from 'react-native';
+import React, { forwardRef } from 'react';
+import { View, Text } from 'react-native';
 import { Marker } from 'react-native-maps';
-import { Place } from '@/src/types';
 
 type Props = {
     id: string;
@@ -12,19 +11,20 @@ type Props = {
     onPress?: () => void;
 };
 
-export function SkateMarker({ id, lat, lng, name, type = 'skatepark', onPress }: Props) {
+export const SkateMarker = forwardRef<any, Props>(({ id, lat, lng, name, type = 'skatepark', onPress }, ref) => {
     const isShop = type === 'skateshop';
 
     return (
         <Marker
-            key={id}
+            ref={ref}
             coordinate={{ latitude: lat, longitude: lng }}
             title={name}
             onPress={onPress}
+            tracksViewChanges={false}
         >
             <View
                 style={{
-                    backgroundColor: isShop ? '#22c55e' : '#3b82f6',
+                    backgroundColor: isShop ? '#f6ff0e' : '#ff0000',
                     borderRadius: 20,
                     padding: 4,
                     borderWidth: 2,
@@ -34,5 +34,7 @@ export function SkateMarker({ id, lat, lng, name, type = 'skatepark', onPress }:
                 <Text style={{ fontSize: 20 }}>{isShop ? '🛒' : '🛹'}</Text>
             </View>
         </Marker>
-    );
-}
+    )
+})
+
+SkateMarker.displayName = 'SkateMarker'

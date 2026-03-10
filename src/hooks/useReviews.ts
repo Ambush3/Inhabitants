@@ -52,8 +52,11 @@ export function useReviews() {
         }
     }
 
-    async function submitReview(spotId: string): Promise<string | null> {
-        if (newRating <= 0) return 'Please choose a rating.';
+    async function submitReview(spotId: string, overrideRating?: number, overrideComment?: string): Promise<string | null> {
+        const rating = overrideRating ?? newRating
+        const comment = overrideComment ?? newComment
+
+        if (rating <= 0) return 'Please choose a rating.';
 
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return 'You must be logged in to review.';
@@ -61,7 +64,7 @@ export function useReviews() {
         if (existingReviewId) {
             const { error, data } = await supabase
                 .from('reviews')
-                .update({ rating: newRating, comment: newComment || null })
+                .update({ rating, comment: comment || null })
                 .eq('id', existingReviewId)
                 .select();
 
@@ -72,8 +75,8 @@ export function useReviews() {
                 .from('reviews')
                 .insert({
                     spot_id: spotId,
-                    rating: newRating,
-                    comment: newComment || null,
+                    rating,
+                    comment: comment || null,
                     user_id: user.id,
                 });
 
