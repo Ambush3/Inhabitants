@@ -9,6 +9,8 @@ import { Spot, Review } from '@/src/types';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '@/src/context/ThemeContext';
+import {CONDITION_META, SpotCondition} from "@/src/hooks/useSpotConditions";
+
 
 type Props = {
     visible: boolean;
@@ -33,6 +35,9 @@ type Props = {
     onUploadImages: (uris: string[]) => Promise<void>;
     onTogglePrivacy: () => void;
     creatorUsername?: string;
+    activeConditions: SpotCondition[];
+    myConditions: SpotCondition[];
+    onToggleCondition: (condition: SpotCondition) => void;
 };
 
 export function SpotDetailsModal({
@@ -40,7 +45,7 @@ export function SpotDetailsModal({
                                      onChangeRating, onChangeComment, onSubmitReview, onClose, onDelete,
                                      currentUserId, existingReviewId, isFavorite, onToggleFavorite,
                                      onDeleteReview, images, imagesLoading, onDeleteImage, onUploadImages,
-                                     onTogglePrivacy, creatorUsername
+                                     onTogglePrivacy, creatorUsername, activeConditions, myConditions, onToggleCondition,
                                  }: Props) {
     const { width } = Dimensions.get('window');
     const { theme } = useTheme();
@@ -295,6 +300,73 @@ export function SpotDetailsModal({
                                 ))}
                             </View>
                         ) : null}
+
+                        <View style={styles.tagsRow}>
+                            {(Object.keys(CONDITION_META) as SpotCondition[]).map((condition) => {
+                                const meta = CONDITION_META[condition];
+                                const isActive = activeConditions.includes(condition);
+                                const isMine = myConditions.includes(condition);
+
+                                if (!isActive && !isMine) return null;
+
+                                return (
+                                    <Pressable
+                                        key={condition}
+                                        onPress={() => onToggleCondition(condition)}
+                                        style={{
+                                            flexDirection: 'row',
+                                            alignItems: 'center',
+                                            gap: 4,
+                                            paddingHorizontal: 8,
+                                            paddingVertical: 4,
+                                            borderRadius: 20,
+                                            backgroundColor: meta.bg,
+                                            borderWidth: isMine ? 1.5 : 0,
+                                            borderColor: isMine ? meta.color : 'transparent',
+                                        }}
+                                    >
+                                        <Text style={{ fontSize: 11 }}>{meta.icon}</Text>
+                                        <Text style={{ fontSize: 11, color: meta.color, fontWeight: isMine ? '700' : '500' }}>
+                                            {meta.label}
+                                        </Text>
+                                    </Pressable>
+                                );
+                            })}
+                        </View>
+
+                        <View style={{ marginTop: 6, marginBottom: 4 }}>
+                            <Text style={{ fontSize: 11, color: c.subtext, marginBottom: 6, fontWeight: '600', letterSpacing: 0.5 }}>
+                                REPORT CONDITION
+                            </Text>
+                            <View style={styles.tagsRow}>
+                                {(Object.keys(CONDITION_META) as SpotCondition[]).map((condition) => {
+                                    const meta = CONDITION_META[condition];
+                                    const isMine = myConditions.includes(condition);
+                                    return (
+                                        <Pressable
+                                            key={condition}
+                                            onPress={() => onToggleCondition(condition)}
+                                            style={{
+                                                flexDirection: 'row',
+                                                alignItems: 'center',
+                                                gap: 4,
+                                                paddingHorizontal: 8,
+                                                paddingVertical: 4,
+                                                borderRadius: 20,
+                                                backgroundColor: isMine ? meta.bg : c.tagBg,
+                                                borderWidth: 1,
+                                                borderColor: isMine ? meta.color : c.border,
+                                            }}
+                                        >
+                                            <Text style={{ fontSize: 11 }}>{meta.icon}</Text>
+                                            <Text style={{ fontSize: 11, color: isMine ? meta.color : c.subtext, fontWeight: isMine ? '700' : '400' }}>
+                                                {meta.label}
+                                            </Text>
+                                        </Pressable>
+                                    );
+                                })}
+                            </View>
+                        </View>
 
                         {/* Divider */}
                         <View style={[styles.divider, { backgroundColor: c.border }]} />
