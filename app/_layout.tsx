@@ -3,6 +3,7 @@ import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useAuth } from '@/src/hooks/useAuth';
 import { ThemeProvider, useTheme } from '@/src/context/ThemeContext';
+import {GestureHandlerRootView} from "react-native-gesture-handler";
 
 function RootLayoutInner() {
     const { session, loading } = useAuth();
@@ -27,8 +28,10 @@ function RootLayoutInner() {
 
 export default function RootLayout() {
     return (
-        <ThemeProvider>
-            <RootLayoutInner />
-        </ThemeProvider>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+            <ThemeProvider>
+                <RootLayoutInner />
+            </ThemeProvider>
+        </GestureHandlerRootView>
     );
 }
