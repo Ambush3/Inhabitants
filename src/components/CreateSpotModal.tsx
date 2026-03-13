@@ -29,12 +29,15 @@ type Props = {
     onTogglePrivate: () => void;
     spotComment: string;
     onChangeComment: (v: string) => void;
+    spotType: 'spot' | 'skatepark' | 'skateshop';
+    onChangeSpotType: (v: 'spot' | 'skatepark' | 'skateshop') => void;
 };
 
 export function CreateSpotModal({
                                     visible, pendingCoord, spotName, spotDesc, spotRating, spotTags, pendingImages,
                                     onChangeName, onChangeDesc, onChangeRating, onAddTag, onRemoveTag,
-                                    onAddImage, onRemoveImage, onCancel, onCreate, isPrivate, onTogglePrivate, spotComment, onChangeComment
+                                    onAddImage, onRemoveImage, onCancel, onCreate, isPrivate, onTogglePrivate, spotComment, onChangeComment,
+                                    spotType, onChangeSpotType,
                                 }: Props) {
 
     const { theme } = useTheme();
@@ -46,6 +49,30 @@ export function CreateSpotModal({
     const spotCommentRef = useRef<RNTextInput>(null)
     const commentFieldY = useRef(0)
     const scrollRef = useRef<ScrollView>(null)
+
+    const namePlaceholder = {
+        spot: 'e.g. Downtown ledges',
+        skatepark: 'e.g. Riverside Skate Park',
+        skateshop: 'e.g. Tactics Board Shop',
+    }[spotType]
+
+    const descPlaceholder = {
+        spot: 'Surface, obstacles, best time to skate, etc.',
+        skatepark: 'Ramps, bowls, street section, opening hours, etc.',
+        skateshop: 'Brands carried, services offered, hours, etc.',
+    }[spotType]
+
+    const tagsPlaceholder = {
+        spot: 'e.g. stairs, ledges, rails',
+        skatepark: 'e.g. bowl, vert, street',
+        skateshop: 'e.g. decks, shoes, repairs',
+    }[spotType]
+
+    const modalTitle = {
+        spot: 'Create spot',
+        skatepark: 'Add skate park',
+        skateshop: 'Add skate shop',
+    }[spotType]
 
     useEffect(() => {
         if (!visible) setTagInput('');
@@ -85,17 +112,19 @@ export function CreateSpotModal({
                     >
                         <ScrollView ref={scrollRef} keyboardShouldPersistTaps="handled">
                             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                                <Text style={{ fontSize: 18, fontWeight: '600', color: c.text }}>Create spot</Text>
-                                <Pressable onPress={onTogglePrivate} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, padding: 6, backgroundColor: c.tagBg, borderRadius: 8 }}>
-                                    <Ionicons
-                                        name={isPrivate ? 'lock-closed' : 'lock-open'}
-                                        size={16}
-                                        color={isPrivate ? c.danger : c.subtext}
-                                    />
-                                    <Text style={{ fontSize: 12, color: isPrivate ? c.danger : c.subtext, fontWeight: '600' }}>
-                                        {isPrivate ? 'Private' : 'Public'}
-                                    </Text>
-                                </Pressable>
+                                <Text style={{ fontSize: 18, fontWeight: '600', color: c.text }}>{modalTitle}</Text>
+                                {spotType === 'spot' ? (
+                                    <Pressable onPress={onTogglePrivate} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, padding: 6, backgroundColor: c.tagBg, borderRadius: 8 }}>
+                                        <Ionicons
+                                            name={isPrivate ? 'lock-closed' : 'lock-open'}
+                                            size={16}
+                                            color={isPrivate ? c.danger : c.subtext}
+                                        />
+                                        <Text style={{ fontSize: 12, color: isPrivate ? c.danger : c.subtext, fontWeight: '600' }}>
+                                            {isPrivate ? 'Private' : 'Public'}
+                                        </Text>
+                                    </Pressable>
+                                ) : null}
                             </View>
 
                             {pendingCoord ? (
@@ -103,6 +132,33 @@ export function CreateSpotModal({
                                     {pendingCoord.lat.toFixed(5)}, {pendingCoord.lng.toFixed(5)}
                                 </Text>
                             ) : null}
+
+                            <Text style={{ marginBottom: 6, color: c.text }}>Type</Text>
+                            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+                                {(['spot', 'skatepark', 'skateshop'] as const).map((type) => {
+                                    const labels = { spot: '🛹 Spot', skatepark: 'Skate Park', skateshop: '🛒 Skate Shop' };
+                                    const isSelected = spotType === type;
+                                    return (
+                                        <Pressable
+                                            key={type}
+                                            onPress={() => onChangeSpotType(type)}
+                                            style={{
+                                                flex: 1,
+                                                padding: 8,
+                                                borderRadius: 8,
+                                                borderWidth: 1.5,
+                                                borderColor: isSelected ? c.buttonBg : c.inputBorder,
+                                                backgroundColor: isSelected ? c.buttonBg : c.surface,
+                                                alignItems: 'center',
+                                            }}
+                                        >
+                                            <Text style={{ fontSize: 11, fontWeight: '600', color: isSelected ? c.background : c.subtext }}>
+                                                {labels[type]}
+                                            </Text>
+                                        </Pressable>
+                                    );
+                                })}
+                            </View>
 
                             <Text style={{ marginBottom: 6, color: c.text }}>Name</Text>
                             <TextInput
@@ -114,7 +170,7 @@ export function CreateSpotModal({
                                         onChangeName(text)
                                     }
                                 }}
-                                placeholder="e.g. Downtown ledges"
+                                placeholder={namePlaceholder}
                                 placeholderTextColor={c.placeholder}
                                 autoFocus
                                 autoCorrect={true}
@@ -130,7 +186,7 @@ export function CreateSpotModal({
                                 ref={descRef}
                                 value={spotDesc}
                                 onChangeText={onChangeDesc}
-                                placeholder="Surface, obstacles, best time to skate, etc."
+                                placeholder={descPlaceholder}
                                 placeholderTextColor={c.placeholder}
                                 autoCorrect={true}
                                 multiline
@@ -152,7 +208,7 @@ export function CreateSpotModal({
                                             setTagInput(text);
                                         }
                                     }}
-                                    placeholder="e.g. stairs, ledges, rails"
+                                    placeholder={tagsPlaceholder}
                                     placeholderTextColor={c.placeholder}
                                     autoCapitalize="none"
                                     multiline

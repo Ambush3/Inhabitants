@@ -8,6 +8,7 @@ export type Spot = {
     user_id: string | null;
     tags: string[];
     is_private: boolean;
+    spot_type: 'spot' | 'skatepark' | 'skateshop';
 };
 
 export type Review = {

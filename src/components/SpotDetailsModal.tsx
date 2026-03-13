@@ -308,72 +308,77 @@ export function SpotDetailsModal({
                             </View>
                         ) : null}
 
-                        <View style={styles.tagsRow}>
-                            {(Object.keys(CONDITION_META) as SpotCondition[]).map((condition) => {
-                                const meta = CONDITION_META[condition];
-                                const isActive = activeConditions.includes(condition);
-                                const isMine = myConditions.includes(condition);
+                        {spot?.spot_type === 'spot' ? (
+                            <>
+                                {activeConditions.length > 0 ? (
+                                    <>
+                                        <View style={[styles.divider, { backgroundColor: c.border, marginVertical: 8 }]} />
+                                        <View style={styles.tagsRow}>
+                                            {activeConditions.map((condition) => {
+                                                const meta = CONDITION_META[condition];
+                                                const isMine = myConditions.includes(condition);
+                                                return (
+                                                    <Pressable
+                                                        key={condition}
+                                                        onPress={() => onToggleCondition(condition)}
+                                                        style={{
+                                                            flexDirection: 'row',
+                                                            alignItems: 'center',
+                                                            gap: 4,
+                                                            paddingHorizontal: 8,
+                                                            paddingVertical: 4,
+                                                            borderRadius: 20,
+                                                            backgroundColor: meta.bg,
+                                                            borderWidth: isMine ? 1.5 : 0,
+                                                            borderColor: isMine ? meta.color : 'transparent',
+                                                        }}
+                                                    >
+                                                        <Text style={{ fontSize: 11 }}>{meta.icon}</Text>
+                                                        <Text style={{ fontSize: 11, color: meta.color, fontWeight: isMine ? '700' : '500' }}>
+                                                            {meta.label}
+                                                        </Text>
+                                                    </Pressable>
+                                                );
+                                            })}
+                                        </View>
+                                    </>
+                                ) : null}
 
-                                if (!isActive && !isMine) return null;
-
-                                return (
-                                    <Pressable
-                                        key={condition}
-                                        onPress={() => onToggleCondition(condition)}
-                                        style={{
-                                            flexDirection: 'row',
-                                            alignItems: 'center',
-                                            gap: 4,
-                                            paddingHorizontal: 8,
-                                            paddingVertical: 4,
-                                            borderRadius: 20,
-                                            backgroundColor: meta.bg,
-                                            borderWidth: isMine ? 1.5 : 0,
-                                            borderColor: isMine ? meta.color : 'transparent',
-                                        }}
-                                    >
-                                        <Text style={{ fontSize: 11 }}>{meta.icon}</Text>
-                                        <Text style={{ fontSize: 11, color: meta.color, fontWeight: isMine ? '700' : '500' }}>
-                                            {meta.label}
-                                        </Text>
-                                    </Pressable>
-                                );
-                            })}
-                        </View>
-
-                        <View style={{ marginTop: 6, marginBottom: 4 }}>
-                            <Text style={{ fontSize: 11, color: c.subtext, marginBottom: 6, fontWeight: '600', letterSpacing: 0.5 }}>
-                                REPORT CONDITION
-                            </Text>
-                            <View style={styles.tagsRow}>
-                                {(Object.keys(CONDITION_META) as SpotCondition[]).map((condition) => {
-                                    const meta = CONDITION_META[condition];
-                                    const isMine = myConditions.includes(condition);
-                                    return (
-                                        <Pressable
-                                            key={condition}
-                                            onPress={() => onToggleCondition(condition)}
-                                            style={{
-                                                flexDirection: 'row',
-                                                alignItems: 'center',
-                                                gap: 4,
-                                                paddingHorizontal: 8,
-                                                paddingVertical: 4,
-                                                borderRadius: 20,
-                                                backgroundColor: isMine ? meta.bg : c.tagBg,
-                                                borderWidth: 1,
-                                                borderColor: isMine ? meta.color : c.border,
-                                            }}
-                                        >
-                                            <Text style={{ fontSize: 11 }}>{meta.icon}</Text>
-                                            <Text style={{ fontSize: 11, color: isMine ? meta.color : c.subtext, fontWeight: isMine ? '700' : '400' }}>
-                                                {meta.label}
-                                            </Text>
-                                        </Pressable>
-                                    );
-                                })}
-                            </View>
-                        </View>
+                                <View style={{ marginTop: 6, marginBottom: 4 }}>
+                                    <Text style={{ fontSize: 11, color: c.subtext, marginBottom: 6, fontWeight: '600', letterSpacing: 0.5 }}>
+                                        REPORT CONDITION
+                                    </Text>
+                                    <View style={styles.tagsRow}>
+                                        {(Object.keys(CONDITION_META) as SpotCondition[]).map((condition) => {
+                                            const meta = CONDITION_META[condition];
+                                            const isMine = myConditions.includes(condition);
+                                            return (
+                                                <Pressable
+                                                    key={condition}
+                                                    onPress={() => onToggleCondition(condition)}
+                                                    style={{
+                                                        flexDirection: 'row',
+                                                        alignItems: 'center',
+                                                        gap: 4,
+                                                        paddingHorizontal: 8,
+                                                        paddingVertical: 4,
+                                                        borderRadius: 20,
+                                                        backgroundColor: isMine ? meta.bg : c.tagBg,
+                                                        borderWidth: 1,
+                                                        borderColor: isMine ? meta.color : c.border,
+                                                    }}
+                                                >
+                                                    <Text style={{ fontSize: 11 }}>{meta.icon}</Text>
+                                                    <Text style={{ fontSize: 11, color: isMine ? meta.color : c.subtext, fontWeight: isMine ? '700' : '400' }}>
+                                                        {meta.label}
+                                                    </Text>
+                                                </Pressable>
+                                            );
+                                        })}
+                                    </View>
+                                </View>
+                            </>
+                        ) : null}
 
                         {/* Divider */}
                         <View style={[styles.divider, { backgroundColor: c.border }]} />

@@ -111,12 +111,17 @@ export default function Index() {
 
     const [showSplash, setShowSplash] = useState(true)
 
+    const [spotType, setSpotType] = useState<'spot' | 'skatepark' | 'skateshop'>('spot')
+
     const { theme } = useTheme();
     const c = theme.colors;
 
     const insets = useSafeAreaInsets();
 
     const { spots, mySpots, mySpotsLoading, error, setError, reload, loadMySpots, createSpotAt, deleteSpotById, searchResults, searchByTag, clearSearch, toggleSpotPrivacy } = useSpots();
+
+    const userParks = spots.filter(s => s.spot_type === 'skatepark');
+    const userShops = spots.filter(s => s.spot_type === 'skateshop');
 
     const visibleSpots = searchResults.length > 0 ? searchResults : spots;
     const displayError = error ?? nearbyError ?? topRatedError;
@@ -131,6 +136,7 @@ export default function Index() {
         setPendingImages([]);
         setSpotIsPrivate(false);
         setSpotComment('');
+        setSpotType('spot');
     }
 
     function closeDetailsModal() {
@@ -463,6 +469,8 @@ export default function Index() {
                                 await loadMySpots();
                             });
                         }}
+                        userParks={userParks}
+                        userShops={userShops}
                     />
 
                     {locationReady ? (
@@ -495,24 +503,41 @@ export default function Index() {
                                     pinColor="orange"
                                 />
                             ) : null}
-                            {visibleSpots.map((s) => (
-                                <Marker
-                                    ref={(ref) => { markerRefs.current[s.id] = ref; }}
-                                    key={s.id}
-                                    coordinate={{ latitude: s.lat, longitude: s.lng }}
-                                    title={s.name}
-                                    description={s.description ?? undefined}
-                                    pinColor={
-                                        s.id === highlightSpotId
-                                            ? (s.user_id === session?.user.id ? '#22CC00' : '#A0A0A0')
-                                            : (s.user_id === session?.user.id ? '#39FF14' : '#6B6B6B')
-                                    }
-                                    onPress={() => {
-                                        setHighlightSpotId(s.id);
-                                        animateToSpotWithModalOffset(s.lat, s.lng);
-                                        openSpotDetails(s);
-                                    }}
-                                />
+                            {visibleSpots.filter(s => s.spot_type === 'spot' || s.id === highlightSpotId).map((s) => (
+                                s.spot_type === 'spot' ? (
+                                    <Marker
+                                        ref={(ref) => { markerRefs.current[s.id] = ref; }}
+                                        key={s.id}
+                                        coordinate={{ latitude: s.lat, longitude: s.lng }}
+                                        title={s.name}
+                                        description={s.description ?? undefined}
+                                        pinColor={
+                                            s.id === highlightSpotId
+                                                ? (s.user_id === session?.user.id ? '#22CC00' : '#A0A0A0')
+                                                : (s.user_id === session?.user.id ? '#39FF14' : '#6B6B6B')
+                                        }
+                                        onPress={() => {
+                                            setHighlightSpotId(s.id);
+                                            animateToSpotWithModalOffset(s.lat, s.lng);
+                                            openSpotDetails(s);
+                                        }}
+                                    />
+                                ) : (
+                                    <SkateMarker
+                                        ref={(ref) => { markerRefs.current[s.id] = ref; }}
+                                        key={s.id}
+                                        id={s.id}
+                                        lat={s.lat}
+                                        lng={s.lng}
+                                        name={s.name}
+                                        type={s.spot_type as 'skatepark' | 'skateshop'}
+                                        onPress={() => {
+                                            setHighlightSpotId(s.id);
+                                            animateToSpotWithModalOffset(s.lat, s.lng);
+                                            openSpotDetails(s);
+                                        }}
+                                    />
+                                )
                             ))}
                             {places.map((p) => (
                                 <SkateMarker
@@ -581,7 +606,7 @@ export default function Index() {
                         onTogglePrivate={() => setSpotIsPrivate(prev => !prev)}
                         onCreate={async () => {
                             if (!pendingCoord) return;
-                            const newSpot = await createSpotAt(pendingCoord.lat, pendingCoord.lng, spotName, spotDesc, spotRating, spotTags, spotIsPrivate);
+                            const newSpot = await createSpotAt(pendingCoord.lat, pendingCoord.lng, spotName, spotDesc, spotRating, spotTags, spotIsPrivate, spotType);
                             if (newSpot) {
                                 await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                                 if (pendingImages.length > 0) {
@@ -597,6 +622,11 @@ export default function Index() {
                         pendingImages={pendingImages}
                         onAddImage={(uri) => setPendingImages(prev => prev.includes(uri) ? prev : [...prev, uri])}
                         onRemoveImage={(uri) => setPendingImages(prev => prev.filter(u => u !== uri))}
+                        spotType={spotType}
+                        onChangeSpotType={(v) => {
+                            setSpotType(v);
+                            if (v !== 'spot') setSpotIsPrivate(false);
+                        }}
                     />
 
                     {/* Details Modal */}
