@@ -38,6 +38,8 @@ type Props = {
     activeConditions: SpotCondition[];
     myConditions: SpotCondition[];
     onToggleCondition: (condition: SpotCondition) => void;
+    isWishlisted: boolean;
+    onToggleWishlist: () => void;
 };
 
 export function SpotDetailsModal({
@@ -46,6 +48,7 @@ export function SpotDetailsModal({
                                      currentUserId, existingReviewId, isFavorite, onToggleFavorite,
                                      onDeleteReview, images, imagesLoading, onDeleteImage, onUploadImages,
                                      onTogglePrivacy, creatorUsername, activeConditions, myConditions, onToggleCondition,
+                                     isWishlisted, onToggleWishlist
                                  }: Props) {
     const { width } = Dimensions.get('window');
     const { theme } = useTheme();
@@ -70,7 +73,7 @@ export function SpotDetailsModal({
         if (!spot) return;
         ActionSheetIOS.showActionSheetWithOptions(
             {
-                options: ['Cancel', 'Open in Apple Maps', 'Open in Google Maps', 'Share Spot'],
+                options: ['Cancel', 'Open in Apple Maps', 'Open in Google Maps'],
                 cancelButtonIndex: 0,
             },
             async (buttonIndex) => {
@@ -84,13 +87,16 @@ export function SpotDetailsModal({
                     } else {
                         await Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${spot.lat},${spot.lng}`);
                     }
-                } else if (buttonIndex === 3) {
-                    await Share.share({
-                        message: `Check out this skate spot: ${spot.name}\nhttps://maps.apple.com/?q=${spot.lat},${spot.lng}`,
-                    });
                 }
             }
         );
+    }
+
+    async function handleShare() {
+        if (!spot) return;
+        await Share.share({
+            message: `Check out this skate spot: ${spot.name}\nhttps://maps.apple.com/?q=${spot.lat},${spot.lng}`,
+        });
     }
 
     useEffect(() => {
@@ -172,15 +178,9 @@ export function SpotDetailsModal({
                             </View>
 
                             <View style={styles.headerActions}>
-                                {isOwner ? (
-                                    <Pressable onPress={onTogglePrivacy} style={styles.iconBtn}>
-                                        <Ionicons
-                                            name={spot?.is_private ? 'lock-closed' : 'lock-open-outline'}
-                                            size={20}
-                                            color={spot?.is_private ? c.danger : c.subtext}
-                                        />
-                                    </Pressable>
-                                ) : null}
+                                <Pressable onPress={handleShare} style={styles.iconBtn}>
+                                    <Ionicons name="share-outline" size={20} color={c.subtext} />
+                                </Pressable>
                                 <Pressable onPress={handleDirections} style={styles.iconBtn}>
                                     <Ionicons name="navigate-outline" size={20} color="#007AFF" />
                                 </Pressable>
@@ -189,6 +189,13 @@ export function SpotDetailsModal({
                                         name={isFavorite ? 'bookmark' : 'bookmark-outline'}
                                         size={20}
                                         color={isFavorite ? '#FF3B30' : c.subtext}
+                                    />
+                                </Pressable>
+                                <Pressable onPress={onToggleWishlist} style={styles.iconBtn}>
+                                    <Ionicons
+                                        name={isWishlisted ? 'star' : 'star-outline'}
+                                        size={20}
+                                        color={isWishlisted ? '#FF9500' : c.subtext}
                                     />
                                 </Pressable>
                             </View>
@@ -463,12 +470,9 @@ export function SpotDetailsModal({
                                 <Text style={[styles.closeBtnText, { color: c.text }]}>Close</Text>
                             </Pressable>
                             {spot && isOwner ? (
-                                <Pressable
-                                    onPress={() => onDelete(spot)}
-                                    style={[styles.deleteSpotBtn, { borderColor: c.danger }]}
-                                >
+                                <Pressable onPress={() => onDelete(spot)} style={[styles.deleteSpotBtn, { borderColor: c.danger }]}>
                                     <Ionicons name="trash-outline" size={15} color={c.danger} />
-                                    <Text style={[styles.deleteSpotText, { color: c.danger }]}>Delete Spot</Text>
+                                    <Text style={[styles.deleteSpotText, { color: c.danger }]}>Delete</Text>
                                 </Pressable>
                             ) : null}
                         </View>
@@ -752,10 +756,13 @@ const styles = StyleSheet.create({
     },
     closeBtn: {
         flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
         borderWidth: 1,
         borderRadius: 10,
         padding: 12,
-        alignItems: 'center',
     },
     closeBtnText: {
         fontWeight: '600',

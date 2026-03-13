@@ -5,6 +5,7 @@ import { Place, Spot } from '@/src/types';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/src/context/ThemeContext';
 import { AnimatedSpotCard } from '@/src/components/AnimatedSpotCard'
+import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 
 type PlaceFavorite = {
     place_id: string;
@@ -22,6 +23,7 @@ type Props = {
     onLoadSkateparks: () => void;
     onLoadTopRated: () => void;
     onSelectSpot: (spot: Spot) => void;
+    onDeleteSpot: (id: Spot) => void;
     onSignOut: () => void;
     onSearch: (tag: string) => void;
     onClearSearch: () => void;
@@ -38,6 +40,9 @@ type Props = {
     onOpenSettings: () => void;
     mySpots: Spot[];
     mySpotsLoading: boolean;
+    wishlist: Spot[];
+    wishlistLoading: boolean;
+    onToggleSpotPrivacy: (spot: Spot) => void;
 };
 
 type Tab = 'explore' | 'myspots' | 'favorites';
@@ -46,8 +51,8 @@ export function ExplorePanel({
                                  visible, onClose, parksLoading, shopsLoading, topLoading,
                                  topRated, onLoadSkateparks, onLoadSkateShops, onLoadTopRated, onSelectSpot, onSignOut,
                                  onSearch, onClearSearch, hasSearchResults, searchResults,
-                                 favorites, favLoading, placeFavorites, placeFavLoading, onSelectPlace, onOpenSettings,
-                                 mySpots, mySpotsLoading,
+                                 favorites, favLoading, placeFavorites, placeFavLoading, onSelectPlace, onDeleteSpot, onOpenSettings,
+                                 mySpots, mySpotsLoading, wishlist, wishlistLoading, onToggleSpotPrivacy,
                              }: Props) {
 
     const insets = useSafeAreaInsets();
@@ -59,6 +64,7 @@ export function ExplorePanel({
     const [favoritesOpen, setFavoritesOpen] = useState(false);
     const [parkFavoritesOpen, setParkFavoritesOpen] = useState(false);
     const [shopFavoritesOpen, setShopFavoritesOpen] = useState(false);
+    const [wishlistOpen, setWishlistOpen] = useState(false);
 
     function handleSearch() {
         if (!searchQuery.trim()) return;
@@ -202,30 +208,81 @@ export function ExplorePanel({
                                 {mySpotsLoading ? (
                                     <Text style={{ color: c.subtext, fontSize: 13 }}>Loading...</Text>
                                 ) : mySpots.length === 0 ? (
-                                    <Text style={{ color: c.subtext, fontSize: 13, opacity: 0.6 }}>You haven&apost created any spots yet.</Text>
+                                    <Text style={{ color: c.subtext, fontSize: 13, opacity: 0.6 }}>You haven&apos;t created any spots yet.</Text>
                                 ) : (
                                     mySpots.map((s, index) => (
                                         <AnimatedSpotCard key={s.id} index={index}>
-                                            <Pressable
-                                                key={s.id}
-                                                onPress={() => onSelectSpot(s)}
-                                                style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderColor: c.border, gap: 10 }}
-                                            >
-                                                <View style={{ flex: 1 }}>
-                                                    <Text style={{ fontWeight: '600', color: c.text }}>{s.name}</Text>
-                                                    {s.tags?.length > 0 ? (
-                                                        <Text style={{ opacity: 0.6, fontSize: 12, marginTop: 2, color: c.text }}>
-                                                            {s.tags.map(t => `#${t}`).join(' ')}
+                                            <Swipeable
+                                                renderLeftActions={() => (
+                                                    <Pressable
+                                                        onPress={() => onDeleteSpot(s)}
+                                                        style={{
+                                                            justifyContent: 'center',
+                                                            alignItems: 'center',
+                                                            width: 75,
+                                                            backgroundColor: c.danger,
+                                                            borderTopLeftRadius: 8,
+                                                            borderBottomLeftRadius: 8,
+                                                            marginVertical: 2,
+                                                            gap: 4,
+                                                        }}
+                                                    >
+                                                        <Ionicons name="trash-outline" size={18} color="white" />
+                                                        <Text style={{ color: 'white', fontSize: 11, fontWeight: '700', letterSpacing: 0.3 }}>
+                                                            Delete
                                                         </Text>
-                                                    ) : null}
-                                                </View>
-                                                {s.is_private ? (
-                                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                                                        <Ionicons name="lock-closed" size={14} color={c.danger} />
-                                                        <Text style={{ fontSize: 11, color: c.danger, fontWeight: '600' }}>Private</Text>
+                                                    </Pressable>
+                                                )}
+                                                onSwipeableOpen={(direction) => {
+                                                    if (direction === 'right') {
+                                                        onDeleteSpot(s);
+                                                    }
+                                                }}
+                                                renderRightActions={() => (
+                                                    <Pressable
+                                                        onPress={() => onToggleSpotPrivacy(s)}
+                                                        style={{
+                                                            justifyContent: 'center',
+                                                            alignItems: 'center',
+                                                            width: 75,
+                                                            backgroundColor: s.is_private ? '#34C759' : '#FF9500',
+                                                            borderTopRightRadius: 8,
+                                                            borderBottomRightRadius: 8,
+                                                            marginVertical: 2,
+                                                            gap: 4,
+                                                        }}
+                                                    >
+                                                        <Ionicons
+                                                            name={s.is_private ? 'lock-open-outline' : 'lock-closed'}
+                                                            size={18}
+                                                            color="white"
+                                                        />
+                                                        <Text style={{ color: 'white', fontSize: 11, fontWeight: '700', letterSpacing: 0.3 }}>
+                                                            {s.is_private ? 'Public' : 'Private'}
+                                                        </Text>
+                                                    </Pressable>
+                                                )}
+                                            >
+                                                <Pressable
+                                                    onPress={() => onSelectSpot(s)}
+                                                    style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderColor: c.border, gap: 10, backgroundColor: c.panelBg }}
+                                                >
+                                                    <View style={{ flex: 1 }}>
+                                                        <Text style={{ fontWeight: '600', color: c.text }}>{s.name}</Text>
+                                                        {s.tags?.length > 0 ? (
+                                                            <Text style={{ opacity: 0.6, fontSize: 12, marginTop: 2, color: c.text }}>
+                                                                {s.tags.map(t => `#${t}`).join(' ')}
+                                                            </Text>
+                                                        ) : null}
                                                     </View>
-                                                ) : null}
-                                            </Pressable>
+                                                    {s.is_private ? (
+                                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                                                            <Ionicons name="lock-closed" size={14} color={c.danger} />
+                                                            <Text style={{ fontSize: 11, color: c.danger, fontWeight: '600' }}>Private</Text>
+                                                        </View>
+                                                    ) : null}
+                                                </Pressable>
+                                            </Swipeable>
                                         </AnimatedSpotCard>
                                     ))
                                 )}
@@ -320,6 +377,35 @@ export function ExplorePanel({
                                         )) : (
                                             <Text style={{ opacity: 0.5, fontSize: 13, padding: 12, color: c.text }}>No favorites yet</Text>
                                         )
+                                ) : null}
+
+                                <Pressable
+                                    onPress={() => setWishlistOpen(prev => !prev)}
+                                    style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderColor: c.border, marginBottom: 4, marginTop: 8 }}
+                                >
+                                    <Text style={{ fontWeight: '700', color: c.text }}>
+                                        {wishlistLoading ? 'Loading...' : `My Wishlist (${wishlist.length})`}
+                                    </Text>
+                                    <Ionicons name={wishlistOpen ? 'chevron-up' : 'chevron-down'} size={16} color={c.subtext} />
+                                </Pressable>
+                                {wishlistOpen ? (
+                                    wishlist.length > 0 ? wishlist.map((s, index) => (
+                                        <AnimatedSpotCard key={s.id} index={index}>
+                                            <Pressable
+                                                style={{ paddingVertical: 10, borderBottomWidth: 1, borderColor: c.border, paddingLeft: 12 }}
+                                                onPress={() => { setWishlistOpen(false); onSelectSpot(s); }}
+                                            >
+                                                <Text style={{ fontWeight: '600', color: c.text }}>{s.name}</Text>
+                                                {s.tags?.length > 0 ? (
+                                                    <Text style={{ opacity: 0.6, fontSize: 12, marginTop: 2, color: c.text }}>
+                                                        {s.tags.map(t => `#${t}`).join(' ')}
+                                                    </Text>
+                                                ) : null}
+                                            </Pressable>
+                                        </AnimatedSpotCard>
+                                    )) : (
+                                        <Text style={{ opacity: 0.5, fontSize: 13, padding: 12, color: c.text }}>No spots wishlisted yet</Text>
+                                    )
                                 ) : null}
                             </View>
                         ) : null}

@@ -32,6 +32,7 @@ import { useTheme } from '@/src/context/ThemeContext';
 
 import { Ionicons } from '@expo/vector-icons';
 import {Place, Spot} from '@/src/types';
+import {useWishlist} from "@/src/hooks/useWishlist";
 
 ExpoSplashScreen.preventAutoHideAsync()
 
@@ -65,6 +66,7 @@ export default function Index() {
     } = useReviews();
     const { signOut, session } = useAuth();
     const { favorites, loading: favLoading, loadFavorites, toggleFavorite, isFavorite } = useFavorites();
+    const { wishlist, wishlistLoading, loadWishlist, toggleWishlist, isWishlisted } = useWishlist();
     const { places, setPlaces, parksLoading, shopsLoading, error: nearbyError, loadNearbySkateParks, loadNearbySkateShops, fetchPlaceById } = useNearbyPlaces();
     const { topRated, topLoading, error: topRatedError, loadTopRatedSpotsInArea } = useTopRated();
 
@@ -227,12 +229,14 @@ export default function Index() {
         loadFavorites();
         loadPlaceFavorites();
         loadMySpots();
+        loadWishlist();
     }, []);
 
     useFocusEffect(
         useCallback(() => {
             loadFavorites();
             loadPlaceFavorites();
+            loadWishlist();
         }, [])
     );
 
@@ -446,6 +450,19 @@ export default function Index() {
                                 markerRefs.current[p.id]?.showCallout();
                             }, 650);
                         }}
+                        wishlist={wishlist}
+                        wishlistLoading={wishlistLoading}
+                        onToggleSpotPrivacy={async (spot) => {
+                            await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            await toggleSpotPrivacy(spot);
+                            await loadMySpots();
+                        }}
+                        onDeleteSpot={async (spot) => {
+                            await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+                            deleteSpotById(spot.id, async () => {
+                                await loadMySpots();
+                            });
+                        }}
                     />
 
                     {locationReady ? (
@@ -573,6 +590,7 @@ export default function Index() {
                                 if (spotRating > 0) {
                                     await submitReview(newSpot.id, spotRating, spotComment);
                                 }
+                                await loadMySpots();
                             }
                             closeCreateModal();
                         }}
@@ -640,6 +658,12 @@ export default function Index() {
                             if (!selectedSpot) return;
                             await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                             await toggleCondition(selectedSpot.id, condition);
+                        }}
+                        isWishlisted={selectedSpot ? isWishlisted(selectedSpot.id) : false}
+                        onToggleWishlist={async () => {
+                            if (!selectedSpot) return;
+                            await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            await toggleWishlist(selectedSpot.id);
                         }}
                     />
 
