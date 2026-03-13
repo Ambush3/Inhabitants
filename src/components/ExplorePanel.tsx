@@ -43,6 +43,8 @@ type Props = {
     wishlist: Spot[];
     wishlistLoading: boolean;
     onToggleSpotPrivacy: (spot: Spot) => void;
+    userParks: Spot[];
+    userShops: Spot[];
 };
 
 type Tab = 'explore' | 'myspots' | 'favorites';
@@ -52,7 +54,7 @@ export function ExplorePanel({
                                  topRated, onLoadSkateparks, onLoadSkateShops, onLoadTopRated, onSelectSpot, onSignOut,
                                  onSearch, onClearSearch, hasSearchResults, searchResults,
                                  favorites, favLoading, placeFavorites, placeFavLoading, onSelectPlace, onDeleteSpot, onOpenSettings,
-                                 mySpots, mySpotsLoading, wishlist, wishlistLoading, onToggleSpotPrivacy,
+                                 mySpots, mySpotsLoading, wishlist, wishlistLoading, onToggleSpotPrivacy, userParks, userShops,
                              }: Props) {
 
     const insets = useSafeAreaInsets();
@@ -153,6 +155,38 @@ export function ExplorePanel({
                                                             {s.tags.map(t => `#${t}`).join(' ')}
                                                         </Text>
                                                     ) : null}
+                                                </Pressable>
+                                            </AnimatedSpotCard>
+                                        ))}
+                                    </View>
+                                ) : null}
+
+                                {userParks.length > 0 ? (
+                                    <View style={{ marginBottom: 10 }}>
+                                        <Text style={{ fontSize: 11, fontWeight: '600', color: c.subtext, marginBottom: 8, letterSpacing: 0.8 }}>COMMUNITY PARKS</Text>
+                                        {userParks.map((s, index) => (
+                                            <AnimatedSpotCard key={s.id} index={index}>
+                                                <Pressable
+                                                    style={{ paddingVertical: 10, borderBottomWidth: 1, borderColor: c.border }}
+                                                    onPress={() => onSelectSpot(s)}
+                                                >
+                                                    <Text style={{ fontWeight: '600', color: c.text }}>{s.name}</Text>
+                                                </Pressable>
+                                            </AnimatedSpotCard>
+                                        ))}
+                                    </View>
+                                ) : null}
+
+                                {userShops.length > 0 ? (
+                                    <View style={{ marginBottom: 10 }}>
+                                        <Text style={{ fontSize: 11, fontWeight: '600', color: c.subtext, marginBottom: 8, letterSpacing: 0.8 }}>COMMUNITY SHOPS</Text>
+                                        {userShops.map((s, index) => (
+                                            <AnimatedSpotCard key={s.id} index={index}>
+                                                <Pressable
+                                                    style={{ paddingVertical: 10, borderBottomWidth: 1, borderColor: c.border }}
+                                                    onPress={() => onSelectSpot(s)}
+                                                >
+                                                    <Text style={{ fontWeight: '600', color: c.text }}>🛒 {s.name}</Text>
                                                 </Pressable>
                                             </AnimatedSpotCard>
                                         ))}
