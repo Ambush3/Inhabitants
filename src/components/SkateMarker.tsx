@@ -1,5 +1,5 @@
 import React, { forwardRef } from 'react';
-import { View, Text } from 'react-native';
+import {View, Text, Image} from 'react-native';
 import { Marker } from 'react-native-maps';
 
 type Props = {
@@ -24,14 +24,20 @@ export const SkateMarker = forwardRef<any, Props>(({ id, lat, lng, name, type = 
         >
             <View
                 style={{
-                    backgroundColor: isShop ? '#f6ff0e' : '#ff0000',
+                    backgroundColor: isShop ? '#000000' : '#ff0000',
                     borderRadius: 20,
                     padding: 4,
                     borderWidth: 2,
                     borderColor: 'white',
                 }}
             >
-                <Text style={{ fontSize: 20 }}>{isShop ? '🛒' : '🛹'}</Text>
+                <Image
+                    source={isShop
+                        ? require('../../assets/icons/skate-shop.png')
+                        : require('../../assets/icons/skateboard.png')
+                    }
+                    style={{ width: 20, height: 18, tintColor: 'white' }}
+                />
             </View>
         </Marker>
     )

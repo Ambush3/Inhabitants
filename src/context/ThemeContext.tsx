@@ -1,5 +1,5 @@
-import React, {createContext, useContext, useEffect, useState} from 'react';
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { supabase } from '@/src/libs/supabase';
 
 type Theme = {
     dark: boolean;
@@ -59,33 +59,52 @@ type ThemeContextType = {
     theme: Theme;
     darkMode: boolean;
     toggleDarkMode: () => void;
+    loadThemeForUser: (userId: string) => Promise<void>;
+    resetTheme: () => void;
 };
 
 const ThemeContext = createContext<ThemeContextType>({
     theme: lightTheme,
     darkMode: false,
     toggleDarkMode: () => {},
+    loadThemeForUser: async () => {},
+    resetTheme: () => {},
 });
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const [darkMode, setDarkMode] = useState(false);
+    const [userId, setUserId] = useState<string | null>(null);
 
-    useEffect(() => {
-        AsyncStorage.getItem('darkMode').then(value => {
-            if (value === 'true') setDarkMode(true);
-        });
-    }, []);
+    async function loadThemeForUser(id: string) {
+        setUserId(id);
+        const { data } = await supabase
+            .from('profiles')
+            .select('dark_mode')
+            .eq('id', id)
+            .single();
 
-    function toggleDarkMode() {
-        setDarkMode(prev => {
-            const next = !prev;
-            AsyncStorage.setItem('darkMode', String(next));
-            return next;
-        });
+        if (data) setDarkMode(data.dark_mode ?? false);
+    }
+
+    function resetTheme() {
+        setDarkMode(false);
+        setUserId(null);
+    }
+
+    async function toggleDarkMode() {
+        const next = !darkMode;
+        setDarkMode(next);
+
+        if (userId) {
+            await supabase
+                .from('profiles')
+                .update({ dark_mode: next })
+                .eq('id', userId);
+        }
     }
 
     return (
-        <ThemeContext.Provider value={{ theme: darkMode ? darkTheme : lightTheme, darkMode, toggleDarkMode }}>
+        <ThemeContext.Provider value={{ theme: darkMode ? darkTheme : lightTheme, darkMode, toggleDarkMode, loadThemeForUser, resetTheme }}>
             {children}
         </ThemeContext.Provider>
     );
