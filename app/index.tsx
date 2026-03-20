@@ -51,6 +51,8 @@ export default function Index() {
     const autoCenterRef = useRef(true);
     const markerRefs = useRef<Record<string, MapMarker | null>>({});
 
+    const placesTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
     const {
         reviews: spotReviews,
         avgRating,
@@ -68,7 +70,7 @@ export default function Index() {
     const { favorites, loading: favLoading, loadFavorites, toggleFavorite, isFavorite } = useFavorites();
     const { wishlist, wishlistLoading, loadWishlist, toggleWishlist, isWishlisted } = useWishlist();
     const { places, setPlaces, parksLoading, shopsLoading, error: nearbyError, loadNearbySkateParks, loadNearbySkateShops, fetchPlaceById } = useNearbyPlaces();
-    const { topRated, topLoading, error: topRatedError, loadTopRatedSpotsInArea } = useTopRated();
+    const { topRated, topLoading, error: topRatedError, loadTopRatedSpotsInArea, clearTopRated } = useTopRated();
 
     const [spotIsPrivate, setSpotIsPrivate] = useState(false);
 
@@ -113,15 +115,12 @@ export default function Index() {
 
     const [spotType, setSpotType] = useState<'spot' | 'skatepark' | 'skateshop'>('spot')
 
-    const { theme } = useTheme();
+    const { theme, loadThemeForUser, resetTheme } = useTheme();
     const c = theme.colors;
 
     const insets = useSafeAreaInsets();
 
     const { spots, mySpots, mySpotsLoading, error, setError, reload, loadMySpots, createSpotAt, deleteSpotById, searchResults, searchByTag, clearSearch, toggleSpotPrivacy } = useSpots();
-
-    const userParks = spots.filter(s => s.spot_type === 'skatepark');
-    const userShops = spots.filter(s => s.spot_type === 'skateshop');
 
     const visibleSpots = searchResults.length > 0 ? searchResults : spots;
     const displayError = error ?? nearbyError ?? topRatedError;
@@ -154,6 +153,14 @@ export default function Index() {
         }
         openedFromPanelRef.current = false;
         resetConditions();
+    }
+
+    function setPlacesWithAutoClear(updater: (prev: Place[]) => Place[]) {
+        if (placesTimerRef.current) clearTimeout(placesTimerRef.current)
+        setPlaces(updater)
+        placesTimerRef.current = setTimeout(() => {
+            setPlaces([])
+        }, 120000)
     }
 
     function animateToSpotWithModalOffset(lat: number, lng: number) {
@@ -307,6 +314,14 @@ export default function Index() {
         }
     }, [refreshing]);
 
+    useEffect(() => {
+        if (session?.user.id) {
+            loadThemeForUser(session.user.id);
+        } else {
+            resetTheme();
+        }
+    }, [session?.user.id]);
+
     if (Platform.OS === 'web') {
         return (
             <SafeAreaView style={{ flex: 1, backgroundColor: c.headerBg }}>
@@ -403,20 +418,60 @@ export default function Index() {
                         mySpotsLoading={mySpotsLoading}
                         onLoadSkateparks={() => {
                             setPanelOpen(false);
-                            loadNearbySkateParks(mapRegionRef.current.latitude, mapRegionRef.current.longitude, 20000);
+                            const communityParks = spots
+                                .filter(s => s.spot_type === 'skatepark')
+                                .map(s => ({
+                                    id: s.id,
+                                    name: s.name,
+                                    type: 'skatepark' as const,
+                                    lat: s.lat,
+                                    lng: s.lng,
+                                    tags: {},
+                                }));
+                            loadNearbySkateParks(
+                                mapRegionRef.current.latitude,
+                                mapRegionRef.current.longitude,
+                                20000,
+                                undefined,
+                                (googleParks) => {
+                                    setPlaces([...communityParks, ...googleParks]);
+                                }
+                            );
                         }}
+
                         onLoadSkateShops={() => {
                             setPanelOpen(false);
-                            loadNearbySkateShops(mapRegionRef.current.latitude, mapRegionRef.current.longitude, 20000);
+                            const communityShops = spots
+                                .filter(s => s.spot_type === 'skateshop')
+                                .map(s => ({
+                                    id: s.id,
+                                    name: s.name,
+                                    type: 'skateshop' as const,
+                                    lat: s.lat,
+                                    lng: s.lng,
+                                    tags: {},
+                                }));
+                            loadNearbySkateShops(
+                                mapRegionRef.current.latitude,
+                                mapRegionRef.current.longitude,
+                                20000,
+                                undefined,
+                                (googleShops) => {
+                                    setPlaces([...communityShops, ...googleShops]);
+                                }
+                            );
                         }}
                         onLoadTopRated={async () => {
                             const topSpot = await loadTopRatedSpotsInArea(mapRegionRef.current, 10);
                             if (topSpot) {
                                 mapRef.current?.animateToRegion(
                                     { latitude: topSpot.lat, longitude: topSpot.lng, latitudeDelta: 0.05, longitudeDelta: 0.05 },
-                                    600
+                                    1200
                                 );
                             }
+                            setTimeout(() => {
+                                clearTopRated()
+                            }, 10000)
                         }}
                         onSelectSpot={(s) => {
                             setPanelOpen(false);
@@ -451,7 +506,7 @@ export default function Index() {
                             const resolved = full ?? p;
                             setSelectedPlace(resolved);
                             setPlaceDetailsOpen(true);
-                            setPlaces(prev => prev.some(x => x.id === resolved.id) ? prev : [...prev, resolved]);
+                            setPlacesWithAutoClear(prev => prev.some(x => x.id === resolved.id) ? prev : [...prev, resolved]);
                             setTimeout(() => {
                                 markerRefs.current[p.id]?.showCallout();
                             }, 650);
@@ -469,8 +524,6 @@ export default function Index() {
                                 await loadMySpots();
                             });
                         }}
-                        userParks={userParks}
-                        userShops={userShops}
                     />
 
                     {locationReady ? (
@@ -549,12 +602,19 @@ export default function Index() {
                                     name={p.name}
                                     type={p.type as 'skatepark' | 'skateshop'}
                                     onPress={() => {
-                                        setSelectedPlaceId(p.id);
-                                        setSelectedPlace(p);
-                                        setPlaceDetailsOpen(true);
-                                        setTimeout(() => {
-                                            markerRefs.current[p.id]?.showCallout();
-                                        }, 300);
+                                        const communitySpot = spots.find(s => s.id === p.id);
+                                        if (communitySpot) {
+                                            setHighlightSpotId(communitySpot.id);
+                                            animateToSpotWithModalOffset(communitySpot.lat, communitySpot.lng);
+                                            openSpotDetails(communitySpot);
+                                        } else {
+                                            setSelectedPlaceId(p.id);
+                                            setSelectedPlace(p);
+                                            setPlaceDetailsOpen(true);
+                                            setTimeout(() => {
+                                                markerRefs.current[p.id]?.showCallout();
+                                            }, 300);
+                                        }
                                     }}
                                 />
                             ))}
@@ -616,6 +676,20 @@ export default function Index() {
                                     await submitReview(newSpot.id, spotRating, spotComment);
                                 }
                                 await loadMySpots();
+
+                                if (newSpot.spot_type === 'skatepark' || newSpot.spot_type === 'skateshop') {
+                                    setPlacesWithAutoClear(prev => [...prev, {
+                                        id: newSpot.id,
+                                        name: newSpot.name,
+                                        type: newSpot.spot_type as 'skatepark' | 'skateshop',
+                                        lat: newSpot.lat,
+                                        lng: newSpot.lng,
+                                        tags: {},
+                                    }]);
+                                    setTimeout(() => {
+                                        setPlacesWithAutoClear(prev => prev.filter(p => p.id !== newSpot.id));
+                                    }, 4000);
+                                }
                             }
                             closeCreateModal();
                         }}

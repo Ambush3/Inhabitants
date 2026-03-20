@@ -136,7 +136,6 @@ export function CreateSpotModal({
                             <Text style={{ marginBottom: 6, color: c.text }}>Type</Text>
                             <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
                                 {(['spot', 'skatepark', 'skateshop'] as const).map((type) => {
-                                    const labels = { spot: '🛹 Spot', skatepark: 'Skate Park', skateshop: '🛒 Skate Shop' };
                                     const isSelected = spotType === type;
                                     return (
                                         <Pressable
@@ -152,9 +151,37 @@ export function CreateSpotModal({
                                                 alignItems: 'center',
                                             }}
                                         >
-                                            <Text style={{ fontSize: 11, fontWeight: '600', color: isSelected ? c.background : c.subtext }}>
-                                                {labels[type]}
-                                            </Text>
+                                            {type === 'skatepark' ? (
+                                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                                                    <Image
+                                                        source={require('../../assets/icons/skatepark-ramp.png')}
+                                                        style={{ width: 13, height: 13, tintColor: isSelected ? c.background : c.subtext }}
+                                                    />
+                                                    <Text style={{ fontSize: 11, fontWeight: '600', color: isSelected ? c.background : c.subtext }}>
+                                                        Skate Park
+                                                    </Text>
+                                                </View>
+                                            ) : type === 'skateshop' ? (
+                                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                                                    <Image
+                                                        source={require('../../assets/icons/skate-shop.png')}
+                                                        style={{ width: 13, height: 13, tintColor: isSelected ? c.background : c.subtext }}
+                                                    />
+                                                    <Text style={{ fontSize: 11, fontWeight: '600', color: isSelected ? c.background : c.subtext }}>
+                                                        Skate Shop
+                                                    </Text>
+                                                </View>
+                                            ) : (
+                                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                                                    <Image
+                                                        source={require('../../assets/icons/skateboard.png')}
+                                                        style={{ width: 13, height: 13, tintColor: isSelected ? c.background : c.subtext }}
+                                                    />
+                                                    <Text style={{ fontSize: 11, fontWeight: '600', color: isSelected ? c.background : c.subtext }}>
+                                                        Spot
+                                                    </Text>
+                                                </View>
+                                            )}
                                         </Pressable>
                                     );
                                 })}
