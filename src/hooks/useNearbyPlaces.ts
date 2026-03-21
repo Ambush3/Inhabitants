@@ -17,16 +17,15 @@ export function useNearbyPlaces() {
 
     const abortRef = useRef<AbortController | null>(null);
 
-    async function loadNearbySkateParks(lat: number, lng: number, radiusMeters = 8000, name?: string) {
-        await fetchPlaces(lat, lng, radiusMeters, 'skatepark');
+    async function loadNearbySkateParks(lat: number, lng: number, radiusMeters = 8000, name?: string, onLoaded?: (places: Place[]) => void) {
+        await fetchPlaces(lat, lng, radiusMeters, 'skatepark', name, onLoaded);
     }
 
-    async function loadNearbySkateShops(lat: number, lng: number, radiusMeters = 8000, name?: string) {
-        await fetchPlaces(lat, lng, radiusMeters, 'skateshop');
+    async function loadNearbySkateShops(lat: number, lng: number, radiusMeters = 8000, name?: string, onLoaded?: (places: Place[]) => void) {
+        await fetchPlaces(lat, lng, radiusMeters, 'skateshop', name, onLoaded);
     }
 
-    async function fetchPlaces(lat: number, lng: number, radiusMeters: number, type: 'skatepark' | 'skateshop', name?: string) {
-        const setLoading = type === 'skatepark' ? setParksLoading : setShopsLoading;
+    async function fetchPlaces(lat: number, lng: number, radiusMeters: number, type: 'skatepark' | 'skateshop', name?: string, onLoaded?: (places: Place[]) => void) {        const setLoading = type === 'skatepark' ? setParksLoading : setShopsLoading;
         setLoading(true);
         if (Platform.OS === 'web') {
             setError('Nearby search is native-only for now.');
@@ -102,7 +101,11 @@ export function useNearbyPlaces() {
                     .filter((p: Place | null): p is Place => p !== null);
 
                 setError(normalized.length === 0 ? emptyMessage : null);
-                setPlaces(normalized);
+                if (onLoaded) {
+                    onLoaded(normalized)
+                } else {
+                    setPlaces(normalized)
+                }
                 lastError = null;
                 break;
 
