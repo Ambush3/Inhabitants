@@ -11,7 +11,8 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "We use your location to center the map near you."
+        "NSLocationWhenInUseUsageDescription": "We use your location to center the map near you.",
+        "LSApplicationQueriesSchemes": ["comgooglemaps", "googlemaps"]
       },
       "bundleIdentifier": "com.anonymous.SkateSpotApp"
     },
