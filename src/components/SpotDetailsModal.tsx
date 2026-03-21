@@ -95,7 +95,7 @@ export function SpotDetailsModal({
     async function handleShare() {
         if (!spot) return;
         await Share.share({
-            message: `Check out this skate spot: ${spot.name}\nhttps://maps.apple.com/?q=${spot.lat},${spot.lng}`,
+            message: `Check out this skate spot: ${spot.name}\n\nskatespotapp://spot/${spot.id}`,
         });
     }
 

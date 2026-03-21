@@ -5,6 +5,7 @@ import MapView, { Marker, Region, LongPressEvent, MapMarker } from 'react-native
 import * as Location from 'expo-location';
 import * as Haptics from 'expo-haptics';
 import * as ExpoSplashScreen from 'expo-splash-screen'
+import { useLocalSearchParams } from 'expo-router';
 import SplashScreen from '../src/components/SplashScreen'
 
 import { useFocusEffect } from 'expo-router';
@@ -121,6 +122,7 @@ export default function Index() {
     const insets = useSafeAreaInsets();
 
     const { spots, mySpots, mySpotsLoading, error, setError, reload, loadMySpots, createSpotAt, deleteSpotById, searchResults, searchByTag, clearSearch, toggleSpotPrivacy } = useSpots();
+    const { deepLinkSpotId } = useLocalSearchParams<{ deepLinkSpotId?: string }>();
 
     const visibleSpots = searchResults.length > 0 ? searchResults : spots;
     const displayError = error ?? nearbyError ?? topRatedError;
@@ -321,6 +323,14 @@ export default function Index() {
             resetTheme();
         }
     }, [session?.user.id]);
+
+    useEffect(() => {
+        if (!deepLinkSpotId || !spots.length) return;
+        const spot = spots.find(s => s.id === deepLinkSpotId);
+        if (!spot) return;
+        animateToSpotWithModalOffset(spot.lat, spot.lng);
+        openSpotDetails(spot);
+    }, [deepLinkSpotId, spots]);
 
     if (Platform.OS === 'web') {
         return (

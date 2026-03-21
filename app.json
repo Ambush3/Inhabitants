@@ -12,7 +12,8 @@
       "supportsTablet": true,
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "We use your location to center the map near you."
-      }
+      },
+      "bundleIdentifier": "com.anonymous.SkateSpotApp"
     },
     "android": {
       "adaptiveIcon": {
