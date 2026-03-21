@@ -165,38 +165,43 @@ export function SpotDetailsModal({
                         contentContainerStyle={{ paddingBottom: 32 }}
                     >
                         {/* Header */}
-                        <View style={styles.header}>
-                            <View style={{ flex: 1, minWidth: 0 }}>
-                                <Text style={[styles.spotName, { color: c.text }]} numberOfLines={1} ellipsizeMode="tail">
-                                    {spot?.name ?? 'Spot'}
-                                </Text>
-                                {creatorUsername ? (
-                                    <Text style={[styles.creatorText, { color: c.subtext }]}>
-                                        @{creatorUsername}
+                        <View style={{ marginBottom: 10 }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 4 }}>
+                                <View style={{ flex: 1, minWidth: 0 }}>
+                                    <Text style={[styles.spotName, { color: c.text }]} numberOfLines={2} ellipsizeMode="tail">
+                                        {spot?.name ?? 'Spot'}
                                     </Text>
-                                ) : null}
+                                    {creatorUsername ? (
+                                        <Text style={[styles.creatorText, { color: c.subtext }]}>
+                                            @{creatorUsername}
+                                        </Text>
+                                    ) : null}
+                                </View>
                             </View>
-
-                            <View style={styles.headerActions}>
-                                <Pressable onPress={handleShare} style={styles.iconBtn}>
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', gap: 4 }}>
+                                <Pressable onPress={handleShare} style={[styles.iconBtn, { alignItems: 'center' }]}>
                                     <Ionicons name="share-outline" size={20} color={c.subtext} />
+                                    <Text style={{ fontSize: 9, color: c.subtext, marginTop: 2 }}>Share</Text>
                                 </Pressable>
-                                <Pressable onPress={handleDirections} style={styles.iconBtn}>
+                                <Pressable onPress={handleDirections} style={[styles.iconBtn, { alignItems: 'center' }]}>
                                     <Ionicons name="navigate-outline" size={20} color="#007AFF" />
+                                    <Text style={{ fontSize: 9, color: '#007AFF', marginTop: 2 }}>Directions</Text>
                                 </Pressable>
-                                <Pressable onPress={onToggleFavorite} style={styles.iconBtn}>
+                                <Pressable onPress={onToggleFavorite} style={[styles.iconBtn, { alignItems: 'center' }]}>
                                     <Ionicons
                                         name={isFavorite ? 'bookmark' : 'bookmark-outline'}
                                         size={20}
                                         color={isFavorite ? '#FF3B30' : c.subtext}
                                     />
+                                    <Text style={{ fontSize: 9, color: isFavorite ? '#FF3B30' : c.subtext, marginTop: 2 }}>Save</Text>
                                 </Pressable>
-                                <Pressable onPress={onToggleWishlist} style={styles.iconBtn}>
+                                <Pressable onPress={onToggleWishlist} style={[styles.iconBtn, { alignItems: 'center' }]}>
                                     <Ionicons
                                         name={isWishlisted ? 'star' : 'star-outline'}
                                         size={20}
                                         color={isWishlisted ? '#FF9500' : c.subtext}
                                     />
+                                    <Text style={{ fontSize: 9, color: isWishlisted ? '#FF9500' : c.subtext, marginTop: 2 }}>Wishlist</Text>
                                 </Pressable>
                             </View>
                         </View>
@@ -308,72 +313,80 @@ export function SpotDetailsModal({
                             </View>
                         ) : null}
 
-                        <View style={styles.tagsRow}>
-                            {(Object.keys(CONDITION_META) as SpotCondition[]).map((condition) => {
-                                const meta = CONDITION_META[condition];
-                                const isActive = activeConditions.includes(condition);
-                                const isMine = myConditions.includes(condition);
-
-                                if (!isActive && !isMine) return null;
-
-                                return (
-                                    <Pressable
-                                        key={condition}
-                                        onPress={() => onToggleCondition(condition)}
-                                        style={{
-                                            flexDirection: 'row',
-                                            alignItems: 'center',
-                                            gap: 4,
-                                            paddingHorizontal: 8,
-                                            paddingVertical: 4,
-                                            borderRadius: 20,
-                                            backgroundColor: meta.bg,
-                                            borderWidth: isMine ? 1.5 : 0,
-                                            borderColor: isMine ? meta.color : 'transparent',
-                                        }}
-                                    >
-                                        <Text style={{ fontSize: 11 }}>{meta.icon}</Text>
-                                        <Text style={{ fontSize: 11, color: meta.color, fontWeight: isMine ? '700' : '500' }}>
-                                            {meta.label}
+                        {spot?.spot_type === 'spot' ? (
+                            <>
+                                {activeConditions.length > 0 ? (
+                                    <>
+                                        <View style={[styles.divider, { backgroundColor: c.border, marginVertical: 8 }]} />
+                                        <Text style={{ fontSize: 11, color: c.subtext, marginBottom: 0, fontWeight: '600', letterSpacing: 0.5 }}>
+                                            CURRENT CONDITION
                                         </Text>
-                                    </Pressable>
-                                );
-                            })}
-                        </View>
+                                        <View style={styles.tagsRow}>
+                                            {activeConditions.map((condition) => {
+                                                const meta = CONDITION_META[condition];
+                                                const isMine = myConditions.includes(condition);
+                                                return (
+                                                    <Pressable
+                                                        key={condition}
+                                                        onPress={() => onToggleCondition(condition)}
+                                                        style={{
+                                                            flexDirection: 'row',
+                                                            alignItems: 'center',
+                                                            gap: 4,
+                                                            paddingHorizontal: 8,
+                                                            paddingVertical: 4,
+                                                            borderRadius: 20,
+                                                            backgroundColor: meta.bg,
+                                                            borderWidth: isMine ? 1.5 : 0,
+                                                            borderColor: isMine ? meta.color : 'transparent',
+                                                        }}
+                                                    >
+                                                        <Text style={{ fontSize: 11 }}>{meta.icon}</Text>
+                                                        <Text style={{ fontSize: 11, color: meta.color, fontWeight: isMine ? '700' : '500' }}>
+                                                            {meta.label}
+                                                        </Text>
+                                                    </Pressable>
+                                                );
+                                            })}
+                                        </View>
+                                    </>
+                                ) : null}
 
-                        <View style={{ marginTop: 6, marginBottom: 4 }}>
-                            <Text style={{ fontSize: 11, color: c.subtext, marginBottom: 6, fontWeight: '600', letterSpacing: 0.5 }}>
-                                REPORT CONDITION
-                            </Text>
-                            <View style={styles.tagsRow}>
-                                {(Object.keys(CONDITION_META) as SpotCondition[]).map((condition) => {
-                                    const meta = CONDITION_META[condition];
-                                    const isMine = myConditions.includes(condition);
-                                    return (
-                                        <Pressable
-                                            key={condition}
-                                            onPress={() => onToggleCondition(condition)}
-                                            style={{
-                                                flexDirection: 'row',
-                                                alignItems: 'center',
-                                                gap: 4,
-                                                paddingHorizontal: 8,
-                                                paddingVertical: 4,
-                                                borderRadius: 20,
-                                                backgroundColor: isMine ? meta.bg : c.tagBg,
-                                                borderWidth: 1,
-                                                borderColor: isMine ? meta.color : c.border,
-                                            }}
-                                        >
-                                            <Text style={{ fontSize: 11 }}>{meta.icon}</Text>
-                                            <Text style={{ fontSize: 11, color: isMine ? meta.color : c.subtext, fontWeight: isMine ? '700' : '400' }}>
-                                                {meta.label}
-                                            </Text>
-                                        </Pressable>
-                                    );
-                                })}
-                            </View>
-                        </View>
+                                <View style={{ marginTop: 6, marginBottom: 4 }}>
+                                    <Text style={{ fontSize: 11, color: c.subtext, marginBottom: 0, fontWeight: '600', letterSpacing: 0.5 }}>
+                                        REPORT CONDITION
+                                    </Text>
+                                    <View style={styles.tagsRow}>
+                                        {(Object.keys(CONDITION_META) as SpotCondition[]).map((condition) => {
+                                            const meta = CONDITION_META[condition];
+                                            const isMine = myConditions.includes(condition);
+                                            return (
+                                                <Pressable
+                                                    key={condition}
+                                                    onPress={() => onToggleCondition(condition)}
+                                                    style={{
+                                                        flexDirection: 'row',
+                                                        alignItems: 'center',
+                                                        gap: 4,
+                                                        paddingHorizontal: 8,
+                                                        paddingVertical: 4,
+                                                        borderRadius: 20,
+                                                        backgroundColor: isMine ? meta.bg : c.tagBg,
+                                                        borderWidth: 1,
+                                                        borderColor: isMine ? meta.color : c.border,
+                                                    }}
+                                                >
+                                                    <Text style={{ fontSize: 11 }}>{meta.icon}</Text>
+                                                    <Text style={{ fontSize: 11, color: isMine ? meta.color : c.subtext, fontWeight: isMine ? '700' : '400' }}>
+                                                        {meta.label}
+                                                    </Text>
+                                                </Pressable>
+                                            );
+                                        })}
+                                    </View>
+                                </View>
+                            </>
+                        ) : null}
 
                         {/* Divider */}
                         <View style={[styles.divider, { backgroundColor: c.border }]} />

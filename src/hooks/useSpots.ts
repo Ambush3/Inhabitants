@@ -55,7 +55,8 @@ export function useSpots() {
         description?: string,
         initialRating?: number,
         tags: string[] = [],
-        isPrivate: boolean = false
+        isPrivate: boolean = false,
+        spotType: 'spot' | 'skatepark' | 'skateshop' = 'spot'
     ): Promise<Spot | undefined> {
         setError(null);
 
@@ -75,6 +76,7 @@ export function useSpots() {
                 user_id: (await supabase.auth.getUser()).data.user?.id,
                 tags,
                 is_private: isPrivate,
+                spot_type: spotType,
             })
             .select()
             .single();
@@ -114,6 +116,7 @@ export function useSpots() {
         }
 
         setSpots(prev => prev.map(s => s.id === spot.id ? { ...s, is_private: !s.is_private } : s));
+        setMySpots(prev => prev.map(s => s.id === spot.id ? { ...s, is_private: !s.is_private } : s));
     }
 
     async function deleteSpotById(id: string, onDeleted?: () => void) {
@@ -127,6 +130,7 @@ export function useSpots() {
         }
 
         setSpots((prev) => prev.filter((s) => s.id !== id));
+        setMySpots((prev) => prev.filter((s) => s.id !== id));
         onDeleted?.();
     }
 

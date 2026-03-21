@@ -51,6 +51,8 @@ export default function Index() {
     const autoCenterRef = useRef(true);
     const markerRefs = useRef<Record<string, MapMarker | null>>({});
 
+    const placesTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
     const {
         reviews: spotReviews,
         avgRating,
@@ -68,7 +70,7 @@ export default function Index() {
     const { favorites, loading: favLoading, loadFavorites, toggleFavorite, isFavorite } = useFavorites();
     const { wishlist, wishlistLoading, loadWishlist, toggleWishlist, isWishlisted } = useWishlist();
     const { places, setPlaces, parksLoading, shopsLoading, error: nearbyError, loadNearbySkateParks, loadNearbySkateShops, fetchPlaceById } = useNearbyPlaces();
-    const { topRated, topLoading, error: topRatedError, loadTopRatedSpotsInArea } = useTopRated();
+    const { topRated, topLoading, error: topRatedError, loadTopRatedSpotsInArea, clearTopRated } = useTopRated();
 
     const [spotIsPrivate, setSpotIsPrivate] = useState(false);
 
@@ -111,7 +113,9 @@ export default function Index() {
 
     const [showSplash, setShowSplash] = useState(true)
 
-    const { theme } = useTheme();
+    const [spotType, setSpotType] = useState<'spot' | 'skatepark' | 'skateshop'>('spot')
+
+    const { theme, loadThemeForUser, resetTheme } = useTheme();
     const c = theme.colors;
 
     const insets = useSafeAreaInsets();
@@ -131,6 +135,7 @@ export default function Index() {
         setPendingImages([]);
         setSpotIsPrivate(false);
         setSpotComment('');
+        setSpotType('spot');
     }
 
     function closeDetailsModal() {
@@ -148,6 +153,14 @@ export default function Index() {
         }
         openedFromPanelRef.current = false;
         resetConditions();
+    }
+
+    function setPlacesWithAutoClear(updater: (prev: Place[]) => Place[]) {
+        if (placesTimerRef.current) clearTimeout(placesTimerRef.current)
+        setPlaces(updater)
+        placesTimerRef.current = setTimeout(() => {
+            setPlaces([])
+        }, 120000)
     }
 
     function animateToSpotWithModalOffset(lat: number, lng: number) {
@@ -301,6 +314,14 @@ export default function Index() {
         }
     }, [refreshing]);
 
+    useEffect(() => {
+        if (session?.user.id) {
+            loadThemeForUser(session.user.id);
+        } else {
+            resetTheme();
+        }
+    }, [session?.user.id]);
+
     if (Platform.OS === 'web') {
         return (
             <SafeAreaView style={{ flex: 1, backgroundColor: c.headerBg }}>
@@ -397,20 +418,60 @@ export default function Index() {
                         mySpotsLoading={mySpotsLoading}
                         onLoadSkateparks={() => {
                             setPanelOpen(false);
-                            loadNearbySkateParks(mapRegionRef.current.latitude, mapRegionRef.current.longitude, 20000);
+                            const communityParks = spots
+                                .filter(s => s.spot_type === 'skatepark')
+                                .map(s => ({
+                                    id: s.id,
+                                    name: s.name,
+                                    type: 'skatepark' as const,
+                                    lat: s.lat,
+                                    lng: s.lng,
+                                    tags: {},
+                                }));
+                            loadNearbySkateParks(
+                                mapRegionRef.current.latitude,
+                                mapRegionRef.current.longitude,
+                                20000,
+                                undefined,
+                                (googleParks) => {
+                                    setPlaces([...communityParks, ...googleParks]);
+                                }
+                            );
                         }}
+
                         onLoadSkateShops={() => {
                             setPanelOpen(false);
-                            loadNearbySkateShops(mapRegionRef.current.latitude, mapRegionRef.current.longitude, 20000);
+                            const communityShops = spots
+                                .filter(s => s.spot_type === 'skateshop')
+                                .map(s => ({
+                                    id: s.id,
+                                    name: s.name,
+                                    type: 'skateshop' as const,
+                                    lat: s.lat,
+                                    lng: s.lng,
+                                    tags: {},
+                                }));
+                            loadNearbySkateShops(
+                                mapRegionRef.current.latitude,
+                                mapRegionRef.current.longitude,
+                                20000,
+                                undefined,
+                                (googleShops) => {
+                                    setPlaces([...communityShops, ...googleShops]);
+                                }
+                            );
                         }}
                         onLoadTopRated={async () => {
                             const topSpot = await loadTopRatedSpotsInArea(mapRegionRef.current, 10);
                             if (topSpot) {
                                 mapRef.current?.animateToRegion(
                                     { latitude: topSpot.lat, longitude: topSpot.lng, latitudeDelta: 0.05, longitudeDelta: 0.05 },
-                                    600
+                                    1200
                                 );
                             }
+                            setTimeout(() => {
+                                clearTopRated()
+                            }, 10000)
                         }}
                         onSelectSpot={(s) => {
                             setPanelOpen(false);
@@ -445,7 +506,7 @@ export default function Index() {
                             const resolved = full ?? p;
                             setSelectedPlace(resolved);
                             setPlaceDetailsOpen(true);
-                            setPlaces(prev => prev.some(x => x.id === resolved.id) ? prev : [...prev, resolved]);
+                            setPlacesWithAutoClear(prev => prev.some(x => x.id === resolved.id) ? prev : [...prev, resolved]);
                             setTimeout(() => {
                                 markerRefs.current[p.id]?.showCallout();
                             }, 650);
@@ -495,24 +556,41 @@ export default function Index() {
                                     pinColor="orange"
                                 />
                             ) : null}
-                            {visibleSpots.map((s) => (
-                                <Marker
-                                    ref={(ref) => { markerRefs.current[s.id] = ref; }}
-                                    key={s.id}
-                                    coordinate={{ latitude: s.lat, longitude: s.lng }}
-                                    title={s.name}
-                                    description={s.description ?? undefined}
-                                    pinColor={
-                                        s.id === highlightSpotId
-                                            ? (s.user_id === session?.user.id ? '#22CC00' : '#A0A0A0')
-                                            : (s.user_id === session?.user.id ? '#39FF14' : '#6B6B6B')
-                                    }
-                                    onPress={() => {
-                                        setHighlightSpotId(s.id);
-                                        animateToSpotWithModalOffset(s.lat, s.lng);
-                                        openSpotDetails(s);
-                                    }}
-                                />
+                            {visibleSpots.filter(s => s.spot_type === 'spot' || s.id === highlightSpotId).map((s) => (
+                                s.spot_type === 'spot' ? (
+                                    <Marker
+                                        ref={(ref) => { markerRefs.current[s.id] = ref; }}
+                                        key={s.id}
+                                        coordinate={{ latitude: s.lat, longitude: s.lng }}
+                                        title={s.name}
+                                        description={s.description ?? undefined}
+                                        pinColor={
+                                            s.id === highlightSpotId
+                                                ? (s.user_id === session?.user.id ? '#22CC00' : '#A0A0A0')
+                                                : (s.user_id === session?.user.id ? '#39FF14' : '#6B6B6B')
+                                        }
+                                        onPress={() => {
+                                            setHighlightSpotId(s.id);
+                                            animateToSpotWithModalOffset(s.lat, s.lng);
+                                            openSpotDetails(s);
+                                        }}
+                                    />
+                                ) : (
+                                    <SkateMarker
+                                        ref={(ref) => { markerRefs.current[s.id] = ref; }}
+                                        key={s.id}
+                                        id={s.id}
+                                        lat={s.lat}
+                                        lng={s.lng}
+                                        name={s.name}
+                                        type={s.spot_type as 'skatepark' | 'skateshop'}
+                                        onPress={() => {
+                                            setHighlightSpotId(s.id);
+                                            animateToSpotWithModalOffset(s.lat, s.lng);
+                                            openSpotDetails(s);
+                                        }}
+                                    />
+                                )
                             ))}
                             {places.map((p) => (
                                 <SkateMarker
@@ -524,12 +602,19 @@ export default function Index() {
                                     name={p.name}
                                     type={p.type as 'skatepark' | 'skateshop'}
                                     onPress={() => {
-                                        setSelectedPlaceId(p.id);
-                                        setSelectedPlace(p);
-                                        setPlaceDetailsOpen(true);
-                                        setTimeout(() => {
-                                            markerRefs.current[p.id]?.showCallout();
-                                        }, 300);
+                                        const communitySpot = spots.find(s => s.id === p.id);
+                                        if (communitySpot) {
+                                            setHighlightSpotId(communitySpot.id);
+                                            animateToSpotWithModalOffset(communitySpot.lat, communitySpot.lng);
+                                            openSpotDetails(communitySpot);
+                                        } else {
+                                            setSelectedPlaceId(p.id);
+                                            setSelectedPlace(p);
+                                            setPlaceDetailsOpen(true);
+                                            setTimeout(() => {
+                                                markerRefs.current[p.id]?.showCallout();
+                                            }, 300);
+                                        }
                                     }}
                                 />
                             ))}
@@ -581,7 +666,7 @@ export default function Index() {
                         onTogglePrivate={() => setSpotIsPrivate(prev => !prev)}
                         onCreate={async () => {
                             if (!pendingCoord) return;
-                            const newSpot = await createSpotAt(pendingCoord.lat, pendingCoord.lng, spotName, spotDesc, spotRating, spotTags, spotIsPrivate);
+                            const newSpot = await createSpotAt(pendingCoord.lat, pendingCoord.lng, spotName, spotDesc, spotRating, spotTags, spotIsPrivate, spotType);
                             if (newSpot) {
                                 await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                                 if (pendingImages.length > 0) {
@@ -591,12 +676,31 @@ export default function Index() {
                                     await submitReview(newSpot.id, spotRating, spotComment);
                                 }
                                 await loadMySpots();
+
+                                if (newSpot.spot_type === 'skatepark' || newSpot.spot_type === 'skateshop') {
+                                    setPlacesWithAutoClear(prev => [...prev, {
+                                        id: newSpot.id,
+                                        name: newSpot.name,
+                                        type: newSpot.spot_type as 'skatepark' | 'skateshop',
+                                        lat: newSpot.lat,
+                                        lng: newSpot.lng,
+                                        tags: {},
+                                    }]);
+                                    setTimeout(() => {
+                                        setPlacesWithAutoClear(prev => prev.filter(p => p.id !== newSpot.id));
+                                    }, 4000);
+                                }
                             }
                             closeCreateModal();
                         }}
                         pendingImages={pendingImages}
                         onAddImage={(uri) => setPendingImages(prev => prev.includes(uri) ? prev : [...prev, uri])}
                         onRemoveImage={(uri) => setPendingImages(prev => prev.filter(u => u !== uri))}
+                        spotType={spotType}
+                        onChangeSpotType={(v) => {
+                            setSpotType(v);
+                            if (v !== 'spot') setSpotIsPrivate(false);
+                        }}
                     />
 
                     {/* Details Modal */}
