@@ -94,8 +94,9 @@ export function SpotDetailsModal({
 
     async function handleShare() {
         if (!spot) return;
+        const label = spot.spot_type === 'skateshop' ? 'skate shop' : spot.spot_type === 'skatepark' ? 'skate park' : 'skate spot';
         await Share.share({
-            message: `Check out this skate spot: ${spot.name}\n\nskatespotapp://spot/${spot.id}`,
+            message: `Check out this ${label}: ${spot.name}\n\nskatespotapp://spot/${spot.id}`,
         });
     }
 

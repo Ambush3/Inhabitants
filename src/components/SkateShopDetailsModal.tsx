@@ -73,8 +73,9 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
                         await Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${place.lat},${place.lng}`);
                     }
                 } else if (buttonIndex === 3) {
+                    const label = place.type === 'skateshop' ? 'skate shop' : 'skate park';
                     await Share.share({
-                        message: `Check out this skate location: ${place.name}\nhttps://maps.apple.com/?q=${place.lat},${place.lng}`,
+                        message: `Check out this ${label}: ${place.name}\nhttps://maps.apple.com/?q=${place.lat},${place.lng}`,
                     });
                 }
             }

@@ -16,11 +16,10 @@ export default function SpotDeepLink() {
         }
 
         async function loadAndNavigate() {
-            const { data, error } = await supabase
-                .from('spots')
-                .select('*')
-                .eq('id', id)
-                .single();
+            const [{ data, error }] = await Promise.all([
+                supabase.from('spots').select('*').eq('id', id).single(),
+                new Promise(resolve => setTimeout(resolve, 2000))
+            ]);
 
             if (error || !data) {
                 router.replace('/');
