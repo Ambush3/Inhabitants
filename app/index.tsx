@@ -45,6 +45,7 @@ const DEFAULT_REGION: Region = {
 export default function Index() {
     const mapRef = useRef<MapView | null>(null);
     const mapRegionRef = useRef<Region>(DEFAULT_REGION);
+    const userLocationRef = useRef<Region | null>(null);
     const preModalRegionRef = useRef<Region>(DEFAULT_REGION);
 
     const autoCenterRef = useRef(true);
@@ -56,6 +57,7 @@ export default function Index() {
 
     const pendingDeepLinkRef = useRef<string | null>(null);
     const hasOpenedDeepLinkRef = useRef(false);
+    const openedFromDeepLinkRef = useRef(false);
 
     const {
         reviews: spotReviews,
@@ -92,7 +94,6 @@ export default function Index() {
 
     const [useDeviceLocation, setUseDeviceLocation] = useState(true);
     const [locationReady, setLocationReady] = useState(false)
-    const [initialRegion, setInitialRegion] = useState<Region>(DEFAULT_REGION)
 
     const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null)
 
@@ -123,7 +124,22 @@ export default function Index() {
     const insets = useSafeAreaInsets();
 
     const { spots, mySpots, mySpotsLoading, error, setError, reload, loadMySpots, createSpotAt, deleteSpotById, searchResults, searchByTag, clearSearch, toggleSpotPrivacy } = useSpots();
-    const { deepLinkSpotId } = useLocalSearchParams<{ deepLinkSpotId?: string }>();
+
+    const { deepLinkSpotId, deepLinkLat, deepLinkLng } = useLocalSearchParams<{
+        deepLinkSpotId?: string;
+        deepLinkLat?: string;
+        deepLinkLng?: string;
+    }>();
+
+    const deepLinkRegion = deepLinkLat && deepLinkLng ? {
+        latitude: parseFloat(deepLinkLat) - (0.03 * 0.45),
+        longitude: parseFloat(deepLinkLng),
+        latitudeDelta: 0.03,
+        longitudeDelta: 0.03,
+    } : null;
+
+    const [initialRegion, setInitialRegion] = useState<Region>(deepLinkRegion ?? DEFAULT_REGION);
+
     const [showSplash, setShowSplash] = useState(!deepLinkSpotId)
 
     const visibleSpots = searchResults.length > 0 ? searchResults : spots;
@@ -160,6 +176,12 @@ export default function Index() {
             setTimeout(() => {
                 markerRefs.current[idToHide]?.hideCallout?.();
             }, 100);
+            if (openedFromDeepLinkRef.current) {
+                setPlaces([]);
+            }
+            openedFromDeepLinkRef.current = false;
+        } else {
+            console.log('idToHide was null, skipping places clear');
         }
 
         highlightSpotIdRef.current = null;
@@ -299,18 +321,14 @@ export default function Index() {
                 longitudeDelta: 0.08,
             }
 
-            mapRegionRef.current = nextRegion
-            setInitialRegion(nextRegion)
-            setLocationReady(true)
-            setUseDeviceLocation(false)
-
-            if (!pendingDeepLinkRef.current) {
-                setInitialRegion(nextRegion)
+            mapRegionRef.current = nextRegion;
+            userLocationRef.current = nextRegion;
+            if (!deepLinkRegion) {
+                setInitialRegion(nextRegion);
                 mapRef.current?.animateToRegion(nextRegion, 600);
             }
-
-            setLocationReady(true)
-            setUseDeviceLocation(false)
+            setLocationReady(true);
+            setUseDeviceLocation(false);
         })();
     }, [useDeviceLocation]);
 
@@ -374,6 +392,8 @@ export default function Index() {
 
         setTimeout(() => {
             preModalRegionRef.current = spotRegion;
+            openedFromDeepLinkRef.current = true;
+            highlightSpotIdRef.current = spot.id;
             mapRef.current?.animateToRegion(spotRegion, 400);
             openSpotDetails(spot);
         }, 1500);
@@ -688,7 +708,11 @@ export default function Index() {
                     <Pressable
                         onPress={() => {
                             autoCenterRef.current = true;
-                            setUseDeviceLocation(true);
+                            if (userLocationRef.current) {
+                                mapRef.current?.animateToRegion(userLocationRef.current, 600);
+                            } else {
+                                setUseDeviceLocation(true);
+                            }
                         }}
                         style={{
                             position: 'absolute',

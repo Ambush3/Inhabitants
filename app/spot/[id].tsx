@@ -4,6 +4,8 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { supabase } from '@/src/libs/supabase';
 import { useTheme } from '@/src/context/ThemeContext';
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 export default function SpotDeepLink() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const { theme } = useTheme();
@@ -16,19 +18,34 @@ export default function SpotDeepLink() {
         }
 
         async function loadAndNavigate() {
-            const [{ data, error }] = await Promise.all([
+            const [{ data: { session } }, spotResult] = await Promise.all([
+                supabase.auth.getSession(),
                 supabase.from('spots').select('*').eq('id', id).single(),
                 new Promise(resolve => setTimeout(resolve, 2000))
             ]);
 
-            if (error || !data) {
-                router.replace('/');
+            if (!spotResult.data) {
+                router.replace('/auth');
+                return;
+            }
+
+            if (!session) {
+                await AsyncStorage.setItem('pendingDeepLink', JSON.stringify({
+                    id: spotResult.data.id,
+                    lat: spotResult.data.lat,
+                    lng: spotResult.data.lng,
+                }));
+                router.replace('/auth');
                 return;
             }
 
             router.replace({
                 pathname: '/',
-                params: { deepLinkSpotId: data.id },
+                params: {
+                    deepLinkSpotId: spotResult.data.id,
+                    deepLinkLat: spotResult.data.lat,
+                    deepLinkLng: spotResult.data.lng,
+                },
             });
         }
 
