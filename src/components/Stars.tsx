@@ -18,7 +18,7 @@ export function Stars({ value, onChange, size = 26, disabled = false }: Props) {
                 <Pressable
                     key={n}
                     disabled={disabled}
-                    onPress={() => onChange(n)}
+                    onPress={() => onChange(n === value ? 0 : n)}
                 >
                     <Text style={{ fontSize: size, color: n <= value ? '#f5a623' : theme.colors.text }}>
                         {n <= value ? '★' : '☆'}

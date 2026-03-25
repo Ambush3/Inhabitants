@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, Modal, ScrollView, Pressable, TextInput, Image } from 'react-native';
+import { View, Text, Modal, ScrollView, Pressable, TextInput } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Place, Spot } from '@/src/types';
 import { Ionicons } from '@expo/vector-icons';
@@ -181,10 +181,7 @@ export function ExplorePanel({
                                     disabled={parksLoading}
                                     style={{ backgroundColor: c.tagBg, borderRadius: 8, padding: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: parksLoading ? 0.6 : 1, marginBottom: 10 }}
                                 >
-                                    <Image
-                                        source={require('../../assets/icons/skatepark-ramp.png')}
-                                        style={{ width: 16, height: 16, tintColor: c.text }}
-                                    />
+                                    <Text style={{ fontSize: 16 }}>🛹</Text>
                                     <Text style={{ color: c.text, fontWeight: '600' }}>{parksLoading ? 'Searching...' : 'Local Skate Parks'}</Text>
                                 </Pressable>
 
@@ -193,17 +190,17 @@ export function ExplorePanel({
                                     disabled={shopsLoading}
                                     style={{ backgroundColor: c.tagBg, borderRadius: 8, padding: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: shopsLoading ? 0.6 : 1, marginBottom: 10 }}
                                 >
-                                    <Ionicons name="storefront-outline" size={16} color={c.text} />
+                                    <Text style={{ fontSize: 16 }}>🛒</Text>
                                     <Text style={{ color: c.text, fontWeight: '600' }}>{shopsLoading ? 'Searching...' : 'Local Skate Shops'}</Text>
                                 </Pressable>
 
                                 <Pressable
                                     onPress={onLoadTopRated}
                                     disabled={topLoading}
-                                    style={{ backgroundColor: c.tagBg, borderRadius: 8, padding: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: topLoading ? 0.6 : 1, marginBottom: topRated.length > 0 ? 10 : 16 }}
+                                    style={{ backgroundColor: c.tagBg, borderRadius: 8, padding: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: topLoading ? 0.6 : 1, marginBottom: 10 }}
                                 >
-                                    <Ionicons name="star-outline" size={16} color={c.text} />
-                                    <Text style={{ color: c.text, fontWeight: '600' }}>{topLoading ? 'Loading...' : 'Top Rated Nearby'}</Text>
+                                    <Text style={{ fontSize: 16 }}>⭐</Text>
+                                    <Text style={{ color: c.text, fontWeight: '600' }}>{topLoading ? 'Searching...' : 'Top Rated Nearby'}</Text>
                                 </Pressable>
 
                                 {topRated.length > 0 ? (
@@ -270,7 +267,7 @@ export function ExplorePanel({
                         {activeTab === 'myspots' ? (
                             <View>
                                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                                    <Image source={require('../../assets/icons/skateboard.png')} style={{ width: 11, height: 11, tintColor: c.subtext }} />
+                                    <Text style={{ fontSize: 16 }}>📍</Text>
                                     <Text style={{ fontSize: 11, fontWeight: '600', color: c.subtext, letterSpacing: 0.8 }}>MY SPOTS</Text>
                                 </View>
                                 {mySpotsLoading ? (
@@ -326,7 +323,7 @@ export function ExplorePanel({
                                 {myCreatedParks.length > 0 ? (
                                     <View style={{ marginTop: 20 }}>
                                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                                            <Image source={require('../../assets/icons/skatepark-ramp.png')} style={{ width: 11, height: 11, tintColor: c.subtext }} />
+                                            <Text style={{ fontSize: 16 }}>🛹</Text>
                                             <Text style={{ fontSize: 11, fontWeight: '600', color: c.subtext, letterSpacing: 0.8 }}>MY PARKS</Text>
                                         </View>
                                         {myCreatedParks.map((s, index) => (
@@ -360,7 +357,7 @@ export function ExplorePanel({
                                 {myCreatedShops.length > 0 ? (
                                     <View style={{ marginTop: 20 }}>
                                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                                            <Image source={require('../../assets/icons/skate-shop.png')} style={{ width: 11, height: 11, tintColor: c.subtext }} />
+                                            <Text style={{ fontSize: 16 }}>🛒</Text>
                                             <Text style={{ fontSize: 11, fontWeight: '600', color: c.subtext, letterSpacing: 0.8 }}>MY SHOPS</Text>
                                         </View>
                                         {myCreatedShops.map((s, index) => (
