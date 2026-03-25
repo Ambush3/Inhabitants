@@ -49,6 +49,8 @@ export function useSpotConditions() {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
+        console.log('toggleCondition:', condition, 'myConditions:', myConditions, 'includes:', myConditions.includes(condition));
+
         if (myConditions.includes(condition)) {
             await supabase
                 .from('spot_conditions')
@@ -60,11 +62,16 @@ export function useSpotConditions() {
             setMyConditions(prev => prev.filter(c => c !== condition));
             setConditions(prev => prev.filter(r => !(r.user_id === user.id && r.condition === condition)));
         } else {
-            const { data } = await supabase
+            const { data, error } = await supabase
                 .from('spot_conditions')
-                .insert({ spot_id: spotId, user_id: user.id, condition })
+                .upsert(
+                    { spot_id: spotId, user_id: user.id, condition },
+                    { onConflict: 'spot_id,user_id,condition' }
+                )
                 .select()
                 .single();
+
+            console.log('insert result:', data, 'error:', error);
 
             if (data) {
                 setMyConditions(prev => [...prev, condition]);
