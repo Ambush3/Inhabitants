@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Modal, Pressable, ScrollView, Linking, StyleSheet, ActionSheetIOS, Share, Image } from 'react-native';
+import { View, Text, Modal, Pressable, ScrollView, Linking, StyleSheet, ActionSheetIOS, Share, Image, TextInput } from 'react-native';
 import { Place } from '@/src/types';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/src/context/ThemeContext';
 import { usePlaceReviews } from '@/src/hooks/usePlaceReviews';
+import { usePlaceOverrides } from '@/src/hooks/usePlaceOverrides';
 import { useAuth } from '@/src/hooks/useAuth';
 
 type Props = {
@@ -19,17 +20,16 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
     const c = theme.colors;
     const { session } = useAuth();
 
-    const {
-        avgRating,
-        reviewCount,
-        existingReviewId,
-        loadPlaceReviews,
-        submitPlaceReview,
-        deletePlaceReview,
-        resetPlaceReviews,
-    } = usePlaceReviews();
+    const { avgRating, reviewCount, existingReviewId, loadPlaceReviews, submitPlaceReview, deletePlaceReview, resetPlaceReviews } = usePlaceReviews();
+    const { override, isVetted, loadOverride, saveOverride, resetOverride } = usePlaceOverrides();
 
     const [pendingRating, setPendingRating] = useState(0);
+    const [editOpen, setEditOpen] = useState(false);
+    const [editPhone, setEditPhone] = useState('');
+    const [editWebsite, setEditWebsite] = useState('');
+    const [editHours, setEditHours] = useState('');
+    const [editAddress, setEditAddress] = useState('');
+    const [saving, setSaving] = useState(false);
 
     useEffect(() => {
         if (visible && place && session?.user.id) {
@@ -37,40 +37,66 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
                 const mine = reviews?.find((r: any) => r.user_id === session.user.id);
                 if (mine) setPendingRating(mine.rating);
             });
+            loadOverride(place.id, session.user.id);
         }
         if (!visible) {
             resetPlaceReviews();
+            resetOverride();
             setPendingRating(0);
+            setEditOpen(false);
         }
     }, [visible, place?.id]);
 
     const tags = place?.tags ?? {};
-    const phone = tags['phone'] ?? tags['contact:phone'] ?? null;
-    const website = tags['website'] ?? tags['contact:website'] ?? null;
-    const hours = tags['opening_hours'] ?? null;
-    const street = tags['addr:housenumber'] && tags['addr:street']
+
+    // Merge OSM data with community overrides — override takes priority
+    const phone = override?.phone ?? tags['phone'] ?? tags['contact:phone'] ?? null;
+    const website = override?.website ?? tags['website'] ?? tags['contact:website'] ?? null;
+    const hours = override?.hours ?? tags['opening_hours'] ?? null;
+    const osmStreet = tags['addr:housenumber'] && tags['addr:street']
         ? `${tags['addr:housenumber']} ${tags['addr:street']}`
         : tags['addr:street'] ?? null;
-    const city = tags['addr:city'] ?? null;
-    const address = [street, city].filter(Boolean).join(', ') || null;
+    const osmCity = tags['addr:city'] ?? null;
+    const osmAddress = [osmStreet, osmCity].filter(Boolean).join(', ') || null;
+    const address = override?.address ?? osmAddress;
+
+    function openEditModal() {
+        setEditPhone(phone ?? '');
+        setEditWebsite(website ?? '');
+        setEditHours(hours ?? '');
+        setEditAddress(address ?? '');
+        setEditOpen(true);
+    }
+
+    async function handleSave() {
+        if (!place || !session?.user.id) return;
+        setSaving(true);
+        const err = await saveOverride(place.id, session.user.id, {
+            phone: editPhone || undefined,
+            website: editWebsite || undefined,
+            hours: editHours || undefined,
+            address: editAddress || undefined,
+        });
+        setSaving(false);
+        if (!err) setEditOpen(false);
+    }
 
     function handleDirections() {
         if (!place) return;
         ActionSheetIOS.showActionSheetWithOptions(
-            {
-                options: ['Cancel', 'Open in Apple Maps', 'Open in Google Maps', 'Share Location'],
-                cancelButtonIndex: 0,
-            },
+            { options: ['Cancel', 'Open in Apple Maps', 'Open in Google Maps', 'Share Location'], cancelButtonIndex: 0 },
             async (buttonIndex) => {
                 if (buttonIndex === 1) {
-                    await Linking.openURL(`maps://app?daddr=${place.lat},${place.lng}`);
+                    const encodedName = encodeURIComponent(place.name);
+                    await Linking.openURL(`maps://app?q=${encodedName}&ll=${place.lat},${place.lng}`);
                 } else if (buttonIndex === 2) {
-                    const url = `comgooglemaps://?daddr=${place.lat},${place.lng}&directionsmode=driving`;
+                    const encodedName = encodeURIComponent(place.name);
+                    const url = `comgooglemaps://?q=${encodedName}&center=${place.lat},${place.lng}`;
                     const canOpen = await Linking.canOpenURL(url);
                     if (canOpen) {
                         await Linking.openURL(url);
                     } else {
-                        await Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${place.lat},${place.lng}`);
+                        await Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodedName}`);
                     }
                 } else if (buttonIndex === 3) {
                     await Share.share({
@@ -81,15 +107,10 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
         );
     }
 
-    async function handlePhone() {
-        if (!phone) return;
-        await Linking.openURL(`tel:${phone}`);
-    }
-
+    async function handlePhone() { if (phone) await Linking.openURL(`tel:${phone}`); }
     async function handleWebsite() {
         if (!website) return;
-        const url = website.startsWith('http') ? website : `https://${website}`;
-        await Linking.openURL(url);
+        await Linking.openURL(website.startsWith('http') ? website : `https://${website}`);
     }
 
     async function handleSubmitRating(rating: number) {
@@ -107,30 +128,25 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
     return (
         <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
             <View style={{ flex: 1, justifyContent: 'flex-end' }}>
-                <Pressable
-                    style={{ ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.3)' }}
-                    onPress={onClose}
-                />
+                <Pressable style={{ ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.3)' }} onPress={onClose} />
                 <View style={{ backgroundColor: c.surface, padding: 16, borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '65%' }}>
                     <ScrollView>
+                        {/* Header */}
                         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-                            <Image
-                                source={place?.type === 'skateshop'
-                                    ? require('../../assets/icons/skate-shop.png')
-                                    : require('../../assets/icons/skatepark-ramp.png')
-                                }
-                                style={{ width: 20, height: 20, tintColor: c.text }}
-                            />
+                            <Text style={{ fontSize: 14 }}>
+                                {place?.type === 'skateshop' ? '🛒' : '🛹'}
+                            </Text>
                             <Text style={{ fontSize: 18, fontWeight: '600', marginLeft: 8, flex: 1, color: c.text }}>{place?.name}</Text>
+                            {isVetted ? (
+                                <Pressable onPress={openEditModal} style={{ padding: 4, marginRight: 4 }}>
+                                    <Ionicons name="settings-outline" size={22} color={c.subtext} />
+                                </Pressable>
+                            ) : null}
                             <Pressable onPress={handleDirections} style={{ padding: 4 }}>
                                 <Ionicons name="share-outline" size={24} color="#007AFF" />
                             </Pressable>
                             <Pressable onPress={onToggleFavorite} style={{ padding: 4 }}>
-                                <Ionicons
-                                    name={isFavorite ? 'bookmark' : 'bookmark-outline'}
-                                    size={24}
-                                    color={isFavorite ? 'red' : c.subtext}
-                                />
+                                <Ionicons name={isFavorite ? 'bookmark' : 'bookmark-outline'} size={24} color={isFavorite ? 'red' : c.subtext} />
                             </Pressable>
                         </View>
 
@@ -141,13 +157,12 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
                             {avgRating !== null ? (
                                 <>
                                     <Text style={{ fontSize: 12, opacity: 0.3, color: c.text }}>·</Text>
-                                    <Text style={{ fontSize: 12, color: '#FFB800', fontWeight: '600' }}>
-                                        {avgRating.toFixed(1)} ★
-                                    </Text>
-                                    <Text style={{ fontSize: 12, opacity: 0.5, color: c.text }}>
-                                        ({reviewCount})
-                                    </Text>
+                                    <Text style={{ fontSize: 12, color: '#FFB800', fontWeight: '600' }}>{avgRating.toFixed(1)} ★</Text>
+                                    <Text style={{ fontSize: 12, opacity: 0.5, color: c.text }}>({reviewCount})</Text>
                                 </>
+                            ) : null}
+                            {override ? (
+                                <Text style={{ fontSize: 11, color: '#34C759', fontWeight: '600' }}>· Community edited</Text>
                             ) : null}
                         </View>
 
@@ -157,32 +172,29 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
                                 <Text style={{ flex: 1, opacity: 0.8, color: c.text }}>{address}</Text>
                             </View>
                         ) : null}
-
                         {phone ? (
                             <Pressable onPress={handlePhone} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 }}>
                                 <Ionicons name="call-outline" size={18} color="#007AFF" />
                                 <Text style={{ color: '#007AFF' }}>{phone}</Text>
                             </Pressable>
                         ) : null}
-
                         {website ? (
                             <Pressable onPress={handleWebsite} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 }}>
                                 <Ionicons name="globe-outline" size={18} color="#007AFF" />
                                 <Text style={{ color: '#007AFF' }} numberOfLines={1}>{website}</Text>
                             </Pressable>
                         ) : null}
-
                         {hours ? (
                             <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 12 }}>
                                 <Ionicons name="time-outline" size={18} color={c.subtext} />
                                 <Text style={{ flex: 1, opacity: 0.8, color: c.text }}>{hours}</Text>
                             </View>
                         ) : null}
-
                         {!address && !phone && !website && !hours ? (
                             <Text style={{ opacity: 0.5, marginBottom: 16, color: c.text }}>No additional details available for this location.</Text>
                         ) : null}
 
+                        {/* Rating */}
                         <View style={{ borderTopWidth: 1, borderColor: c.border, marginTop: 8, paddingTop: 16 }}>
                             <Text style={{ fontSize: 13, fontWeight: '600', color: c.text, marginBottom: 10 }}>
                                 {existingReviewId ? 'Your Rating' : 'Rate this place'}
@@ -211,6 +223,53 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
                     </ScrollView>
                 </View>
             </View>
+
+            {/* Edit Modal */}
+            <Modal visible={editOpen} transparent animationType="slide" onRequestClose={() => setEditOpen(false)}>
+                <View style={{ flex: 1, justifyContent: 'flex-end' }}>
+                    <Pressable style={{ ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.3)' }} onPress={() => setEditOpen(false)} />
+                    <View style={{ backgroundColor: c.surface, padding: 16, borderTopLeftRadius: 16, borderTopRightRadius: 16 }}>
+                        <Text style={{ fontSize: 17, fontWeight: '700', color: c.text, marginBottom: 4 }}>Edit Details</Text>
+                        <Text style={{ fontSize: 12, color: c.subtext, marginBottom: 16 }}>{place?.name}</Text>
+
+                        {[
+                            { label: 'Phone', value: editPhone, onChange: setEditPhone, placeholder: 'e.g. +1 555 123 4567', keyboardType: 'phone-pad' as const },
+                            { label: 'Website', value: editWebsite, onChange: setEditWebsite, placeholder: 'e.g. https://example.com', keyboardType: 'url' as const },
+                            { label: 'Hours', value: editHours, onChange: setEditHours, placeholder: 'e.g. Mon-Fri 10am-6pm', keyboardType: 'default' as const },
+                            { label: 'Address', value: editAddress, onChange: setEditAddress, placeholder: 'e.g. 123 Main St, Portland', keyboardType: 'default' as const },
+                        ].map(field => (
+                            <View key={field.label} style={{ marginBottom: 12 }}>
+                                <Text style={{ fontSize: 12, fontWeight: '600', color: c.subtext, marginBottom: 4 }}>{field.label.toUpperCase()}</Text>
+                                <TextInput
+                                    value={field.value}
+                                    onChangeText={field.onChange}
+                                    placeholder={field.placeholder}
+                                    placeholderTextColor={c.placeholder}
+                                    keyboardType={field.keyboardType}
+                                    autoCapitalize="none"
+                                    style={{ borderWidth: 1, borderColor: c.inputBorder, borderRadius: 8, padding: 10, color: c.text, backgroundColor: c.surface, fontSize: 14 }}
+                                />
+                            </View>
+                        ))}
+
+                        <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
+                            <Pressable
+                                onPress={() => setEditOpen(false)}
+                                style={{ flex: 1, padding: 13, borderRadius: 10, borderWidth: 1, borderColor: c.border, alignItems: 'center' }}
+                            >
+                                <Text style={{ color: c.subtext, fontWeight: '600' }}>Cancel</Text>
+                            </Pressable>
+                            <Pressable
+                                onPress={handleSave}
+                                disabled={saving}
+                                style={{ flex: 1, padding: 13, borderRadius: 10, backgroundColor: c.buttonBg, alignItems: 'center', opacity: saving ? 0.6 : 1 }}
+                            >
+                                <Text style={{ color: c.background, fontWeight: '700' }}>{saving ? 'Saving...' : 'Save'}</Text>
+                            </Pressable>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </Modal>
     );
 }

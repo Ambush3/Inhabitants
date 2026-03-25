@@ -5,9 +5,8 @@ import MapView, { Marker, Region, LongPressEvent, MapMarker } from 'react-native
 import * as Location from 'expo-location';
 import * as Haptics from 'expo-haptics';
 import * as ExpoSplashScreen from 'expo-splash-screen'
+import { useLocalSearchParams, useFocusEffect } from 'expo-router';
 import SplashScreen from '../src/components/SplashScreen'
-
-import { useFocusEffect } from 'expo-router';
 
 import { supabase } from '@/src/libs/supabase';
 
@@ -17,6 +16,7 @@ import { SpotDetailsModal } from '@/src/components/SpotDetailsModal';
 import { SkateShopDetailsModal} from "@/src/components/SkateShopDetailsModal";
 import { ExplorePanel } from '@/src/components/ExplorePanel';
 import { SettingsPanel } from '@/src/components/SettingsPanel';
+import { OnboardingScreen } from '@/src/components/onboarding/OnboardingScreen';
 
 import { useSpots } from '@/src/hooks/useSpots';
 import { useReviews } from '@/src/hooks/useReviews';
@@ -46,12 +46,20 @@ const DEFAULT_REGION: Region = {
 export default function Index() {
     const mapRef = useRef<MapView | null>(null);
     const mapRegionRef = useRef<Region>(DEFAULT_REGION);
+    const userLocationRef = useRef<Region | null>(null);
     const preModalRegionRef = useRef<Region>(DEFAULT_REGION);
 
     const autoCenterRef = useRef(true);
     const markerRefs = useRef<Record<string, MapMarker | null>>({});
 
     const placesTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+    const highlightSpotIdRef = useRef<string | null>(null);
+
+    const pendingDeepLinkRef = useRef<string | null>(null);
+    const hasOpenedDeepLinkRef = useRef(false);
+    const openedFromDeepLinkRef = useRef(false)
+    const openedFromFavoritesRef = useRef(false);
 
     const {
         reviews: spotReviews,
@@ -88,7 +96,6 @@ export default function Index() {
 
     const [useDeviceLocation, setUseDeviceLocation] = useState(true);
     const [locationReady, setLocationReady] = useState(false)
-    const [initialRegion, setInitialRegion] = useState<Region>(DEFAULT_REGION)
 
     const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null)
 
@@ -111,7 +118,7 @@ export default function Index() {
 
     const [refreshing, setRefreshing] = useState(false);
 
-    const [showSplash, setShowSplash] = useState(true)
+    const [showOnboarding, setShowOnboarding] = useState(false);
 
     const [spotType, setSpotType] = useState<'spot' | 'skatepark' | 'skateshop'>('spot')
 
@@ -121,6 +128,23 @@ export default function Index() {
     const insets = useSafeAreaInsets();
 
     const { spots, mySpots, mySpotsLoading, error, setError, reload, loadMySpots, createSpotAt, deleteSpotById, searchResults, searchByTag, clearSearch, toggleSpotPrivacy } = useSpots();
+
+    const { deepLinkSpotId, deepLinkLat, deepLinkLng } = useLocalSearchParams<{
+        deepLinkSpotId?: string;
+        deepLinkLat?: string;
+        deepLinkLng?: string;
+    }>();
+
+    const deepLinkRegion = deepLinkLat && deepLinkLng ? {
+        latitude: parseFloat(deepLinkLat) - (0.03 * 0.45),
+        longitude: parseFloat(deepLinkLng),
+        latitudeDelta: 0.03,
+        longitudeDelta: 0.03,
+    } : null;
+
+    const [initialRegion, setInitialRegion] = useState<Region>(deepLinkRegion ?? DEFAULT_REGION);
+
+    const [showSplash, setShowSplash] = useState(!deepLinkSpotId)
 
     const visibleSpots = searchResults.length > 0 ? searchResults : spots;
     const displayError = error ?? nearbyError ?? topRatedError;
@@ -139,13 +163,11 @@ export default function Index() {
     }
 
     function closeDetailsModal() {
-        if (highlightSpotId) {
-            markerRefs.current[highlightSpotId]?.hideCallout?.();
-        }
+        const idToHide = highlightSpotIdRef.current;
+
         setDetailsOpen(false);
         setSelectedSpot(null);
         resetReviews();
-        setHighlightSpotId(null);
         setSpotCreatorUsername(null);
 
         if (!openedFromPanelRef.current) {
@@ -153,6 +175,21 @@ export default function Index() {
         }
         openedFromPanelRef.current = false;
         resetConditions();
+
+        if (idToHide) {
+            setTimeout(() => {
+                markerRefs.current[idToHide]?.hideCallout?.();
+            }, 100);
+            if (openedFromDeepLinkRef.current) {
+                setPlaces([]);
+            }
+            openedFromDeepLinkRef.current = false;
+        } else {
+            console.log('idToHide was null, skipping places clear');
+        }
+
+        highlightSpotIdRef.current = null;
+        setHighlightSpotId(null);
     }
 
     function setPlacesWithAutoClear(updater: (prev: Place[]) => Place[]) {
@@ -288,12 +325,13 @@ export default function Index() {
                 longitudeDelta: 0.08,
             }
 
-            mapRegionRef.current = nextRegion
-            setInitialRegion(nextRegion)
-            setLocationReady(true)
-            setUseDeviceLocation(false)
-            mapRef.current?.animateToRegion(nextRegion, 600);
-
+            mapRegionRef.current = nextRegion;
+            userLocationRef.current = nextRegion;
+            if (!deepLinkRegion) {
+                setInitialRegion(nextRegion);
+                mapRef.current?.animateToRegion(nextRegion, 600);
+            }
+            setLocationReady(true);
             setUseDeviceLocation(false);
         })();
     }, [useDeviceLocation]);
@@ -321,6 +359,49 @@ export default function Index() {
             resetTheme();
         }
     }, [session?.user.id]);
+
+    useEffect(() => {
+        if (deepLinkSpotId) {
+            pendingDeepLinkRef.current = deepLinkSpotId;
+        }
+    }, [deepLinkSpotId]);
+
+    useEffect(() => {
+        if (hasOpenedDeepLinkRef.current) return;
+        if (!pendingDeepLinkRef.current || !spots.length || !locationReady) return;
+        const spot = spots.find(s => s.id === pendingDeepLinkRef.current);
+        if (!spot) return;
+        hasOpenedDeepLinkRef.current = true;
+        pendingDeepLinkRef.current = null;
+
+        const spotRegion = {
+            latitude: spot.lat - (0.03 * 0.45),
+            longitude: spot.lng,
+            latitudeDelta: 0.03,
+            longitudeDelta: 0.03,
+        };
+        setInitialRegion(spotRegion);
+        mapRegionRef.current = spotRegion;
+
+        if (spot.spot_type === 'skatepark' || spot.spot_type === 'skateshop') {
+            setPlacesWithAutoClear(prev => prev.some(p => p.id === spot.id) ? prev : [...prev, {
+                id: spot.id,
+                name: spot.name,
+                type: spot.spot_type as 'skatepark' | 'skateshop',
+                lat: spot.lat,
+                lng: spot.lng,
+                tags: {},
+            }]);
+        }
+
+        setTimeout(() => {
+            preModalRegionRef.current = spotRegion;
+            openedFromDeepLinkRef.current = true;
+            highlightSpotIdRef.current = spot.id;
+            mapRef.current?.animateToRegion(spotRegion, 400);
+            openSpotDetails(spot);
+        }, 1500);
+    }, [spots, locationReady]);
 
     if (Platform.OS === 'web') {
         return (
@@ -476,6 +557,7 @@ export default function Index() {
                         onSelectSpot={(s) => {
                             setPanelOpen(false);
                             setHighlightSpotId(s.id);
+                            highlightSpotIdRef.current = s.id;
                             openedFromPanelRef.current = true;
                             animateToSpotWithModalOffset(s.lat, s.lng);
                             openSpotDetails(s);
@@ -497,6 +579,7 @@ export default function Index() {
                         placeFavLoading={placeFavLoading}
                         onSelectPlace={async (p) => {
                             setPanelOpen(false);
+                            openedFromFavoritesRef.current = true;
                             setSelectedPlaceId(p.id);
                             mapRef.current?.animateToRegion(
                                 { latitude: p.lat, longitude: p.lng, latitudeDelta: 0.03, longitudeDelta: 0.03 },
@@ -562,15 +645,14 @@ export default function Index() {
                                         ref={(ref) => { markerRefs.current[s.id] = ref; }}
                                         key={s.id}
                                         coordinate={{ latitude: s.lat, longitude: s.lng }}
-                                        title={s.name}
-                                        description={s.description ?? undefined}
                                         pinColor={
                                             s.id === highlightSpotId
-                                                ? (s.user_id === session?.user.id ? '#22CC00' : '#A0A0A0')
-                                                : (s.user_id === session?.user.id ? '#39FF14' : '#6B6B6B')
+                                                ? (s.user_id === session?.user.id ? '#ffbd58' : '#A0A0A0')
+                                                : (s.user_id === session?.user.id ? '#ffffff' : '#6B6B6B')
                                         }
                                         onPress={() => {
                                             setHighlightSpotId(s.id);
+                                            highlightSpotIdRef.current = s.id;
                                             animateToSpotWithModalOffset(s.lat, s.lng);
                                             openSpotDetails(s);
                                         }}
@@ -586,6 +668,7 @@ export default function Index() {
                                         type={s.spot_type as 'skatepark' | 'skateshop'}
                                         onPress={() => {
                                             setHighlightSpotId(s.id);
+                                            highlightSpotIdRef.current = s.id;
                                             animateToSpotWithModalOffset(s.lat, s.lng);
                                             openSpotDetails(s);
                                         }}
@@ -605,9 +688,11 @@ export default function Index() {
                                         const communitySpot = spots.find(s => s.id === p.id);
                                         if (communitySpot) {
                                             setHighlightSpotId(communitySpot.id);
+                                            highlightSpotIdRef.current = communitySpot.id;
                                             animateToSpotWithModalOffset(communitySpot.lat, communitySpot.lng);
                                             openSpotDetails(communitySpot);
                                         } else {
+                                            openedFromFavoritesRef.current = false;
                                             setSelectedPlaceId(p.id);
                                             setSelectedPlace(p);
                                             setPlaceDetailsOpen(true);
@@ -627,7 +712,11 @@ export default function Index() {
                     <Pressable
                         onPress={() => {
                             autoCenterRef.current = true;
-                            setUseDeviceLocation(true);
+                            if (userLocationRef.current) {
+                                mapRef.current?.animateToRegion(userLocationRef.current, 600);
+                            } else {
+                                setUseDeviceLocation(true);
+                            }
                         }}
                         style={{
                             position: 'absolute',
@@ -779,6 +868,10 @@ export default function Index() {
                             setSelectedPlace(null);
                             markerRefs.current[selectedPlaceId ?? '']?.hideCallout?.();
                             setSelectedPlaceId(null);
+                            if (openedFromFavoritesRef.current) {
+                                setPlaces([]);
+                                openedFromFavoritesRef.current = false;
+                            }
                         }}
                         isFavorite={selectedPlace ? isPlaceFavorite(selectedPlace.id) : false}
                         onToggleFavorite={async () => {
@@ -795,7 +888,14 @@ export default function Index() {
                             await signOut();
                             setSettingsOpen(false);
                         }}
+                        onShowOnboarding={() => setShowOnboarding(true)}
                     />
+
+                    {showOnboarding ? (
+                        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 999 }}>
+                            <OnboardingScreen onFinish={() => setShowOnboarding(false)} />
+                        </View>
+                    ) : null}
                 </View>
             )}
         </>

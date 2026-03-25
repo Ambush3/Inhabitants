@@ -153,30 +153,21 @@ export function CreateSpotModal({
                                         >
                                             {type === 'skatepark' ? (
                                                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                                                    <Image
-                                                        source={require('../../assets/icons/skatepark-ramp.png')}
-                                                        style={{ width: 13, height: 13, tintColor: isSelected ? c.background : c.subtext }}
-                                                    />
+                                                    <Text style={{ fontSize: 14 }}>🛹</Text>
                                                     <Text style={{ fontSize: 11, fontWeight: '600', color: isSelected ? c.background : c.subtext }}>
                                                         Skate Park
                                                     </Text>
                                                 </View>
                                             ) : type === 'skateshop' ? (
                                                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                                                    <Image
-                                                        source={require('../../assets/icons/skate-shop.png')}
-                                                        style={{ width: 13, height: 13, tintColor: isSelected ? c.background : c.subtext }}
-                                                    />
+                                                    <Text style={{ fontSize: 14 }}>🛒</Text>
                                                     <Text style={{ fontSize: 11, fontWeight: '600', color: isSelected ? c.background : c.subtext }}>
                                                         Skate Shop
                                                     </Text>
                                                 </View>
                                             ) : (
                                                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                                                    <Image
-                                                        source={require('../../assets/icons/skateboard.png')}
-                                                        style={{ width: 13, height: 13, tintColor: isSelected ? c.background : c.subtext }}
-                                                    />
+                                                    <Text style={{ fontSize: 14 }}>📍</Text>
                                                     <Text style={{ fontSize: 11, fontWeight: '600', color: isSelected ? c.background : c.subtext }}>
                                                         Spot
                                                     </Text>
