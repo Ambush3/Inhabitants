@@ -9,9 +9,10 @@ type Props = {
     visible: boolean;
     onClose: () => void;
     onSignOut: () => void;
+    onShowOnboarding: () => void;
 };
 
-export function SettingsPanel({ visible, onClose, onSignOut }: Props) {
+export function SettingsPanel({ visible, onClose, onSignOut, onShowOnboarding }: Props) {
     const insets = useSafeAreaInsets();
     const [resetSent, setResetSent] = useState(false);
     const { theme, darkMode, toggleDarkMode } = useTheme();
@@ -88,6 +89,14 @@ export function SettingsPanel({ visible, onClose, onSignOut }: Props) {
                     >
                         <Ionicons name="lock-closed-outline" size={20} color={c.text} />
                         <Text style={{ fontSize: 15, color: c.text }}>Reset Password</Text>
+                    </Pressable>
+
+                    <Pressable
+                        onPress={() => { onClose(); onShowOnboarding(); }}
+                        style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 14, borderBottomWidth: 1, borderColor: c.border }}
+                    >
+                        <Ionicons name="information-circle-outline" size={20} color={c.text} />
+                        <Text style={{ fontSize: 15, color: c.text }}>How to Use</Text>
                     </Pressable>
 
                     <View style={{ flex: 1 }} />
