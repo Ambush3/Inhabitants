@@ -4,6 +4,7 @@ import { supabase } from '@/src/libs/supabase';
 export type PlaceOverride = {
     id: string;
     place_id: string;
+    name: string;
     phone: string | null;
     website: string | null;
     hours: string | null;
@@ -31,6 +32,7 @@ export function usePlaceOverrides() {
     }
 
     async function saveOverride(placeId: string, userId: string, fields: {
+        name?: string;
         phone?: string;
         website?: string;
         hours?: string;

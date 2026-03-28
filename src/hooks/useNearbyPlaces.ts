@@ -39,8 +39,6 @@ export function useNearbyPlaces() {
         abortRef.current = controller;
         const timeoutId = setTimeout(() => controller.abort(), 15000);
 
-
-
         const nameFilter = name ? `["name"~"${name}",i]` : '';
 
         const query = type === 'skatepark' ? `
@@ -83,6 +81,7 @@ export function useNearbyPlaces() {
                 }
 
                 const json = await resp.json();
+                console.log('this is the json from Overpass API:', json);
 
                 const normalized: Place[] = (json.elements ?? [])
                     .map((el: any) => {
@@ -118,13 +117,53 @@ export function useNearbyPlaces() {
             }
         }
 
-        if (lastError) setError(lastError);
+        if (lastError) {
+            try {
+                const googleResults = await fetchFromGooglePlaces(lat, lng, radiusMeters, type);
+                if (googleResults.length > 0) {
+                    console.log('this is the json from google places:', googleResults);
+                    setError(null);
+                    if (onLoaded) {
+                        onLoaded(googleResults);
+                    } else {
+                        setPlaces(googleResults);
+                    }
+                } else {
+                    setError(lastError);
+                }
+            } catch {
+                setError(lastError);
+            }
+        }
 
         clearTimeout(timeoutId);
         if (abortRef.current === controller) {
             abortRef.current = null;
             setLoading(false);
         }
+    }
+
+    // Fetch from Google Places API as a fallback if Overpass API fails
+    async function fetchFromGooglePlaces(lat: number, lng: number, radiusMeters: number, type: 'skatepark' | 'skateshop'): Promise<Place[]> {
+        const key = process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY;
+        if (!key) return [];
+
+        const keyword = type === 'skatepark' ? 'skate park' : 'skate shop';
+        const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=${radiusMeters}&keyword=${encodeURIComponent(keyword)}&key=${key}`;
+
+        const resp = await fetch(url);
+        if (!resp.ok) return [];
+
+        const json = await resp.json();
+        console.log('this is the json from google places:', json);
+        return (json.results ?? []).map((el: any) => ({
+            id: `google-${el.place_id}`,
+            name: el.name,
+            type,
+            lat: el.geometry.location.lat,
+            lng: el.geometry.location.lng,
+            tags: {},
+        } as Place));
     }
 
     async function fetchPlaceById(placeId: string): Promise<Place | null> {
