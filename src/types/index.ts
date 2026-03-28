@@ -9,6 +9,7 @@ export type Spot = {
     tags: string[];
     is_private: boolean;
     spot_type: 'spot' | 'skatepark' | 'skateshop';
+    flag_count: number;
 };
 
 export type Review = {
