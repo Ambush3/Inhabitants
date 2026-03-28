@@ -25,6 +25,7 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
 
     const [pendingRating, setPendingRating] = useState(0);
     const [editOpen, setEditOpen] = useState(false);
+    const [editName, setEditName] = useState('');
     const [editPhone, setEditPhone] = useState('');
     const [editWebsite, setEditWebsite] = useState('');
     const [editHours, setEditHours] = useState('');
@@ -50,6 +51,7 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
     const tags = place?.tags ?? {};
 
     // Merge OSM data with community overrides — override takes priority
+    const name = override?.name ?? tags['name'] ?? tags['name'] ?? null;
     const phone = override?.phone ?? tags['phone'] ?? tags['contact:phone'] ?? null;
     const website = override?.website ?? tags['website'] ?? tags['contact:website'] ?? null;
     const hours = override?.hours ?? tags['opening_hours'] ?? null;
@@ -61,6 +63,7 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
     const address = override?.address ?? osmAddress;
 
     function openEditModal() {
+        setEditName(name ?? '');
         setEditPhone(phone ?? '');
         setEditWebsite(website ?? '');
         setEditHours(hours ?? '');
@@ -72,6 +75,7 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
         if (!place || !session?.user.id) return;
         setSaving(true);
         const err = await saveOverride(place.id, session.user.id, {
+            name: editName || undefined,
             phone: editPhone || undefined,
             website: editWebsite || undefined,
             hours: editHours || undefined,
@@ -233,6 +237,7 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
                         <Text style={{ fontSize: 12, color: c.subtext, marginBottom: 16 }}>{place?.name}</Text>
 
                         {[
+                            { label: 'Name', value: editName, onChange: setEditName, placeholder: 'Name Here', keyboardType: 'default' as const },
                             { label: 'Phone', value: editPhone, onChange: setEditPhone, placeholder: 'e.g. +1 555 123 4567', keyboardType: 'phone-pad' as const },
                             { label: 'Website', value: editWebsite, onChange: setEditWebsite, placeholder: 'e.g. https://example.com', keyboardType: 'url' as const },
                             { label: 'Hours', value: editHours, onChange: setEditHours, placeholder: 'e.g. Mon-Fri 10am-6pm', keyboardType: 'default' as const },
