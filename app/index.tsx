@@ -5,7 +5,7 @@ import MapView, { Marker, Region, LongPressEvent, MapMarker } from 'react-native
 import * as Location from 'expo-location';
 import * as Haptics from 'expo-haptics';
 import * as ExpoSplashScreen from 'expo-splash-screen'
-import { useLocalSearchParams, useFocusEffect } from 'expo-router';
+import {useLocalSearchParams, useFocusEffect, router} from 'expo-router';
 import SplashScreen from '../src/components/SplashScreen'
 
 import { supabase } from '@/src/libs/supabase';
@@ -27,12 +27,15 @@ import { useTopRated } from '@/src/hooks/useTopRated';
 import { useAuth } from '@/src/hooks/useAuth';
 import { useFavorites } from '@/src/hooks/useFavorites';
 import {usePlaceFavorites} from "@/src/hooks/usePlaceFavorites";
+import { usePushNotifications } from '@/src/hooks/usePushNotifications';
+import { sendPushNotification } from '@/src/libs/sendPushNotification';
 
 import { useTheme } from '@/src/context/ThemeContext';
 
 import { Ionicons } from '@expo/vector-icons';
 import {Place, Spot} from '@/src/types';
 import {useWishlist} from "@/src/hooks/useWishlist";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 ExpoSplashScreen.preventAutoHideAsync()
 
@@ -59,7 +62,10 @@ export default function Index() {
     const pendingDeepLinkRef = useRef<string | null>(null);
     const hasOpenedDeepLinkRef = useRef(false);
     const openedFromDeepLinkRef = useRef(false)
+    const hasNavigatedFromNotification = useRef(false);
     const openedFromFavoritesRef = useRef(false);
+
+    const suppressMapPressRef = useRef(false);
 
     const {
         reviews: spotReviews,
@@ -128,7 +134,6 @@ export default function Index() {
     const insets = useSafeAreaInsets();
 
     const { spots, mySpots, mySpotsLoading, error, setError, reload, loadMySpots, createSpotAt, deleteSpotById, searchResults, searchByTag, clearSearch, toggleSpotPrivacy } = useSpots();
-
     const { deepLinkSpotId, deepLinkLat, deepLinkLng } = useLocalSearchParams<{
         deepLinkSpotId?: string;
         deepLinkLat?: string;
@@ -241,6 +246,16 @@ export default function Index() {
         setRefreshing(false);
     }
 
+    async function getMyUsername(): Promise<string> {
+        if (!session?.user.id) return 'Someone';
+        const { data } = await supabase
+            .from('profiles')
+            .select('username')
+            .eq('id', session.user.id)
+            .single();
+        return data?.username ?? 'Someone';
+    }
+
     function confirmDelete(spot: Spot) {
         Alert.alert(
             'Delete spot?',
@@ -273,6 +288,14 @@ export default function Index() {
         setSpotRating(0);
         setCreateOpen(true);
     }
+
+    usePushNotifications(session?.user.id ?? null, session, (spotId, lat, lng) => {
+        const spot = spots.find(s => s.id === spotId);
+        if (spot) {
+            animateToSpotWithModalOffset(lat, lng);
+            openSpotDetails(spot);
+        }
+    });
 
     useEffect(() => {
         reload();
@@ -402,6 +425,28 @@ export default function Index() {
             openSpotDetails(spot);
         }, 1500);
     }, [spots, locationReady]);
+
+    useEffect(() => {
+        if (!session) return;
+        if (hasNavigatedFromNotification.current) return;
+
+        AsyncStorage.getItem('pendingNotificationSpot').then((raw) => {
+            if (!raw) return;
+            hasNavigatedFromNotification.current = true;
+            AsyncStorage.removeItem('pendingNotificationSpot');
+            const pending = JSON.parse(raw);
+            setTimeout(() => {
+                router.replace({
+                    pathname: '/',
+                    params: {
+                        deepLinkSpotId: pending.spot_id,
+                        deepLinkLat: pending.lat,
+                        deepLinkLng: pending.lng,
+                    },
+                });
+            }, 1000);
+        });
+    }, [session]);
 
     if (Platform.OS === 'web') {
         return (
@@ -615,6 +660,10 @@ export default function Index() {
                             style={{ flex: 1, marginBottom: -34 }}
                             initialRegion={initialRegion}
                             onPress={() => {
+                                if (suppressMapPressRef.current) {
+                                    suppressMapPressRef.current = false;
+                                    return;
+                                }
                                 setHighlightSpotId(null);
                                 setSelectedPlaceId(null);
                                 markerRefs.current[highlightSpotId ?? '']?.hideCallout?.();
@@ -651,6 +700,7 @@ export default function Index() {
                                                 : (s.user_id === session?.user.id ? '#ffffff' : '#6B6B6B')
                                         }
                                         onPress={() => {
+                                            suppressMapPressRef.current = true;
                                             setHighlightSpotId(s.id);
                                             highlightSpotIdRef.current = s.id;
                                             animateToSpotWithModalOffset(s.lat, s.lng);
@@ -660,13 +710,15 @@ export default function Index() {
                                 ) : (
                                     <SkateMarker
                                         ref={(ref) => { markerRefs.current[s.id] = ref; }}
-                                        key={s.id}
+                                        key={`${s.id}-${s.id === highlightSpotId}`}
                                         id={s.id}
                                         lat={s.lat}
                                         lng={s.lng}
                                         name={s.name}
                                         type={s.spot_type as 'skatepark' | 'skateshop'}
+                                        selected={s.id === highlightSpotId}
                                         onPress={() => {
+                                            suppressMapPressRef.current = true;
                                             setHighlightSpotId(s.id);
                                             highlightSpotIdRef.current = s.id;
                                             animateToSpotWithModalOffset(s.lat, s.lng);
@@ -684,23 +736,26 @@ export default function Index() {
                                     lng={p.lng}
                                     name={p.name}
                                     type={p.type as 'skatepark' | 'skateshop'}
-                                    onPress={() => {
-                                        const communitySpot = spots.find(s => s.id === p.id);
-                                        if (communitySpot) {
-                                            setHighlightSpotId(communitySpot.id);
-                                            highlightSpotIdRef.current = communitySpot.id;
-                                            animateToSpotWithModalOffset(communitySpot.lat, communitySpot.lng);
-                                            openSpotDetails(communitySpot);
-                                        } else {
-                                            openedFromFavoritesRef.current = false;
-                                            setSelectedPlaceId(p.id);
-                                            setSelectedPlace(p);
-                                            setPlaceDetailsOpen(true);
-                                            setTimeout(() => {
-                                                markerRefs.current[p.id]?.showCallout();
-                                            }, 300);
-                                        }
-                                    }}
+                                    selected={p.id === selectedPlaceId}
+                                        onPress={() => {
+                                            suppressMapPressRef.current = true;
+                                            const communitySpot = spots.find(s => s.id === p.id);
+                                            if (communitySpot) {
+                                                setHighlightSpotId(communitySpot.id);
+                                                highlightSpotIdRef.current = communitySpot.id;
+                                                animateToSpotWithModalOffset(communitySpot.lat, communitySpot.lng);
+                                                openSpotDetails(communitySpot);
+                                            } else {
+                                                openedFromFavoritesRef.current = false;
+                                                setSelectedPlaceId(p.id);
+                                                animateToSpotWithModalOffset(p.lat, p.lng);
+                                                setSelectedPlace(p);
+                                                setPlaceDetailsOpen(true);
+                                                setTimeout(() => {
+                                                    markerRefs.current[p.id]?.showCallout();
+                                                }, 300);
+                                            }
+                                        }}
                                 />
                             ))}
                         </MapView>
@@ -812,6 +867,10 @@ export default function Index() {
                                 await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
                             } else {
                                 await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                                if (selectedSpot.user_id !== session?.user.id) {
+                                    const username = await getMyUsername();
+                                    await sendPushNotification(selectedSpot.id, 'review', username);
+                                }
                             }
                         }}
                         onClose={closeDetailsModal}
@@ -821,7 +880,12 @@ export default function Index() {
                         onToggleFavorite={async () => {
                             if (!selectedSpot) return;
                             await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            const wasAlreadyFavorited = isFavorite(selectedSpot.id);
                             await toggleFavorite(selectedSpot.id);
+                            if (selectedSpot.user_id !== session?.user.id && !wasAlreadyFavorited) {
+                                const username = await getMyUsername();
+                                await sendPushNotification(selectedSpot.id, 'favorite', username);
+                            }
                         }}
                         onDeleteReview={async (reviewId) => {
                             if (!selectedSpot) return;
@@ -851,12 +915,21 @@ export default function Index() {
                             if (!selectedSpot) return;
                             await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                             await toggleCondition(selectedSpot.id, condition);
+                            if (selectedSpot.user_id !== session?.user.id) {
+                                const username = await getMyUsername();
+                                await sendPushNotification(selectedSpot.id, 'condition', username);
+                            }
                         }}
                         isWishlisted={selectedSpot ? isWishlisted(selectedSpot.id) : false}
                         onToggleWishlist={async () => {
                             if (!selectedSpot) return;
                             await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            const wasAlreadyWishlisted = isWishlisted(selectedSpot.id);
                             await toggleWishlist(selectedSpot.id);
+                            if (selectedSpot.user_id !== session?.user.id && !wasAlreadyWishlisted) {
+                                const username = await getMyUsername();
+                                await sendPushNotification(selectedSpot.id, 'wishlist', username);
+                            }
                         }}
                     />
 
