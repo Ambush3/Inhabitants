@@ -392,38 +392,42 @@ export function SpotDetailsModal({
 
                         {/* Review Form - only show if no existing review */}
                         {!existingReviewId ? (
-                            <View style={styles.section} ref={reviewFormRef} onLayout={(e) => {
-                                reviewFormY.current = e.nativeEvent.layout.y
-                            }}>
-                                <Text style={[styles.sectionTitle, { color: c.text }]}>Leave a Review</Text>
-                                <Stars value={newRating} onChange={onChangeRating} />
-                                <TextInput
-                                    ref={commentInputRef}
-                                    value={newComment}
-                                    onChangeText={onChangeComment}
-                                    placeholder={getRatingHint(newRating)}
-                                    placeholderTextColor={c.placeholder}
-                                    autoCorrect
-                                    multiline
-                                    returnKeyType="done"
-                                    submitBehavior="blurAndSubmit"
-                                    onSubmitEditing={onSubmitReview}
-                                    autoCapitalize="sentences"
-                                    onFocus={() => {
-                                        setTimeout(() => {
-                                            scrollRef.current?.scrollTo({ y: reviewFormY.current - 16, animated: true })
-                                        }, 300)
-                                    }}
-                                    style={[styles.reviewInput, { borderColor: c.inputBorder, color: c.text, backgroundColor: c.surface }]}
-                                />
-                                <Pressable
-                                    onPress={onSubmitReview}
-                                    style={[styles.submitBtn, { backgroundColor: c.tagBg, borderWidth: 1, borderColor: c.border }]}
-                                >
-                                    <Text style={[styles.submitBtnText, { color: c.text }]}>Submit Review</Text>
-                                </Pressable>
+                            <View style={{ marginTop: 8, marginBottom: 4 }}>
+                                <View style={[styles.divider, { backgroundColor: c.border }]} />
+                                    <View style={styles.section} ref={reviewFormRef} onLayout={(e) => {
+                                        reviewFormY.current = e.nativeEvent.layout.y
+                                    }}>
+                                        <Text style={[styles.sectionTitle, { color: c.text }]}>Leave a Review</Text>
+                                        <Stars value={newRating} onChange={onChangeRating} />
+                                        <TextInput
+                                            ref={commentInputRef}
+                                            value={newComment}
+                                            onChangeText={onChangeComment}
+                                            placeholder={getRatingHint(newRating)}
+                                            placeholderTextColor={c.placeholder}
+                                            autoCorrect
+                                            multiline
+                                            returnKeyType="done"
+                                            submitBehavior="blurAndSubmit"
+                                            onSubmitEditing={onSubmitReview}
+                                            autoCapitalize="sentences"
+                                            onFocus={() => {
+                                                setTimeout(() => {
+                                                    scrollRef.current?.scrollTo({ y: reviewFormY.current - 16, animated: true })
+                                                }, 300)
+                                            }}
+                                            style={[styles.reviewInput, { borderColor: c.inputBorder, color: c.text, backgroundColor: c.surface }]}
+                                        />
+                                        <Pressable
+                                            onPress={onSubmitReview}
+                                            style={[styles.submitBtn, { backgroundColor: c.tagBg, borderWidth: 1, borderColor: c.border }]}
+                                        >
+                                            <Text style={[styles.submitBtnText, { color: c.text }]}>Submit Review</Text>
+                                        </Pressable>
+                                    </View>
                             </View>
                         ) : null}
+
 
                         {/* Divider */}
                         {reviews.length > 0 ? (

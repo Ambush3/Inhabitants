@@ -1,5 +1,4 @@
 import React, { forwardRef } from 'react';
-import { View, Text } from 'react-native';
 import { Marker } from 'react-native-maps';
 
 type Props = {
@@ -9,34 +8,24 @@ type Props = {
     name: string;
     type?: 'skatepark' | 'skateshop';
     onPress?: () => void;
+    selected?: boolean;
 };
 
-export const SkateMarker = React.memo(forwardRef<any, Props>(({ id, lat, lng, type = 'skatepark', onPress }, ref) => {
-    const isShop = type === 'skateshop';
+const ICONS = {
+    skatepark: require('@/assets/pin-images/icons8-ramp-80.png'),
+    skateshop: require('@/assets/pin-images/icons8-shop-80.png'),
+};
 
+export const SkateMarker = forwardRef<any, Props>(({ id, lat, lng, type = 'skatepark', onPress, selected }, ref) => {
     return (
         <Marker
             ref={ref}
             identifier={id}
             coordinate={{ latitude: lat, longitude: lng }}
             onPress={onPress}
-            tracksViewChanges={false}
-        >
-            <View
-                style={{
-                    backgroundColor: isShop ? '#71ff88' : '#ff0000',
-                    borderRadius: 20,
-                    padding: 4,
-                    borderWidth: 2,
-                    borderColor: 'white',
-                }}
-            >
-                <Text style={{ fontSize: 14 }}>
-                    {isShop ? '🛒' : '🛹'}
-                </Text>
-            </View>
-        </Marker>
-    )
-}))
+            image={ICONS[type ?? 'skatepark']}
+        />
+    );
+});
 
-SkateMarker.displayName = 'SkateMarker'
+SkateMarker.displayName = 'SkateMarker';
