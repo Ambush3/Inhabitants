@@ -1,11 +1,9 @@
 import React, { useRef, useState } from 'react';
-import {
-    View, Text, Pressable, FlatList, Dimensions, StyleSheet, SafeAreaView
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { View, Text, Pressable, FlatList, Dimensions } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '@/src/context/ThemeContext';
 
-const { width, height } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 
 const slides = [
     {
