@@ -153,14 +153,14 @@ export function CreateSpotModal({
                                         >
                                             {type === 'skatepark' ? (
                                                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                                                    <Text style={{ fontSize: 14 }}>🛹</Text>
+                                                    <Image source={require('@/assets/pin-images/icons8-ramp-80.png')} style={{ width: 16, height: 16 }} />
                                                     <Text style={{ fontSize: 11, fontWeight: '600', color: isSelected ? c.background : c.subtext }}>
                                                         Skate Park
                                                     </Text>
                                                 </View>
                                             ) : type === 'skateshop' ? (
                                                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                                                    <Text style={{ fontSize: 14 }}>🛒</Text>
+                                                    <Image source={require('@/assets/pin-images/icons8-shop-80.png')} style={{ width: 16, height: 16 }} />
                                                     <Text style={{ fontSize: 11, fontWeight: '600', color: isSelected ? c.background : c.subtext }}>
                                                         Skate Shop
                                                     </Text>
