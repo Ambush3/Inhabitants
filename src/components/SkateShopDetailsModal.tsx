@@ -137,9 +137,13 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
                     <ScrollView>
                         {/* Header */}
                         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-                            <Text style={{ fontSize: 14 }}>
-                                {place?.type === 'skateshop' ? '🛒' : '🛹'}
-                            </Text>
+                            <Image
+                                source={place?.type === 'skateshop'
+                                    ? require('@/assets/pin-images/icons8-shop-80.png')
+                                    : require('@/assets/pin-images/icons8-ramp-80.png')
+                                }
+                                style={{ width: 20, height: 20 }}
+                            />
                             <Text style={{ fontSize: 18, fontWeight: '600', marginLeft: 8, flex: 1, color: c.text }}>{place?.name}</Text>
                             {isVetted ? (
                                 <Pressable onPress={openEditModal} style={{ padding: 4, marginRight: 4 }}>
