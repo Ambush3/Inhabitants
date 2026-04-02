@@ -181,7 +181,7 @@ export function ExplorePanel({
                                     disabled={parksLoading}
                                     style={{ backgroundColor: c.tagBg, borderRadius: 8, padding: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: parksLoading ? 0.6 : 1, marginBottom: 10 }}
                                 >
-                                    <Image source={require('@/assets/pin-images/icons8-ramp-80.png')} style={{ width: 24, height: 24 }} />
+                                    <Image source={require('@/assets/pin-images/icons8-ramp-100.png')} style={{ width: 24, height: 24 }} />
                                     <Text style={{ color: c.text, fontWeight: '600' }}>{parksLoading ? 'Searching...' : 'Local Skate Parks'}</Text>
                                 </Pressable>
 
@@ -323,7 +323,7 @@ export function ExplorePanel({
                                 {myCreatedParks.length > 0 ? (
                                     <View style={{ marginTop: 20 }}>
                                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                                            <Image source={require('@/assets/pin-images/icons8-ramp-80.png')} style={{ width: 18, height: 18 }} />
+                                            <Image source={require('@/assets/pin-images/icons8-ramp-100.png')} style={{ width: 18, height: 18 }} />
                                             <Text style={{ fontSize: 11, fontWeight: '600', color: c.subtext, letterSpacing: 0.8 }}>MY PARKS</Text>
                                         </View>
                                         {myCreatedParks.map((s, index) => (

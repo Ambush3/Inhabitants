@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Modal, Pressable, ScrollView, Linking, StyleSheet, ActionSheetIOS, Share, Image, TextInput } from 'react-native';
+import {
+    View, Text, Modal, Pressable, ScrollView, Linking, StyleSheet, ActionSheetIOS, Share, Image, TextInput,
+    Keyboard, KeyboardAvoidingView, Platform
+} from 'react-native';
 import { Place } from '@/src/types';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/src/context/ThemeContext';
@@ -234,32 +237,37 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
 
             {/* Edit Modal */}
             <Modal visible={editOpen} transparent animationType="slide" onRequestClose={() => setEditOpen(false)}>
-                <View style={{ flex: 1, justifyContent: 'flex-end' }}>
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    style={{ flex: 1, justifyContent: 'flex-end' }}
+                >
                     <Pressable style={{ ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.3)' }} onPress={() => setEditOpen(false)} />
-                    <View style={{ backgroundColor: c.surface, padding: 16, borderTopLeftRadius: 16, borderTopRightRadius: 16 }}>
+                    <Pressable onPress={Keyboard.dismiss} style={{ backgroundColor: c.surface, padding: 16, borderTopLeftRadius: 16, borderTopRightRadius: 16 }}>
                         <Text style={{ fontSize: 17, fontWeight: '700', color: c.text, marginBottom: 4 }}>Edit Details</Text>
                         <Text style={{ fontSize: 12, color: c.subtext, marginBottom: 16 }}>{place?.name}</Text>
 
-                        {[
-                            { label: 'Name', value: editName, onChange: setEditName, placeholder: 'Name Here', keyboardType: 'default' as const },
-                            { label: 'Phone', value: editPhone, onChange: setEditPhone, placeholder: 'e.g. +1 555 123 4567', keyboardType: 'phone-pad' as const },
-                            { label: 'Website', value: editWebsite, onChange: setEditWebsite, placeholder: 'e.g. https://example.com', keyboardType: 'url' as const },
-                            { label: 'Hours', value: editHours, onChange: setEditHours, placeholder: 'e.g. Mon-Fri 10am-6pm', keyboardType: 'default' as const },
-                            { label: 'Address', value: editAddress, onChange: setEditAddress, placeholder: 'e.g. 123 Main St, Portland', keyboardType: 'default' as const },
-                        ].map(field => (
-                            <View key={field.label} style={{ marginBottom: 12 }}>
-                                <Text style={{ fontSize: 12, fontWeight: '600', color: c.subtext, marginBottom: 4 }}>{field.label.toUpperCase()}</Text>
-                                <TextInput
-                                    value={field.value}
-                                    onChangeText={field.onChange}
-                                    placeholder={field.placeholder}
-                                    placeholderTextColor={c.placeholder}
-                                    keyboardType={field.keyboardType}
-                                    autoCapitalize="none"
-                                    style={{ borderWidth: 1, borderColor: c.inputBorder, borderRadius: 8, padding: 10, color: c.text, backgroundColor: c.surface, fontSize: 14 }}
-                                />
-                            </View>
-                        ))}
+                        <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+                            {[
+                                { label: 'Name', value: editName, onChange: setEditName, placeholder: 'Name Here', keyboardType: 'default' as const },
+                                { label: 'Phone', value: editPhone, onChange: setEditPhone, placeholder: 'e.g. +1 555 123 4567', keyboardType: 'phone-pad' as const },
+                                { label: 'Website', value: editWebsite, onChange: setEditWebsite, placeholder: 'e.g. https://example.com', keyboardType: 'url' as const },
+                                { label: 'Hours', value: editHours, onChange: setEditHours, placeholder: 'e.g. Mon-Fri 10am-6pm', keyboardType: 'default' as const },
+                                { label: 'Address', value: editAddress, onChange: setEditAddress, placeholder: 'e.g. 123 Main St, Portland', keyboardType: 'default' as const },
+                            ].map(field => (
+                                <View key={field.label} style={{ marginBottom: 12 }}>
+                                    <Text style={{ fontSize: 12, fontWeight: '600', color: c.subtext, marginBottom: 4 }}>{field.label.toUpperCase()}</Text>
+                                    <TextInput
+                                        value={field.value}
+                                        onChangeText={field.onChange}
+                                        placeholder={field.placeholder}
+                                        placeholderTextColor={c.placeholder}
+                                        keyboardType={field.keyboardType}
+                                        autoCapitalize="none"
+                                        style={{ borderWidth: 1, borderColor: c.inputBorder, borderRadius: 8, padding: 10, color: c.text, backgroundColor: c.surface, fontSize: 14 }}
+                                    />
+                                </View>
+                            ))}
+                        </ScrollView>
 
                         <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
                             <Pressable
@@ -276,8 +284,8 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
                                 <Text style={{ color: c.background, fontWeight: '700' }}>{saving ? 'Saving...' : 'Save'}</Text>
                             </Pressable>
                         </View>
-                    </View>
-                </View>
+                    </Pressable>
+                </KeyboardAvoidingView>
             </Modal>
         </Modal>
     );

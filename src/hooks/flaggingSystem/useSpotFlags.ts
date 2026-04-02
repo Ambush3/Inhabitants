@@ -13,7 +13,7 @@ export function useSpotFlags(userId: string | null) {
         if (data) setFlaggedSpotIds(data.map(f => f.spot_id));
     }
 
-    async function toggleFlag(spotId: string, spotOwnerId?: string, actorUsername?: string): Promise<void> {
+    async function toggleFlag(spotId: string, reason?: string, spotOwnerId?: string, actorUsername?: string): Promise<void> {
         if (!userId) return;
         const isFlagged = flaggedSpotIds.includes(spotId);
 
@@ -27,16 +27,16 @@ export function useSpotFlags(userId: string | null) {
         } else {
             await supabase
                 .from('spot_flags')
-                .insert({ spot_id: spotId, user_id: userId });
+                .insert({ spot_id: spotId, user_id: userId, reason });
             setFlaggedSpotIds(prev => [...prev, spotId]);
 
-            // send notification to user that their spot has been flagged
             if (spotOwnerId && spotOwnerId !== userId && actorUsername) {
                 await supabase.functions.invoke('send-push-notification', {
                     body: {
                         spot_id: spotId,
                         event_type: 'flag',
                         actor_username: actorUsername,
+                        reason,
                     },
                 });
             }
