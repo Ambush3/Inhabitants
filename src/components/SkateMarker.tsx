@@ -12,7 +12,7 @@ type Props = {
 };
 
 const ICONS = {
-    skatepark: require('@/assets/pin-images/icons8-ramp-80.png'),
+    skatepark: require('@/assets/pin-images/icons8-ramp-100.png'),
     skateshop: require('@/assets/pin-images/icons8-shop-80.png'),
 };
 

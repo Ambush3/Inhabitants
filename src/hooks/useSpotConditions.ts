@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { supabase } from '@/src/libs/supabase';
 
-export type SpotCondition = 'waxed' | 'good_session' | 'security' | 'wet' | 'cracked' | 'crowded';
+export type SpotCondition = 'good_session' | 'needs_wax' | 'security' | 'wet' | 'rough_surface' | 'crowded';
 
 export type ConditionReport = {
     id: string;
@@ -12,12 +12,12 @@ export type ConditionReport = {
 };
 
 export const CONDITION_META: Record<SpotCondition, { label: string; icon: string; color: string; bg: string }> = {
-    waxed:        { label: 'Waxed',        icon: '🧈',  color: '#B8860B', bg: '#FFF9C4' },
-    good_session: { label: 'Good Session', icon: '✓',   color: '#1a7a1a', bg: '#C8F5C8' },
-    security:     { label: 'Security',     icon: '👮',  color: '#cc0000', bg: '#FFE0E0' },
-    wet:          { label: 'Wet',          icon: '💧',  color: '#0055cc', bg: '#DDEEFF' },
-    cracked:      { label: 'Cracked',      icon: '⚠',   color: '#cc5500', bg: '#FFF0E0' },
-    crowded:      { label: 'Crowded',      icon: '👥',  color: '#7700cc', bg: '#F0E0FF' },
+    good_session:   { label: 'Good Session',    icon: '✓',   color: '#1a7a1a', bg: '#C8F5C8' },
+    needs_wax:      { label: 'Needs Wax',       icon: '🧈',  color: '#B8860B', bg: '#FFF9C4' },
+    security:       { label: 'Security',        icon: '👮',  color: '#cc0000', bg: '#FFE0E0' },
+    wet:            { label: 'Wet',             icon: '💧',  color: '#0055cc', bg: '#DDEEFF' },
+    rough_surface:  { label: 'Rough Surface',   icon: '⚠',   color: '#cc5500', bg: '#FFF0E0' },
+    crowded:        { label: 'Crowded',         icon: '👥',  color: '#7700cc', bg: '#F0E0FF' },
 };
 
 export function useSpotConditions() {

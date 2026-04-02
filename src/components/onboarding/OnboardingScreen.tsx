@@ -16,7 +16,7 @@ const slides = [
         id: '2',
         emoji: '📍',
         title: 'Explore the Map',
-        subtitle: 'Red pins are skate spots added by the community. Colored markers show nearby skate parks and shops.',
+        subtitle: 'Red pins are community skate spots. Gold pins are your own spots. Blue circles are skate parks and orange circles are skate shops.',
     },
     {
         id: '3',
