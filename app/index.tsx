@@ -29,6 +29,7 @@ import { useFavorites } from '@/src/hooks/useFavorites';
 import {usePlaceFavorites} from "@/src/hooks/usePlaceFavorites";
 import { usePushNotifications } from '@/src/hooks/usePushNotifications';
 import { sendPushNotification } from '@/src/libs/sendPushNotification';
+import { useSpotFlags } from '@/src/hooks/flaggingSystem/useSpotFlags';
 
 import { useTheme } from '@/src/context/ThemeContext';
 
@@ -91,6 +92,9 @@ export default function Index() {
     const { placeFavorites, placeFavLoading, loadPlaceFavorites, togglePlaceFavorite, isPlaceFavorite } = usePlaceFavorites();
     const { images, uploading: imagesUploading, loadImages, uploadImages, deleteImage, clearImages } = useSpotImages();
     const { activeConditions, myConditions, loadConditions, toggleCondition, resetConditions } = useSpotConditions();
+
+    const { flaggedSpotIds, loadFlags, toggleFlag, isFlaggedByMe } = useSpotFlags(session?.user.id ?? null);
+
     const [pendingImages, setPendingImages] = useState<string[]>([]);
 
     const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
@@ -303,6 +307,7 @@ export default function Index() {
         loadPlaceFavorites();
         loadMySpots();
         loadWishlist();
+        loadFlags();
     }, []);
 
     useFocusEffect(
@@ -851,6 +856,12 @@ export default function Index() {
                     <SpotDetailsModal
                         visible={detailsOpen}
                         spot={selectedSpot}
+                        isFlaggedByMe={selectedSpot ? isFlaggedByMe(selectedSpot.id) : false}
+                        flagCount={selectedSpot?.flag_count ?? 0}
+                        onToggleFlag={async () => {
+                            if (!selectedSpot) return;
+                            await toggleFlag(selectedSpot.id);
+                        }}
                         reviews={spotReviews}
                         existingReviewId={existingReviewId}
                         avgRating={avgRating}
