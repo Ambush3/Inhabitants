@@ -153,7 +153,7 @@ export function CreateSpotModal({
                                         >
                                             {type === 'skatepark' ? (
                                                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                                                    <Image source={require('@/assets/pin-images/icons8-ramp-80.png')} style={{ width: 16, height: 16 }} />
+                                                    <Image source={require('@/assets/pin-images/icons8-ramp-100.png')} style={{ width: 16, height: 16 }} />
                                                     <Text style={{ fontSize: 11, fontWeight: '600', color: isSelected ? c.background : c.subtext }}>
                                                         Skate Park
                                                     </Text>

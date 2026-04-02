@@ -9,7 +9,8 @@ const supabase = createClient(
 
 Deno.serve(async (req) => {
   try {
-    const { spot_id, event_type, actor_username } = await req.json();
+    const { spot_id, event_type, actor_username, reason } = await req.json();
+    console.log('received reason:', reason);
 
     const { data: spot } = await supabase
         .from('spots')
@@ -60,7 +61,7 @@ Deno.serve(async (req) => {
       },
       flag: {
         title: '🚩 Spot Flagged',
-        body: `${actor_username} flagged your spot "${spot.name}"`,
+        body: `Your spot "${spot.name}" was flagged${reason ? `: ${reason}` : ''}`,
       },
     };
 
