@@ -40,6 +40,7 @@ app-example
 
 # generated native folders
 /ios
+!ios/SkateSpotApp/Info.plist
 /android
 .idea/
 

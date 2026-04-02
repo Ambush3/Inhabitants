@@ -12,7 +12,8 @@
       "supportsTablet": true,
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "We use your location to center the map near you.",
-        "NSUserNotificationsUsageDescription": "We'll notify you when someone interacts with your spots."
+        "NSUserNotificationsUsageDescription": "We'll notify you when someone interacts with your spots.",
+        "LSApplicationQueriesSchemes": ["comgooglemaps"]
       },
       "bundleIdentifier": "com.anonymous.SkateSpotApp"
     },
