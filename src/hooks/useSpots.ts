@@ -36,6 +36,7 @@ export function useSpots() {
         const { data, error } = await supabase
             .from('spots')
             .select('*')
+            .eq('is_flagged', false)
             .order('created_at', { ascending: false })
             .limit(500);
 

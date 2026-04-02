@@ -15,6 +15,9 @@ import {CONDITION_META, SpotCondition} from "@/src/hooks/useSpotConditions";
 type Props = {
     visible: boolean;
     spot: Spot | null;
+    isFlaggedByMe: boolean;
+    flagCount: number;
+    onToggleFlag: () => void;
     reviews: Review[];
     avgRating: number;
     newRating: number;
@@ -43,7 +46,7 @@ type Props = {
 };
 
 export function SpotDetailsModal({
-                                     visible, spot, reviews, avgRating, newRating, newComment,
+                                     visible, spot, isFlaggedByMe, flagCount, onToggleFlag, reviews, avgRating, newRating, newComment,
                                      onChangeRating, onChangeComment, onSubmitReview, onClose, onDelete,
                                      currentUserId, existingReviewId, isFavorite, onToggleFavorite,
                                      onDeleteReview, images, imagesLoading, onDeleteImage, onUploadImages,
@@ -169,9 +172,25 @@ export function SpotDetailsModal({
                         <View style={{ marginBottom: 10 }}>
                             <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 4 }}>
                                 <View style={{ flex: 1, minWidth: 0 }}>
-                                    <Text style={[styles.spotName, { color: c.text }]} numberOfLines={2} ellipsizeMode="tail">
-                                        {spot?.name ?? 'Spot'}
-                                    </Text>
+                                    <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+                                        <Text style={[styles.spotName, { color: c.text, flex: 1, marginRight: 8 }]} numberOfLines={2} ellipsizeMode="tail">
+                                            {spot?.name ?? 'Spot'}
+                                        </Text>
+                                        {!isOwner ? (
+                                            <Pressable onPress={onToggleFlag} style={{ paddingTop: 4 }}>
+                                                <Ionicons
+                                                    name={isFlaggedByMe ? 'flag' : 'flag-outline'}
+                                                    size={18}
+                                                    color={isFlaggedByMe ? '#FF3B30' : c.subtext}
+                                                />
+                                            </Pressable>
+                                        ) : flagCount > 0 ? (
+                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, paddingTop: 4 }}>
+                                                <Ionicons name="flag" size={14} color="#FF3B30" />
+                                                <Text style={{ fontSize: 11, color: '#FF3B30', fontWeight: '600' }}>{flagCount}</Text>
+                                            </View>
+                                        ) : null}
+                                    </View>
                                     {spot?.description ? (
                                         <Text style={[styles.description, { color: c.text }]}>{spot.description}</Text>
                                     ) : null}
