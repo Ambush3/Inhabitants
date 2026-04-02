@@ -7,6 +7,28 @@ export function useSpots() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+    const [searchResults, setSearchResults] = useState<Spot[]>([]);
+    const [searching, setSearching] = useState(false);
+
+    const [mySpots, setMySpots] = useState<Spot[]>([]);
+    const [mySpotsLoading, setMySpotsLoading] = useState(false);
+
+    async function loadMySpots() {
+        setMySpotsLoading(true);
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) { setMySpotsLoading(false); return; }
+
+        const { data, error } = await supabase
+            .from('spots')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false });
+
+        setMySpotsLoading(false);
+        if (error) return;
+        setMySpots((data ?? []) as Spot[]);
+    }
+
     async function reload() {
         setError(null);
         setLoading(true);
@@ -14,6 +36,7 @@ export function useSpots() {
         const { data, error } = await supabase
             .from('spots')
             .select('*')
+            .eq('is_flagged', false)
             .order('created_at', { ascending: false })
             .limit(500);
 
@@ -31,8 +54,11 @@ export function useSpots() {
         lng: number,
         name: string,
         description?: string,
-        initialRating?: number
-    ) {
+        initialRating?: number,
+        tags: string[] = [],
+        isPrivate: boolean = false,
+        spotType: 'spot' | 'skatepark' | 'skateshop' = 'spot'
+    ): Promise<Spot | undefined> {
         setError(null);
 
         const trimmedName = name.trim();
@@ -48,6 +74,10 @@ export function useSpots() {
                 description: (description ?? '').trim() || null,
                 lat,
                 lng,
+                user_id: (await supabase.auth.getUser()).data.user?.id,
+                tags,
+                is_private: isPrivate,
+                spot_type: spotType,
             })
             .select()
             .single();
@@ -63,6 +93,7 @@ export function useSpots() {
             const { error: reviewErr } = await supabase.from('reviews').insert({
                 spot_id: spot.id,
                 rating: initialRating,
+                user_id: (await supabase.auth.getUser()).data.user?.id,
             });
 
             if (reviewErr) {
@@ -71,6 +102,22 @@ export function useSpots() {
         }
 
         setSpots((prev) => [spot, ...prev]);
+        return spot;
+    }
+
+    async function toggleSpotPrivacy(spot: Spot) {
+        const { error } = await supabase
+            .from('spots')
+            .update({ is_private: !spot.is_private })
+            .eq('id', spot.id);
+
+        if (error) {
+            setError(error.message);
+            return;
+        }
+
+        setSpots(prev => prev.map(s => s.id === spot.id ? { ...s, is_private: !s.is_private } : s));
+        setMySpots(prev => prev.map(s => s.id === spot.id ? { ...s, is_private: !s.is_private } : s));
     }
 
     async function deleteSpotById(id: string, onDeleted?: () => void) {
@@ -84,8 +131,28 @@ export function useSpots() {
         }
 
         setSpots((prev) => prev.filter((s) => s.id !== id));
+        setMySpots((prev) => prev.filter((s) => s.id !== id));
         onDeleted?.();
     }
 
-    return { spots, loading, error, setError, reload, createSpotAt, deleteSpotById };
+    async function searchByTag(tag: string) {
+        setSearching(true);
+        const { data, error } = await supabase
+            .from('spots')
+            .select('*')
+            .contains('tags', [tag.trim().toLowerCase()]);
+
+        setSearching(false);
+        if (error) {
+            setError(error.message);
+            return;
+        }
+        setSearchResults((data ?? []) as Spot[]);
+    }
+
+    function clearSearch() {
+        setSearchResults([]);
+    }
+
+    return { spots, mySpots, mySpotsLoading, loading, error, setError, reload, loadMySpots, createSpotAt, deleteSpotById, searchResults, searching, searchByTag, clearSearch, toggleSpotPrivacy };
 }

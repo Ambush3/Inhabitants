@@ -5,13 +5,22 @@ export type Spot = {
     lat: number;
     lng: number;
     created_at: string;
+    user_id: string | null;
+    tags: string[];
+    is_private: boolean;
+    spot_type: 'spot' | 'skatepark' | 'skateshop';
+    flag_count: number;
 };
 
 export type Review = {
     id: string;
     spot_id: string;
     rating: number;
+    comment: string | null;
+    text: string | null;
     created_at: string;
+    user_id: string | null;
+    username?: string;
 };
 
 export type Place = {
@@ -19,5 +28,6 @@ export type Place = {
     name: string;
     lat: number;
     lng: number;
-    tags?: Record<string, string>;
+    tags: Record<string, string>;
+    type: 'skatepark' | 'skateshop';
 };
