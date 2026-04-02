@@ -383,6 +383,7 @@ export default function Index() {
     useEffect(() => {
         if (session?.user.id) {
             loadThemeForUser(session.user.id);
+            loadFlags();
         } else {
             resetTheme();
         }
@@ -701,8 +702,8 @@ export default function Index() {
                                         coordinate={{ latitude: s.lat, longitude: s.lng }}
                                         pinColor={
                                             s.id === highlightSpotId
-                                                ? (s.user_id === session?.user.id ? '#ffbd58' : '#A0A0A0')
-                                                : (s.user_id === session?.user.id ? '#ffffff' : '#6B6B6B')
+                                                ? (s.user_id === session?.user.id ? '#FFD700' : '#FF6B6B')
+                                                : (s.user_id === session?.user.id ? '#FFD700' : '#FF3B30')
                                         }
                                         onPress={() => {
                                             suppressMapPressRef.current = true;

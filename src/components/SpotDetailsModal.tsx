@@ -17,7 +17,7 @@ type Props = {
     spot: Spot | null;
     isFlaggedByMe: boolean;
     flagCount: number;
-    onToggleFlag: () => void;
+    onToggleFlag: (reason?: string) => void;
     reviews: Review[];
     avgRating: number;
     newRating: number;
@@ -98,9 +98,17 @@ export function SpotDetailsModal({
 
     async function handleShare() {
         if (!spot) return;
-        await Share.share({
-            message: `Check out this skate spot: ${spot.name}\nhttps://maps.apple.com/?q=${spot.lat},${spot.lng}`,
-        });
+
+        if (spot.spot_type === 'spot') {
+            await Share.share({
+                message: `Check out this skate spot: ${spot.name}\nhttps://maps.apple.com/?q=${spot.lat},${spot.lng}`,
+            });
+        } else {
+            const encodedName = encodeURIComponent(spot.name);
+            await Share.share({
+                message: `Check out ${spot.name}\nhttps://maps.apple.com/?q=${encodedName}&ll=${spot.lat},${spot.lng}`,
+            });
+        }
     }
 
     useEffect(() => {
@@ -119,6 +127,25 @@ export function SpotDetailsModal({
         if (rating === 4) return 'What did you enjoy about it?';
         if (rating === 5) return 'What made this spot great?';
         return 'Leave a comment...';
+    }
+
+    function handleFlag() {
+        if (isFlaggedByMe) {
+            onToggleFlag(undefined);
+            return;
+        }
+        ActionSheetIOS.showActionSheetWithOptions(
+            {
+                title: 'Why are you flagging this spot?',
+                options: ['Cancel', 'Incorrect location', 'Doesn\'t exist', 'Inappropriate name', 'Spam', 'Other'],
+                cancelButtonIndex: 0,
+            },
+            (buttonIndex) => {
+                if (buttonIndex === 0) return;
+                const reasons = ['Incorrect location', 'Doesn\'t exist', 'Inappropriate name', 'Spam', 'Other'];
+                onToggleFlag(reasons[buttonIndex - 1]);
+            }
+        );
     }
 
     async function handlePickImages() {
@@ -177,7 +204,7 @@ export function SpotDetailsModal({
                                             {spot?.name ?? 'Spot'}
                                         </Text>
                                         {!isOwner ? (
-                                            <Pressable onPress={onToggleFlag} style={{ paddingTop: 4 }}>
+                                            <Pressable onPress={handleFlag} style={{ paddingTop: 4 }}>
                                                 <Ionicons
                                                     name={isFlaggedByMe ? 'flag' : 'flag-outline'}
                                                     size={18}
@@ -339,48 +366,13 @@ export function SpotDetailsModal({
                         {spot?.spot_type === 'spot' ? (
                             <View style={{ marginTop: 8, marginBottom: 4 }}>
                                 <View style={[styles.divider, { backgroundColor: c.border }]} />
-                                {activeConditions.length > 0 ? (
-                                    <View style={{ marginBottom: 12 }}>
-                                        <Text style={{ fontSize: 13, fontWeight: '700', color: c.text, marginBottom: 8 }}>
-                                            Current Conditions
-                                        </Text>
-                                        <View style={styles.tagsRow}>
-                                            {activeConditions.map((condition) => {
-                                                const meta = CONDITION_META[condition];
-                                                const isMine = myConditions.includes(condition);
-                                                return (
-                                                    <Pressable
-                                                        key={condition}
-                                                        onPress={() => onToggleCondition(condition)}
-                                                        style={{
-                                                            flexDirection: 'row',
-                                                            alignItems: 'center',
-                                                            gap: 4,
-                                                            paddingHorizontal: 10,
-                                                            paddingVertical: 6,
-                                                            borderRadius: 20,
-                                                            backgroundColor: meta.bg,
-                                                            borderWidth: isMine ? 1.5 : 0,
-                                                            borderColor: isMine ? meta.color : 'transparent',
-                                                        }}
-                                                    >
-                                                        <Text style={{ fontSize: 12 }}>{meta.icon}</Text>
-                                                        <Text style={{ fontSize: 12, color: meta.color, fontWeight: isMine ? '700' : '500' }}>
-                                                            {meta.label}
-                                                        </Text>
-                                                    </Pressable>
-                                                );
-                                            })}
-                                        </View>
-                                    </View>
-                                ) : null}
-
-                                <Text style={{ fontSize: 13, fontWeight: '700', color: c.text, marginBottom: 8 }}>
-                                    Report a Condition
+                                <Text style={{ fontSize: 13, fontWeight: '700', color: c.text, marginBottom: 10 }}>
+                                    Conditions
                                 </Text>
                                 <View style={styles.tagsRow}>
                                     {(Object.keys(CONDITION_META) as SpotCondition[]).map((condition) => {
                                         const meta = CONDITION_META[condition];
+                                        const isActive = activeConditions.includes(condition);
                                         const isMine = myConditions.includes(condition);
                                         return (
                                             <Pressable
@@ -393,19 +385,25 @@ export function SpotDetailsModal({
                                                     paddingHorizontal: 10,
                                                     paddingVertical: 6,
                                                     borderRadius: 20,
-                                                    backgroundColor: isMine ? meta.bg : c.tagBg,
+                                                    backgroundColor: isActive ? meta.bg : c.tagBg,
                                                     borderWidth: 1,
                                                     borderColor: isMine ? meta.color : 'transparent',
                                                 }}
                                             >
                                                 <Text style={{ fontSize: 12 }}>{meta.icon}</Text>
-                                                <Text style={{ fontSize: 12, color: isMine ? meta.color : c.subtext, fontWeight: isMine ? '700' : '400' }}>
+                                                <Text style={{ fontSize: 12, color: isActive ? meta.color : c.subtext, fontWeight: isActive ? '700' : '400' }}>
                                                     {meta.label}
                                                 </Text>
+                                                {isActive && !isMine ? (
+                                                    <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: meta.color, marginLeft: 2 }} />
+                                                ) : null}
                                             </Pressable>
                                         );
                                     })}
                                 </View>
+                                {activeConditions.length === 0 ? (
+                                    <Text style={{ fontSize: 12, color: c.subtext, marginTop: 4 }}>No conditions reported yet. Tap to report one.</Text>
+                                ) : null}
                             </View>
                         ) : null}
 

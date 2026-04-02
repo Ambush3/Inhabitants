@@ -81,8 +81,6 @@ export function useNearbyPlaces() {
                 }
 
                 const json = await resp.json();
-                console.log('this is the json from Overpass API:', json);
-
                 const normalized: Place[] = (json.elements ?? [])
                     .map((el: any) => {
                         const pLat = el.lat ?? el.center?.lat;
@@ -121,7 +119,6 @@ export function useNearbyPlaces() {
             try {
                 const googleResults = await fetchFromGooglePlaces(lat, lng, radiusMeters, type);
                 if (googleResults.length > 0) {
-                    console.log('this is the json from google places:', googleResults);
                     setError(null);
                     if (onLoaded) {
                         onLoaded(googleResults);
