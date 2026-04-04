@@ -60,8 +60,8 @@ export function useNearbyPlaces() {
         `.trim();
 
         const emptyMessage = type === 'skatepark'
-            ? 'No skateparks found in this area.'
-            : 'No skate shops found in this area.';
+            ? 'No skate parks found nearby. Try zooming out and searching again.'
+            : 'No skate shops found nearby. Try zooming out and searching again.';
 
         let lastError: string | null = null;
 
@@ -117,7 +117,9 @@ export function useNearbyPlaces() {
 
         if (lastError) {
             try {
-                const googleResults = await fetchFromGooglePlaces(lat, lng, radiusMeters, type);
+                const googleResults = type === 'skatepark'
+                    ? await fetchFromGooglePlaces(lat, lng, radiusMeters, type)
+                    : [];
                 if (googleResults.length > 0) {
                     setError(null);
                     if (onLoaded) {
@@ -142,25 +144,35 @@ export function useNearbyPlaces() {
 
     // Fetch from Google Places API as a fallback if Overpass API fails
     async function fetchFromGooglePlaces(lat: number, lng: number, radiusMeters: number, type: 'skatepark' | 'skateshop'): Promise<Place[]> {
+        console.log('fetching from google places', lat, lng, radiusMeters);
         const key = process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY;
         if (!key) return [];
 
-        const keyword = type === 'skatepark' ? 'skate park' : 'skate shop';
+        const keyword = type === 'skatepark' ? 'skate park' : 'skateboard shop';
         const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=${radiusMeters}&keyword=${encodeURIComponent(keyword)}&key=${key}`;
 
         const resp = await fetch(url);
         if (!resp.ok) return [];
 
         const json = await resp.json();
-        console.log('this is the json from google places:', json);
-        return (json.results ?? []).map((el: any) => ({
-            id: `google-${el.place_id}`,
-            name: el.name,
-            type,
-            lat: el.geometry.location.lat,
-            lng: el.geometry.location.lng,
-            tags: {},
-        } as Place));
+
+        const skateKeywords = type === 'skatepark'
+            ? ['skate', 'skateboard', 'skatepark', 'skate park']
+            : ['skate', 'skateboard', 'skate shop'];
+
+        return (json.results ?? [])
+            .filter((el: any) => {
+                const name = (el.name ?? '').toLowerCase();
+                return skateKeywords.some(k => name.includes(k));
+            })
+            .map((el: any) => ({
+                id: `google-${el.place_id}`,
+                name: el.name,
+                type,
+                lat: el.geometry.location.lat,
+                lng: el.geometry.location.lng,
+                tags: {},
+            } as Place));
     }
 
     async function fetchPlaceById(placeId: string): Promise<Place | null> {

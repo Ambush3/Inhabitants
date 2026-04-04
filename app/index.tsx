@@ -5,7 +5,7 @@ import MapView, { Marker, Region, LongPressEvent, MapMarker } from 'react-native
 import * as Location from 'expo-location';
 import * as Haptics from 'expo-haptics';
 import * as ExpoSplashScreen from 'expo-splash-screen'
-import {useLocalSearchParams, useFocusEffect, router} from 'expo-router';
+import {useLocalSearchParams, useFocusEffect, usePathname, router} from 'expo-router';
 import SplashScreen from '../src/components/SplashScreen'
 
 import { supabase } from '@/src/libs/supabase';
@@ -136,6 +136,8 @@ export default function Index() {
     const c = theme.colors;
 
     const insets = useSafeAreaInsets();
+
+    const pathname = usePathname();
 
     const { spots, mySpots, mySpotsLoading, error, setError, reload, loadMySpots, createSpotAt, deleteSpotById, searchResults, searchByTag, clearSearch, toggleSpotPrivacy } = useSpots();
     const { deepLinkSpotId, deepLinkLat, deepLinkLng } = useLocalSearchParams<{
@@ -454,6 +456,13 @@ export default function Index() {
         });
     }, [session]);
 
+    useEffect(() => {
+        if (pathname === '/reset-password') {
+            setSettingsOpen(false);
+            setPanelOpen(false);
+        }
+    }, [pathname]);
+
     if (Platform.OS === 'web') {
         return (
             <SafeAreaView style={{ flex: 1, backgroundColor: c.headerBg }}>
@@ -603,7 +612,7 @@ export default function Index() {
                             }
                             setTimeout(() => {
                                 clearTopRated()
-                            }, 10000)
+                            }, 60000)
                         }}
                         onSelectSpot={(s) => {
                             setPanelOpen(false);
