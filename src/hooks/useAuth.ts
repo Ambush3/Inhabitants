@@ -40,5 +40,10 @@ export function useAuth() {
         await supabase.auth.signOut();
     }
 
-    return { session, loading, signUp, signIn, signOut };
+    async function updatePassword(newPassword: string): Promise<string | null> {
+        const { error } = await supabase.auth.updateUser({ password: newPassword });
+        return error?.message ?? null;
+    }
+
+    return { session, loading, signUp, signIn, signOut, updatePassword };
 }
