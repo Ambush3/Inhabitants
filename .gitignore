@@ -46,13 +46,10 @@ app-example
 
 # local env files
 .env
-.env*.local
-
-# IDE
-.idea/
 
 # deps / build
-node_modules/
-.expo/
-dist/
 build/
+
+supabase
+
+.vscode
