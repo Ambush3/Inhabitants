@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect } from 'react';
-import { Stack, router } from 'expo-router';
+import { Stack, router, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useAuth } from '@/src/hooks/useAuth';
 import { ThemeProvider, useTheme } from '@/src/context/ThemeContext';
@@ -9,10 +9,12 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 function RootLayoutInner() {
     const { session, loading } = useAuth();
     const { darkMode, theme } = useTheme();
+    const pathname = usePathname();
 
     useEffect(() => {
         if (loading) return;
         if (session) {
+            if (pathname === '/reset-password') return;
             AsyncStorage.getItem('pendingDeepLink').then(async (deepLink) => {
                 if (deepLink) {
                     AsyncStorage.removeItem('pendingDeepLink');
@@ -32,9 +34,10 @@ function RootLayoutInner() {
                 }
             });
         } else {
+            if (pathname === '/reset-password') return;
             router.replace('/auth');
         }
-    }, [session, loading]);
+    }, [session, loading, pathname]);
 
     return (
         <>

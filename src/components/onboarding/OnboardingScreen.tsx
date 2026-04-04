@@ -16,7 +16,7 @@ const slides = [
         id: '2',
         emoji: '📍',
         title: 'Explore the Map',
-        subtitle: 'Red pins are community skate spots. Gold pins are your own spots. Blue circles are skate parks and orange circles are skate shops.',
+        subtitle: 'Red pins are community skate spots. Gold pins are your own spots. Skate parks are a quarter pipe icon, and skate shops are a shop icon.',
     },
     {
         id: '3',
@@ -28,7 +28,7 @@ const slides = [
         id: '4',
         emoji: '☰',
         title: 'Explore Nearby',
-        subtitle: 'Tap the menu to find local skate parks, skate shops, and top rated spots in your area.',
+        subtitle: 'Tap the menu to find local skate parks, skate shops, and top rated spots in your area. Community members can help keep park and shop info up to date.',
     },
 ];
 
