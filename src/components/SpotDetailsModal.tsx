@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
     View, Text, Modal, TextInput, Pressable, ScrollView,
     KeyboardAvoidingView, Platform, Linking, StyleSheet,
-    ActionSheetIOS, Share, Image, FlatList, Dimensions
+    ActionSheetIOS, Share, Image, FlatList, Dimensions, Alert
 } from 'react-native';
 import { Stars } from '@/src/components/Stars';
 import { Spot, Review } from '@/src/types';
@@ -200,9 +200,16 @@ export function SpotDetailsModal({
                             <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 4 }}>
                                 <View style={{ flex: 1, minWidth: 0 }}>
                                     <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-                                        <Text style={[styles.spotName, { color: c.text, flex: 1, marginRight: 8 }]} numberOfLines={2} ellipsizeMode="tail">
-                                            {spot?.name ?? 'Spot'}
-                                        </Text>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 }}>
+                                            <Text style={[styles.spotName, { color: c.text, flexShrink: 1 }]} numberOfLines={2} ellipsizeMode="tail">
+                                                {spot?.name ?? 'Spot'}
+                                            </Text>
+                                            {spot?.is_verified ? (
+                                                <Pressable onPress={() => Alert.alert('Verified Spot', 'This spot has been reviewed by 3 or more skaters.')}>
+                                                    <Ionicons name="checkmark-circle" size={18} color="#007AFF" style={{ marginLeft: 6, marginTop: 4 }} />
+                                                </Pressable>
+                                            ) : null}
+                                        </View>
                                         {!isOwner ? (
                                             <Pressable onPress={handleFlag} style={{ paddingTop: 4 }}>
                                                 <Ionicons
