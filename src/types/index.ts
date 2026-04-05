@@ -10,6 +10,7 @@ export type Spot = {
     is_private: boolean;
     spot_type: 'spot' | 'skatepark' | 'skateshop';
     flag_count: number;
+    is_verified: boolean;
 };
 
 export type Review = {
