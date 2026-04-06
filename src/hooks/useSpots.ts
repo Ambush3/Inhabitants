@@ -137,17 +137,18 @@ export function useSpots() {
 
     async function searchByTag(tag: string) {
         setSearching(true);
-        const { data, error } = await supabase
-            .from('spots')
-            .select('*')
-            .contains('tags', [tag.trim().toLowerCase()]);
-
+        
+        const trimmed = tag.trim().toLowerCase();
+        
+        const results = spots.filter(s =>
+            s.tags?.includes(trimmed) &&
+            !s.is_flagged &&
+            !s.is_private
+        );
+        
+        setSearchResults(results);
+        
         setSearching(false);
-        if (error) {
-            setError(error.message);
-            return;
-        }
-        setSearchResults((data ?? []) as Spot[]);
     }
 
     function clearSearch() {

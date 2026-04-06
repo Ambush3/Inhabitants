@@ -11,6 +11,7 @@ export type Spot = {
     spot_type: 'spot' | 'skatepark' | 'skateshop';
     flag_count: number;
     is_verified: boolean;
+    is_flagged: boolean;
 };
 
 export type Review = {

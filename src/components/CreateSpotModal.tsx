@@ -1,4 +1,4 @@
-import React, {useState, useRef, useEffect} from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
     View, Text, Button, Modal, TextInput as RNTextInput, Pressable,
     Platform, KeyboardAvoidingView, ScrollView, TextInput, Image
@@ -6,7 +6,7 @@ import {
 import { Stars } from '@/src/components/Stars';
 import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '@/src/context/ThemeContext';
-import {Ionicons} from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 
 type Props = {
     visible: boolean;
@@ -34,11 +34,11 @@ type Props = {
 };
 
 export function CreateSpotModal({
-                                    visible, pendingCoord, spotName, spotDesc, spotRating, spotTags, pendingImages,
-                                    onChangeName, onChangeDesc, onChangeRating, onAddTag, onRemoveTag,
-                                    onAddImage, onRemoveImage, onCancel, onCreate, isPrivate, onTogglePrivate, spotComment, onChangeComment,
-                                    spotType, onChangeSpotType,
-                                }: Props) {
+    visible, pendingCoord, spotName, spotDesc, spotRating, spotTags, pendingImages,
+    onChangeName, onChangeDesc, onChangeRating, onAddTag, onRemoveTag,
+    onAddImage, onRemoveImage, onCancel, onCreate, isPrivate, onTogglePrivate, spotComment, onChangeComment,
+    spotType, onChangeSpotType,
+}: Props) {
 
     const { theme } = useTheme();
     const c = theme.colors;
@@ -108,7 +108,7 @@ export function CreateSpotModal({
                 >
                     <Pressable
                         style={{ backgroundColor: c.surface, padding: 16, borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '75%' }}
-                        onPress={() => {}}
+                        onPress={() => { }}
                     >
                         <ScrollView ref={scrollRef} keyboardShouldPersistTaps="handled">
                             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>

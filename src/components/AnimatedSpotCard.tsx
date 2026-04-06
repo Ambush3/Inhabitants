@@ -25,7 +25,7 @@ export function AnimatedSpotCard({ index, children }: AnimatedSpotCardProps) {
                 useNativeDriver: true,
             }),
         ]).start()
-    }, [])
+    })
 
     return (
         <Animated.View style={{ opacity, transform: [{ translateY }] }}>
