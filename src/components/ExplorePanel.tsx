@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/src/context/ThemeContext';
 import { AnimatedSpotCard } from '@/src/components/AnimatedSpotCard'
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
-import {TopRatedItem} from "@/src/hooks/useTopRated";
+import { TopRatedItem } from "@/src/hooks/useTopRated";
 
 type PlaceFavorite = {
     place_id: string;
@@ -49,12 +49,12 @@ type Props = {
 type Tab = 'explore' | 'myspots' | 'favorites';
 
 export function ExplorePanel({
-                                 visible, onClose, parksLoading, shopsLoading, topLoading,
-                                 topRated, onLoadSkateparks, onLoadSkateShops, onLoadTopRated, onSelectSpot, onSignOut,
-                                 onSearch, onClearSearch, hasSearchResults, searchResults,
-                                 favorites, favLoading, placeFavorites, placeFavLoading, onSelectPlace, onDeleteSpot, onOpenSettings,
-                                 mySpots, mySpotsLoading, wishlist, wishlistLoading, onToggleSpotPrivacy,
-                             }: Props) {
+    visible, onClose, parksLoading, shopsLoading, topLoading,
+    topRated, onLoadSkateparks, onLoadSkateShops, onLoadTopRated, onSelectSpot, onSignOut,
+    onSearch, onClearSearch, hasSearchResults, searchResults,
+    favorites, favLoading, placeFavorites, placeFavLoading, onSelectPlace, onDeleteSpot, onOpenSettings,
+    mySpots, mySpotsLoading, wishlist, wishlistLoading, onToggleSpotPrivacy,
+}: Props) {
 
     const insets = useSafeAreaInsets();
     const { theme } = useTheme();
@@ -109,7 +109,7 @@ export function ExplorePanel({
                         backgroundColor: c.panelBg,
                         flexDirection: 'column',
                     }}
-                    onPress={() => {}}
+                    onPress={() => { }}
                 >
                     {/* Tab Bar */}
                     <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderColor: c.border, paddingHorizontal: 8, paddingTop: 12 }}>
@@ -136,22 +136,26 @@ export function ExplorePanel({
                                 <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
                                     <TextInput
                                         value={searchQuery}
-                                        onChangeText={setSearchQuery}
+                                        onChangeText={(text) => {
+                                            setSearchQuery(text);
+                                            if (text.trim().length > 0) {
+                                                onSearch(text.trim());
+                                            } else {
+                                                onClearSearch();
+                                            }
+                                        }}
                                         placeholder="e.g. stairs, rails..."
                                         placeholderTextColor={c.placeholder}
                                         autoCapitalize="none"
-                                        returnKeyType="search"
-                                        onSubmitEditing={handleSearch}
                                         style={{ flex: 1, borderWidth: 1, borderColor: c.inputBorder, borderRadius: 8, padding: 10, color: c.text, backgroundColor: c.surface, fontSize: 13 }}
                                     />
-                                    {hasSearchResults ? (
-                                        <Pressable onPress={handleClear} style={{ justifyContent: 'center', padding: 8 }}>
-                                            <Text style={{ color: c.danger, fontSize: 13 }}>Clear</Text>
-                                        </Pressable>
-                                    ) : null}
                                 </View>
 
-                                {searchResults.length > 0 ? (
+                                {searchQuery.trim().length > 0 && searchResults.length === 0 ? (
+                                    <Text style={{ color: c.subtext, fontSize: 13, opacity: 0.6, marginBottom: 16 }}>
+                                        No spots found with that tag. Try a different one.
+                                    </Text>
+                                ) : searchResults.length > 0 ? (
                                     <View style={{ marginBottom: 16 }}>
                                         <Text style={{ fontWeight: '600', marginBottom: 8, color: c.text }}>
                                             Results ({searchResults.length})
