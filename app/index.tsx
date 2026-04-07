@@ -1,11 +1,11 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import {Text, View, Button, ScrollView, Platform, Alert, Pressable, Animated, Easing } from 'react-native';
+import { Text, View, Button, ScrollView, Platform, Alert, Pressable, Animated, Easing } from 'react-native';
 import MapView, { Marker, Region, LongPressEvent, MapMarker } from 'react-native-maps';
 import * as Location from 'expo-location';
 import * as Haptics from 'expo-haptics';
 import * as ExpoSplashScreen from 'expo-splash-screen'
-import {useLocalSearchParams, useFocusEffect, usePathname, router} from 'expo-router';
+import { useLocalSearchParams, useFocusEffect, usePathname, router } from 'expo-router';
 import SplashScreen from '../src/components/SplashScreen'
 
 import { supabase } from '@/src/libs/supabase';
@@ -13,7 +13,7 @@ import { supabase } from '@/src/libs/supabase';
 import { SkateMarker } from '@/src/components/SkateMarker';
 import { CreateSpotModal } from '@/src/components/CreateSpotModal';
 import { SpotDetailsModal } from '@/src/components/SpotDetailsModal';
-import { SkateShopDetailsModal} from "@/src/components/SkateShopDetailsModal";
+import { SkateShopDetailsModal } from "@/src/components/SkateShopDetailsModal";
 import { ExplorePanel } from '@/src/components/ExplorePanel';
 import { SettingsPanel } from '@/src/components/SettingsPanel';
 import { OnboardingScreen } from '@/src/components/onboarding/OnboardingScreen';
@@ -26,16 +26,17 @@ import { useNearbyPlaces } from '@/src/hooks/useNearbyPlaces';
 import { useTopRated } from '@/src/hooks/useTopRated';
 import { useAuth } from '@/src/hooks/useAuth';
 import { useFavorites } from '@/src/hooks/useFavorites';
-import {usePlaceFavorites} from "@/src/hooks/usePlaceFavorites";
+import { usePlaceFavorites } from "@/src/hooks/usePlaceFavorites";
 import { usePushNotifications } from '@/src/hooks/usePushNotifications';
 import { sendPushNotification } from '@/src/libs/sendPushNotification';
 import { useSpotFlags } from '@/src/hooks/flaggingSystem/useSpotFlags';
+import { useReviewFlags } from '@/src/hooks/flaggingSystem/useReviewFlags';
 
 import { useTheme } from '@/src/context/ThemeContext';
 
 import { Ionicons } from '@expo/vector-icons';
-import {Place, Spot} from '@/src/types';
-import {useWishlist} from "@/src/hooks/useWishlist";
+import { Place, Spot } from '@/src/types';
+import { useWishlist } from "@/src/hooks/useWishlist";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 ExpoSplashScreen.preventAutoHideAsync()
@@ -94,6 +95,7 @@ export default function Index() {
     const { activeConditions, myConditions, loadConditions, toggleCondition, resetConditions } = useSpotConditions();
 
     const { flaggedSpotIds, loadFlags, toggleFlag, isFlaggedByMe } = useSpotFlags(session?.user.id ?? null);
+    const { flaggedReviewIds, loadReviewFlags, toggleReviewFlag, isReviewFlaggedByMe } = useReviewFlags(session?.user.id ?? null);
 
     const [pendingImages, setPendingImages] = useState<string[]>([]);
 
@@ -310,6 +312,7 @@ export default function Index() {
         loadMySpots();
         loadWishlist();
         loadFlags();
+        loadReviewFlags();
     }, []);
 
     useFocusEffect(
@@ -317,6 +320,8 @@ export default function Index() {
             loadFavorites();
             loadPlaceFavorites();
             loadWishlist();
+            loadFlags();
+            loadReviewFlags();
         }, [])
     );
 
@@ -386,6 +391,7 @@ export default function Index() {
         if (session?.user.id) {
             loadThemeForUser(session.user.id);
             loadFlags();
+            loadReviewFlags();
         } else {
             resetTheme();
         }
@@ -752,33 +758,33 @@ export default function Index() {
                                     name={p.name}
                                     type={p.type as 'skatepark' | 'skateshop'}
                                     selected={p.id === selectedPlaceId}
-                                        onPress={() => {
-                                            suppressMapPressRef.current = true;
-                                            const communitySpot = spots.find(s => s.id === p.id);
-                                            if (communitySpot) {
-                                                setHighlightSpotId(communitySpot.id);
-                                                highlightSpotIdRef.current = communitySpot.id;
-                                                animateToSpotWithModalOffset(communitySpot.lat, communitySpot.lng);
-                                                openSpotDetails(communitySpot);
-                                            } else {
-                                                openedFromFavoritesRef.current = false;
-                                                setSelectedPlaceId(p.id);
-                                                animateToSpotWithModalOffset(p.lat, p.lng);
-                                                setSelectedPlace(p);
-                                                setPlaceDetailsOpen(true);
-                                                setTimeout(() => {
-                                                    markerRefs.current[p.id]?.showCallout();
-                                                }, 300);
-                                            }
-                                        }}
+                                    onPress={() => {
+                                        suppressMapPressRef.current = true;
+                                        const communitySpot = spots.find(s => s.id === p.id);
+                                        if (communitySpot) {
+                                            setHighlightSpotId(communitySpot.id);
+                                            highlightSpotIdRef.current = communitySpot.id;
+                                            animateToSpotWithModalOffset(communitySpot.lat, communitySpot.lng);
+                                            openSpotDetails(communitySpot);
+                                        } else {
+                                            openedFromFavoritesRef.current = false;
+                                            setSelectedPlaceId(p.id);
+                                            animateToSpotWithModalOffset(p.lat, p.lng);
+                                            setSelectedPlace(p);
+                                            setPlaceDetailsOpen(true);
+                                            setTimeout(() => {
+                                                markerRefs.current[p.id]?.showCallout();
+                                            }, 300);
+                                        }
+                                    }}
                                 />
                             ))}
                         </MapView>
                     ) : (
-                    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-                        <Text style={{ color: c.text }}>Finding your location...</Text>
-                    </View>
-                )}
+                        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                            <Text style={{ color: c.text }}>Finding your location...</Text>
+                        </View>
+                    )}
                     <Pressable
                         onPress={() => {
                             autoCenterRef.current = true;
@@ -951,6 +957,10 @@ export default function Index() {
                                 const username = await getMyUsername();
                                 await sendPushNotification(selectedSpot.id, 'wishlist', username);
                             }
+                        }}
+                        isReviewFlaggedByMe={isReviewFlaggedByMe}
+                        onToggleReviewFlag={async (reviewId: string, reason?: string) => {
+                            await toggleReviewFlag(reviewId, reason);
                         }}
                     />
 

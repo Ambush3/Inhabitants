@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { supabase } from '@/src/libs/supabase';
 import { Review } from '@/src/types';
+import { moderateText } from '@/src/libs/moderator/textModerator';
 
 export function useReviews() {
     const [reviews, setReviews] = useState<Review[]>([]);
@@ -18,6 +19,7 @@ export function useReviews() {
             .from('reviews')
             .select('*')
             .eq('spot_id', spotId)
+            .eq('is_flagged', false)
             .order('created_at', { ascending: false });
 
         if (error) return error.message;
@@ -60,6 +62,13 @@ export function useReviews() {
 
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return 'You must be logged in to review.';
+
+        if (comment) {
+            const check = moderateText(comment);
+            if (!check.allowed) {
+                return check.reason ?? 'Inappropriate content.';
+            }
+        }
 
         if (existingReviewId) {
             const { error, data } = await supabase
