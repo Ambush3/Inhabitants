@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { supabase } from '@/src/libs/supabase';
 import { Spot } from '@/src/types';
+import { moderateText } from '@/src/libs/moderator/textModerator';
 
 export function useSpots() {
     const [spots, setSpots] = useState<Spot[]>([]);
@@ -65,6 +66,28 @@ export function useSpots() {
         if (!trimmedName) {
             setError('Name is required');
             return;
+        }
+
+        const nameCheck = moderateText(trimmedName);
+        if (!nameCheck.allowed) {
+            setError(nameCheck.reason ?? 'Inappropriate content.');
+            return;
+        }
+
+        if (description) {
+            const descCheck = moderateText(description.trim());
+            if (!descCheck.allowed) {
+                setError(descCheck.reason ?? 'Inappropriate content.');
+                return;
+            }
+        }
+
+        for (const tag of tags) {
+            const tagCheck = moderateText(tag);
+            if (!tagCheck.allowed) {
+                setError('One or more tags contain inappropriate content.');
+                return;
+            }
         }
 
         const { data: spotData, error: spotErr } = await supabase
