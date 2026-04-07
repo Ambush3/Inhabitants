@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/src/libs/supabase';
 import { Session } from '@supabase/supabase-js';
+import { moderateText } from '@/src/libs/moderator/textModerator';
+
 
 export function useAuth() {
     const [session, setSession] = useState<Session | null>(null);
@@ -20,14 +22,19 @@ export function useAuth() {
     }, []);
 
     async function signUp(email: string, password: string, username: string): Promise<string | null> {
+        const usernameCheck = moderateText(username);
+        if (!usernameCheck.allowed) {
+            return 'This username is not allowed.';
+        }
+    
         const { data, error } = await supabase.auth.signUp({ email, password });
         if (error) return error.message;
         if (!data.user) return 'Something went wrong.';
-
+    
         const { error: profileError } = await supabase
             .from('profiles')
             .insert({ id: data.user.id, username });
-
+    
         return profileError?.message ?? null;
     }
 

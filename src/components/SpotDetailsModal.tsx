@@ -9,7 +9,7 @@ import { Spot, Review } from '@/src/types';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '@/src/context/ThemeContext';
-import {CONDITION_META, SpotCondition} from "@/src/hooks/useSpotConditions";
+import { CONDITION_META, SpotCondition } from "@/src/hooks/useSpotConditions";
 
 
 type Props = {
@@ -43,16 +43,18 @@ type Props = {
     onToggleCondition: (condition: SpotCondition) => void;
     isWishlisted: boolean;
     onToggleWishlist: () => void;
+    isReviewFlaggedByMe: (reviewId: string) => boolean;
+    onToggleReviewFlag: (reviewId: string, reason?: string) => void | Promise<void>;
 };
 
 export function SpotDetailsModal({
-                                     visible, spot, isFlaggedByMe, flagCount, onToggleFlag, reviews, avgRating, newRating, newComment,
-                                     onChangeRating, onChangeComment, onSubmitReview, onClose, onDelete,
-                                     currentUserId, existingReviewId, isFavorite, onToggleFavorite,
-                                     onDeleteReview, images, imagesLoading, onDeleteImage, onUploadImages,
-                                     onTogglePrivacy, creatorUsername, activeConditions, myConditions, onToggleCondition,
-                                     isWishlisted, onToggleWishlist
-                                 }: Props) {
+    visible, spot, isFlaggedByMe, flagCount, onToggleFlag, reviews, avgRating, newRating, newComment,
+    onChangeRating, onChangeComment, onSubmitReview, onClose, onDelete,
+    currentUserId, existingReviewId, isFavorite, onToggleFavorite,
+    onDeleteReview, images, imagesLoading, onDeleteImage, onUploadImages,
+    onTogglePrivacy, creatorUsername, activeConditions, myConditions, onToggleCondition,
+    isWishlisted, onToggleWishlist, isReviewFlaggedByMe, onToggleReviewFlag
+}: Props) {
     const { width } = Dimensions.get('window');
     const { theme } = useTheme();
     const c = theme.colors;
@@ -418,37 +420,37 @@ export function SpotDetailsModal({
                         {!existingReviewId ? (
                             <View style={{ marginTop: 8, marginBottom: 4 }}>
                                 <View style={[styles.divider, { backgroundColor: c.border }]} />
-                                    <View style={styles.section} ref={reviewFormRef} onLayout={(e) => {
-                                        reviewFormY.current = e.nativeEvent.layout.y
-                                    }}>
-                                        <Text style={[styles.sectionTitle, { color: c.text }]}>Leave a Review</Text>
-                                        <Stars value={newRating} onChange={onChangeRating} />
-                                        <TextInput
-                                            ref={commentInputRef}
-                                            value={newComment}
-                                            onChangeText={onChangeComment}
-                                            placeholder={getRatingHint(newRating)}
-                                            placeholderTextColor={c.placeholder}
-                                            autoCorrect
-                                            multiline
-                                            returnKeyType="done"
-                                            submitBehavior="blurAndSubmit"
-                                            onSubmitEditing={onSubmitReview}
-                                            autoCapitalize="sentences"
-                                            onFocus={() => {
-                                                setTimeout(() => {
-                                                    scrollRef.current?.scrollTo({ y: reviewFormY.current - 16, animated: true })
-                                                }, 300)
-                                            }}
-                                            style={[styles.reviewInput, { borderColor: c.inputBorder, color: c.text, backgroundColor: c.surface }]}
-                                        />
-                                        <Pressable
-                                            onPress={onSubmitReview}
-                                            style={[styles.submitBtn, { backgroundColor: c.tagBg, borderWidth: 1, borderColor: c.border }]}
-                                        >
-                                            <Text style={[styles.submitBtnText, { color: c.text }]}>Submit Review</Text>
-                                        </Pressable>
-                                    </View>
+                                <View style={styles.section} ref={reviewFormRef} onLayout={(e) => {
+                                    reviewFormY.current = e.nativeEvent.layout.y
+                                }}>
+                                    <Text style={[styles.sectionTitle, { color: c.text }]}>Leave a Review</Text>
+                                    <Stars value={newRating} onChange={onChangeRating} />
+                                    <TextInput
+                                        ref={commentInputRef}
+                                        value={newComment}
+                                        onChangeText={onChangeComment}
+                                        placeholder={getRatingHint(newRating)}
+                                        placeholderTextColor={c.placeholder}
+                                        autoCorrect
+                                        multiline
+                                        returnKeyType="done"
+                                        submitBehavior="blurAndSubmit"
+                                        onSubmitEditing={onSubmitReview}
+                                        autoCapitalize="sentences"
+                                        onFocus={() => {
+                                            setTimeout(() => {
+                                                scrollRef.current?.scrollTo({ y: reviewFormY.current - 16, animated: true })
+                                            }, 300)
+                                        }}
+                                        style={[styles.reviewInput, { borderColor: c.inputBorder, color: c.text, backgroundColor: c.surface }]}
+                                    />
+                                    <Pressable
+                                        onPress={onSubmitReview}
+                                        style={[styles.submitBtn, { backgroundColor: c.tagBg, borderWidth: 1, borderColor: c.border }]}
+                                    >
+                                        <Text style={[styles.submitBtnText, { color: c.text }]}>Submit Review</Text>
+                                    </Pressable>
+                                </View>
                             </View>
                         ) : null}
 
@@ -533,7 +535,35 @@ export function SpotDetailsModal({
                                                             <Text style={[styles.deleteText, { color: c.danger }]}>Delete</Text>
                                                         </Pressable>
                                                     </View>
-                                                ) : null}
+                                                ) : (
+                                                    <Pressable
+                                                        onPress={() => {
+                                                            if (isReviewFlaggedByMe(r.id)) {
+                                                                onToggleReviewFlag(r.id, undefined);
+                                                                return;
+                                                            }
+                                                            ActionSheetIOS.showActionSheetWithOptions(
+                                                                {
+                                                                    title: 'Why are you flagging this review?',
+                                                                    options: ['Cancel', 'Inappropriate content', 'Spam', 'Harassment', 'Other'],
+                                                                    cancelButtonIndex: 0,
+                                                                },
+                                                                (buttonIndex) => {
+                                                                    if (buttonIndex === 0) return;
+                                                                    const reasons = ['Inappropriate content', 'Spam', 'Harassment', 'Other'];
+                                                                    onToggleReviewFlag(r.id, reasons[buttonIndex - 1]);
+                                                                }
+                                                            );
+                                                        }}
+                                                        style={{ marginTop: 6, alignSelf: 'flex-start' }}
+                                                    >
+                                                        <Ionicons
+                                                            name={isReviewFlaggedByMe(r.id) ? 'flag' : 'flag-outline'}
+                                                            size={14}
+                                                            color={isReviewFlaggedByMe(r.id) ? '#FF3B30' : c.subtext}
+                                                        />
+                                                    </Pressable>
+                                                )}
                                             </>
                                         )}
                                     </View>
