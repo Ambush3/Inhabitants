@@ -63,6 +63,10 @@ Deno.serve(async (req) => {
         title: '🚩 Spot Flagged',
         body: `Your spot "${spot.name}" was flagged${reason ? `: ${reason}` : ''}`,
       },
+      image_removed: {
+          title: '🚫 Image Removed',
+          body: `An image on your spot "${spot.name}" was removed for violating community guidelines.`,
+      },
     };
 
     const message = messages[event_type];
