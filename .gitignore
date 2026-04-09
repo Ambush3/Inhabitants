@@ -50,6 +50,8 @@ app-example
 # deps / build
 build/
 
-supabase
+# Supabase
+supabase/.temp/
+supabase/config.toml
 
 .vscode
