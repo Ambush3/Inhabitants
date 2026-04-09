@@ -63,6 +63,16 @@ export function useSpotImages() {
                 });
                 console.log('insertError:', insertError);
 
+                if (!insertError) {
+                    await supabase.functions.invoke('moderate-image', {
+                        body: {
+                            image_url: urlData.publicUrl,
+                            spot_id: spotId,
+                            user_id: user.id,
+                        },
+                    });
+                }
+
             } catch (e) {
                 console.log('Exception:', e);
             }
