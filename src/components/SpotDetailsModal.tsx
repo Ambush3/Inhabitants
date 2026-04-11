@@ -2,7 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
     View, Text, Modal, TextInput, Pressable, ScrollView,
     KeyboardAvoidingView, Platform, Linking, StyleSheet,
-    ActionSheetIOS, Share, Image, FlatList, Dimensions, Alert
+    ActionSheetIOS, Share, Image, FlatList, Dimensions, Alert,
+    PanResponder, Animated
 } from 'react-native';
 import { Stars } from '@/src/components/Stars';
 import { Spot, Review } from '@/src/types';
@@ -74,6 +75,33 @@ export function SpotDetailsModal({
     const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
         if (viewableItems.length > 0) setCurrentIndex(viewableItems[0].index ?? 0);
     });
+
+    const translateY = useRef(new Animated.Value(0)).current;
+    const panResponder = useRef(
+        PanResponder.create({
+            onMoveShouldSetPanResponder: (_, gestureState) => gestureState.dy > 10,
+            onPanResponderMove: (_, gestureState) => {
+                if (gestureState.dy > 0) translateY.setValue(gestureState.dy);
+            },
+            onPanResponderRelease: (_, gestureState) => {
+                if (gestureState.dy > 100) {
+                    Animated.timing(translateY, {
+                        toValue: 800,
+                        duration: 200,
+                        useNativeDriver: true,
+                    }).start(() => {
+                        translateY.setValue(0);
+                        setSelectedImageIndex(null);
+                    });
+                } else {
+                    Animated.spring(translateY, {
+                        toValue: 0,
+                        useNativeDriver: true,
+                    }).start();
+                }
+            },
+        })
+    ).current;
 
     function handleDirections() {
         if (!spot) return;
@@ -594,7 +622,8 @@ export function SpotDetailsModal({
                 animationType="fade"
                 onRequestClose={() => setSelectedImageIndex(null)}
             >
-                <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.95)' }}>
+                <Animated.View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.95)', transform: [{ translateY }] }}
+                    {...panResponder.panHandlers} >
                     <FlatList
                         data={images}
                         horizontal
@@ -627,7 +656,7 @@ export function SpotDetailsModal({
                             ))}
                         </View>
                     ) : null}
-                </View>
+                </Animated.View>
             </Modal>
         </Modal>
     );
