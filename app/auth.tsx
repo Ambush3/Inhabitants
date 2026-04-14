@@ -1,5 +1,15 @@
 import React, { useState } from 'react';
-import { Text, TextInput, Pressable, KeyboardAvoidingView, Platform, ScrollView, Keyboard, View, StyleSheet } from 'react-native';
+import {
+    Text,
+    TextInput,
+    Pressable,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    Keyboard,
+    View,
+    StyleSheet,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@/src/hooks/useAuth';
 import { router } from 'expo-router';
@@ -7,7 +17,7 @@ import { useTheme } from '@/src/context/ThemeContext';
 import LottieView from 'lottie-react-native';
 
 export default function AuthScreen() {
-    const { signIn, signUp } = useAuth();
+    const { signIn, signUp, resetPassword } = useAuth();
     const { theme } = useTheme();
     const c = theme.colors;
 
@@ -42,7 +52,11 @@ export default function AuthScreen() {
 
         const err = isLogin
             ? await signIn(trimmedEmail, trimmedPassword)
-            : await signUp(trimmedEmail, trimmedPassword, username.trim().toLowerCase());
+            : await signUp(
+                  trimmedEmail,
+                  trimmedPassword,
+                  username.trim().toLowerCase()
+              );
 
         setLoading(false);
 
@@ -52,11 +66,29 @@ export default function AuthScreen() {
         }
 
         if (!isLogin) {
-            setSuccess('Account created! Please check your email to confirm your account.');
+            setSuccess(
+                'Account created! Please check your email to confirm your account.'
+            );
             return;
         }
 
         router.replace('/');
+    }
+
+    async function handleResetPassword() {
+        const trimmedEmail = email.trim().toLowerCase();
+        if (!trimmedEmail) {
+            setError('Enter your email address first.');
+            return;
+        }
+        setLoading(true);
+        const err = await resetPassword(trimmedEmail);
+        setLoading(false);
+        if (err) {
+            setError(err);
+            return;
+        }
+        setSuccess('Password reset email sent. Check your inbox.');
     }
 
     return (
@@ -67,7 +99,11 @@ export default function AuthScreen() {
                 keyboardVerticalOffset={0}
             >
                 <ScrollView
-                    contentContainerStyle={{ flexGrow: 1, justifyContent: 'flex-start', padding: 24 }}
+                    contentContainerStyle={{
+                        flexGrow: 1,
+                        justifyContent: 'flex-start',
+                        padding: 24,
+                    }}
                     keyboardShouldPersistTaps="handled"
                     keyboardDismissMode="on-drag"
                 >
@@ -80,23 +116,50 @@ export default function AuthScreen() {
                         />
                     </View>
 
-                    <Text style={{ fontSize: 28, fontWeight: '700', marginBottom: 8, color: c.text }}>
+                    <Text
+                        style={{
+                            fontSize: 28,
+                            fontWeight: '700',
+                            marginBottom: 8,
+                            color: c.text,
+                        }}
+                    >
                         {isLogin ? 'Welcome back' : 'Create account'}
                     </Text>
 
-                    <Text style={{ opacity: 0.5, marginBottom: 32, color: c.text }}>
-                        {isLogin ? 'Sign in to your account' : 'Sign up to start adding spots'}
+                    <Text
+                        style={{
+                            opacity: 0.5,
+                            marginBottom: 32,
+                            color: c.text,
+                        }}
+                    >
+                        {isLogin
+                            ? 'Sign in to your account'
+                            : 'Sign up to start adding spots'}
                     </Text>
 
                     {error ? (
-                        <Text style={{ color: c.danger, marginBottom: 16 }}>{error}</Text>
+                        <Text style={{ color: c.danger, marginBottom: 16 }}>
+                            {error}
+                        </Text>
                     ) : null}
 
                     {success ? (
-                        <Text style={{ color: 'green', marginBottom: 16 }}>{success}</Text>
+                        <Text style={{ color: 'green', marginBottom: 16 }}>
+                            {success}
+                        </Text>
                     ) : null}
 
-                    <Text style={{ marginBottom: 6, fontWeight: '500', color: c.text }}>Email</Text>
+                    <Text
+                        style={{
+                            marginBottom: 6,
+                            fontWeight: '500',
+                            color: c.text,
+                        }}
+                    >
+                        Email
+                    </Text>
                     <TextInput
                         value={email}
                         onChangeText={setEmail}
@@ -104,6 +167,8 @@ export default function AuthScreen() {
                         placeholderTextColor={c.placeholder}
                         autoCapitalize="none"
                         keyboardType="email-address"
+                        textContentType="emailAddress"
+                        autoComplete="email"
                         style={{
                             borderWidth: 1,
                             borderColor: c.inputBorder,
@@ -115,13 +180,23 @@ export default function AuthScreen() {
                         }}
                     />
 
-                    <Text style={{ marginBottom: 6, fontWeight: '500', color: c.text }}>Password</Text>
+                    <Text
+                        style={{
+                            marginBottom: 6,
+                            fontWeight: '500',
+                            color: c.text,
+                        }}
+                    >
+                        Password
+                    </Text>
                     <TextInput
                         value={password}
                         onChangeText={setPassword}
                         placeholder="••••••••"
                         placeholderTextColor={c.placeholder}
                         secureTextEntry
+                        textContentType={isLogin ? 'password' : 'newPassword'}
+                        autoComplete={isLogin ? 'password' : 'new-password'}
                         style={{
                             borderWidth: 1,
                             borderColor: c.inputBorder,
@@ -135,7 +210,42 @@ export default function AuthScreen() {
 
                     {!isLogin ? (
                         <>
-                            <Text style={{ marginBottom: 6, fontWeight: '500', color: c.text }}>Username</Text>
+                            <Text
+                                style={{
+                                    marginBottom: 6,
+                                    fontWeight: '500',
+                                    color: c.text,
+                                }}
+                            >
+                                Confirm Password
+                            </Text>
+                            <TextInput
+                                value={confirmPassword}
+                                onChangeText={setConfirmPassword}
+                                placeholder="••••••••"
+                                placeholderTextColor={c.placeholder}
+                                secureTextEntry
+                                textContentType="newPassword"
+                                autoComplete="new-password"
+                                style={{
+                                    borderWidth: 1,
+                                    borderColor: c.inputBorder,
+                                    borderRadius: 8,
+                                    padding: 12,
+                                    marginBottom: 16,
+                                    color: c.text,
+                                    backgroundColor: c.surface,
+                                }}
+                            />
+                            <Text
+                                style={{
+                                    marginBottom: 6,
+                                    fontWeight: '500',
+                                    color: c.text,
+                                }}
+                            >
+                                Username
+                            </Text>
                             <TextInput
                                 value={username}
                                 onChangeText={setUsername}
@@ -143,6 +253,8 @@ export default function AuthScreen() {
                                 placeholderTextColor={c.placeholder}
                                 autoCapitalize="none"
                                 autoCorrect={false}
+                                textContentType="username"
+                                autoComplete="username-new"
                                 style={{
                                     borderWidth: 1,
                                     borderColor: c.inputBorder,
@@ -168,21 +280,58 @@ export default function AuthScreen() {
                             opacity: loading ? 0.6 : 1,
                         }}
                     >
-                        <Text style={{ color: c.background, fontWeight: '600', fontSize: 16 }}>
-                            {loading ? 'Please wait...' : isLogin ? 'Sign in' : 'Create account'}
+                        <Text
+                            style={{
+                                color: c.background,
+                                fontWeight: '600',
+                                fontSize: 16,
+                            }}
+                        >
+                            {loading
+                                ? 'Please wait...'
+                                : isLogin
+                                  ? 'Sign in'
+                                  : 'Create account'}
                         </Text>
                     </Pressable>
 
-                    <Pressable onPress={() => {
-                        setIsLogin(prev => !prev);
-                        setError(null);
-                        setSuccess(null);
-                        setUsername('');
-                    }}>
-                        <Text style={{ textAlign: 'center', opacity: 0.6, color: c.text }}>
-                            {isLogin ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
+                    <Pressable
+                        onPress={() => {
+                            setIsLogin((prev) => !prev);
+                            setError(null);
+                            setSuccess(null);
+                            setUsername('');
+                        }}
+                    >
+                        <Text
+                            style={{
+                                textAlign: 'center',
+                                opacity: 0.6,
+                                color: c.text,
+                            }}
+                        >
+                            {isLogin
+                                ? "Don't have an account? Sign up"
+                                : 'Already have an account? Sign in'}
                         </Text>
                     </Pressable>
+
+                    {isLogin ? (
+                        <Pressable
+                            onPress={handleResetPassword}
+                            style={{ marginTop: 12 }}
+                        >
+                            <Text
+                                style={{
+                                    textAlign: 'center',
+                                    opacity: 0.4,
+                                    color: c.text,
+                                }}
+                            >
+                                Forgot password?
+                            </Text>
+                        </Pressable>
+                    ) : null}
                 </ScrollView>
             </KeyboardAvoidingView>
         </SafeAreaView>
@@ -198,4 +347,4 @@ const styles = StyleSheet.create({
         width: 140,
         height: 140,
     },
-})
+});
