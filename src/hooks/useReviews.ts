@@ -7,7 +7,9 @@ export function useReviews() {
     const [reviews, setReviews] = useState<Review[]>([]);
     const [newRating, setNewRating] = useState(0);
     const [newComment, setNewComment] = useState('');
-    const [existingReviewId, setExistingReviewId] = useState<string | null>(null);
+    const [existingReviewId, setExistingReviewId] = useState<string | null>(
+        null
+    );
 
     const avgRating =
         reviews.length === 0
@@ -27,21 +29,29 @@ export function useReviews() {
         const userIds = [...new Set((data ?? []).map((r: any) => r.user_id))];
         const { data: profilesData } = await supabase
             .from('profiles')
-            .select('id, username')
+            .select('id, username, avatar_url')
             .in('id', userIds);
 
-        const profileMap = Object.fromEntries((profilesData ?? []).map((p: any) => [p.id, p.username]));
+        const profileMap = Object.fromEntries(
+            (profilesData ?? []).map((p: any) => [
+                p.id,
+                { username: p.username, avatar_url: p.avatar_url },
+            ])
+        );
 
         const loaded = (data ?? []).map((r: any) => ({
             ...r,
-            username: profileMap[r.user_id] ?? null,
+            username: profileMap[r.user_id]?.username ?? null,
+            avatar_url: profileMap[r.user_id]?.avatar_url ?? null,
         })) as Review[];
 
         setReviews(loaded);
 
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+            data: { user },
+        } = await supabase.auth.getUser();
         if (user) {
-            const existing = loaded.find(r => r.user_id === user.id);
+            const existing = loaded.find((r) => r.user_id === user.id);
             if (existing) {
                 setExistingReviewId(existing.id);
                 setNewRating(existing.rating);
@@ -54,13 +64,19 @@ export function useReviews() {
         }
     }
 
-    async function submitReview(spotId: string, overrideRating?: number, overrideComment?: string): Promise<string | null> {
-        const rating = overrideRating ?? newRating
-        const comment = overrideComment ?? newComment
+    async function submitReview(
+        spotId: string,
+        overrideRating?: number,
+        overrideComment?: string
+    ): Promise<string | null> {
+        const rating = overrideRating ?? newRating;
+        const comment = overrideComment ?? newComment;
 
         if (rating <= 0) return 'Please choose a rating.';
 
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+            data: { user },
+        } = await supabase.auth.getUser();
         if (!user) return 'You must be logged in to review.';
 
         if (comment) {
@@ -77,17 +93,19 @@ export function useReviews() {
                 .eq('id', existingReviewId)
                 .select();
 
-            console.log('update result:', JSON.stringify(data), JSON.stringify(error));
+            console.log(
+                'update result:',
+                JSON.stringify(data),
+                JSON.stringify(error)
+            );
             if (error) return error.message;
         } else {
-            const { error } = await supabase
-                .from('reviews')
-                .insert({
-                    spot_id: spotId,
-                    rating,
-                    comment: comment || null,
-                    user_id: user.id,
-                });
+            const { error } = await supabase.from('reviews').insert({
+                spot_id: spotId,
+                rating,
+                comment: comment || null,
+                user_id: user.id,
+            });
 
             if (error) return error.message;
         }
@@ -96,8 +114,14 @@ export function useReviews() {
         return null;
     }
 
-    async function deleteReview(reviewId: string, spotId: string): Promise<string | null> {
-        const { error } = await supabase.from('reviews').delete().eq('id', reviewId);
+    async function deleteReview(
+        reviewId: string,
+        spotId: string
+    ): Promise<string | null> {
+        const { error } = await supabase
+            .from('reviews')
+            .delete()
+            .eq('id', reviewId);
         if (error) return error.message;
         await loadReviews(spotId);
         return null;
@@ -110,5 +134,17 @@ export function useReviews() {
         setExistingReviewId(null);
     }
 
-    return { reviews, avgRating, newRating, setNewRating, newComment, setNewComment, loadReviews, submitReview, deleteReview, resetReviews, existingReviewId };
+    return {
+        reviews,
+        avgRating,
+        newRating,
+        setNewRating,
+        newComment,
+        setNewComment,
+        loadReviews,
+        submitReview,
+        deleteReview,
+        resetReviews,
+        existingReviewId,
+    };
 }

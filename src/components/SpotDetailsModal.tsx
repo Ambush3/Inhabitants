@@ -1128,21 +1128,60 @@ export function SpotDetailsModal({
                                                 marginBottom: 6,
                                             }}
                                         >
-                                            {r.username ? (
-                                                <Text
-                                                    style={[
-                                                        styles.reviewUsername,
-                                                        {
-                                                            color: c.subtext,
-                                                            fontWeight: '600',
-                                                        },
-                                                    ]}
-                                                >
-                                                    @{r.username}
-                                                </Text>
-                                            ) : (
-                                                <View />
-                                            )}
+                                            <View
+                                                style={{
+                                                    flexDirection: 'row',
+                                                    alignItems: 'center',
+                                                    gap: 8,
+                                                }}
+                                            >
+                                                {r.avatar_url ? (
+                                                    <Image
+                                                        source={{
+                                                            uri: r.avatar_url,
+                                                        }}
+                                                        style={{
+                                                            width: 28,
+                                                            height: 28,
+                                                            borderRadius: 14,
+                                                        }}
+                                                    />
+                                                ) : (
+                                                    <View
+                                                        style={{
+                                                            width: 28,
+                                                            height: 28,
+                                                            borderRadius: 14,
+                                                            backgroundColor:
+                                                                c.tagBg,
+                                                            alignItems:
+                                                                'center',
+                                                            justifyContent:
+                                                                'center',
+                                                        }}
+                                                    >
+                                                        <Ionicons
+                                                            name="person-outline"
+                                                            size={14}
+                                                            color={c.subtext}
+                                                        />
+                                                    </View>
+                                                )}
+                                                {r.username ? (
+                                                    <Text
+                                                        style={[
+                                                            styles.reviewUsername,
+                                                            {
+                                                                color: c.subtext,
+                                                                fontWeight:
+                                                                    '600',
+                                                            },
+                                                        ]}
+                                                    >
+                                                        @{r.username}
+                                                    </Text>
+                                                ) : null}
+                                            </View>
                                             <Text
                                                 style={[
                                                     styles.reviewDate,
