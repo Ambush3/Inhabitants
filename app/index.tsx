@@ -1,19 +1,43 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Text, View, Button, ScrollView, Platform, Alert, Pressable, Animated, Easing } from 'react-native';
-import MapView, { Marker, Region, LongPressEvent, MapMarker } from 'react-native-maps';
+import {
+    SafeAreaView,
+    useSafeAreaInsets,
+} from 'react-native-safe-area-context';
+import {
+    Text,
+    View,
+    Button,
+    ScrollView,
+    Platform,
+    Alert,
+    Pressable,
+    Animated,
+    Easing,
+    InteractionManager,
+} from 'react-native';
+import MapView, {
+    Marker,
+    Region,
+    LongPressEvent,
+    MapMarker,
+} from 'react-native-maps';
 import * as Location from 'expo-location';
 import * as Haptics from 'expo-haptics';
-import * as ExpoSplashScreen from 'expo-splash-screen'
-import { useLocalSearchParams, useFocusEffect, usePathname, router } from 'expo-router';
-import SplashScreen from '../src/components/SplashScreen'
+import * as ExpoSplashScreen from 'expo-splash-screen';
+import {
+    useLocalSearchParams,
+    useFocusEffect,
+    usePathname,
+    router,
+} from 'expo-router';
+import SplashScreen from '../src/components/SplashScreen';
 
 import { supabase } from '@/src/libs/supabase';
 
 import { SkateMarker } from '@/src/components/SkateMarker';
 import { CreateSpotModal } from '@/src/components/CreateSpotModal';
 import { SpotDetailsModal } from '@/src/components/SpotDetailsModal';
-import { SkateShopDetailsModal } from "@/src/components/SkateShopDetailsModal";
+import { SkateShopDetailsModal } from '@/src/components/SkateShopDetailsModal';
 import { ExplorePanel } from '@/src/components/ExplorePanel';
 import { SettingsPanel } from '@/src/components/SettingsPanel';
 import { OnboardingScreen } from '@/src/components/onboarding/OnboardingScreen';
@@ -26,7 +50,7 @@ import { useNearbyPlaces } from '@/src/hooks/useNearbyPlaces';
 import { useTopRated } from '@/src/hooks/useTopRated';
 import { useAuth } from '@/src/hooks/useAuth';
 import { useFavorites } from '@/src/hooks/useFavorites';
-import { usePlaceFavorites } from "@/src/hooks/usePlaceFavorites";
+import { usePlaceFavorites } from '@/src/hooks/usePlaceFavorites';
 import { usePushNotifications } from '@/src/hooks/usePushNotifications';
 import { sendPushNotification } from '@/src/libs/sendPushNotification';
 import { useSpotFlags } from '@/src/hooks/flaggingSystem/useSpotFlags';
@@ -36,10 +60,10 @@ import { useTheme } from '@/src/context/ThemeContext';
 
 import { Ionicons } from '@expo/vector-icons';
 import { Place, Spot } from '@/src/types';
-import { useWishlist } from "@/src/hooks/useWishlist";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useWishlist } from '@/src/hooks/useWishlist';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-ExpoSplashScreen.preventAutoHideAsync()
+ExpoSplashScreen.preventAutoHideAsync();
 
 const DEFAULT_REGION: Region = {
     latitude: 0,
@@ -57,13 +81,13 @@ export default function Index() {
     const autoCenterRef = useRef(true);
     const markerRefs = useRef<Record<string, MapMarker | null>>({});
 
-    const placesTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+    const placesTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const highlightSpotIdRef = useRef<string | null>(null);
 
     const pendingDeepLinkRef = useRef<string | null>(null);
     const hasOpenedDeepLinkRef = useRef(false);
-    const openedFromDeepLinkRef = useRef(false)
+    const openedFromDeepLinkRef = useRef(false);
     const hasNavigatedFromNotification = useRef(false);
     const openedFromFavoritesRef = useRef(false);
 
@@ -80,22 +104,74 @@ export default function Index() {
         submitReview,
         deleteReview,
         resetReviews,
-        existingReviewId
+        existingReviewId,
     } = useReviews();
     const { signOut, session } = useAuth();
-    const { favorites, loading: favLoading, loadFavorites, toggleFavorite, isFavorite } = useFavorites();
-    const { wishlist, wishlistLoading, loadWishlist, toggleWishlist, isWishlisted } = useWishlist();
-    const { places, setPlaces, parksLoading, shopsLoading, error: nearbyError, loadNearbySkateParks, loadNearbySkateShops, fetchPlaceById } = useNearbyPlaces();
-    const { topRated, topLoading, error: topRatedError, loadTopRatedSpotsInArea, clearTopRated } = useTopRated();
+    const {
+        favorites,
+        loading: favLoading,
+        loadFavorites,
+        toggleFavorite,
+        isFavorite,
+    } = useFavorites();
+    const {
+        wishlist,
+        wishlistLoading,
+        loadWishlist,
+        toggleWishlist,
+        isWishlisted,
+    } = useWishlist();
+    const {
+        places,
+        setPlaces,
+        parksLoading,
+        shopsLoading,
+        error: nearbyError,
+        loadNearbySkateParks,
+        loadNearbySkateShops,
+        fetchPlaceById,
+    } = useNearbyPlaces();
+    const {
+        topRated,
+        topLoading,
+        error: topRatedError,
+        loadTopRatedSpotsInArea,
+        clearTopRated,
+    } = useTopRated();
 
     const [spotIsPrivate, setSpotIsPrivate] = useState(false);
 
-    const { placeFavorites, placeFavLoading, loadPlaceFavorites, togglePlaceFavorite, isPlaceFavorite } = usePlaceFavorites();
-    const { images, uploading: imagesUploading, loadImages, uploadImages, deleteImage, clearImages } = useSpotImages();
-    const { activeConditions, myConditions, loadConditions, toggleCondition, resetConditions } = useSpotConditions();
+    const {
+        placeFavorites,
+        placeFavLoading,
+        loadPlaceFavorites,
+        togglePlaceFavorite,
+        isPlaceFavorite,
+    } = usePlaceFavorites();
+    const {
+        images,
+        uploading: imagesUploading,
+        loadImages,
+        uploadImages,
+        deleteImage,
+        clearImages,
+    } = useSpotImages();
+    const {
+        activeConditions,
+        myConditions,
+        loadConditions,
+        toggleCondition,
+        resetConditions,
+    } = useSpotConditions();
 
-    const { flaggedSpotIds, loadFlags, toggleFlag, isFlaggedByMe } = useSpotFlags(session?.user.id ?? null);
-    const { flaggedReviewIds, loadReviewFlags, toggleReviewFlag, isReviewFlaggedByMe } = useReviewFlags(session?.user.id ?? null);
+    const { flaggedSpotIds, loadFlags, toggleFlag, isFlaggedByMe } =
+        useSpotFlags(session?.user.id ?? null);
+    const {
+        flaggedReviewIds,
+        loadReviewFlags,
+        toggleReviewFlag,
+        isReviewFlaggedByMe,
+    } = useReviewFlags(session?.user.id ?? null);
 
     const [pendingImages, setPendingImages] = useState<string[]>([]);
 
@@ -107,24 +183,29 @@ export default function Index() {
     const [highlightSpotId, setHighlightSpotId] = useState<string | null>(null);
 
     const [useDeviceLocation, setUseDeviceLocation] = useState(true);
-    const [locationReady, setLocationReady] = useState(false)
+    const [locationReady, setLocationReady] = useState(false);
 
-    const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null)
+    const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null);
 
     const [spotRating, setSpotRating] = useState(0);
-    const [spotComment, setSpotComment] = useState('')
+    const [spotComment, setSpotComment] = useState('');
 
     const [detailsOpen, setDetailsOpen] = useState(false);
     const [selectedSpot, setSelectedSpot] = useState<Spot | null>(null);
 
     const [createOpen, setCreateOpen] = useState(false);
-    const [pendingCoord, setPendingCoord] = useState<{ lat: number; lng: number } | null>(null);
+    const [pendingCoord, setPendingCoord] = useState<{
+        lat: number;
+        lng: number;
+    } | null>(null);
 
     const [spotName, setSpotName] = useState('');
     const [spotDesc, setSpotDesc] = useState('');
     const [spotTags, setSpotTags] = useState<string[]>([]);
 
-    const [spotCreatorUsername, setSpotCreatorUsername] = useState<string | null>(null);
+    const [spotCreatorUsername, setSpotCreatorUsername] = useState<
+        string | null
+    >(null);
 
     const [settingsOpen, setSettingsOpen] = useState(false);
 
@@ -132,7 +213,11 @@ export default function Index() {
 
     const [showOnboarding, setShowOnboarding] = useState(false);
 
-    const [spotType, setSpotType] = useState<'spot' | 'skatepark' | 'skateshop'>('spot')
+    const [spotType, setSpotType] = useState<
+        'spot' | 'skatepark' | 'skateshop'
+    >('spot');
+
+    const [detailsLoading, setDetailsLoading] = useState(false);
 
     const { theme, loadThemeForUser, resetTheme } = useTheme();
     const c = theme.colors;
@@ -141,23 +226,42 @@ export default function Index() {
 
     const pathname = usePathname();
 
-    const { spots, mySpots, mySpotsLoading, error, setError, reload, loadMySpots, createSpotAt, deleteSpotById, searchResults, searchByTag, clearSearch, toggleSpotPrivacy } = useSpots();
+    const {
+        spots,
+        mySpots,
+        mySpotsLoading,
+        error,
+        setError,
+        reload,
+        loadMySpots,
+        createSpotAt,
+        deleteSpotById,
+        searchResults,
+        searchByTag,
+        clearSearch,
+        toggleSpotPrivacy,
+    } = useSpots();
     const { deepLinkSpotId, deepLinkLat, deepLinkLng } = useLocalSearchParams<{
         deepLinkSpotId?: string;
         deepLinkLat?: string;
         deepLinkLng?: string;
     }>();
 
-    const deepLinkRegion = deepLinkLat && deepLinkLng ? {
-        latitude: parseFloat(deepLinkLat) - (0.03 * 0.45),
-        longitude: parseFloat(deepLinkLng),
-        latitudeDelta: 0.03,
-        longitudeDelta: 0.03,
-    } : null;
+    const deepLinkRegion =
+        deepLinkLat && deepLinkLng
+            ? {
+                  latitude: parseFloat(deepLinkLat) - 0.03 * 0.45,
+                  longitude: parseFloat(deepLinkLng),
+                  latitudeDelta: 0.03,
+                  longitudeDelta: 0.03,
+              }
+            : null;
 
-    const [initialRegion, setInitialRegion] = useState<Region>(deepLinkRegion ?? DEFAULT_REGION);
+    const [initialRegion, setInitialRegion] = useState<Region>(
+        deepLinkRegion ?? DEFAULT_REGION
+    );
 
-    const [showSplash, setShowSplash] = useState(!deepLinkSpotId)
+    const [showSplash, setShowSplash] = useState(!deepLinkSpotId);
 
     const visibleSpots = searchResults.length > 0 ? searchResults : spots;
     const displayError = error ?? nearbyError ?? topRatedError;
@@ -206,19 +310,19 @@ export default function Index() {
     }
 
     function setPlacesWithAutoClear(updater: (prev: Place[]) => Place[]) {
-        if (placesTimerRef.current) clearTimeout(placesTimerRef.current)
-        setPlaces(updater)
+        if (placesTimerRef.current) clearTimeout(placesTimerRef.current);
+        setPlaces(updater);
         placesTimerRef.current = setTimeout(() => {
-            setPlaces([])
-        }, 120000)
+            setPlaces([]);
+        }, 120000);
     }
 
     function animateToSpotWithModalOffset(lat: number, lng: number) {
         preModalRegionRef.current = mapRegionRef.current;
 
-        const MODAL_HEIGHT_RATIO = 0.45;
+        const MODAL_HEIGHT_RATIO = 0.4;
         const latDelta = 0.03;
-        const offsetLat = lat - (latDelta * MODAL_HEIGHT_RATIO);
+        const offsetLat = lat - latDelta * MODAL_HEIGHT_RATIO;
 
         mapRef.current?.animateToRegion(
             {
@@ -234,23 +338,33 @@ export default function Index() {
     async function openSpotDetails(spot: Spot) {
         setSelectedSpot(spot);
         setDetailsOpen(true);
+        setDetailsLoading(true);
         resetReviews();
         clearImages();
 
-        const { data } = await supabase
-            .from('profiles')
-            .select('username')
-            .eq('id', spot.user_id)
-            .single();
+        const [profileResult] = await Promise.all([
+            supabase
+                .from('profiles')
+                .select('username')
+                .eq('id', spot.user_id)
+                .single(),
+            loadReviews(spot.id),
+            loadImages(spot.id),
+            loadConditions(spot.id),
+        ]);
 
-        setSpotCreatorUsername(data?.username ?? null);
-
-        await Promise.all([loadReviews(spot.id), loadImages(spot.id), loadConditions(spot.id)]);
+        setSpotCreatorUsername(profileResult.data?.username ?? null);
+        setDetailsLoading(false);
     }
 
     async function onRefresh() {
         setRefreshing(true);
-        await Promise.all([reload(), loadMySpots(), loadFavorites(), loadPlaceFavorites()]);
+        await Promise.all([
+            reload(),
+            loadMySpots(),
+            loadFavorites(),
+            loadPlaceFavorites(),
+        ]);
         setRefreshing(false);
     }
 
@@ -265,25 +379,21 @@ export default function Index() {
     }
 
     function confirmDelete(spot: Spot) {
-        Alert.alert(
-            'Delete spot?',
-            spot.name,
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Delete',
-                    style: 'destructive',
-                    onPress: () => {
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-                        deleteSpotById(spot.id, () => {
-                            setDetailsOpen(false);
-                            setSelectedSpot(null);
-                            resetReviews();
-                        });
-                    },
+        Alert.alert('Delete spot?', spot.name, [
+            { text: 'Cancel', style: 'cancel' },
+            {
+                text: 'Delete',
+                style: 'destructive',
+                onPress: () => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+                    deleteSpotById(spot.id, () => {
+                        setDetailsOpen(false);
+                        setSelectedSpot(null);
+                        resetReviews();
+                    });
                 },
-            ]
-        );
+            },
+        ]);
     }
 
     function onLongPress(e: LongPressEvent) {
@@ -297,13 +407,17 @@ export default function Index() {
         setCreateOpen(true);
     }
 
-    usePushNotifications(session?.user.id ?? null, session, (spotId, lat, lng) => {
-        const spot = spots.find(s => s.id === spotId);
-        if (spot) {
-            animateToSpotWithModalOffset(lat, lng);
-            openSpotDetails(spot);
+    usePushNotifications(
+        session?.user.id ?? null,
+        session,
+        (spotId, lat, lng) => {
+            const spot = spots.find((s) => s.id === spotId);
+            if (spot) {
+                animateToSpotWithModalOffset(lat, lng);
+                openSpotDetails(spot);
+            }
         }
-    });
+    );
 
     useEffect(() => {
         reload();
@@ -327,7 +441,7 @@ export default function Index() {
 
     useEffect(() => {
         (async () => {
-            if (Platform.OS === "web") return;
+            if (Platform.OS === 'web') return;
             if (!useDeviceLocation) return;
 
             setError(null);
@@ -337,9 +451,10 @@ export default function Index() {
                 return;
             }
 
-            const { status } = await Location.requestForegroundPermissionsAsync();
-            if (status !== "granted") {
-                setError("Location permission denied.");
+            const { status } =
+                await Location.requestForegroundPermissionsAsync();
+            if (status !== 'granted') {
+                setError('Location permission denied.');
                 setUseDeviceLocation(false);
                 return;
             }
@@ -358,7 +473,7 @@ export default function Index() {
                 longitude: pos.coords.longitude,
                 latitudeDelta: 0.08,
                 longitudeDelta: 0.08,
-            }
+            };
 
             mapRegionRef.current = nextRegion;
             userLocationRef.current = nextRegion;
@@ -405,14 +520,15 @@ export default function Index() {
 
     useEffect(() => {
         if (hasOpenedDeepLinkRef.current) return;
-        if (!pendingDeepLinkRef.current || !spots.length || !locationReady) return;
-        const spot = spots.find(s => s.id === pendingDeepLinkRef.current);
+        if (!pendingDeepLinkRef.current || !spots.length || !locationReady)
+            return;
+        const spot = spots.find((s) => s.id === pendingDeepLinkRef.current);
         if (!spot) return;
         hasOpenedDeepLinkRef.current = true;
         pendingDeepLinkRef.current = null;
 
         const spotRegion = {
-            latitude: spot.lat - (0.03 * 0.45),
+            latitude: spot.lat - 0.03 * 0.45,
             longitude: spot.lng,
             latitudeDelta: 0.03,
             longitudeDelta: 0.03,
@@ -421,14 +537,21 @@ export default function Index() {
         mapRegionRef.current = spotRegion;
 
         if (spot.spot_type === 'skatepark' || spot.spot_type === 'skateshop') {
-            setPlacesWithAutoClear(prev => prev.some(p => p.id === spot.id) ? prev : [...prev, {
-                id: spot.id,
-                name: spot.name,
-                type: spot.spot_type as 'skatepark' | 'skateshop',
-                lat: spot.lat,
-                lng: spot.lng,
-                tags: {},
-            }]);
+            setPlacesWithAutoClear((prev) =>
+                prev.some((p) => p.id === spot.id)
+                    ? prev
+                    : [
+                          ...prev,
+                          {
+                              id: spot.id,
+                              name: spot.name,
+                              type: spot.spot_type as 'skatepark' | 'skateshop',
+                              lat: spot.lat,
+                              lng: spot.lng,
+                              tags: {},
+                          },
+                      ]
+            );
         }
 
         setTimeout(() => {
@@ -476,19 +599,42 @@ export default function Index() {
                 {/*    <Button title={loading ? 'Loading…' : 'Reload'} onPress={reload} />*/}
                 {/*</View>*/}
 
-                {displayError ? <Text style={{ color: 'red', marginBottom: 12 }}>{displayError}</Text> : null}
+                {displayError ? (
+                    <Text style={{ color: 'red', marginBottom: 12 }}>
+                        {displayError}
+                    </Text>
+                ) : null}
                 <Text style={{ marginBottom: 12 }}>
                     Map is native-only for now. Web shows a list fallback.
                 </Text>
 
                 <ScrollView>
                     {visibleSpots.map((s) => (
-                        <View key={s.id} style={{ paddingVertical: 10, borderBottomWidth: 1, borderColor: '#ddd' }}>
+                        <View
+                            key={s.id}
+                            style={{
+                                paddingVertical: 10,
+                                borderBottomWidth: 1,
+                                borderColor: '#ddd',
+                            }}
+                        >
                             <Text style={{ fontWeight: '600' }}>{s.name}</Text>
-                            {s.description ? <Text>{s.description}</Text> : null}
-                            <Text>{s.lat}, {s.lng}</Text>
-                            <View style={{ marginTop: 8, alignSelf: 'flex-start' }}>
-                                <Button title="Delete" onPress={() => confirmDelete(s)} />
+                            {s.description ? (
+                                <Text>{s.description}</Text>
+                            ) : null}
+                            <Text>
+                                {s.lat}, {s.lng}
+                            </Text>
+                            <View
+                                style={{
+                                    marginTop: 8,
+                                    alignSelf: 'flex-start',
+                                }}
+                            >
+                                <Button
+                                    title="Delete"
+                                    onPress={() => confirmDelete(s)}
+                                />
                             </View>
                         </View>
                     ))}
@@ -503,43 +649,94 @@ export default function Index() {
                 <SplashScreen onFinish={() => setShowSplash(false)} />
             ) : (
                 <View style={{ flex: 1, backgroundColor: c.headerBg }}>
-                    <View style={{ height: insets.top, backgroundColor: c.headerBg }} />
+                    <View
+                        style={{
+                            height: insets.top,
+                            backgroundColor: c.headerBg,
+                        }}
+                    />
 
                     {displayError ? (
-                        <Text style={{ color: "red", paddingHorizontal: 12, paddingTop: 8 }}>
+                        <Text
+                            style={{
+                                color: 'red',
+                                paddingHorizontal: 12,
+                                paddingTop: 8,
+                            }}
+                        >
                             {displayError}
                         </Text>
                     ) : null}
 
-                    <View style={{
-                        paddingHorizontal: 12,
-                        paddingVertical: 10,
-                        flexDirection: "row",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        borderBottomWidth: 1,
-                        borderColor: c.border,
-                        backgroundColor: c.headerBg,
-                    }}>
-                        <Pressable onPress={() => setPanelOpen(true)} style={{ padding: 8 }}>
+                    <View
+                        style={{
+                            paddingHorizontal: 12,
+                            paddingVertical: 10,
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            borderBottomWidth: 1,
+                            borderColor: c.border,
+                            backgroundColor: c.headerBg,
+                        }}
+                    >
+                        <Pressable
+                            onPress={() => setPanelOpen(true)}
+                            style={{ padding: 8 }}
+                        >
                             <Ionicons name="menu" size={24} color={c.text} />
                         </Pressable>
-                        <Text style={{ fontSize: 16, fontWeight: "600", color: c.text }}>Spots</Text>
-                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                            <Pressable onPress={onRefresh} style={{ padding: 8 }} disabled={refreshing}>
-                                <Animated.View style={{
-                                    transform: [{
-                                        rotate: spinAnim.interpolate({
-                                            inputRange: [0, 1],
-                                            outputRange: ['0deg', '360deg'],
-                                        })
-                                    }]
-                                }}>
-                                    <Ionicons name="refresh" size={20} color={refreshing ? '#007AFF' : c.text} />
+                        <Text
+                            style={{
+                                fontSize: 16,
+                                fontWeight: '600',
+                                color: c.text,
+                            }}
+                        >
+                            Spots
+                        </Text>
+                        <View
+                            style={{
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                            }}
+                        >
+                            <Pressable
+                                onPress={onRefresh}
+                                style={{ padding: 8 }}
+                                disabled={refreshing}
+                            >
+                                <Animated.View
+                                    style={{
+                                        transform: [
+                                            {
+                                                rotate: spinAnim.interpolate({
+                                                    inputRange: [0, 1],
+                                                    outputRange: [
+                                                        '0deg',
+                                                        '360deg',
+                                                    ],
+                                                }),
+                                            },
+                                        ],
+                                    }}
+                                >
+                                    <Ionicons
+                                        name="refresh"
+                                        size={20}
+                                        color={refreshing ? '#007AFF' : c.text}
+                                    />
                                 </Animated.View>
                             </Pressable>
-                            <Pressable onPress={() => setSettingsOpen(true)} style={{ padding: 8 }}>
-                                <Ionicons name="settings-outline" size={24} color={c.text} />
+                            <Pressable
+                                onPress={() => setSettingsOpen(true)}
+                                style={{ padding: 8 }}
+                            >
+                                <Ionicons
+                                    name="settings-outline"
+                                    size={24}
+                                    color={c.text}
+                                />
                             </Pressable>
                         </View>
                     </View>
@@ -566,8 +763,8 @@ export default function Index() {
                         onLoadSkateparks={() => {
                             setPanelOpen(false);
                             const communityParks = spots
-                                .filter(s => s.spot_type === 'skatepark')
-                                .map(s => ({
+                                .filter((s) => s.spot_type === 'skatepark')
+                                .map((s) => ({
                                     id: s.id,
                                     name: s.name,
                                     type: 'skatepark' as const,
@@ -581,16 +778,18 @@ export default function Index() {
                                 20000,
                                 undefined,
                                 (googleParks) => {
-                                    setPlaces([...communityParks, ...googleParks]);
+                                    setPlaces([
+                                        ...communityParks,
+                                        ...googleParks,
+                                    ]);
                                 }
                             );
                         }}
-
                         onLoadSkateShops={() => {
                             setPanelOpen(false);
                             const communityShops = spots
-                                .filter(s => s.spot_type === 'skateshop')
-                                .map(s => ({
+                                .filter((s) => s.spot_type === 'skateshop')
+                                .map((s) => ({
                                     id: s.id,
                                     name: s.name,
                                     type: 'skateshop' as const,
@@ -604,21 +803,32 @@ export default function Index() {
                                 20000,
                                 undefined,
                                 (googleShops) => {
-                                    setPlaces([...communityShops, ...googleShops]);
+                                    setPlaces([
+                                        ...communityShops,
+                                        ...googleShops,
+                                    ]);
                                 }
                             );
                         }}
                         onLoadTopRated={async () => {
-                            const topSpot = await loadTopRatedSpotsInArea(mapRegionRef.current, 10);
+                            const topSpot = await loadTopRatedSpotsInArea(
+                                mapRegionRef.current,
+                                10
+                            );
                             if (topSpot) {
                                 mapRef.current?.animateToRegion(
-                                    { latitude: topSpot.lat, longitude: topSpot.lng, latitudeDelta: 0.05, longitudeDelta: 0.05 },
+                                    {
+                                        latitude: topSpot.lat,
+                                        longitude: topSpot.lng,
+                                        latitudeDelta: 0.05,
+                                        longitudeDelta: 0.05,
+                                    },
                                     1200
                                 );
                             }
                             setTimeout(() => {
-                                clearTopRated()
-                            }, 60000)
+                                clearTopRated();
+                            }, 60000);
                         }}
                         onSelectSpot={(s) => {
                             setPanelOpen(false);
@@ -648,14 +858,23 @@ export default function Index() {
                             openedFromFavoritesRef.current = true;
                             setSelectedPlaceId(p.id);
                             mapRef.current?.animateToRegion(
-                                { latitude: p.lat, longitude: p.lng, latitudeDelta: 0.03, longitudeDelta: 0.03 },
+                                {
+                                    latitude: p.lat,
+                                    longitude: p.lng,
+                                    latitudeDelta: 0.03,
+                                    longitudeDelta: 0.03,
+                                },
                                 600
                             );
                             const full = await fetchPlaceById(p.id);
                             const resolved = full ?? p;
                             setSelectedPlace(resolved);
                             setPlaceDetailsOpen(true);
-                            setPlacesWithAutoClear(prev => prev.some(x => x.id === resolved.id) ? prev : [...prev, resolved]);
+                            setPlacesWithAutoClear((prev) =>
+                                prev.some((x) => x.id === resolved.id)
+                                    ? prev
+                                    : [...prev, resolved]
+                            );
                             setTimeout(() => {
                                 markerRefs.current[p.id]?.showCallout();
                             }, 650);
@@ -663,12 +882,16 @@ export default function Index() {
                         wishlist={wishlist}
                         wishlistLoading={wishlistLoading}
                         onToggleSpotPrivacy={async (spot) => {
-                            await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            await Haptics.impactAsync(
+                                Haptics.ImpactFeedbackStyle.Light
+                            );
                             await toggleSpotPrivacy(spot);
                             await loadMySpots();
                         }}
                         onDeleteSpot={async (spot) => {
-                            await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+                            await Haptics.impactAsync(
+                                Haptics.ImpactFeedbackStyle.Heavy
+                            );
                             deleteSpotById(spot.id, async () => {
                                 await loadMySpots();
                             });
@@ -687,8 +910,12 @@ export default function Index() {
                                 }
                                 setHighlightSpotId(null);
                                 setSelectedPlaceId(null);
-                                markerRefs.current[highlightSpotId ?? '']?.hideCallout?.();
-                                markerRefs.current[selectedPlaceId ?? '']?.hideCallout?.();
+                                markerRefs.current[
+                                    highlightSpotId ?? ''
+                                ]?.hideCallout?.();
+                                markerRefs.current[
+                                    selectedPlaceId ?? ''
+                                ]?.hideCallout?.();
                             }}
                             onPanDrag={() => {
                                 autoCenterRef.current = false;
@@ -704,54 +931,90 @@ export default function Index() {
                             {pendingCoord ? (
                                 <Marker
                                     key="pending"
-                                    coordinate={{ latitude: pendingCoord.lat, longitude: pendingCoord.lng }}
+                                    coordinate={{
+                                        latitude: pendingCoord.lat,
+                                        longitude: pendingCoord.lng,
+                                    }}
                                     title="New spot"
                                     pinColor="orange"
                                 />
                             ) : null}
-                            {visibleSpots.filter(s => s.spot_type === 'spot' || s.id === highlightSpotId).map((s) => (
-                                s.spot_type === 'spot' ? (
-                                    <Marker
-                                        ref={(ref) => { markerRefs.current[s.id] = ref; }}
-                                        key={s.id}
-                                        coordinate={{ latitude: s.lat, longitude: s.lng }}
-                                        pinColor={
-                                            s.id === highlightSpotId
-                                                ? (s.user_id === session?.user.id ? '#FFD700' : '#FF6B6B')
-                                                : (s.user_id === session?.user.id ? '#FFD700' : '#FF3B30')
-                                        }
-                                        onPress={() => {
-                                            suppressMapPressRef.current = true;
-                                            setHighlightSpotId(s.id);
-                                            highlightSpotIdRef.current = s.id;
-                                            animateToSpotWithModalOffset(s.lat, s.lng);
-                                            openSpotDetails(s);
-                                        }}
-                                    />
-                                ) : (
-                                    <SkateMarker
-                                        ref={(ref) => { markerRefs.current[s.id] = ref; }}
-                                        key={`${s.id}-${s.id === highlightSpotId}`}
-                                        id={s.id}
-                                        lat={s.lat}
-                                        lng={s.lng}
-                                        name={s.name}
-                                        type={s.spot_type as 'skatepark' | 'skateshop'}
-                                        selected={s.id === highlightSpotId}
-                                        onPress={() => {
-                                            suppressMapPressRef.current = true;
-                                            setHighlightSpotId(s.id);
-                                            highlightSpotIdRef.current = s.id;
-                                            animateToSpotWithModalOffset(s.lat, s.lng);
-                                            openSpotDetails(s);
-                                        }}
-                                    />
+                            {visibleSpots
+                                .filter(
+                                    (s) =>
+                                        s.spot_type === 'spot' ||
+                                        s.id === highlightSpotId
                                 )
-                            ))}
+                                .map((s) =>
+                                    s.spot_type === 'spot' ? (
+                                        <Marker
+                                            ref={(ref) => {
+                                                markerRefs.current[s.id] = ref;
+                                            }}
+                                            key={s.id}
+                                            coordinate={{
+                                                latitude: s.lat,
+                                                longitude: s.lng,
+                                            }}
+                                            pinColor={
+                                                s.id === highlightSpotId
+                                                    ? s.user_id ===
+                                                      session?.user.id
+                                                        ? '#FFD700'
+                                                        : '#FF6B6B'
+                                                    : s.user_id ===
+                                                        session?.user.id
+                                                      ? '#FFD700'
+                                                      : '#FF3B30'
+                                            }
+                                            onPress={() => {
+                                                suppressMapPressRef.current = true;
+                                                setHighlightSpotId(s.id);
+                                                highlightSpotIdRef.current =
+                                                    s.id;
+                                                animateToSpotWithModalOffset(
+                                                    s.lat,
+                                                    s.lng
+                                                );
+                                                openSpotDetails(s);
+                                            }}
+                                        />
+                                    ) : (
+                                        <SkateMarker
+                                            ref={(ref) => {
+                                                markerRefs.current[s.id] = ref;
+                                            }}
+                                            key={`${s.id}-${s.id === highlightSpotId}`}
+                                            id={s.id}
+                                            lat={s.lat}
+                                            lng={s.lng}
+                                            name={s.name}
+                                            type={
+                                                s.spot_type as
+                                                    | 'skatepark'
+                                                    | 'skateshop'
+                                            }
+                                            selected={s.id === highlightSpotId}
+                                            onPress={() => {
+                                                suppressMapPressRef.current = true;
+                                                setHighlightSpotId(s.id);
+                                                highlightSpotIdRef.current =
+                                                    s.id;
+                                                animateToSpotWithModalOffset(
+                                                    s.lat,
+                                                    s.lng
+                                                );
+                                                openSpotDetails(s);
+                                            }}
+                                        />
+                                    )
+                                )}
                             {places.map((p) => (
                                 <SkateMarker
                                     key={p.id}
-                                    ref={(ref) => { markerRefs.current[p.id] = ref }}
+                                    ref={(ref) => {
+                                        markerRefs.current[p.id] = ref;
+                                    }}
                                     id={p.id}
                                     lat={p.lat}
                                     lng={p.lng}
@@ -760,20 +1023,33 @@ export default function Index() {
                                     selected={p.id === selectedPlaceId}
                                     onPress={() => {
                                         suppressMapPressRef.current = true;
-                                        const communitySpot = spots.find(s => s.id === p.id);
+                                        const communitySpot = spots.find(
+                                            (s) => s.id === p.id
+                                        );
                                         if (communitySpot) {
-                                            setHighlightSpotId(communitySpot.id);
-                                            highlightSpotIdRef.current = communitySpot.id;
-                                            animateToSpotWithModalOffset(communitySpot.lat, communitySpot.lng);
+                                            setHighlightSpotId(
+                                                communitySpot.id
+                                            );
+                                            highlightSpotIdRef.current =
+                                                communitySpot.id;
+                                            animateToSpotWithModalOffset(
+                                                communitySpot.lat,
+                                                communitySpot.lng
+                                            );
                                             openSpotDetails(communitySpot);
                                         } else {
                                             openedFromFavoritesRef.current = false;
                                             setSelectedPlaceId(p.id);
-                                            animateToSpotWithModalOffset(p.lat, p.lng);
+                                            animateToSpotWithModalOffset(
+                                                p.lat,
+                                                p.lng
+                                            );
                                             setSelectedPlace(p);
                                             setPlaceDetailsOpen(true);
                                             setTimeout(() => {
-                                                markerRefs.current[p.id]?.showCallout();
+                                                markerRefs.current[
+                                                    p.id
+                                                ]?.showCallout();
                                             }, 300);
                                         }
                                     }}
@@ -781,15 +1057,26 @@ export default function Index() {
                             ))}
                         </MapView>
                     ) : (
-                        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-                            <Text style={{ color: c.text }}>Finding your location...</Text>
+                        <View
+                            style={{
+                                flex: 1,
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                            }}
+                        >
+                            <Text style={{ color: c.text }}>
+                                Finding your location...
+                            </Text>
                         </View>
                     )}
                     <Pressable
                         onPress={() => {
                             autoCenterRef.current = true;
                             if (userLocationRef.current) {
-                                mapRef.current?.animateToRegion(userLocationRef.current, 600);
+                                mapRef.current?.animateToRegion(
+                                    userLocationRef.current,
+                                    600
+                                );
                             } else {
                                 setUseDeviceLocation(true);
                             }
@@ -824,43 +1111,89 @@ export default function Index() {
                         onChangeDesc={setSpotDesc}
                         onChangeRating={setSpotRating}
                         spotTags={spotTags}
-                        onAddTag={(tag) => setSpotTags(prev => prev.includes(tag) ? prev : [...prev, tag])}
-                        onRemoveTag={(tag) => setSpotTags(prev => prev.filter(t => t !== tag))}
+                        onAddTag={(tag) =>
+                            setSpotTags((prev) =>
+                                prev.includes(tag) ? prev : [...prev, tag]
+                            )
+                        }
+                        onRemoveTag={(tag) =>
+                            setSpotTags((prev) => prev.filter((t) => t !== tag))
+                        }
                         onCancel={closeCreateModal}
                         isPrivate={spotIsPrivate}
-                        onTogglePrivate={() => setSpotIsPrivate(prev => !prev)}
+                        onTogglePrivate={() =>
+                            setSpotIsPrivate((prev) => !prev)
+                        }
                         onCreate={async () => {
                             if (!pendingCoord) return;
-                            const newSpot = await createSpotAt(pendingCoord.lat, pendingCoord.lng, spotName, spotDesc, spotRating, spotTags, spotIsPrivate, spotType);
+                            const newSpot = await createSpotAt(
+                                pendingCoord.lat,
+                                pendingCoord.lng,
+                                spotName,
+                                spotDesc,
+                                spotRating,
+                                spotTags,
+                                spotIsPrivate,
+                                spotType
+                            );
                             if (newSpot) {
-                                await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                                await Haptics.notificationAsync(
+                                    Haptics.NotificationFeedbackType.Success
+                                );
                                 if (pendingImages.length > 0) {
-                                    await uploadImages(newSpot.id, pendingImages);
+                                    await uploadImages(
+                                        newSpot.id,
+                                        pendingImages
+                                    );
                                 }
                                 if (spotRating > 0) {
-                                    await submitReview(newSpot.id, spotRating, spotComment);
+                                    await submitReview(
+                                        newSpot.id,
+                                        spotRating,
+                                        spotComment
+                                    );
                                 }
                                 await loadMySpots();
 
-                                if (newSpot.spot_type === 'skatepark' || newSpot.spot_type === 'skateshop') {
-                                    setPlacesWithAutoClear(prev => [...prev, {
-                                        id: newSpot.id,
-                                        name: newSpot.name,
-                                        type: newSpot.spot_type as 'skatepark' | 'skateshop',
-                                        lat: newSpot.lat,
-                                        lng: newSpot.lng,
-                                        tags: {},
-                                    }]);
+                                if (
+                                    newSpot.spot_type === 'skatepark' ||
+                                    newSpot.spot_type === 'skateshop'
+                                ) {
+                                    setPlacesWithAutoClear((prev) => [
+                                        ...prev,
+                                        {
+                                            id: newSpot.id,
+                                            name: newSpot.name,
+                                            type: newSpot.spot_type as
+                                                | 'skatepark'
+                                                | 'skateshop',
+                                            lat: newSpot.lat,
+                                            lng: newSpot.lng,
+                                            tags: {},
+                                        },
+                                    ]);
                                     setTimeout(() => {
-                                        setPlacesWithAutoClear(prev => prev.filter(p => p.id !== newSpot.id));
+                                        setPlacesWithAutoClear((prev) =>
+                                            prev.filter(
+                                                (p) => p.id !== newSpot.id
+                                            )
+                                        );
                                     }, 4000);
                                 }
                             }
                             closeCreateModal();
                         }}
                         pendingImages={pendingImages}
-                        onAddImage={(uri) => setPendingImages(prev => prev.includes(uri) ? prev : [...prev, uri])}
-                        onRemoveImage={(uri) => setPendingImages(prev => prev.filter(u => u !== uri))}
+                        onAddImage={(uri) =>
+                            setPendingImages((prev) =>
+                                prev.includes(uri) ? prev : [...prev, uri]
+                            )
+                        }
+                        onRemoveImage={(uri) =>
+                            setPendingImages((prev) =>
+                                prev.filter((u) => u !== uri)
+                            )
+                        }
                         spotType={spotType}
                         onChangeSpotType={(v) => {
                             setSpotType(v);
@@ -872,7 +1205,11 @@ export default function Index() {
                     <SpotDetailsModal
                         visible={detailsOpen}
                         spot={selectedSpot}
-                        isFlaggedByMe={selectedSpot ? isFlaggedByMe(selectedSpot.id) : false}
+                        isFlaggedByMe={
+                            selectedSpot
+                                ? isFlaggedByMe(selectedSpot.id)
+                                : false
+                        }
                         flagCount={selectedSpot?.flag_count ?? 0}
                         onToggleFlag={async () => {
                             if (!selectedSpot) return;
@@ -891,32 +1228,56 @@ export default function Index() {
                             const err = await submitReview(selectedSpot.id);
                             if (err) {
                                 setError(err);
-                                await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+                                await Haptics.notificationAsync(
+                                    Haptics.NotificationFeedbackType.Error
+                                );
                             } else {
-                                await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                                await Haptics.notificationAsync(
+                                    Haptics.NotificationFeedbackType.Success
+                                );
                                 if (selectedSpot.user_id !== session?.user.id) {
                                     const username = await getMyUsername();
-                                    await sendPushNotification(selectedSpot.id, 'review', username);
+                                    await sendPushNotification(
+                                        selectedSpot.id,
+                                        'review',
+                                        username
+                                    );
                                 }
                             }
                         }}
                         onClose={closeDetailsModal}
                         currentUserId={session?.user.id ?? null}
                         onDelete={confirmDelete}
-                        isFavorite={selectedSpot ? isFavorite(selectedSpot.id) : false}
+                        isFavorite={
+                            selectedSpot ? isFavorite(selectedSpot.id) : false
+                        }
                         onToggleFavorite={async () => {
                             if (!selectedSpot) return;
-                            await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                            const wasAlreadyFavorited = isFavorite(selectedSpot.id);
+                            await Haptics.impactAsync(
+                                Haptics.ImpactFeedbackStyle.Light
+                            );
+                            const wasAlreadyFavorited = isFavorite(
+                                selectedSpot.id
+                            );
                             await toggleFavorite(selectedSpot.id);
-                            if (selectedSpot.user_id !== session?.user.id && !wasAlreadyFavorited) {
+                            if (
+                                selectedSpot.user_id !== session?.user.id &&
+                                !wasAlreadyFavorited
+                            ) {
                                 const username = await getMyUsername();
-                                await sendPushNotification(selectedSpot.id, 'favorite', username);
+                                await sendPushNotification(
+                                    selectedSpot.id,
+                                    'favorite',
+                                    username
+                                );
                             }
                         }}
                         onDeleteReview={async (reviewId) => {
                             if (!selectedSpot) return;
-                            const err = await deleteReview(reviewId, selectedSpot.id);
+                            const err = await deleteReview(
+                                reviewId,
+                                selectedSpot.id
+                            );
                             if (err) setError(err);
                         }}
                         images={images}
@@ -931,35 +1292,64 @@ export default function Index() {
                         }}
                         onTogglePrivacy={async () => {
                             if (!selectedSpot) return;
-                            await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            await Haptics.impactAsync(
+                                Haptics.ImpactFeedbackStyle.Light
+                            );
                             await toggleSpotPrivacy(selectedSpot);
-                            setSelectedSpot(prev => prev ? { ...prev, is_private: !prev.is_private } : prev);
+                            setSelectedSpot((prev) =>
+                                prev
+                                    ? { ...prev, is_private: !prev.is_private }
+                                    : prev
+                            );
                         }}
                         creatorUsername={spotCreatorUsername ?? undefined}
                         activeConditions={activeConditions}
                         myConditions={myConditions}
                         onToggleCondition={async (condition) => {
                             if (!selectedSpot) return;
-                            await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            await Haptics.impactAsync(
+                                Haptics.ImpactFeedbackStyle.Light
+                            );
                             await toggleCondition(selectedSpot.id, condition);
                             if (selectedSpot.user_id !== session?.user.id) {
                                 const username = await getMyUsername();
-                                await sendPushNotification(selectedSpot.id, 'condition', username);
+                                await sendPushNotification(
+                                    selectedSpot.id,
+                                    'condition',
+                                    username
+                                );
                             }
                         }}
-                        isWishlisted={selectedSpot ? isWishlisted(selectedSpot.id) : false}
+                        isWishlisted={
+                            selectedSpot ? isWishlisted(selectedSpot.id) : false
+                        }
                         onToggleWishlist={async () => {
                             if (!selectedSpot) return;
-                            await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                            const wasAlreadyWishlisted = isWishlisted(selectedSpot.id);
+                            await Haptics.impactAsync(
+                                Haptics.ImpactFeedbackStyle.Light
+                            );
+                            const wasAlreadyWishlisted = isWishlisted(
+                                selectedSpot.id
+                            );
                             await toggleWishlist(selectedSpot.id);
-                            if (selectedSpot.user_id !== session?.user.id && !wasAlreadyWishlisted) {
+                            if (
+                                selectedSpot.user_id !== session?.user.id &&
+                                !wasAlreadyWishlisted
+                            ) {
                                 const username = await getMyUsername();
-                                await sendPushNotification(selectedSpot.id, 'wishlist', username);
+                                await sendPushNotification(
+                                    selectedSpot.id,
+                                    'wishlist',
+                                    username
+                                );
                             }
                         }}
+                        detailsLoading={detailsLoading}
                         isReviewFlaggedByMe={isReviewFlaggedByMe}
-                        onToggleReviewFlag={async (reviewId: string, reason?: string) => {
+                        onToggleReviewFlag={async (
+                            reviewId: string,
+                            reason?: string
+                        ) => {
                             await toggleReviewFlag(reviewId, reason);
                         }}
                     />
@@ -970,17 +1360,25 @@ export default function Index() {
                         onClose={() => {
                             setPlaceDetailsOpen(false);
                             setSelectedPlace(null);
-                            markerRefs.current[selectedPlaceId ?? '']?.hideCallout?.();
+                            markerRefs.current[
+                                selectedPlaceId ?? ''
+                            ]?.hideCallout?.();
                             setSelectedPlaceId(null);
                             if (openedFromFavoritesRef.current) {
                                 setPlaces([]);
                                 openedFromFavoritesRef.current = false;
                             }
                         }}
-                        isFavorite={selectedPlace ? isPlaceFavorite(selectedPlace.id) : false}
+                        isFavorite={
+                            selectedPlace
+                                ? isPlaceFavorite(selectedPlace.id)
+                                : false
+                        }
                         onToggleFavorite={async () => {
                             if (!selectedPlace) return;
-                            await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            await Haptics.impactAsync(
+                                Haptics.ImpactFeedbackStyle.Light
+                            );
                             await togglePlaceFavorite(selectedPlace);
                         }}
                     />
@@ -996,8 +1394,19 @@ export default function Index() {
                     />
 
                     {showOnboarding ? (
-                        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 999 }}>
-                            <OnboardingScreen onFinish={() => setShowOnboarding(false)} />
+                        <View
+                            style={{
+                                position: 'absolute',
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                bottom: 0,
+                                zIndex: 999,
+                            }}
+                        >
+                            <OnboardingScreen
+                                onFinish={() => setShowOnboarding(false)}
+                            />
                         </View>
                     ) : null}
                 </View>
