@@ -10,11 +10,36 @@ export function useReviews() {
     const [existingReviewId, setExistingReviewId] = useState<string | null>(
         null
     );
+    const [myReviews, setMyReviews] = useState<
+        (Review & { spot_name: string })[]
+    >([]);
 
     const avgRating =
         reviews.length === 0
             ? 0
             : reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
+
+    async function loadMyReviews() {
+        const {
+            data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { data, error } = await supabase
+            .from('reviews')
+            .select('*, spots(name)')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false });
+
+        if (error) return;
+
+        const loaded = (data ?? []).map((r: any) => ({
+            ...r,
+            spot_name: r.spots?.name ?? 'Unknown Spot',
+        }));
+
+        setMyReviews(loaded);
+    }
 
     async function loadReviews(spotId: string) {
         const { data, error } = await supabase
@@ -136,12 +161,14 @@ export function useReviews() {
 
     return {
         reviews,
+        myReviews,
         avgRating,
         newRating,
         setNewRating,
         newComment,
         setNewComment,
         loadReviews,
+        loadMyReviews,
         submitReview,
         deleteReview,
         resetReviews,
