@@ -41,6 +41,8 @@ import { ExplorePanel } from '@/src/components/ExplorePanel';
 import { SettingsPanel } from '@/src/components/SettingsPanel';
 import { OnboardingScreen } from '@/src/components/onboarding/OnboardingScreen';
 import { ProfileModal } from '@/src/components/ProfileModal';
+import { MySpotMarker } from '@/src/components/SpotMarkers/MySpotMarker';
+import { OtherUsersSpotMarkers } from '@/src/components/SpotMarkers/OtherUsersSpotMarkers';
 
 import { useSpots } from '@/src/hooks/useSpots';
 import { useReviews } from '@/src/hooks/useReviews';
@@ -227,6 +229,8 @@ export default function Index() {
     const [detailsLoading, setDetailsLoading] = useState(false);
 
     const [profileOpen, setProfileOpen] = useState(false);
+
+    const [myAvatarUrl, setMyAvatarUrl] = useState<string | null>(null);
 
     const { theme, loadThemeForUser, resetTheme } = useTheme();
     const c = theme.colors;
@@ -518,8 +522,15 @@ export default function Index() {
             loadThemeForUser(session.user.id);
             loadFlags();
             loadReviewFlags();
+            supabase
+                .from('profiles')
+                .select('avatar_url')
+                .eq('id', session.user.id)
+                .single()
+                .then(({ data }) => setMyAvatarUrl(data?.avatar_url ?? null));
         } else {
             resetTheme();
+            setMyAvatarUrl(null);
         }
     }, [session?.user.id]);
 
@@ -994,38 +1005,73 @@ export default function Index() {
                                 )
                                 .map((s) =>
                                     s.spot_type === 'spot' ? (
-                                        <Marker
-                                            ref={(ref) => {
-                                                markerRefs.current[s.id] = ref;
-                                            }}
-                                            key={s.id}
-                                            coordinate={{
-                                                latitude: s.lat,
-                                                longitude: s.lng,
-                                            }}
-                                            pinColor={
-                                                s.id === highlightSpotId
-                                                    ? s.user_id ===
-                                                      session?.user.id
-                                                        ? '#FFD700'
-                                                        : '#FF6B6B'
-                                                    : s.user_id ===
-                                                        session?.user.id
-                                                      ? '#FFD700'
-                                                      : '#FF3B30'
-                                            }
-                                            onPress={() => {
-                                                suppressMapPressRef.current = true;
-                                                setHighlightSpotId(s.id);
-                                                highlightSpotIdRef.current =
-                                                    s.id;
-                                                animateToSpotWithModalOffset(
-                                                    s.lat,
-                                                    s.lng
-                                                );
-                                                openSpotDetails(s);
-                                            }}
-                                        />
+                                        s.user_id === session?.user.id ? (
+                                            <Marker
+                                                ref={(ref) => {
+                                                    markerRefs.current[s.id] =
+                                                        ref;
+                                                }}
+                                                key={`${s.id}-${s.id === highlightSpotId}`}
+                                                coordinate={{
+                                                    latitude: s.lat,
+                                                    longitude: s.lng,
+                                                }}
+                                                tracksViewChanges={
+                                                    s.id === highlightSpotId
+                                                }
+                                                anchor={{ x: 0.5, y: 0.5 }}
+                                                onPress={() => {
+                                                    suppressMapPressRef.current = true;
+                                                    setHighlightSpotId(s.id);
+                                                    highlightSpotIdRef.current =
+                                                        s.id;
+                                                    animateToSpotWithModalOffset(
+                                                        s.lat,
+                                                        s.lng
+                                                    );
+                                                    openSpotDetails(s);
+                                                }}
+                                            >
+                                                <MySpotMarker
+                                                    selected={
+                                                        s.id === highlightSpotId
+                                                    }
+                                                />
+                                            </Marker>
+                                        ) : (
+                                            <Marker
+                                                ref={(ref) => {
+                                                    markerRefs.current[s.id] =
+                                                        ref;
+                                                }}
+                                                key={`${s.id}-${s.id === highlightSpotId}`}
+                                                coordinate={{
+                                                    latitude: s.lat,
+                                                    longitude: s.lng,
+                                                }}
+                                                tracksViewChanges={
+                                                    s.id === highlightSpotId
+                                                }
+                                                anchor={{ x: 0.5, y: 0.5 }}
+                                                onPress={() => {
+                                                    suppressMapPressRef.current = true;
+                                                    setHighlightSpotId(s.id);
+                                                    highlightSpotIdRef.current =
+                                                        s.id;
+                                                    animateToSpotWithModalOffset(
+                                                        s.lat,
+                                                        s.lng
+                                                    );
+                                                    openSpotDetails(s);
+                                                }}
+                                            >
+                                                <OtherUsersSpotMarkers
+                                                    selected={
+                                                        s.id === highlightSpotId
+                                                    }
+                                                />
+                                            </Marker>
+                                        )
                                     ) : (
                                         <SkateMarker
                                             ref={(ref) => {
