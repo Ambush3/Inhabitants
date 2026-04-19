@@ -2,11 +2,14 @@ import React, { useEffect, useState } from 'react';
 import {
     View,
     Text,
+    TextInput,
     Modal,
     ScrollView,
     Pressable,
     Image,
     SafeAreaView,
+    KeyboardAvoidingView,
+    Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/src/libs/supabase';
@@ -29,6 +32,8 @@ type Props = {
     myReviews: MyReview[];
     onLoadMyReviews: () => Promise<void>;
     onSelectSpot: (spot: Spot) => void;
+    allSpots: Spot[];
+    onSignOut: () => void;
 };
 
 type Tab = 'spots' | 'reviews';
@@ -40,6 +45,8 @@ export function ProfileModal({
     myReviews,
     onLoadMyReviews,
     onSelectSpot,
+    allSpots,
+    onSignOut,
 }: Props) {
     const { theme } = useTheme();
     const c = theme.colors;
@@ -48,6 +55,10 @@ export function ProfileModal({
     const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
     const [username, setUsername] = useState<string | null>(null);
     const [joinDate, setJoinDate] = useState<string | null>(null);
+
+    const [editOpen, setEditOpen] = useState(false);
+    const [editUsername, setEditUsername] = useState('');
+    const [editLoading, setEditLoading] = useState(false);
 
     useEffect(() => {
         if (!visible) return;
@@ -70,8 +81,6 @@ export function ProfileModal({
     }, [visible]);
 
     const myActualSpots = mySpots.filter((s) => s.spot_type === 'spot');
-    const myParks = mySpots.filter((s) => s.spot_type === 'skatepark');
-    const myShops = mySpots.filter((s) => s.spot_type === 'skateshop');
 
     const avgRatingGiven =
         myReviews.length === 0
@@ -106,7 +115,23 @@ export function ProfileModal({
                     >
                         Profile
                     </Text>
-                    <View style={{ width: 32 }} />
+                    <Pressable
+                        onPress={() => {
+                            setEditUsername(username ?? '');
+                            setEditOpen(true);
+                        }}
+                        style={{ padding: 4 }}
+                    >
+                        <Text
+                            style={{
+                                fontSize: 14,
+                                color: '#007AFF',
+                                fontWeight: '600',
+                            }}
+                        >
+                            Edit
+                        </Text>
+                    </Pressable>
                 </View>
 
                 <ScrollView showsVerticalScrollIndicator={false}>
@@ -189,7 +214,7 @@ export function ProfileModal({
                                     color: c.text,
                                 }}
                             >
-                                {mySpots.length}
+                                {myActualSpots.length}
                             </Text>
                             <Text
                                 style={{
@@ -304,7 +329,7 @@ export function ProfileModal({
 
                     <View style={{ paddingHorizontal: 16, paddingBottom: 32 }}>
                         {activeTab === 'spots' ? (
-                            mySpots.length === 0 ? (
+                            myActualSpots.length === 0 ? (
                                 <Text
                                     style={{
                                         color: c.subtext,
@@ -316,189 +341,64 @@ export function ProfileModal({
                                     {"You haven't created any spots yet."}
                                 </Text>
                             ) : (
-                                <>
-                                    {myActualSpots.length > 0 ? (
-                                        <View style={{ marginBottom: 16 }}>
+                                myActualSpots.map((s) => (
+                                    <Pressable
+                                        key={s.id}
+                                        onPress={() => {
+                                            onSelectSpot(s);
+                                            onClose();
+                                        }}
+                                        style={{
+                                            flexDirection: 'row',
+                                            alignItems: 'center',
+                                            paddingVertical: 12,
+                                            borderBottomWidth: 1,
+                                            borderColor: c.border,
+                                            gap: 10,
+                                        }}
+                                    >
+                                        <Ionicons
+                                            name="location-outline"
+                                            size={16}
+                                            color={c.subtext}
+                                        />
+                                        <View style={{ flex: 1 }}>
                                             <Text
                                                 style={{
-                                                    fontSize: 11,
                                                     fontWeight: '600',
-                                                    color: c.subtext,
-                                                    letterSpacing: 0.8,
-                                                    marginBottom: 8,
+                                                    color: c.text,
                                                 }}
                                             >
-                                                SPOTS
+                                                {s.name}
                                             </Text>
-                                            {myActualSpots.map((s) => (
-                                                <Pressable
-                                                    key={s.id}
-                                                    onPress={() => {
-                                                        onSelectSpot(s);
-                                                        onClose();
-                                                    }}
+                                            {s.tags?.length > 0 ? (
+                                                <Text
                                                     style={{
-                                                        flexDirection: 'row',
-                                                        alignItems: 'center',
-                                                        paddingVertical: 12,
-                                                        borderBottomWidth: 1,
-                                                        borderColor: c.border,
-                                                        gap: 10,
+                                                        fontSize: 12,
+                                                        color: c.subtext,
+                                                        marginTop: 2,
                                                     }}
                                                 >
-                                                    <Ionicons
-                                                        name="location-outline"
-                                                        size={16}
-                                                        color={c.subtext}
-                                                    />
-                                                    <View style={{ flex: 1 }}>
-                                                        <Text
-                                                            style={{
-                                                                fontWeight:
-                                                                    '600',
-                                                                color: c.text,
-                                                            }}
-                                                        >
-                                                            {s.name}
-                                                        </Text>
-                                                        {s.tags?.length > 0 ? (
-                                                            <Text
-                                                                style={{
-                                                                    fontSize: 12,
-                                                                    color: c.subtext,
-                                                                    marginTop: 2,
-                                                                }}
-                                                            >
-                                                                {s.tags
-                                                                    .map(
-                                                                        (t) =>
-                                                                            `#${t}`
-                                                                    )
-                                                                    .join(' ')}
-                                                            </Text>
-                                                        ) : null}
-                                                    </View>
-                                                    {s.is_private ? (
-                                                        <Ionicons
-                                                            name="lock-closed"
-                                                            size={14}
-                                                            color={c.danger}
-                                                        />
-                                                    ) : null}
-                                                    <Ionicons
-                                                        name="chevron-forward"
-                                                        size={16}
-                                                        color={c.subtext}
-                                                    />
-                                                </Pressable>
-                                            ))}
+                                                    {s.tags
+                                                        .map((t) => `#${t}`)
+                                                        .join(' ')}
+                                                </Text>
+                                            ) : null}
                                         </View>
-                                    ) : null}
-                                    {myParks.length > 0 ? (
-                                        <View style={{ marginBottom: 16 }}>
-                                            <Text
-                                                style={{
-                                                    fontSize: 11,
-                                                    fontWeight: '600',
-                                                    color: c.subtext,
-                                                    letterSpacing: 0.8,
-                                                    marginBottom: 8,
-                                                }}
-                                            >
-                                                PARKS
-                                            </Text>
-                                            {myParks.map((s) => (
-                                                <Pressable
-                                                    key={s.id}
-                                                    onPress={() => {
-                                                        onSelectSpot(s);
-                                                        onClose();
-                                                    }}
-                                                    style={{
-                                                        flexDirection: 'row',
-                                                        alignItems: 'center',
-                                                        paddingVertical: 12,
-                                                        borderBottomWidth: 1,
-                                                        borderColor: c.border,
-                                                        gap: 10,
-                                                    }}
-                                                >
-                                                    <Ionicons
-                                                        name="flag-outline"
-                                                        size={16}
-                                                        color={c.subtext}
-                                                    />
-                                                    <Text
-                                                        style={{
-                                                            flex: 1,
-                                                            fontWeight: '600',
-                                                            color: c.text,
-                                                        }}
-                                                    >
-                                                        {s.name}
-                                                    </Text>
-                                                    <Ionicons
-                                                        name="chevron-forward"
-                                                        size={16}
-                                                        color={c.subtext}
-                                                    />
-                                                </Pressable>
-                                            ))}
-                                        </View>
-                                    ) : null}
-                                    {myShops.length > 0 ? (
-                                        <View style={{ marginBottom: 16 }}>
-                                            <Text
-                                                style={{
-                                                    fontSize: 11,
-                                                    fontWeight: '600',
-                                                    color: c.subtext,
-                                                    letterSpacing: 0.8,
-                                                    marginBottom: 8,
-                                                }}
-                                            >
-                                                SHOPS
-                                            </Text>
-                                            {myShops.map((s) => (
-                                                <Pressable
-                                                    key={s.id}
-                                                    onPress={() => {
-                                                        onSelectSpot(s);
-                                                        onClose();
-                                                    }}
-                                                    style={{
-                                                        flexDirection: 'row',
-                                                        alignItems: 'center',
-                                                        paddingVertical: 12,
-                                                        borderBottomWidth: 1,
-                                                        borderColor: c.border,
-                                                        gap: 10,
-                                                    }}
-                                                >
-                                                    <Ionicons
-                                                        name="storefront-outline"
-                                                        size={16}
-                                                        color={c.subtext}
-                                                    />
-                                                    <Text
-                                                        style={{
-                                                            flex: 1,
-                                                            fontWeight: '600',
-                                                            color: c.text,
-                                                        }}
-                                                    >
-                                                        {s.name}
-                                                    </Text>
-                                                    <Ionicons
-                                                        name="chevron-forward"
-                                                        size={16}
-                                                        color={c.subtext}
-                                                    />
-                                                </Pressable>
-                                            ))}
-                                        </View>
-                                    ) : null}
-                                </>
+                                        {s.is_private ? (
+                                            <Ionicons
+                                                name="lock-closed"
+                                                size={14}
+                                                color={c.danger}
+                                            />
+                                        ) : null}
+                                        <Ionicons
+                                            name="chevron-forward"
+                                            size={16}
+                                            color={c.subtext}
+                                        />
+                                    </Pressable>
+                                ))
                             )
                         ) : myReviews.length === 0 ? (
                             <Text
@@ -513,8 +413,17 @@ export function ProfileModal({
                             </Text>
                         ) : (
                             myReviews.map((r) => (
-                                <View
+                                <Pressable
                                     key={r.id}
+                                    onPress={() => {
+                                        const spot = allSpots.find(
+                                            (s) => s.id === r.spot_id
+                                        );
+                                        if (spot) {
+                                            onSelectSpot(spot);
+                                            onClose();
+                                        }
+                                    }}
                                     style={{
                                         paddingVertical: 14,
                                         borderBottomWidth: 1,
@@ -567,12 +476,156 @@ export function ProfileModal({
                                             year: 'numeric',
                                         })}
                                     </Text>
-                                </View>
+                                </Pressable>
                             ))
                         )}
+                        <Pressable
+                            onPress={onSignOut}
+                            style={{
+                                marginHorizontal: 16,
+                                marginTop: 24,
+                                padding: 13,
+                                borderRadius: 10,
+                                borderWidth: 1,
+                                borderColor: c.danger,
+                                alignItems: 'center',
+                            }}
+                        >
+                            <Text
+                                style={{
+                                    color: c.danger,
+                                    fontWeight: '600',
+                                    fontSize: 15,
+                                }}
+                            >
+                                Sign Out
+                            </Text>
+                        </Pressable>
                     </View>
                 </ScrollView>
             </SafeAreaView>
+
+            <Modal
+                visible={editOpen}
+                animationType="slide"
+                transparent
+                onRequestClose={() => setEditOpen(false)}
+            >
+                <Pressable
+                    style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' }}
+                    onPress={() => setEditOpen(false)}
+                />
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === 'ios' ? 'position' : 'height'}
+                >
+                    <View
+                        style={{
+                            backgroundColor: c.surface,
+                            borderTopLeftRadius: 20,
+                            borderTopRightRadius: 20,
+                            padding: 24,
+                        }}
+                    >
+                        <Text
+                            style={{
+                                fontSize: 17,
+                                fontWeight: '700',
+                                color: c.text,
+                                marginBottom: 20,
+                            }}
+                        >
+                            Edit Profile
+                        </Text>
+
+                        <Text
+                            style={{
+                                fontSize: 13,
+                                color: c.subtext,
+                                marginBottom: 6,
+                            }}
+                        >
+                            Username
+                        </Text>
+                        <TextInput
+                            value={editUsername}
+                            onChangeText={setEditUsername}
+                            placeholder={username ?? 'Username'}
+                            placeholderTextColor={c.placeholder}
+                            autoCapitalize="none"
+                            autoCorrect={false}
+                            style={{
+                                borderWidth: 1,
+                                borderColor: c.inputBorder,
+                                borderRadius: 10,
+                                padding: 12,
+                                fontSize: 15,
+                                color: c.text,
+                                backgroundColor: c.surface,
+                                marginBottom: 20,
+                            }}
+                        />
+
+                        <Pressable
+                            onPress={async () => {
+                                if (!editUsername.trim()) return;
+                                setEditLoading(true);
+                                const {
+                                    data: { user },
+                                } = await supabase.auth.getUser();
+                                if (user) {
+                                    await supabase
+                                        .from('profiles')
+                                        .update({
+                                            username: editUsername.trim(),
+                                        })
+                                        .eq('id', user.id);
+                                    setUsername(editUsername.trim());
+                                }
+                                setEditLoading(false);
+                                setEditOpen(false);
+                            }}
+                            style={{
+                                backgroundColor: '#007AFF',
+                                borderRadius: 10,
+                                padding: 13,
+                                alignItems: 'center',
+                                marginBottom: 12,
+                            }}
+                        >
+                            <Text
+                                style={{
+                                    color: 'white',
+                                    fontWeight: '700',
+                                    fontSize: 15,
+                                }}
+                            >
+                                {editLoading ? 'Saving...' : 'Save'}
+                            </Text>
+                        </Pressable>
+
+                        <Pressable
+                            onPress={() => setEditOpen(false)}
+                            style={{
+                                borderWidth: 1,
+                                borderColor: c.border,
+                                borderRadius: 10,
+                                padding: 13,
+                                alignItems: 'center',
+                            }}
+                        >
+                            <Text
+                                style={{
+                                    color: c.text,
+                                    fontWeight: '600',
+                                    fontSize: 15,
+                                }}
+                            >
+                                Cancel
+                            </Text>
+                        </Pressable>
+                    </View>
+                </KeyboardAvoidingView>
+            </Modal>
         </Modal>
     );
 }
