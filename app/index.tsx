@@ -13,7 +13,6 @@ import {
     Pressable,
     Animated,
     Easing,
-    InteractionManager,
 } from 'react-native';
 import MapView, {
     Marker,
@@ -41,6 +40,7 @@ import { SkateShopDetailsModal } from '@/src/components/SkateShopDetailsModal';
 import { ExplorePanel } from '@/src/components/ExplorePanel';
 import { SettingsPanel } from '@/src/components/SettingsPanel';
 import { OnboardingScreen } from '@/src/components/onboarding/OnboardingScreen';
+import { ProfileModal } from '@/src/components/ProfileModal';
 
 import { useSpots } from '@/src/hooks/useSpots';
 import { useReviews } from '@/src/hooks/useReviews';
@@ -105,7 +105,10 @@ export default function Index() {
         deleteReview,
         resetReviews,
         existingReviewId,
+        loadMyReviews,
+        myReviews,
     } = useReviews();
+
     const { signOut, session } = useAuth();
     const {
         favorites,
@@ -222,6 +225,8 @@ export default function Index() {
     >('spot');
 
     const [detailsLoading, setDetailsLoading] = useState(false);
+
+    const [profileOpen, setProfileOpen] = useState(false);
 
     const { theme, loadThemeForUser, resetTheme } = useTheme();
     const c = theme.colors;
@@ -790,6 +795,10 @@ export default function Index() {
                                     ]);
                                 }
                             );
+                        }}
+                        onOpenProfile={() => {
+                            setPanelOpen(false);
+                            setProfileOpen(true);
                         }}
                         onLoadSkateShops={() => {
                             setPanelOpen(false);
@@ -1416,6 +1425,19 @@ export default function Index() {
                             />
                         </View>
                     ) : null}
+
+                    <ProfileModal
+                        visible={profileOpen}
+                        onClose={() => setProfileOpen(false)}
+                        mySpots={mySpots}
+                        myReviews={myReviews}
+                        onLoadMyReviews={loadMyReviews}
+                        onSelectSpot={(s) => {
+                            setProfileOpen(false);
+                            animateToSpotWithModalOffset(s.lat, s.lng);
+                            openSpotDetails(s);
+                        }}
+                    />
                 </View>
             )}
         </>

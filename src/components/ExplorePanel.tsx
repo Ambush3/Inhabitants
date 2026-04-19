@@ -54,6 +54,7 @@ type Props = {
     wishlist: Spot[];
     wishlistLoading: boolean;
     onToggleSpotPrivacy: (spot: Spot) => void;
+    onOpenProfile: () => void;
 };
 
 type Tab = 'explore' | 'myspots' | 'favorites';
@@ -86,6 +87,7 @@ export function ExplorePanel({
     wishlist,
     wishlistLoading,
     onToggleSpotPrivacy,
+    onOpenProfile,
 }: Props) {
     const insets = useSafeAreaInsets();
     const { theme } = useTheme();
@@ -1538,6 +1540,7 @@ export function ExplorePanel({
                     </ScrollView>
 
                     {/* Footer */}
+
                     <View
                         style={{
                             borderTopWidth: 1,
@@ -1545,7 +1548,8 @@ export function ExplorePanel({
                             padding: 16,
                         }}
                     >
-                        <View
+                        <Pressable
+                            onPress={onOpenProfile}
                             style={{
                                 flexDirection: 'row',
                                 alignItems: 'center',
@@ -1580,7 +1584,7 @@ export function ExplorePanel({
                                     />
                                 </View>
                             )}
-                            <View>
+                            <View style={{ marginLeft: 6 }}>
                                 {myUsername ? (
                                     <Text
                                         style={{
@@ -1592,19 +1596,17 @@ export function ExplorePanel({
                                         @{myUsername}
                                     </Text>
                                 ) : null}
-                                <Pressable onPress={onOpenSettings}>
-                                    <Text
-                                        style={{
-                                            fontSize: 12,
-                                            color: '#007AFF',
-                                            marginTop: 2,
-                                        }}
-                                    >
-                                        Settings
-                                    </Text>
-                                </Pressable>
+                                <Text
+                                    style={{
+                                        fontSize: 12,
+                                        color: '#007AFF',
+                                        marginTop: 2,
+                                    }}
+                                >
+                                    View Profile
+                                </Text>
                             </View>
-                        </View>
+                        </Pressable>
                         <Pressable
                             onPress={onSignOut}
                             style={{
