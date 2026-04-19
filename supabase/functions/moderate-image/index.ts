@@ -27,10 +27,12 @@ Deno.serve(async (req) => {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    requests: [{
-                        image: { content: base64Image },
-                        features: [{ type: 'SAFE_SEARCH_DETECTION' }],
-                    }]
+                    requests: [
+                        {
+                            image: { content: base64Image },
+                            features: [{ type: 'SAFE_SEARCH_DETECTION' }],
+                        },
+                    ],
                 }),
             }
         );
@@ -39,36 +41,51 @@ Deno.serve(async (req) => {
         const safe = data.responses?.[0]?.safeSearchAnnotation;
 
         if (!safe) {
-            return new Response(JSON.stringify({ safe: true }), { status: 200 });
+            return new Response(JSON.stringify({ safe: true }), {
+                status: 200,
+            });
         }
 
-        const flagged = ['adult', 'violence', 'racy'].some(
-            category => ['LIKELY', 'VERY_LIKELY'].includes(safe[category])
+        const flagged = ['adult', 'violence', 'racy'].some((category) =>
+            ['LIKELY', 'VERY_LIKELY'].includes(safe[category])
         );
 
         if (flagged) {
-            const urlParts = image_url.split('/storage/v1/object/public/spot-images/');
-            const filePath = urlParts[1];
-
-            if (filePath) {
-                await supabase.storage.from('spot-images').remove([filePath]);
-                await supabase.from('spot_images').delete().eq('url', image_url);
+            if (spot_id) {
+                const urlParts = image_url.split(
+                    '/storage/v1/object/public/spot-images/'
+                );
+                const filePath = urlParts[1];
+                if (filePath) {
+                    await supabase.storage
+                        .from('spot-images')
+                        .remove([filePath]);
+                    await supabase
+                        .from('spot_images')
+                        .delete()
+                        .eq('url', image_url);
+                }
+                await supabase.functions.invoke('send-push-notification', {
+                    body: {
+                        spot_id,
+                        event_type: 'image_removed',
+                        actor_username: 'Moderation System',
+                    },
+                });
             }
-
-            await supabase.functions.invoke('send-push-notification', {
-                body: {
-                    spot_id,
-                    event_type: 'image_removed',
-                    actor_username: 'Moderation System',
-                },
-            });
-
-            return new Response(JSON.stringify({ safe: false, reason: 'Inappropriate content detected' }), { status: 200 });
+            return new Response(
+                JSON.stringify({
+                    safe: false,
+                    reason: 'Inappropriate content detected',
+                }),
+                { status: 200 }
+            );
         }
 
         return new Response(JSON.stringify({ safe: true }), { status: 200 });
-
     } catch (err) {
-        return new Response(JSON.stringify({ error: String(err) }), { status: 500 });
+        return new Response(JSON.stringify({ error: String(err) }), {
+            status: 500,
+        });
     }
 });

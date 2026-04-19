@@ -207,6 +207,10 @@ export default function Index() {
         string | null
     >(null);
 
+    const [spotCreatorAvatarUrl, setSpotCreatorAvatarUrl] = useState<
+        string | null
+    >(null);
+
     const [settingsOpen, setSettingsOpen] = useState(false);
 
     const [refreshing, setRefreshing] = useState(false);
@@ -286,6 +290,7 @@ export default function Index() {
         setSelectedSpot(null);
         resetReviews();
         setSpotCreatorUsername(null);
+        setSpotCreatorAvatarUrl(null);
 
         if (!openedFromPanelRef.current) {
             mapRef.current?.animateToRegion(preModalRegionRef.current, 400);
@@ -345,7 +350,7 @@ export default function Index() {
         const [profileResult] = await Promise.all([
             supabase
                 .from('profiles')
-                .select('username')
+                .select('username, avatar_url')
                 .eq('id', spot.user_id)
                 .single(),
             loadReviews(spot.id),
@@ -354,6 +359,7 @@ export default function Index() {
         ]);
 
         setSpotCreatorUsername(profileResult.data?.username ?? null);
+        setSpotCreatorAvatarUrl(profileResult.data?.avatar_url ?? null);
         setDetailsLoading(false);
     }
 
@@ -372,7 +378,7 @@ export default function Index() {
         if (!session?.user.id) return 'Someone';
         const { data } = await supabase
             .from('profiles')
-            .select('username')
+            .select('username, avatar_url')
             .eq('id', session.user.id)
             .single();
         return data?.username ?? 'Someone';
@@ -1303,6 +1309,7 @@ export default function Index() {
                             );
                         }}
                         creatorUsername={spotCreatorUsername ?? undefined}
+                        creatorAvatarUrl={spotCreatorAvatarUrl ?? undefined}
                         activeConditions={activeConditions}
                         myConditions={myConditions}
                         onToggleCondition={async (condition) => {

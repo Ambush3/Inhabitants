@@ -23,6 +23,7 @@ export type Review = {
     created_at: string;
     user_id: string | null;
     username?: string;
+    avatar_url?: string;
 };
 
 export type Place = {
