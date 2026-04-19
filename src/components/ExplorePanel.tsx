@@ -1,12 +1,22 @@
-import React, { useState } from 'react';
-import { View, Text, Modal, ScrollView, Pressable, TextInput, Image } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import {
+    View,
+    Text,
+    Modal,
+    ScrollView,
+    Pressable,
+    TextInput,
+    Image,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Place, Spot } from '@/src/types';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/src/context/ThemeContext';
-import { AnimatedSpotCard } from '@/src/components/AnimatedSpotCard'
+import { AnimatedSpotCard } from '@/src/components/AnimatedSpotCard';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
-import { TopRatedItem } from "@/src/hooks/useTopRated";
+import { TopRatedItem } from '@/src/hooks/useTopRated';
+
+import { supabase } from '@/src/libs/supabase';
 
 type PlaceFavorite = {
     place_id: string;
@@ -49,13 +59,34 @@ type Props = {
 type Tab = 'explore' | 'myspots' | 'favorites';
 
 export function ExplorePanel({
-    visible, onClose, parksLoading, shopsLoading, topLoading,
-    topRated, onLoadSkateparks, onLoadSkateShops, onLoadTopRated, onSelectSpot, onSignOut,
-    onSearch, onClearSearch, hasSearchResults, searchResults,
-    favorites, favLoading, placeFavorites, placeFavLoading, onSelectPlace, onDeleteSpot, onOpenSettings,
-    mySpots, mySpotsLoading, wishlist, wishlistLoading, onToggleSpotPrivacy,
+    visible,
+    onClose,
+    parksLoading,
+    shopsLoading,
+    topLoading,
+    topRated,
+    onLoadSkateparks,
+    onLoadSkateShops,
+    onLoadTopRated,
+    onSelectSpot,
+    onSignOut,
+    onSearch,
+    onClearSearch,
+    hasSearchResults,
+    searchResults,
+    favorites,
+    favLoading,
+    placeFavorites,
+    placeFavLoading,
+    onSelectPlace,
+    onDeleteSpot,
+    onOpenSettings,
+    mySpots,
+    mySpotsLoading,
+    wishlist,
+    wishlistLoading,
+    onToggleSpotPrivacy,
 }: Props) {
-
     const insets = useSafeAreaInsets();
     const { theme } = useTheme();
     const c = theme.colors;
@@ -66,7 +97,29 @@ export function ExplorePanel({
     const [parkFavoritesOpen, setParkFavoritesOpen] = useState(false);
     const [shopFavoritesOpen, setShopFavoritesOpen] = useState(false);
     const [wishlistOpen, setWishlistOpen] = useState(false);
-    const [topRatedTab, setTopRatedTab] = useState<'spot' | 'skatepark' | 'skateshop'>('spot')
+    const [topRatedTab, setTopRatedTab] = useState<
+        'spot' | 'skatepark' | 'skateshop'
+    >('spot');
+
+    const [myAvatarUrl, setMyAvatarUrl] = useState<string | null>(null);
+    const [myUsername, setMyUsername] = useState<string | null>(null);
+
+    useEffect(() => {
+        async function loadProfile() {
+            const {
+                data: { user },
+            } = await supabase.auth.getUser();
+            if (!user) return;
+            const { data } = await supabase
+                .from('profiles')
+                .select('avatar_url, username')
+                .eq('id', user.id)
+                .single();
+            setMyAvatarUrl(data?.avatar_url ?? null);
+            setMyUsername(data?.username ?? null);
+        }
+        if (visible) loadProfile();
+    }, [visible]);
 
     function handleSearch() {
         if (!searchQuery.trim()) return;
@@ -85,22 +138,30 @@ export function ExplorePanel({
     ];
 
     const favParks = [
-        ...placeFavorites.filter(f => f.place_type === 'skatepark'),
+        ...placeFavorites.filter((f) => f.place_type === 'skatepark'),
     ];
-    const favParkSpots = favorites.filter(s => s.spot_type === 'skatepark');
+    const favParkSpots = favorites.filter((s) => s.spot_type === 'skatepark');
 
     const favShops = [
-        ...placeFavorites.filter(f => f.place_type === 'skateshop'),
+        ...placeFavorites.filter((f) => f.place_type === 'skateshop'),
     ];
-    const favShopSpots = favorites.filter(s => s.spot_type === 'skateshop');
+    const favShopSpots = favorites.filter((s) => s.spot_type === 'skateshop');
 
-    const myActualSpots = mySpots.filter(s => s.spot_type === 'spot');
-    const myCreatedParks = mySpots.filter(s => s.spot_type === 'skatepark');
-    const myCreatedShops = mySpots.filter(s => s.spot_type === 'skateshop');
+    const myActualSpots = mySpots.filter((s) => s.spot_type === 'spot');
+    const myCreatedParks = mySpots.filter((s) => s.spot_type === 'skatepark');
+    const myCreatedShops = mySpots.filter((s) => s.spot_type === 'skateshop');
 
     return (
-        <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-            <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)' }} onPress={onClose}>
+        <Modal
+            visible={visible}
+            transparent
+            animationType="fade"
+            onRequestClose={onClose}
+        >
+            <Pressable
+                style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)' }}
+                onPress={onClose}
+            >
                 <Pressable
                     style={{
                         paddingTop: insets.top,
@@ -109,31 +170,88 @@ export function ExplorePanel({
                         backgroundColor: c.panelBg,
                         flexDirection: 'column',
                     }}
-                    onPress={() => { }}
+                    onPress={() => {}}
                 >
                     {/* Tab Bar */}
-                    <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderColor: c.border, paddingHorizontal: 8, paddingTop: 12 }}>
-                        {tabs.map(tab => (
+                    <View
+                        style={{
+                            flexDirection: 'row',
+                            borderBottomWidth: 1,
+                            borderColor: c.border,
+                            paddingHorizontal: 8,
+                            paddingTop: 12,
+                        }}
+                    >
+                        {tabs.map((tab) => (
                             <Pressable
                                 key={tab.key}
                                 onPress={() => setActiveTab(tab.key)}
-                                style={{ flex: 1, alignItems: 'center', paddingBottom: 10, borderBottomWidth: 2, borderColor: activeTab === tab.key ? '#007AFF' : 'transparent' }}
+                                style={{
+                                    flex: 1,
+                                    alignItems: 'center',
+                                    paddingBottom: 10,
+                                    borderBottomWidth: 2,
+                                    borderColor:
+                                        activeTab === tab.key
+                                            ? '#007AFF'
+                                            : 'transparent',
+                                }}
                             >
-                                <Ionicons name={tab.icon as any} size={18} color={activeTab === tab.key ? '#007AFF' : c.subtext} />
-                                <Text style={{ fontSize: 10, marginTop: 3, color: activeTab === tab.key ? '#007AFF' : c.subtext, fontWeight: activeTab === tab.key ? '600' : '400' }}>
+                                <Ionicons
+                                    name={tab.icon as any}
+                                    size={18}
+                                    color={
+                                        activeTab === tab.key
+                                            ? '#007AFF'
+                                            : c.subtext
+                                    }
+                                />
+                                <Text
+                                    style={{
+                                        fontSize: 10,
+                                        marginTop: 3,
+                                        color:
+                                            activeTab === tab.key
+                                                ? '#007AFF'
+                                                : c.subtext,
+                                        fontWeight:
+                                            activeTab === tab.key
+                                                ? '600'
+                                                : '400',
+                                    }}
+                                >
                                     {tab.label}
                                 </Text>
                             </Pressable>
                         ))}
                     </View>
 
-                    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }} showsVerticalScrollIndicator={false}>
-
+                    <ScrollView
+                        style={{ flex: 1 }}
+                        contentContainerStyle={{ padding: 16 }}
+                        showsVerticalScrollIndicator={false}
+                    >
                         {/* EXPLORE TAB */}
                         {activeTab === 'explore' ? (
                             <View>
-                                <Text style={{ fontSize: 11, fontWeight: '600', color: c.subtext, marginBottom: 8, letterSpacing: 0.8 }}>SEARCH BY TAG</Text>
-                                <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
+                                <Text
+                                    style={{
+                                        fontSize: 11,
+                                        fontWeight: '600',
+                                        color: c.subtext,
+                                        marginBottom: 8,
+                                        letterSpacing: 0.8,
+                                    }}
+                                >
+                                    SEARCH BY TAG
+                                </Text>
+                                <View
+                                    style={{
+                                        flexDirection: 'row',
+                                        gap: 8,
+                                        marginBottom: 16,
+                                    }}
+                                >
                                     <TextInput
                                         value={searchQuery}
                                         onChangeText={(text) => {
@@ -147,30 +265,82 @@ export function ExplorePanel({
                                         placeholder="e.g. stairs, rails..."
                                         placeholderTextColor={c.placeholder}
                                         autoCapitalize="none"
-                                        style={{ flex: 1, borderWidth: 1, borderColor: c.inputBorder, borderRadius: 8, padding: 10, color: c.text, backgroundColor: c.surface, fontSize: 13 }}
+                                        style={{
+                                            flex: 1,
+                                            borderWidth: 1,
+                                            borderColor: c.inputBorder,
+                                            borderRadius: 8,
+                                            padding: 10,
+                                            color: c.text,
+                                            backgroundColor: c.surface,
+                                            fontSize: 13,
+                                        }}
                                     />
                                 </View>
 
-                                {searchQuery.trim().length > 0 && searchResults.length === 0 ? (
-                                    <Text style={{ color: c.subtext, fontSize: 13, opacity: 0.6, marginBottom: 16 }}>
-                                        No spots found with that tag. Try a different one.
+                                {searchQuery.trim().length > 0 &&
+                                searchResults.length === 0 ? (
+                                    <Text
+                                        style={{
+                                            color: c.subtext,
+                                            fontSize: 13,
+                                            opacity: 0.6,
+                                            marginBottom: 16,
+                                        }}
+                                    >
+                                        No spots found with that tag. Try a
+                                        different one.
                                     </Text>
                                 ) : searchResults.length > 0 ? (
                                     <View style={{ marginBottom: 16 }}>
-                                        <Text style={{ fontWeight: '600', marginBottom: 8, color: c.text }}>
+                                        <Text
+                                            style={{
+                                                fontWeight: '600',
+                                                marginBottom: 8,
+                                                color: c.text,
+                                            }}
+                                        >
                                             Results ({searchResults.length})
                                         </Text>
                                         {searchResults.map((s, index) => (
-                                            <AnimatedSpotCard key={s.id} index={index}>
+                                            <AnimatedSpotCard
+                                                key={s.id}
+                                                index={index}
+                                            >
                                                 <Pressable
                                                     key={s.id}
-                                                    style={{ paddingVertical: 10, borderBottomWidth: 1, borderColor: c.border }}
-                                                    onPress={() => onSelectSpot(s)}
+                                                    style={{
+                                                        paddingVertical: 10,
+                                                        borderBottomWidth: 1,
+                                                        borderColor: c.border,
+                                                    }}
+                                                    onPress={() =>
+                                                        onSelectSpot(s)
+                                                    }
                                                 >
-                                                    <Text style={{ fontWeight: '600', color: c.text }}>{s.name}</Text>
+                                                    <Text
+                                                        style={{
+                                                            fontWeight: '600',
+                                                            color: c.text,
+                                                        }}
+                                                    >
+                                                        {s.name}
+                                                    </Text>
                                                     {s.tags.length > 0 ? (
-                                                        <Text style={{ opacity: 0.6, fontSize: 12, marginTop: 2, color: c.text }}>
-                                                            {s.tags.map(t => `#${t}`).join(' ')}
+                                                        <Text
+                                                            style={{
+                                                                opacity: 0.6,
+                                                                fontSize: 12,
+                                                                marginTop: 2,
+                                                                color: c.text,
+                                                            }}
+                                                        >
+                                                            {s.tags
+                                                                .map(
+                                                                    (t) =>
+                                                                        `#${t}`
+                                                                )
+                                                                .join(' ')}
                                                         </Text>
                                                     ) : null}
                                                 </Pressable>
@@ -179,89 +349,257 @@ export function ExplorePanel({
                                     </View>
                                 ) : null}
 
-                                <Text style={{ fontSize: 11, fontWeight: '600', color: c.subtext, marginBottom: 8, letterSpacing: 0.8 }}>NEARBY</Text>
+                                <Text
+                                    style={{
+                                        fontSize: 11,
+                                        fontWeight: '600',
+                                        color: c.subtext,
+                                        marginBottom: 8,
+                                        letterSpacing: 0.8,
+                                    }}
+                                >
+                                    NEARBY
+                                </Text>
                                 <Pressable
                                     onPress={onLoadSkateparks}
                                     disabled={parksLoading}
-                                    style={{ backgroundColor: c.tagBg, borderRadius: 8, padding: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: parksLoading ? 0.6 : 1, marginBottom: 10 }}
+                                    style={{
+                                        backgroundColor: c.tagBg,
+                                        borderRadius: 8,
+                                        padding: 12,
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: 8,
+                                        opacity: parksLoading ? 0.6 : 1,
+                                        marginBottom: 10,
+                                    }}
                                 >
-                                    <Image source={require('@/assets/pin-images/icons8-ramp-100.png')} style={{ width: 24, height: 24 }} />
-                                    <Text style={{ color: c.text, fontWeight: '600' }}>{parksLoading ? 'Searching...' : 'Local Skate Parks'}</Text>
+                                    <Image
+                                        source={require('@/assets/pin-images/icons8-ramp-100.png')}
+                                        style={{ width: 25, height: 30 }}
+                                    />
+                                    <Text
+                                        style={{
+                                            color: c.text,
+                                            fontWeight: '600',
+                                        }}
+                                    >
+                                        {parksLoading
+                                            ? 'Searching...'
+                                            : 'Local Skate Parks'}
+                                    </Text>
                                 </Pressable>
 
                                 <Pressable
                                     onPress={onLoadSkateShops}
                                     disabled={shopsLoading}
-                                    style={{ backgroundColor: c.tagBg, borderRadius: 8, padding: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: shopsLoading ? 0.6 : 1, marginBottom: 10 }}
+                                    style={{
+                                        backgroundColor: c.tagBg,
+                                        borderRadius: 8,
+                                        padding: 12,
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: 8,
+                                        opacity: shopsLoading ? 0.6 : 1,
+                                        marginBottom: 10,
+                                    }}
                                 >
-                                    <Image source={require('@/assets/pin-images/icons8-shop-80.png')} style={{ width: 24, height: 24 }} />
-                                    <Text style={{ color: c.text, fontWeight: '600' }}>{shopsLoading ? 'Searching...' : 'Local Skate Shops'}</Text>
+                                    <Image
+                                        source={require('@/assets/pin-images/icons8-shop-80.png')}
+                                        style={{ width: 24, height: 24 }}
+                                    />
+                                    <Text
+                                        style={{
+                                            color: c.text,
+                                            fontWeight: '600',
+                                        }}
+                                    >
+                                        {shopsLoading
+                                            ? 'Searching...'
+                                            : 'Local Skate Shops'}
+                                    </Text>
                                 </Pressable>
 
                                 <Pressable
                                     onPress={onLoadTopRated}
                                     disabled={topLoading}
-                                    style={{ backgroundColor: c.tagBg, borderRadius: 8, padding: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: topLoading ? 0.6 : 1, marginBottom: 10 }}
+                                    style={{
+                                        backgroundColor: c.tagBg,
+                                        borderRadius: 8,
+                                        padding: 12,
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: 8,
+                                        opacity: topLoading ? 0.6 : 1,
+                                        marginBottom: 10,
+                                    }}
                                 >
                                     <Text style={{ fontSize: 16 }}>⭐</Text>
-                                    <Text style={{ color: c.text, fontWeight: '600' }}>{topLoading ? 'Searching...' : 'Top Rated Nearby'}</Text>
+                                    <Text
+                                        style={{
+                                            color: c.text,
+                                            fontWeight: '600',
+                                        }}
+                                    >
+                                        {topLoading
+                                            ? 'Searching...'
+                                            : 'Top Rated Nearby'}
+                                    </Text>
                                 </Pressable>
 
                                 {topRated.length > 0 ? (
                                     <View style={{ marginBottom: 16 }}>
-                                        <View style={{ flexDirection: 'row', gap: 6, marginBottom: 12 }}>
-                                            {(['spot', 'skatepark', 'skateshop'] as const).map(type => {
-                                                const labels = { spot: 'Spots', skatepark: 'Parks', skateshop: 'Shops' }
-                                                const isActive = topRatedTab === type
+                                        <View
+                                            style={{
+                                                flexDirection: 'row',
+                                                gap: 6,
+                                                marginBottom: 12,
+                                            }}
+                                        >
+                                            {(
+                                                [
+                                                    'spot',
+                                                    'skatepark',
+                                                    'skateshop',
+                                                ] as const
+                                            ).map((type) => {
+                                                const labels = {
+                                                    spot: 'Spots',
+                                                    skatepark: 'Parks',
+                                                    skateshop: 'Shops',
+                                                };
+                                                const isActive =
+                                                    topRatedTab === type;
                                                 return (
                                                     <Pressable
                                                         key={type}
-                                                        onPress={() => setTopRatedTab(type)}
+                                                        onPress={() =>
+                                                            setTopRatedTab(type)
+                                                        }
                                                         style={{
                                                             flex: 1,
                                                             paddingVertical: 6,
                                                             borderRadius: 6,
                                                             borderWidth: 1,
-                                                            borderColor: isActive ? '#007AFF' : c.inputBorder,
-                                                            backgroundColor: isActive ? '#007AFF' : c.surface,
-                                                            alignItems: 'center',
+                                                            borderColor:
+                                                                isActive
+                                                                    ? '#007AFF'
+                                                                    : c.inputBorder,
+                                                            backgroundColor:
+                                                                isActive
+                                                                    ? '#007AFF'
+                                                                    : c.surface,
+                                                            alignItems:
+                                                                'center',
                                                         }}
                                                     >
-                                                        <Text style={{ fontSize: 11, fontWeight: '600', color: isActive ? 'white' : c.subtext }}>
+                                                        <Text
+                                                            style={{
+                                                                fontSize: 11,
+                                                                fontWeight:
+                                                                    '600',
+                                                                color: isActive
+                                                                    ? 'white'
+                                                                    : c.subtext,
+                                                            }}
+                                                        >
                                                             {labels[type]}
                                                         </Text>
                                                     </Pressable>
-                                                )
+                                                );
                                             })}
                                         </View>
 
-                                        {topRated.filter(s => s.spot_type === topRatedTab).length === 0 ? (
-                                            <Text style={{ color: c.subtext, fontSize: 13, opacity: 0.6 }}>No top rated {topRatedTab === 'spot' ? 'spots' : topRatedTab === 'skatepark' ? 'parks' : 'shops'} nearby.</Text>
+                                        {topRated.filter(
+                                            (s) => s.spot_type === topRatedTab
+                                        ).length === 0 ? (
+                                            <Text
+                                                style={{
+                                                    color: c.subtext,
+                                                    fontSize: 13,
+                                                    opacity: 0.6,
+                                                }}
+                                            >
+                                                No top rated{' '}
+                                                {topRatedTab === 'spot'
+                                                    ? 'spots'
+                                                    : topRatedTab ===
+                                                        'skatepark'
+                                                      ? 'parks'
+                                                      : 'shops'}{' '}
+                                                nearby.
+                                            </Text>
                                         ) : (
-                                            topRated.filter(s => s.spot_type === topRatedTab).map((s, index) => (
-                                                <AnimatedSpotCard key={s.id} index={index}>
-                                                    <Pressable
-                                                        style={{ paddingVertical: 10, borderBottomWidth: 1, borderColor: c.border }}
-                                                        onPress={() => {
-                                                            if ('isPlace' in s && s.isPlace) {
-                                                                onSelectPlace({
-                                                                    id: s.id,
-                                                                    name: s.name,
-                                                                    lat: s.lat,
-                                                                    lng: s.lng,
-                                                                    type: s.type as 'skatepark' | 'skateshop',
-                                                                    tags: {},
-                                                                });
-                                                            } else {
-                                                                onSelectSpot(s as Spot);
-                                                            }
-                                                        }}
+                                            topRated
+                                                .filter(
+                                                    (s) =>
+                                                        s.spot_type ===
+                                                        topRatedTab
+                                                )
+                                                .map((s, index) => (
+                                                    <AnimatedSpotCard
+                                                        key={s.id}
+                                                        index={index}
                                                     >
-                                                        <Text style={{ fontWeight: '600', color: c.text }}>{s.name}</Text>
-                                                        <Text style={{ opacity: 0.7, fontSize: 12, color: c.text }}>{s.avg.toFixed(1)} ★ ({s.count})</Text>
-                                                    </Pressable>
-                                                </AnimatedSpotCard>
-                                            ))
+                                                        <Pressable
+                                                            style={{
+                                                                paddingVertical: 10,
+                                                                borderBottomWidth: 1,
+                                                                borderColor:
+                                                                    c.border,
+                                                            }}
+                                                            onPress={() => {
+                                                                if (
+                                                                    'isPlace' in
+                                                                        s &&
+                                                                    s.isPlace
+                                                                ) {
+                                                                    onSelectPlace(
+                                                                        {
+                                                                            id: s.id,
+                                                                            name: s.name,
+                                                                            lat: s.lat,
+                                                                            lng: s.lng,
+                                                                            type: s.type as
+                                                                                | 'skatepark'
+                                                                                | 'skateshop',
+                                                                            tags: {},
+                                                                        }
+                                                                    );
+                                                                } else {
+                                                                    onSelectSpot(
+                                                                        s as Spot
+                                                                    );
+                                                                }
+                                                            }}
+                                                        >
+                                                            <Text
+                                                                style={{
+                                                                    fontWeight:
+                                                                        '600',
+                                                                    color: c.text,
+                                                                }}
+                                                            >
+                                                                {s.name}
+                                                            </Text>
+                                                            <Text
+                                                                style={{
+                                                                    opacity: 0.7,
+                                                                    fontSize: 12,
+                                                                    color: c.text,
+                                                                }}
+                                                            >
+                                                                {s.avg.toFixed(
+                                                                    1
+                                                                )}{' '}
+                                                                ★ ({s.count})
+                                                            </Text>
+                                                        </Pressable>
+                                                    </AnimatedSpotCard>
+                                                ))
                                         )}
                                     </View>
                                 ) : null}
@@ -270,52 +608,211 @@ export function ExplorePanel({
 
                         {activeTab === 'myspots' ? (
                             <View>
-                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                                <View
+                                    style={{
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        gap: 6,
+                                        marginBottom: 2,
+                                    }}
+                                >
                                     <Text style={{ fontSize: 16 }}>📍</Text>
-                                    <Text style={{ fontSize: 11, fontWeight: '600', color: c.subtext, letterSpacing: 0.8 }}>MY SPOTS</Text>
+                                    <Text
+                                        style={{
+                                            fontSize: 11,
+                                            fontWeight: '600',
+                                            color: c.subtext,
+                                            letterSpacing: 0.8,
+                                        }}
+                                    >
+                                        MY SPOTS
+                                    </Text>
                                 </View>
                                 {mySpotsLoading ? (
-                                    <Text style={{ color: c.subtext, fontSize: 13 }}>Loading...</Text>
+                                    <Text
+                                        style={{
+                                            color: c.subtext,
+                                            fontSize: 13,
+                                        }}
+                                    >
+                                        Loading...
+                                    </Text>
                                 ) : myActualSpots.length === 0 ? (
-                                    <Text style={{ color: c.subtext, fontSize: 13, opacity: 0.6 }}>You haven&apos;t created any spots yet.</Text>
+                                    <Text
+                                        style={{
+                                            color: c.subtext,
+                                            fontSize: 13,
+                                            opacity: 0.6,
+                                        }}
+                                    >
+                                        You haven&apos;t created any spots yet.
+                                    </Text>
                                 ) : (
                                     myActualSpots.map((s, index) => (
-                                        <AnimatedSpotCard key={s.id} index={index}>
+                                        <AnimatedSpotCard
+                                            key={s.id}
+                                            index={index}
+                                        >
                                             <Swipeable
                                                 renderLeftActions={() => (
                                                     <Pressable
-                                                        onPress={() => onDeleteSpot(s)}
-                                                        style={{ justifyContent: 'center', alignItems: 'center', width: 75, backgroundColor: c.danger, borderTopLeftRadius: 8, borderBottomLeftRadius: 8, marginVertical: 2, gap: 4 }}
+                                                        onPress={() =>
+                                                            onDeleteSpot(s)
+                                                        }
+                                                        style={{
+                                                            justifyContent:
+                                                                'center',
+                                                            alignItems:
+                                                                'center',
+                                                            width: 75,
+                                                            backgroundColor:
+                                                                c.danger,
+                                                            borderTopLeftRadius: 8,
+                                                            borderBottomLeftRadius: 8,
+                                                            marginVertical: 2,
+                                                            gap: 4,
+                                                        }}
                                                     >
-                                                        <Ionicons name="trash-outline" size={18} color="white" />
-                                                        <Text style={{ color: 'white', fontSize: 11, fontWeight: '700', letterSpacing: 0.3 }}>Delete</Text>
+                                                        <Ionicons
+                                                            name="trash-outline"
+                                                            size={18}
+                                                            color="white"
+                                                        />
+                                                        <Text
+                                                            style={{
+                                                                color: 'white',
+                                                                fontSize: 11,
+                                                                fontWeight:
+                                                                    '700',
+                                                                letterSpacing: 0.3,
+                                                            }}
+                                                        >
+                                                            Delete
+                                                        </Text>
                                                     </Pressable>
                                                 )}
-                                                onSwipeableOpen={(direction) => { if (direction === 'right') onDeleteSpot(s); }}
+                                                onSwipeableOpen={(
+                                                    direction
+                                                ) => {
+                                                    if (direction === 'right')
+                                                        onDeleteSpot(s);
+                                                }}
                                                 renderRightActions={() => (
                                                     <Pressable
-                                                        onPress={() => onToggleSpotPrivacy(s)}
-                                                        style={{ justifyContent: 'center', alignItems: 'center', width: 75, backgroundColor: s.is_private ? '#34C759' : '#FF9500', borderTopRightRadius: 8, borderBottomRightRadius: 8, marginVertical: 2, gap: 4 }}
+                                                        onPress={() =>
+                                                            onToggleSpotPrivacy(
+                                                                s
+                                                            )
+                                                        }
+                                                        style={{
+                                                            justifyContent:
+                                                                'center',
+                                                            alignItems:
+                                                                'center',
+                                                            width: 75,
+                                                            backgroundColor:
+                                                                s.is_private
+                                                                    ? '#34C759'
+                                                                    : '#FF9500',
+                                                            borderTopRightRadius: 8,
+                                                            borderBottomRightRadius: 8,
+                                                            marginVertical: 2,
+                                                            gap: 4,
+                                                        }}
                                                     >
-                                                        <Ionicons name={s.is_private ? 'lock-open-outline' : 'lock-closed'} size={18} color="white" />
-                                                        <Text style={{ color: 'white', fontSize: 11, fontWeight: '700', letterSpacing: 0.3 }}>{s.is_private ? 'Public' : 'Private'}</Text>
+                                                        <Ionicons
+                                                            name={
+                                                                s.is_private
+                                                                    ? 'lock-open-outline'
+                                                                    : 'lock-closed'
+                                                            }
+                                                            size={18}
+                                                            color="white"
+                                                        />
+                                                        <Text
+                                                            style={{
+                                                                color: 'white',
+                                                                fontSize: 11,
+                                                                fontWeight:
+                                                                    '700',
+                                                                letterSpacing: 0.3,
+                                                            }}
+                                                        >
+                                                            {s.is_private
+                                                                ? 'Public'
+                                                                : 'Private'}
+                                                        </Text>
                                                     </Pressable>
                                                 )}
                                             >
                                                 <Pressable
-                                                    onPress={() => onSelectSpot(s)}
-                                                    style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderColor: c.border, gap: 10, backgroundColor: c.panelBg }}
+                                                    onPress={() =>
+                                                        onSelectSpot(s)
+                                                    }
+                                                    style={{
+                                                        flexDirection: 'row',
+                                                        alignItems: 'center',
+                                                        paddingVertical: 12,
+                                                        borderBottomWidth: 1,
+                                                        borderColor: c.border,
+                                                        gap: 10,
+                                                        backgroundColor:
+                                                            c.panelBg,
+                                                    }}
                                                 >
                                                     <View style={{ flex: 1 }}>
-                                                        <Text style={{ fontWeight: '600', color: c.text }}>{s.name}</Text>
+                                                        <Text
+                                                            style={{
+                                                                fontWeight:
+                                                                    '600',
+                                                                color: c.text,
+                                                            }}
+                                                        >
+                                                            {s.name}
+                                                        </Text>
                                                         {s.tags?.length > 0 ? (
-                                                            <Text style={{ opacity: 0.6, fontSize: 12, marginTop: 2, color: c.text }}>{s.tags.map(t => `#${t}`).join(' ')}</Text>
+                                                            <Text
+                                                                style={{
+                                                                    opacity: 0.6,
+                                                                    fontSize: 12,
+                                                                    marginTop: 2,
+                                                                    color: c.text,
+                                                                }}
+                                                            >
+                                                                {s.tags
+                                                                    .map(
+                                                                        (t) =>
+                                                                            `#${t}`
+                                                                    )
+                                                                    .join(' ')}
+                                                            </Text>
                                                         ) : null}
                                                     </View>
                                                     {s.is_private ? (
-                                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                                                            <Ionicons name="lock-closed" size={14} color={c.danger} />
-                                                            <Text style={{ fontSize: 11, color: c.danger, fontWeight: '600' }}>Private</Text>
+                                                        <View
+                                                            style={{
+                                                                flexDirection:
+                                                                    'row',
+                                                                alignItems:
+                                                                    'center',
+                                                                gap: 4,
+                                                            }}
+                                                        >
+                                                            <Ionicons
+                                                                name="lock-closed"
+                                                                size={14}
+                                                                color={c.danger}
+                                                            />
+                                                            <Text
+                                                                style={{
+                                                                    fontSize: 11,
+                                                                    color: c.danger,
+                                                                    fontWeight:
+                                                                        '600',
+                                                                }}
+                                                            >
+                                                                Private
+                                                            </Text>
                                                         </View>
                                                     ) : null}
                                                 </Pressable>
@@ -326,30 +823,115 @@ export function ExplorePanel({
 
                                 {myCreatedParks.length > 0 ? (
                                     <View style={{ marginTop: 20 }}>
-                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                                            <Image source={require('@/assets/pin-images/icons8-ramp-100.png')} style={{ width: 18, height: 18 }} />
-                                            <Text style={{ fontSize: 11, fontWeight: '600', color: c.subtext, letterSpacing: 0.8 }}>MY PARKS</Text>
+                                        <View
+                                            style={{
+                                                flexDirection: 'row',
+                                                alignItems: 'center',
+                                                gap: 6,
+                                                marginBottom: 2,
+                                            }}
+                                        >
+                                            <Image
+                                                source={require('@/assets/pin-images/icons8-ramp-100.png')}
+                                                style={{
+                                                    width: 18,
+                                                    height: 18,
+                                                }}
+                                            />
+                                            <Text
+                                                style={{
+                                                    fontSize: 11,
+                                                    fontWeight: '600',
+                                                    color: c.subtext,
+                                                    letterSpacing: 0.8,
+                                                }}
+                                            >
+                                                MY PARKS
+                                            </Text>
                                         </View>
                                         {myCreatedParks.map((s, index) => (
-                                            <AnimatedSpotCard key={s.id} index={index}>
+                                            <AnimatedSpotCard
+                                                key={s.id}
+                                                index={index}
+                                            >
                                                 <Swipeable
                                                     renderLeftActions={() => (
                                                         <Pressable
-                                                            onPress={() => onDeleteSpot(s)}
-                                                            style={{ justifyContent: 'center', alignItems: 'center', width: 75, backgroundColor: c.danger, borderTopLeftRadius: 8, borderBottomLeftRadius: 8, marginVertical: 2, gap: 4 }}
+                                                            onPress={() =>
+                                                                onDeleteSpot(s)
+                                                            }
+                                                            style={{
+                                                                justifyContent:
+                                                                    'center',
+                                                                alignItems:
+                                                                    'center',
+                                                                width: 75,
+                                                                backgroundColor:
+                                                                    c.danger,
+                                                                borderTopLeftRadius: 8,
+                                                                borderBottomLeftRadius: 8,
+                                                                marginVertical: 2,
+                                                                gap: 4,
+                                                            }}
                                                         >
-                                                            <Ionicons name="trash-outline" size={18} color="white" />
-                                                            <Text style={{ color: 'white', fontSize: 11, fontWeight: '700', letterSpacing: 0.3 }}>Delete</Text>
+                                                            <Ionicons
+                                                                name="trash-outline"
+                                                                size={18}
+                                                                color="white"
+                                                            />
+                                                            <Text
+                                                                style={{
+                                                                    color: 'white',
+                                                                    fontSize: 11,
+                                                                    fontWeight:
+                                                                        '700',
+                                                                    letterSpacing: 0.3,
+                                                                }}
+                                                            >
+                                                                Delete
+                                                            </Text>
                                                         </Pressable>
                                                     )}
-                                                    onSwipeableOpen={(direction) => { if (direction === 'right') onDeleteSpot(s); }}
+                                                    onSwipeableOpen={(
+                                                        direction
+                                                    ) => {
+                                                        if (
+                                                            direction ===
+                                                            'right'
+                                                        )
+                                                            onDeleteSpot(s);
+                                                    }}
                                                 >
                                                     <Pressable
-                                                        onPress={() => onSelectSpot(s)}
-                                                        style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderColor: c.border, gap: 10, backgroundColor: c.panelBg }}
+                                                        onPress={() =>
+                                                            onSelectSpot(s)
+                                                        }
+                                                        style={{
+                                                            flexDirection:
+                                                                'row',
+                                                            alignItems:
+                                                                'center',
+                                                            paddingVertical: 12,
+                                                            borderBottomWidth: 1,
+                                                            borderColor:
+                                                                c.border,
+                                                            gap: 10,
+                                                            backgroundColor:
+                                                                c.panelBg,
+                                                        }}
                                                     >
-                                                        <View style={{ flex: 1 }}>
-                                                            <Text style={{ fontWeight: '600', color: c.text }}>{s.name}</Text>
+                                                        <View
+                                                            style={{ flex: 1 }}
+                                                        >
+                                                            <Text
+                                                                style={{
+                                                                    fontWeight:
+                                                                        '600',
+                                                                    color: c.text,
+                                                                }}
+                                                            >
+                                                                {s.name}
+                                                            </Text>
                                                         </View>
                                                     </Pressable>
                                                 </Swipeable>
@@ -360,30 +942,115 @@ export function ExplorePanel({
 
                                 {myCreatedShops.length > 0 ? (
                                     <View style={{ marginTop: 20 }}>
-                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                                            <Image source={require('@/assets/pin-images/icons8-shop-80.png')} style={{ width: 18, height: 18 }} />
-                                            <Text style={{ fontSize: 11, fontWeight: '600', color: c.subtext, letterSpacing: 0.8 }}>MY SHOPS</Text>
+                                        <View
+                                            style={{
+                                                flexDirection: 'row',
+                                                alignItems: 'center',
+                                                gap: 6,
+                                                marginBottom: 2,
+                                            }}
+                                        >
+                                            <Image
+                                                source={require('@/assets/pin-images/icons8-shop-80.png')}
+                                                style={{
+                                                    width: 18,
+                                                    height: 18,
+                                                }}
+                                            />
+                                            <Text
+                                                style={{
+                                                    fontSize: 11,
+                                                    fontWeight: '600',
+                                                    color: c.subtext,
+                                                    letterSpacing: 0.8,
+                                                }}
+                                            >
+                                                MY SHOPS
+                                            </Text>
                                         </View>
                                         {myCreatedShops.map((s, index) => (
-                                            <AnimatedSpotCard key={s.id} index={index}>
+                                            <AnimatedSpotCard
+                                                key={s.id}
+                                                index={index}
+                                            >
                                                 <Swipeable
                                                     renderLeftActions={() => (
                                                         <Pressable
-                                                            onPress={() => onDeleteSpot(s)}
-                                                            style={{ justifyContent: 'center', alignItems: 'center', width: 75, backgroundColor: c.danger, borderTopLeftRadius: 8, borderBottomLeftRadius: 8, marginVertical: 2, gap: 4 }}
+                                                            onPress={() =>
+                                                                onDeleteSpot(s)
+                                                            }
+                                                            style={{
+                                                                justifyContent:
+                                                                    'center',
+                                                                alignItems:
+                                                                    'center',
+                                                                width: 75,
+                                                                backgroundColor:
+                                                                    c.danger,
+                                                                borderTopLeftRadius: 8,
+                                                                borderBottomLeftRadius: 8,
+                                                                marginVertical: 2,
+                                                                gap: 4,
+                                                            }}
                                                         >
-                                                            <Ionicons name="trash-outline" size={18} color="white" />
-                                                            <Text style={{ color: 'white', fontSize: 11, fontWeight: '700', letterSpacing: 0.3 }}>Delete</Text>
+                                                            <Ionicons
+                                                                name="trash-outline"
+                                                                size={18}
+                                                                color="white"
+                                                            />
+                                                            <Text
+                                                                style={{
+                                                                    color: 'white',
+                                                                    fontSize: 11,
+                                                                    fontWeight:
+                                                                        '700',
+                                                                    letterSpacing: 0.3,
+                                                                }}
+                                                            >
+                                                                Delete
+                                                            </Text>
                                                         </Pressable>
                                                     )}
-                                                    onSwipeableOpen={(direction) => { if (direction === 'right') onDeleteSpot(s); }}
+                                                    onSwipeableOpen={(
+                                                        direction
+                                                    ) => {
+                                                        if (
+                                                            direction ===
+                                                            'right'
+                                                        )
+                                                            onDeleteSpot(s);
+                                                    }}
                                                 >
                                                     <Pressable
-                                                        onPress={() => onSelectSpot(s)}
-                                                        style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderColor: c.border, gap: 10, backgroundColor: c.panelBg }}
+                                                        onPress={() =>
+                                                            onSelectSpot(s)
+                                                        }
+                                                        style={{
+                                                            flexDirection:
+                                                                'row',
+                                                            alignItems:
+                                                                'center',
+                                                            paddingVertical: 12,
+                                                            borderBottomWidth: 1,
+                                                            borderColor:
+                                                                c.border,
+                                                            gap: 10,
+                                                            backgroundColor:
+                                                                c.panelBg,
+                                                        }}
                                                     >
-                                                        <View style={{ flex: 1 }}>
-                                                            <Text style={{ fontWeight: '600', color: c.text }}>{s.name}</Text>
+                                                        <View
+                                                            style={{ flex: 1 }}
+                                                        >
+                                                            <Text
+                                                                style={{
+                                                                    fontWeight:
+                                                                        '600',
+                                                                    color: c.text,
+                                                                }}
+                                                            >
+                                                                {s.name}
+                                                            </Text>
                                                         </View>
                                                     </Pressable>
                                                 </Swipeable>
@@ -397,145 +1064,473 @@ export function ExplorePanel({
                         {/* FAVORITES TAB */}
                         {activeTab === 'favorites' ? (
                             <View>
-                                <Text style={{ fontSize: 11, fontWeight: '600', color: c.subtext, marginBottom: 12, letterSpacing: 0.8 }}>FAVORITES</Text>
+                                <Text
+                                    style={{
+                                        fontSize: 11,
+                                        fontWeight: '600',
+                                        color: c.subtext,
+                                        marginBottom: 12,
+                                        letterSpacing: 0.8,
+                                    }}
+                                >
+                                    FAVORITES
+                                </Text>
 
                                 <Pressable
-                                    onPress={() => setFavoritesOpen(prev => !prev)}
-                                    style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderColor: c.border, marginBottom: 4 }}
+                                    onPress={() =>
+                                        setFavoritesOpen((prev) => !prev)
+                                    }
+                                    style={{
+                                        flexDirection: 'row',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        paddingVertical: 12,
+                                        borderBottomWidth: 1,
+                                        borderColor: c.border,
+                                        marginBottom: 4,
+                                    }}
                                 >
-                                    <Text style={{ fontWeight: '700', color: c.text }}>
-                                        {favLoading ? 'Loading...' : `Spots (${favorites.filter(s => s.spot_type === 'spot').length})`}
+                                    <Text
+                                        style={{
+                                            fontWeight: '700',
+                                            color: c.text,
+                                        }}
+                                    >
+                                        {favLoading
+                                            ? 'Loading...'
+                                            : `Spots (${favorites.filter((s) => s.spot_type === 'spot').length})`}
                                     </Text>
-                                    <Ionicons name={favoritesOpen ? 'chevron-up' : 'chevron-down'} size={16} color={c.subtext} />
+                                    <Ionicons
+                                        name={
+                                            favoritesOpen
+                                                ? 'chevron-up'
+                                                : 'chevron-down'
+                                        }
+                                        size={16}
+                                        color={c.subtext}
+                                    />
                                 </Pressable>
                                 {favoritesOpen ? (
-                                    favorites.filter(s => s != null && s.spot_type === 'spot').length > 0 ? favorites.filter(s => s != null && s.spot_type === 'spot').map((s, index) => (
-                                        <AnimatedSpotCard key={s.id} index={index}>
-                                            <Pressable
-                                                style={{ paddingVertical: 10, borderBottomWidth: 1, borderColor: c.border, paddingLeft: 12 }}
-                                                onPress={() => { setFavoritesOpen(false); onSelectSpot(s); }}
-                                            >
-                                                <Text style={{ fontWeight: '600', color: c.text }}>{s.name}</Text>
-                                                {s.tags?.length > 0 ? (
-                                                    <Text style={{ opacity: 0.6, fontSize: 12, marginTop: 2, color: c.text }}>
-                                                        {s.tags.map(t => `#${t}`).join(' ')}
-                                                    </Text>
-                                                ) : null}
-                                            </Pressable>
-                                        </AnimatedSpotCard>
-                                    )) : (
-                                        <Text style={{ opacity: 0.5, fontSize: 13, padding: 12, color: c.text }}>No favorites yet</Text>
+                                    favorites.filter(
+                                        (s) =>
+                                            s != null && s.spot_type === 'spot'
+                                    ).length > 0 ? (
+                                        favorites
+                                            .filter(
+                                                (s) =>
+                                                    s != null &&
+                                                    s.spot_type === 'spot'
+                                            )
+                                            .map((s, index) => (
+                                                <AnimatedSpotCard
+                                                    key={s.id}
+                                                    index={index}
+                                                >
+                                                    <Pressable
+                                                        style={{
+                                                            paddingVertical: 10,
+                                                            borderBottomWidth: 1,
+                                                            borderColor:
+                                                                c.border,
+                                                            paddingLeft: 12,
+                                                        }}
+                                                        onPress={() => {
+                                                            setFavoritesOpen(
+                                                                false
+                                                            );
+                                                            onSelectSpot(s);
+                                                        }}
+                                                    >
+                                                        <Text
+                                                            style={{
+                                                                fontWeight:
+                                                                    '600',
+                                                                color: c.text,
+                                                            }}
+                                                        >
+                                                            {s.name}
+                                                        </Text>
+                                                        {s.tags?.length > 0 ? (
+                                                            <Text
+                                                                style={{
+                                                                    opacity: 0.6,
+                                                                    fontSize: 12,
+                                                                    marginTop: 2,
+                                                                    color: c.text,
+                                                                }}
+                                                            >
+                                                                {s.tags
+                                                                    .map(
+                                                                        (t) =>
+                                                                            `#${t}`
+                                                                    )
+                                                                    .join(' ')}
+                                                            </Text>
+                                                        ) : null}
+                                                    </Pressable>
+                                                </AnimatedSpotCard>
+                                            ))
+                                    ) : (
+                                        <Text
+                                            style={{
+                                                opacity: 0.5,
+                                                fontSize: 13,
+                                                padding: 12,
+                                                color: c.text,
+                                            }}
+                                        >
+                                            No favorites yet
+                                        </Text>
                                     )
                                 ) : null}
 
                                 <Pressable
-                                    onPress={() => setParkFavoritesOpen(prev => !prev)}
-                                    style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderColor: c.border, marginBottom: 4, marginTop: 8 }}
+                                    onPress={() =>
+                                        setParkFavoritesOpen((prev) => !prev)
+                                    }
+                                    style={{
+                                        flexDirection: 'row',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        paddingVertical: 12,
+                                        borderBottomWidth: 1,
+                                        borderColor: c.border,
+                                        marginBottom: 4,
+                                        marginTop: 8,
+                                    }}
                                 >
-                                    <Text style={{ fontWeight: '700', color: c.text }}>
-                                        {placeFavLoading ? 'Loading...' : `Parks (${favParks.length + favParkSpots.length})`}
+                                    <Text
+                                        style={{
+                                            fontWeight: '700',
+                                            color: c.text,
+                                        }}
+                                    >
+                                        {placeFavLoading
+                                            ? 'Loading...'
+                                            : `Parks (${favParks.length + favParkSpots.length})`}
                                     </Text>
-                                    <Ionicons name={parkFavoritesOpen ? 'chevron-up' : 'chevron-down'} size={16} color={c.subtext} />
+                                    <Ionicons
+                                        name={
+                                            parkFavoritesOpen
+                                                ? 'chevron-up'
+                                                : 'chevron-down'
+                                        }
+                                        size={16}
+                                        color={c.subtext}
+                                    />
                                 </Pressable>
                                 {parkFavoritesOpen ? (
-                                    favParks.length + favParkSpots.length > 0 ? (
+                                    favParks.length + favParkSpots.length >
+                                    0 ? (
                                         <>
                                             {favParkSpots.map((s, index) => (
-                                                <AnimatedSpotCard key={s.id} index={index}>
+                                                <AnimatedSpotCard
+                                                    key={s.id}
+                                                    index={index}
+                                                >
                                                     <Pressable
-                                                        style={{ paddingVertical: 10, borderBottomWidth: 1, borderColor: c.border, paddingLeft: 12 }}
-                                                        onPress={() => { setParkFavoritesOpen(false); onSelectSpot(s); }}
+                                                        style={{
+                                                            paddingVertical: 10,
+                                                            borderBottomWidth: 1,
+                                                            borderColor:
+                                                                c.border,
+                                                            paddingLeft: 12,
+                                                        }}
+                                                        onPress={() => {
+                                                            setParkFavoritesOpen(
+                                                                false
+                                                            );
+                                                            onSelectSpot(s);
+                                                        }}
                                                     >
-                                                        <Text style={{ fontWeight: '600', color: c.text }}>{s.name}</Text>
+                                                        <Text
+                                                            style={{
+                                                                fontWeight:
+                                                                    '600',
+                                                                color: c.text,
+                                                            }}
+                                                        >
+                                                            {s.name}
+                                                        </Text>
                                                     </Pressable>
                                                 </AnimatedSpotCard>
                                             ))}
                                             {favParks.map((f, index) => (
-                                                <AnimatedSpotCard key={f.place_id} index={index}>
+                                                <AnimatedSpotCard
+                                                    key={f.place_id}
+                                                    index={index}
+                                                >
                                                     <Pressable
-                                                        style={{ paddingVertical: 10, borderBottomWidth: 1, borderColor: c.border, paddingLeft: 12 }}
+                                                        style={{
+                                                            paddingVertical: 10,
+                                                            borderBottomWidth: 1,
+                                                            borderColor:
+                                                                c.border,
+                                                            paddingLeft: 12,
+                                                        }}
                                                         onPress={() => {
-                                                            setParkFavoritesOpen(false);
-                                                            onSelectPlace({ id: f.place_id, name: f.place_name, type: f.place_type as 'skatepark' | 'skateshop', lat: f.lat, lng: f.lng, tags: {} });
+                                                            setParkFavoritesOpen(
+                                                                false
+                                                            );
+                                                            onSelectPlace({
+                                                                id: f.place_id,
+                                                                name: f.place_name,
+                                                                type: f.place_type as
+                                                                    | 'skatepark'
+                                                                    | 'skateshop',
+                                                                lat: f.lat,
+                                                                lng: f.lng,
+                                                                tags: {},
+                                                            });
                                                         }}
                                                     >
-                                                        <Text style={{ fontWeight: '600', color: c.text }}>{f.place_name}</Text>
+                                                        <Text
+                                                            style={{
+                                                                fontWeight:
+                                                                    '600',
+                                                                color: c.text,
+                                                            }}
+                                                        >
+                                                            {f.place_name}
+                                                        </Text>
                                                     </Pressable>
                                                 </AnimatedSpotCard>
                                             ))}
                                         </>
                                     ) : (
-                                        <Text style={{ opacity: 0.5, fontSize: 13, padding: 12, color: c.text }}>No favorites yet</Text>
+                                        <Text
+                                            style={{
+                                                opacity: 0.5,
+                                                fontSize: 13,
+                                                padding: 12,
+                                                color: c.text,
+                                            }}
+                                        >
+                                            No favorites yet
+                                        </Text>
                                     )
                                 ) : null}
 
                                 <Pressable
-                                    onPress={() => setShopFavoritesOpen(prev => !prev)}
-                                    style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderColor: c.border, marginBottom: 4, marginTop: 8 }}
+                                    onPress={() =>
+                                        setShopFavoritesOpen((prev) => !prev)
+                                    }
+                                    style={{
+                                        flexDirection: 'row',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        paddingVertical: 12,
+                                        borderBottomWidth: 1,
+                                        borderColor: c.border,
+                                        marginBottom: 4,
+                                        marginTop: 8,
+                                    }}
                                 >
-                                    <Text style={{ fontWeight: '700', color: c.text }}>
-                                        {placeFavLoading ? 'Loading...' : `Shops (${favShops.length + favShopSpots.length})`}
+                                    <Text
+                                        style={{
+                                            fontWeight: '700',
+                                            color: c.text,
+                                        }}
+                                    >
+                                        {placeFavLoading
+                                            ? 'Loading...'
+                                            : `Shops (${favShops.length + favShopSpots.length})`}
                                     </Text>
-                                    <Ionicons name={shopFavoritesOpen ? 'chevron-up' : 'chevron-down'} size={16} color={c.subtext} />
+                                    <Ionicons
+                                        name={
+                                            shopFavoritesOpen
+                                                ? 'chevron-up'
+                                                : 'chevron-down'
+                                        }
+                                        size={16}
+                                        color={c.subtext}
+                                    />
                                 </Pressable>
                                 {shopFavoritesOpen ? (
-                                    favShops.length + favShopSpots.length > 0 ? (
+                                    favShops.length + favShopSpots.length >
+                                    0 ? (
                                         <>
                                             {favShopSpots.map((s, index) => (
-                                                <AnimatedSpotCard key={s.id} index={index}>
+                                                <AnimatedSpotCard
+                                                    key={s.id}
+                                                    index={index}
+                                                >
                                                     <Pressable
-                                                        style={{ paddingVertical: 10, borderBottomWidth: 1, borderColor: c.border, paddingLeft: 12 }}
-                                                        onPress={() => { setShopFavoritesOpen(false); onSelectSpot(s); }}
+                                                        style={{
+                                                            paddingVertical: 10,
+                                                            borderBottomWidth: 1,
+                                                            borderColor:
+                                                                c.border,
+                                                            paddingLeft: 12,
+                                                        }}
+                                                        onPress={() => {
+                                                            setShopFavoritesOpen(
+                                                                false
+                                                            );
+                                                            onSelectSpot(s);
+                                                        }}
                                                     >
-                                                        <Text style={{ fontWeight: '600', color: c.text }}>{s.name}</Text>
+                                                        <Text
+                                                            style={{
+                                                                fontWeight:
+                                                                    '600',
+                                                                color: c.text,
+                                                            }}
+                                                        >
+                                                            {s.name}
+                                                        </Text>
                                                     </Pressable>
                                                 </AnimatedSpotCard>
                                             ))}
                                             {favShops.map((f, index) => (
-                                                <AnimatedSpotCard key={f.place_id} index={index}>
+                                                <AnimatedSpotCard
+                                                    key={f.place_id}
+                                                    index={index}
+                                                >
                                                     <Pressable
-                                                        style={{ paddingVertical: 10, borderBottomWidth: 1, borderColor: c.border, paddingLeft: 12 }}
+                                                        style={{
+                                                            paddingVertical: 10,
+                                                            borderBottomWidth: 1,
+                                                            borderColor:
+                                                                c.border,
+                                                            paddingLeft: 12,
+                                                        }}
                                                         onPress={() => {
-                                                            setShopFavoritesOpen(false);
-                                                            onSelectPlace({ id: f.place_id, name: f.place_name, type: f.place_type as 'skatepark' | 'skateshop', lat: f.lat, lng: f.lng, tags: {} });
+                                                            setShopFavoritesOpen(
+                                                                false
+                                                            );
+                                                            onSelectPlace({
+                                                                id: f.place_id,
+                                                                name: f.place_name,
+                                                                type: f.place_type as
+                                                                    | 'skatepark'
+                                                                    | 'skateshop',
+                                                                lat: f.lat,
+                                                                lng: f.lng,
+                                                                tags: {},
+                                                            });
                                                         }}
                                                     >
-                                                        <Text style={{ fontWeight: '600', color: c.text }}>{f.place_name}</Text>
+                                                        <Text
+                                                            style={{
+                                                                fontWeight:
+                                                                    '600',
+                                                                color: c.text,
+                                                            }}
+                                                        >
+                                                            {f.place_name}
+                                                        </Text>
                                                     </Pressable>
                                                 </AnimatedSpotCard>
                                             ))}
                                         </>
                                     ) : (
-                                        <Text style={{ opacity: 0.5, fontSize: 13, padding: 12, color: c.text }}>No favorites yet</Text>
+                                        <Text
+                                            style={{
+                                                opacity: 0.5,
+                                                fontSize: 13,
+                                                padding: 12,
+                                                color: c.text,
+                                            }}
+                                        >
+                                            No favorites yet
+                                        </Text>
                                     )
                                 ) : null}
 
                                 <Pressable
-                                    onPress={() => setWishlistOpen(prev => !prev)}
-                                    style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderColor: c.border, marginBottom: 4, marginTop: 8 }}
+                                    onPress={() =>
+                                        setWishlistOpen((prev) => !prev)
+                                    }
+                                    style={{
+                                        flexDirection: 'row',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        paddingVertical: 12,
+                                        borderBottomWidth: 1,
+                                        borderColor: c.border,
+                                        marginBottom: 4,
+                                        marginTop: 8,
+                                    }}
                                 >
-                                    <Text style={{ fontWeight: '700', color: c.text }}>
-                                        {wishlistLoading ? 'Loading...' : `My Wishlist (${wishlist.length})`}
+                                    <Text
+                                        style={{
+                                            fontWeight: '700',
+                                            color: c.text,
+                                        }}
+                                    >
+                                        {wishlistLoading
+                                            ? 'Loading...'
+                                            : `My Wishlist (${wishlist.length})`}
                                     </Text>
-                                    <Ionicons name={wishlistOpen ? 'chevron-up' : 'chevron-down'} size={16} color={c.subtext} />
+                                    <Ionicons
+                                        name={
+                                            wishlistOpen
+                                                ? 'chevron-up'
+                                                : 'chevron-down'
+                                        }
+                                        size={16}
+                                        color={c.subtext}
+                                    />
                                 </Pressable>
                                 {wishlistOpen ? (
-                                    wishlist.length > 0 ? wishlist.map((s, index) => (
-                                        <AnimatedSpotCard key={s.id} index={index}>
-                                            <Pressable
-                                                style={{ paddingVertical: 10, borderBottomWidth: 1, borderColor: c.border, paddingLeft: 12 }}
-                                                onPress={() => { setWishlistOpen(false); onSelectSpot(s); }}
+                                    wishlist.length > 0 ? (
+                                        wishlist.map((s, index) => (
+                                            <AnimatedSpotCard
+                                                key={s.id}
+                                                index={index}
                                             >
-                                                <Text style={{ fontWeight: '600', color: c.text }}>{s.name}</Text>
-                                                {s.tags?.length > 0 ? (
-                                                    <Text style={{ opacity: 0.6, fontSize: 12, marginTop: 2, color: c.text }}>
-                                                        {s.tags.map(t => `#${t}`).join(' ')}
+                                                <Pressable
+                                                    style={{
+                                                        paddingVertical: 10,
+                                                        borderBottomWidth: 1,
+                                                        borderColor: c.border,
+                                                        paddingLeft: 12,
+                                                    }}
+                                                    onPress={() => {
+                                                        setWishlistOpen(false);
+                                                        onSelectSpot(s);
+                                                    }}
+                                                >
+                                                    <Text
+                                                        style={{
+                                                            fontWeight: '600',
+                                                            color: c.text,
+                                                        }}
+                                                    >
+                                                        {s.name}
                                                     </Text>
-                                                ) : null}
-                                            </Pressable>
-                                        </AnimatedSpotCard>
-                                    )) : (
-                                        <Text style={{ opacity: 0.5, fontSize: 13, padding: 12, color: c.text }}>No spots wishlisted yet</Text>
+                                                    {s.tags?.length > 0 ? (
+                                                        <Text
+                                                            style={{
+                                                                opacity: 0.6,
+                                                                fontSize: 12,
+                                                                marginTop: 2,
+                                                                color: c.text,
+                                                            }}
+                                                        >
+                                                            {s.tags
+                                                                .map(
+                                                                    (t) =>
+                                                                        `#${t}`
+                                                                )
+                                                                .join(' ')}
+                                                        </Text>
+                                                    ) : null}
+                                                </Pressable>
+                                            </AnimatedSpotCard>
+                                        ))
+                                    ) : (
+                                        <Text
+                                            style={{
+                                                opacity: 0.5,
+                                                fontSize: 13,
+                                                padding: 12,
+                                                color: c.text,
+                                            }}
+                                        >
+                                            No spots wishlisted yet
+                                        </Text>
                                     )
                                 ) : null}
                             </View>
@@ -543,19 +1538,87 @@ export function ExplorePanel({
                     </ScrollView>
 
                     {/* Footer */}
-                    <View style={{ borderTopWidth: 1, borderColor: c.border, padding: 16 }}>
-                        <Pressable
-                            onPress={onOpenSettings}
-                            style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12 }}
+                    <View
+                        style={{
+                            borderTopWidth: 1,
+                            borderColor: c.border,
+                            padding: 16,
+                        }}
+                    >
+                        <View
+                            style={{
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                gap: 10,
+                                marginBottom: 12,
+                            }}
                         >
-                            <Ionicons name="settings-outline" size={18} color={c.text} />
-                            <Text style={{ fontSize: 15, color: c.text }}>Settings</Text>
-                        </Pressable>
+                            {myAvatarUrl ? (
+                                <Image
+                                    source={{ uri: myAvatarUrl }}
+                                    style={{
+                                        width: 36,
+                                        height: 36,
+                                        borderRadius: 18,
+                                    }}
+                                />
+                            ) : (
+                                <View
+                                    style={{
+                                        width: 36,
+                                        height: 36,
+                                        borderRadius: 18,
+                                        backgroundColor: c.tagBg,
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                    }}
+                                >
+                                    <Ionicons
+                                        name="person-outline"
+                                        size={18}
+                                        color={c.subtext}
+                                    />
+                                </View>
+                            )}
+                            <View>
+                                {myUsername ? (
+                                    <Text
+                                        style={{
+                                            fontSize: 14,
+                                            fontWeight: '600',
+                                            color: c.text,
+                                        }}
+                                    >
+                                        @{myUsername}
+                                    </Text>
+                                ) : null}
+                                <Pressable onPress={onOpenSettings}>
+                                    <Text
+                                        style={{
+                                            fontSize: 12,
+                                            color: '#007AFF',
+                                            marginTop: 2,
+                                        }}
+                                    >
+                                        Settings
+                                    </Text>
+                                </Pressable>
+                            </View>
+                        </View>
                         <Pressable
                             onPress={onSignOut}
-                            style={{ padding: 12, borderRadius: 8, backgroundColor: c.tagBg, alignItems: 'center' }}
+                            style={{
+                                padding: 12,
+                                borderRadius: 8,
+                                backgroundColor: c.tagBg,
+                                alignItems: 'center',
+                            }}
                         >
-                            <Text style={{ color: c.danger, fontWeight: '600' }}>Sign out</Text>
+                            <Text
+                                style={{ color: c.danger, fontWeight: '600' }}
+                            >
+                                Sign out
+                            </Text>
                         </Pressable>
                     </View>
                 </Pressable>

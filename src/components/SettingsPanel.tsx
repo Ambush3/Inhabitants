@@ -40,6 +40,7 @@ export function SettingsPanel({
 
     const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
     const [avatarLoading, setAvatarLoading] = useState(false);
+    const [username, setUsername] = useState<string | null>(null);
 
     useEffect(() => {
         async function loadAvatar() {
@@ -49,10 +50,11 @@ export function SettingsPanel({
             if (!user) return;
             const { data } = await supabase
                 .from('profiles')
-                .select('avatar_url')
+                .select('avatar_url, username')
                 .eq('id', user.id)
                 .single();
             setAvatarUrl(data?.avatar_url ?? null);
+            setUsername(data?.username ?? null);
         }
         if (visible) loadAvatar();
     }, [visible]);
@@ -239,45 +241,62 @@ export function SettingsPanel({
                             </Text>
                         </View>
 
-                        <Pressable
-                            onPress={handleAvatarUpload}
+                        <View
                             style={{ alignItems: 'center', marginBottom: 24 }}
                         >
-                            {avatarUrl ? (
-                                <Image
-                                    source={{ uri: avatarUrl }}
+                            <Pressable onPress={handleAvatarUpload}>
+                                {avatarUrl ? (
+                                    <Image
+                                        source={{ uri: avatarUrl }}
+                                        style={{
+                                            width: 72,
+                                            height: 72,
+                                            borderRadius: 36,
+                                            marginBottom: 8,
+                                        }}
+                                    />
+                                ) : (
+                                    <View
+                                        style={{
+                                            width: 72,
+                                            height: 72,
+                                            borderRadius: 36,
+                                            backgroundColor: c.tagBg,
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            marginBottom: 8,
+                                        }}
+                                    >
+                                        <Ionicons
+                                            name="person-outline"
+                                            size={32}
+                                            color={c.subtext}
+                                        />
+                                    </View>
+                                )}
+                            </Pressable>
+                            {username ? (
+                                <Text
                                     style={{
-                                        width: 72,
-                                        height: 72,
-                                        borderRadius: 36,
-                                        marginBottom: 8,
-                                    }}
-                                />
-                            ) : (
-                                <View
-                                    style={{
-                                        width: 72,
-                                        height: 72,
-                                        borderRadius: 36,
-                                        backgroundColor: c.tagBg,
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        marginBottom: 8,
+                                        fontSize: 14,
+                                        fontWeight: '600',
+                                        color: c.text,
+                                        marginBottom: 4,
                                     }}
                                 >
-                                    <Ionicons
-                                        name="person-outline"
-                                        size={32}
-                                        color={c.subtext}
-                                    />
-                                </View>
-                            )}
-                            <Text style={{ fontSize: 13, color: '#007AFF' }}>
-                                {avatarLoading
-                                    ? 'Uploading...'
-                                    : 'Change Photo'}
-                            </Text>
-                        </Pressable>
+                                    @{username}
+                                </Text>
+                            ) : null}
+                            <Pressable onPress={handleAvatarUpload}>
+                                <Text
+                                    style={{ fontSize: 13, color: '#007AFF' }}
+                                >
+                                    {avatarLoading
+                                        ? 'Uploading...'
+                                        : 'Change Photo'}
+                                </Text>
+                            </Pressable>
+                        </View>
 
                         <View
                             style={{
