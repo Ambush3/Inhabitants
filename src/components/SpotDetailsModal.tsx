@@ -96,6 +96,7 @@ type Props = {
     onUploadImages: (uris: string[]) => Promise<void>;
     onTogglePrivacy: () => void;
     creatorUsername?: string;
+    creatorAvatarUrl?: string;
     activeConditions: SpotCondition[];
     myConditions: SpotCondition[];
     onToggleCondition: (condition: SpotCondition) => void;
@@ -135,6 +136,7 @@ export function SpotDetailsModal({
     onUploadImages,
     onTogglePrivacy,
     creatorUsername,
+    creatorAvatarUrl,
     activeConditions,
     myConditions,
     onToggleCondition,
@@ -470,14 +472,54 @@ export function SpotDetailsModal({
                                         </Text>
                                     ) : null}
                                     {creatorUsername ? (
-                                        <Text
-                                            style={[
-                                                styles.creatorText,
-                                                { color: c.subtext },
-                                            ]}
+                                        <View
+                                            style={{
+                                                flexDirection: 'row',
+                                                alignItems: 'center',
+                                                gap: 6,
+                                                marginTop: 3,
+                                            }}
                                         >
-                                            Creator: @{creatorUsername}
-                                        </Text>
+                                            {creatorAvatarUrl ? (
+                                                <Image
+                                                    source={{
+                                                        uri: creatorAvatarUrl,
+                                                    }}
+                                                    style={{
+                                                        width: 20,
+                                                        height: 20,
+                                                        borderRadius: 10,
+                                                    }}
+                                                />
+                                            ) : (
+                                                <View
+                                                    style={{
+                                                        width: 20,
+                                                        height: 20,
+                                                        borderRadius: 10,
+                                                        backgroundColor:
+                                                            c.tagBg,
+                                                        alignItems: 'center',
+                                                        justifyContent:
+                                                            'center',
+                                                    }}
+                                                >
+                                                    <Ionicons
+                                                        name="person-outline"
+                                                        size={11}
+                                                        color={c.subtext}
+                                                    />
+                                                </View>
+                                            )}
+                                            <Text
+                                                style={[
+                                                    styles.creatorText,
+                                                    { color: c.subtext },
+                                                ]}
+                                            >
+                                                @{creatorUsername}
+                                            </Text>
+                                        </View>
                                     ) : null}
                                     {spot?.tags && spot.tags.length > 0 ? (
                                         <View
