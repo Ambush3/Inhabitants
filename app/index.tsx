@@ -846,15 +846,47 @@ export default function Index() {
                             }, 60000);
                         }}
                         onSelectSpot={(s) => {
-                            setPanelOpen(false);
-                            setHighlightSpotId(s.id);
-                            highlightSpotIdRef.current = s.id;
-                            openedFromPanelRef.current = true;
-                            animateToSpotWithModalOffset(s.lat, s.lng);
-                            openSpotDetails(s);
-                            setTimeout(() => {
-                                markerRefs.current[s.id]?.showCallout();
-                            }, 650);
+                            console.log('spot type:', s.spot_type);
+                            console.log(
+                                'in visibleSpots:',
+                                spots.find((sp) => sp.id === s.id)
+                                    ? 'yes'
+                                    : 'no'
+                            );
+                            setProfileOpen(false);
+                            if (
+                                s.spot_type === 'skatepark' ||
+                                s.spot_type === 'skateshop'
+                            ) {
+                                setHighlightSpotId(s.id);
+                                highlightSpotIdRef.current = s.id;
+                                setPlacesWithAutoClear((prev) =>
+                                    prev.some((p) => p.id === s.id)
+                                        ? prev
+                                        : [
+                                              ...prev,
+                                              {
+                                                  id: s.id,
+                                                  name: s.name,
+                                                  type: s.spot_type as
+                                                      | 'skatepark'
+                                                      | 'skateshop',
+                                                  lat: s.lat,
+                                                  lng: s.lng,
+                                                  tags: {},
+                                              },
+                                          ]
+                                );
+                                setTimeout(() => {
+                                    animateToSpotWithModalOffset(s.lat, s.lng);
+                                    openSpotDetails(s);
+                                }, 400);
+                            } else {
+                                setHighlightSpotId(s.id);
+                                highlightSpotIdRef.current = s.id;
+                                animateToSpotWithModalOffset(s.lat, s.lng);
+                                openSpotDetails(s);
+                            }
                         }}
                         onSignOut={async () => {
                             await signOut();
@@ -1432,10 +1464,44 @@ export default function Index() {
                         mySpots={mySpots}
                         myReviews={myReviews}
                         onLoadMyReviews={loadMyReviews}
+                        allSpots={spots}
                         onSelectSpot={(s) => {
                             setProfileOpen(false);
-                            animateToSpotWithModalOffset(s.lat, s.lng);
-                            openSpotDetails(s);
+                            setHighlightSpotId(s.id);
+                            highlightSpotIdRef.current = s.id;
+                            if (
+                                s.spot_type === 'skatepark' ||
+                                s.spot_type === 'skateshop'
+                            ) {
+                                setPlacesWithAutoClear((prev) =>
+                                    prev.some((p) => p.id === s.id)
+                                        ? prev
+                                        : [
+                                              ...prev,
+                                              {
+                                                  id: s.id,
+                                                  name: s.name,
+                                                  type: s.spot_type as
+                                                      | 'skatepark'
+                                                      | 'skateshop',
+                                                  lat: s.lat,
+                                                  lng: s.lng,
+                                                  tags: {},
+                                              },
+                                          ]
+                                );
+                                setTimeout(() => {
+                                    animateToSpotWithModalOffset(s.lat, s.lng);
+                                    openSpotDetails(s);
+                                }, 400);
+                            } else {
+                                animateToSpotWithModalOffset(s.lat, s.lng);
+                                openSpotDetails(s);
+                            }
+                        }}
+                        onSignOut={async () => {
+                            await signOut();
+                            setProfileOpen(false);
                         }}
                     />
                 </View>
