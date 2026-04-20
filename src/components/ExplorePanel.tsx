@@ -106,6 +106,8 @@ export function ExplorePanel({
     const [myAvatarUrl, setMyAvatarUrl] = useState<string | null>(null);
     const [myUsername, setMyUsername] = useState<string | null>(null);
 
+    const [topRatedSearched, setTopRatedSearched] = useState(false);
+
     useEffect(() => {
         async function loadProfile() {
             const {
@@ -121,6 +123,10 @@ export function ExplorePanel({
             setMyUsername(data?.username ?? null);
         }
         if (visible) loadProfile();
+    }, [visible]);
+
+    useEffect(() => {
+        if (!visible) setTopRatedSearched(false);
     }, [visible]);
 
     function handleSearch() {
@@ -425,7 +431,10 @@ export function ExplorePanel({
                                 </Pressable>
 
                                 <Pressable
-                                    onPress={onLoadTopRated}
+                                    onPress={() => {
+                                        setTopRatedSearched(true);
+                                        onLoadTopRated();
+                                    }}
                                     disabled={topLoading}
                                     style={{
                                         backgroundColor: c.tagBg,
@@ -451,6 +460,21 @@ export function ExplorePanel({
                                             : 'Top Rated Nearby'}
                                     </Text>
                                 </Pressable>
+
+                                {!topLoading &&
+                                topRatedSearched &&
+                                topRated.length === 0 ? (
+                                    <Text
+                                        style={{
+                                            color: c.subtext,
+                                            fontSize: 13,
+                                            opacity: 0.6,
+                                            marginTop: 8,
+                                        }}
+                                    >
+                                        No top rated spots found nearby.
+                                    </Text>
+                                ) : null}
 
                                 {topRated.length > 0 ? (
                                     <View style={{ marginBottom: 16 }}>
@@ -859,9 +883,10 @@ export function ExplorePanel({
                                                 <Swipeable
                                                     renderLeftActions={() => (
                                                         <Pressable
-                                                            onPress={() =>
-                                                                onDeleteSpot(s)
-                                                            }
+                                                            onPress={() => {
+                                                                onClose();
+                                                                onDeleteSpot(s);
+                                                            }}
                                                             style={{
                                                                 justifyContent:
                                                                     'center',
@@ -978,9 +1003,10 @@ export function ExplorePanel({
                                                 <Swipeable
                                                     renderLeftActions={() => (
                                                         <Pressable
-                                                            onPress={() =>
-                                                                onDeleteSpot(s)
-                                                            }
+                                                            onPress={() => {
+                                                                onClose();
+                                                                onDeleteSpot(s);
+                                                            }}
                                                             style={{
                                                                 justifyContent:
                                                                     'center',
