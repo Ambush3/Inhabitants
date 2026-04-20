@@ -10,25 +10,36 @@ const slides = [
         id: '1',
         emoji: '🛹',
         title: 'Welcome to Spots',
-        subtitle: 'The community-driven map for skaters. Find spots, parks, and shops near you.',
+        subtitle:
+            'The community-driven map for skaters. Find spots, parks, and shops near you.',
     },
     {
         id: '2',
         emoji: '📍',
         title: 'Explore the Map',
-        subtitle: 'Red pins are community skate spots. Gold pins are your own spots. Skate parks are a quarter pipe icon, and skate shops are a shop icon.',
+        subtitle:
+            "Gold circular pins are your spots. Dark pins are other skaters' spots — they turn red when selected. Skate parks and shops have their own icons.",
     },
     {
         id: '3',
         emoji: '✋',
         title: 'Add a Spot',
-        subtitle: 'Long press anywhere on the map to drop a pin and create a new spot. Add tags, photos, and a rating.',
+        subtitle:
+            'Long press anywhere on the map to drop a pin and create a new spot. Add tags, photos, and a rating.',
     },
     {
         id: '4',
         emoji: '☰',
         title: 'Explore Nearby',
-        subtitle: 'Tap the menu to find local skate parks, skate shops, and top rated spots in your area. Community members can help keep park and shop info up to date.',
+        subtitle:
+            'Tap the menu to find local skate parks, skate shops, and top rated spots in your area. Search by tag to find specific types of spots like stairs or rails.',
+    },
+    {
+        id: '5',
+        emoji: '👤',
+        title: 'Your Profile',
+        subtitle:
+            'Set a profile picture, track your spots and reviews, and edit your username. Access your profile from the menu footer.',
     },
 ];
 
@@ -44,12 +55,16 @@ export function OnboardingScreen({ onFinish }: Props) {
 
     const viewabilityConfig = useRef({ viewAreaCoveragePercentThreshold: 50 });
     const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
-        if (viewableItems.length > 0) setCurrentIndex(viewableItems[0].index ?? 0);
+        if (viewableItems.length > 0)
+            setCurrentIndex(viewableItems[0].index ?? 0);
     });
 
     function goNext() {
         if (currentIndex < slides.length - 1) {
-            flatListRef.current?.scrollToIndex({ index: currentIndex + 1, animated: true });
+            flatListRef.current?.scrollToIndex({
+                index: currentIndex + 1,
+                animated: true,
+            });
         } else {
             onFinish();
         }
@@ -59,9 +74,23 @@ export function OnboardingScreen({ onFinish }: Props) {
         <SafeAreaView style={{ flex: 1, backgroundColor: c.background }}>
             <Pressable
                 onPress={onFinish}
-                style={{ position: 'absolute', top: 56, right: 20, zIndex: 10, padding: 8 }}
+                style={{
+                    position: 'absolute',
+                    top: 56,
+                    right: 20,
+                    zIndex: 10,
+                    padding: 8,
+                }}
             >
-                <Text style={{ color: c.subtext, fontSize: 14, fontWeight: '600' }}>Skip</Text>
+                <Text
+                    style={{
+                        color: c.subtext,
+                        fontSize: 14,
+                        fontWeight: '600',
+                    }}
+                >
+                    Skip
+                </Text>
             </Pressable>
 
             <FlatList
@@ -74,12 +103,38 @@ export function OnboardingScreen({ onFinish }: Props) {
                 onViewableItemsChanged={onViewableItemsChanged.current}
                 viewabilityConfig={viewabilityConfig.current}
                 renderItem={({ item }) => (
-                    <View style={{ width, flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40 }}>
-                        <Text style={{ fontSize: 80, marginBottom: 32 }}>{item.emoji}</Text>
-                        <Text style={{ fontSize: 28, fontWeight: '800', color: c.text, textAlign: 'center', marginBottom: 16, letterSpacing: 0.3 }}>
+                    <View
+                        style={{
+                            width,
+                            flex: 1,
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            paddingHorizontal: 40,
+                        }}
+                    >
+                        <Text style={{ fontSize: 80, marginBottom: 32 }}>
+                            {item.emoji}
+                        </Text>
+                        <Text
+                            style={{
+                                fontSize: 28,
+                                fontWeight: '800',
+                                color: c.text,
+                                textAlign: 'center',
+                                marginBottom: 16,
+                                letterSpacing: 0.3,
+                            }}
+                        >
                             {item.title}
                         </Text>
-                        <Text style={{ fontSize: 16, color: c.subtext, textAlign: 'center', lineHeight: 24 }}>
+                        <Text
+                            style={{
+                                fontSize: 16,
+                                color: c.subtext,
+                                textAlign: 'center',
+                                lineHeight: 24,
+                            }}
+                        >
                             {item.subtitle}
                         </Text>
                     </View>
@@ -87,7 +142,14 @@ export function OnboardingScreen({ onFinish }: Props) {
             />
 
             <View style={{ paddingHorizontal: 24, paddingBottom: 48 }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 8, marginBottom: 32 }}>
+                <View
+                    style={{
+                        flexDirection: 'row',
+                        justifyContent: 'center',
+                        gap: 8,
+                        marginBottom: 32,
+                    }}
+                >
                     {slides.map((_, i) => (
                         <View
                             key={i}
@@ -95,7 +157,8 @@ export function OnboardingScreen({ onFinish }: Props) {
                                 width: i === currentIndex ? 20 : 8,
                                 height: 8,
                                 borderRadius: 4,
-                                backgroundColor: i === currentIndex ? c.text : c.border,
+                                backgroundColor:
+                                    i === currentIndex ? c.text : c.border,
                             }}
                         />
                     ))}
@@ -103,10 +166,23 @@ export function OnboardingScreen({ onFinish }: Props) {
 
                 <Pressable
                     onPress={goNext}
-                    style={{ backgroundColor: c.buttonBg, borderRadius: 14, padding: 16, alignItems: 'center' }}
+                    style={{
+                        backgroundColor: c.buttonBg,
+                        borderRadius: 14,
+                        padding: 16,
+                        alignItems: 'center',
+                    }}
                 >
-                    <Text style={{ color: c.background, fontSize: 16, fontWeight: '700' }}>
-                        {currentIndex === slides.length - 1 ? 'Get Started' : 'Next'}
+                    <Text
+                        style={{
+                            color: c.background,
+                            fontSize: 16,
+                            fontWeight: '700',
+                        }}
+                    >
+                        {currentIndex === slides.length - 1
+                            ? 'Get Started'
+                            : 'Next'}
                     </Text>
                 </Pressable>
             </View>
