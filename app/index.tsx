@@ -857,14 +857,7 @@ export default function Index() {
                             }, 60000);
                         }}
                         onSelectSpot={(s) => {
-                            console.log('spot type:', s.spot_type);
-                            console.log(
-                                'in visibleSpots:',
-                                spots.find((sp) => sp.id === s.id)
-                                    ? 'yes'
-                                    : 'no'
-                            );
-                            setProfileOpen(false);
+                            setPanelOpen(false);
                             if (
                                 s.spot_type === 'skatepark' ||
                                 s.spot_type === 'skateshop'
@@ -952,6 +945,9 @@ export default function Index() {
                             );
                             deleteSpotById(spot.id, async () => {
                                 await loadMySpots();
+                                setPlaces((prev) =>
+                                    prev.filter((p) => p.id !== spot.id)
+                                );
                             });
                         }}
                     />
