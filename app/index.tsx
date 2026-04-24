@@ -40,7 +40,8 @@ import { SkateShopDetailsModal } from '@/src/components/SkateShopDetailsModal';
 import { ExplorePanel } from '@/src/components/ExplorePanel';
 import { SettingsPanel } from '@/src/components/SettingsPanel';
 import { OnboardingScreen } from '@/src/components/onboarding/OnboardingScreen';
-import { ProfileModal } from '@/src/components/ProfileModal';
+import { ProfileModal } from '@/src/components/profile/ProfileModal';
+import { PublicProfileModal } from '@/src/components/profile/PublicProfileModal';
 import { MySpotMarker } from '@/src/components/SpotMarkers/MySpotMarker';
 import { OtherUsersSpotMarkers } from '@/src/components/SpotMarkers/OtherUsersSpotMarkers';
 
@@ -231,6 +232,11 @@ export default function Index() {
     const [profileOpen, setProfileOpen] = useState(false);
 
     const [myAvatarUrl, setMyAvatarUrl] = useState<string | null>(null);
+
+    const [publicProfileUserId, setPublicProfileUserId] = useState<
+        string | null
+    >(null);
+    const [publicProfileOpen, setPublicProfileOpen] = useState(false);
 
     const { theme, loadThemeForUser, resetTheme } = useTheme();
     const c = theme.colors;
@@ -1442,6 +1448,14 @@ export default function Index() {
                         ) => {
                             await toggleReviewFlag(reviewId, reason);
                         }}
+                        onViewProfile={(userId) => {
+                            if (publicProfileOpen) return;
+                            closeDetailsModal();
+                            setTimeout(() => {
+                                setPublicProfileUserId(userId);
+                                setPublicProfileOpen(true);
+                            }, 350);
+                        }}
                     />
 
                     <SkateShopDetailsModal
@@ -1544,6 +1558,23 @@ export default function Index() {
                         onSignOut={async () => {
                             await signOut();
                             setProfileOpen(false);
+                        }}
+                    />
+
+                    <PublicProfileModal
+                        visible={publicProfileOpen}
+                        onClose={() => {
+                            setPublicProfileOpen(false);
+                            setPublicProfileUserId(null);
+                        }}
+                        userId={publicProfileUserId}
+                        allSpots={spots}
+                        onSelectSpot={(s) => {
+                            setPublicProfileOpen(false);
+                            setHighlightSpotId(s.id);
+                            highlightSpotIdRef.current = s.id;
+                            animateToSpotWithModalOffset(s.lat, s.lng);
+                            openSpotDetails(s);
                         }}
                     />
                 </View>

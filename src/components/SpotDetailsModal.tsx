@@ -108,6 +108,7 @@ type Props = {
         reason?: string
     ) => void | Promise<void>;
     detailsLoading: boolean;
+    onViewProfile?: (userId: string) => void;
 };
 
 export function SpotDetailsModal({
@@ -145,6 +146,7 @@ export function SpotDetailsModal({
     isReviewFlaggedByMe,
     onToggleReviewFlag,
     detailsLoading,
+    onViewProfile,
 }: Props) {
     const { width } = Dimensions.get('window');
     const { theme } = useTheme();
@@ -472,12 +474,23 @@ export function SpotDetailsModal({
                                         </Text>
                                     ) : null}
                                     {creatorUsername ? (
-                                        <View
+                                        <Pressable
+                                            onPress={() => {
+                                                if (
+                                                    onViewProfile &&
+                                                    spot?.user_id &&
+                                                    spot.user_id !==
+                                                        currentUserId
+                                                ) {
+                                                    onViewProfile(spot.user_id);
+                                                }
+                                            }}
                                             style={{
                                                 flexDirection: 'row',
                                                 alignItems: 'center',
                                                 gap: 6,
                                                 marginTop: 3,
+                                                alignSelf: 'flex-start',
                                             }}
                                         >
                                             {creatorAvatarUrl ? (
@@ -514,19 +527,19 @@ export function SpotDetailsModal({
                                             <Text
                                                 style={[
                                                     styles.creatorText,
-                                                    { color: c.subtext },
+                                                    { color: '#007AFF' },
                                                 ]}
                                             >
                                                 @{creatorUsername}
                                             </Text>
-                                        </View>
+                                        </Pressable>
                                     ) : null}
                                     {spot?.tags && spot.tags.length > 0 ? (
                                         <View
                                             style={[
                                                 styles.tagsRow,
                                                 {
-                                                    marginTop: 6,
+                                                    marginTop: 10,
                                                     marginBottom: 0,
                                                 },
                                             ]}
@@ -1170,7 +1183,19 @@ export function SpotDetailsModal({
                                                 marginBottom: 6,
                                             }}
                                         >
-                                            <View
+                                            <Pressable
+                                                onPress={() => {
+                                                    if (
+                                                        onViewProfile &&
+                                                        r.user_id &&
+                                                        r.user_id !==
+                                                            currentUserId
+                                                    ) {
+                                                        onViewProfile(
+                                                            r.user_id
+                                                        );
+                                                    }
+                                                }}
                                                 style={{
                                                     flexDirection: 'row',
                                                     alignItems: 'center',
@@ -1214,7 +1239,11 @@ export function SpotDetailsModal({
                                                         style={[
                                                             styles.reviewUsername,
                                                             {
-                                                                color: c.subtext,
+                                                                color:
+                                                                    r.user_id !==
+                                                                    currentUserId
+                                                                        ? '#007AFF'
+                                                                        : c.subtext,
                                                                 fontWeight:
                                                                     '600',
                                                             },
@@ -1223,7 +1252,7 @@ export function SpotDetailsModal({
                                                         @{r.username}
                                                     </Text>
                                                 ) : null}
-                                            </View>
+                                            </Pressable>
                                             <Text
                                                 style={[
                                                     styles.reviewDate,
