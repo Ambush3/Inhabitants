@@ -1559,6 +1559,13 @@ export default function Index() {
                             await signOut();
                             setProfileOpen(false);
                         }}
+                        onViewProfile={(userId) => {
+                            setProfileOpen(false);
+                            setTimeout(() => {
+                                setPublicProfileUserId(userId);
+                                setPublicProfileOpen(true);
+                            }, 350);
+                        }}
                     />
 
                     <PublicProfileModal
