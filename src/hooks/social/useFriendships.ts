@@ -86,23 +86,30 @@ export function useFriendships() {
 
         const { data } = await supabase
             .from('friendships')
-            .select(
-                'requester_id, addressee_id, status, profiles!friendships_requester_id_fkey(id, username, avatar_url), profiles!friendships_addressee_id_fkey(id, username, avatar_url)'
-            )
+            .select('requester_id, addressee_id')
             .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`)
             .eq('status', 'accepted');
 
-        const loaded: Friend[] = (data ?? []).map((f: any) => {
-            const isRequester = f.requester_id === user.id;
-            const profile = isRequester
-                ? f['profiles!friendships_addressee_id_fkey']
-                : f['profiles!friendships_requester_id_fkey'];
-            return {
-                id: profile.id,
-                username: profile.username,
-                avatar_url: profile.avatar_url,
-            };
-        });
+        if (!data || data.length === 0) {
+            setFriends([]);
+            setLoading(false);
+            return;
+        }
+
+        const friendIds = data.map((f: any) =>
+            f.requester_id === user.id ? f.addressee_id : f.requester_id
+        );
+
+        const { data: profiles } = await supabase
+            .from('profiles')
+            .select('id, username, avatar_url')
+            .in('id', friendIds);
+
+        const loaded: Friend[] = (profiles ?? []).map((p: any) => ({
+            id: p.id,
+            username: p.username,
+            avatar_url: p.avatar_url,
+        }));
 
         setFriends(loaded);
         setLoading(false);

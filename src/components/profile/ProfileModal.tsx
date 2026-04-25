@@ -35,9 +35,10 @@ type Props = {
     onSelectSpot: (spot: Spot) => void;
     allSpots: Spot[];
     onSignOut: () => void;
+    onViewProfile?: (userId: string) => void;
 };
 
-type Tab = 'spots' | 'reviews';
+type Tab = 'spots' | 'reviews' | 'friends';
 
 export function ProfileModal({
     visible,
@@ -48,6 +49,7 @@ export function ProfileModal({
     onSelectSpot,
     allSpots,
     onSignOut,
+    onViewProfile,
 }: Props) {
     const { theme } = useTheme();
     const c = theme.colors;
@@ -66,6 +68,8 @@ export function ProfileModal({
         acceptFriendRequest,
         removeFriend,
         pendingReceived,
+        loadFriends,
+        friends,
     } = useFriendships();
 
     useEffect(() => {
@@ -87,6 +91,7 @@ export function ProfileModal({
         loadProfile();
         onLoadMyReviews();
         loadPendingRequests();
+        loadFriends();
     }, [visible]);
 
     const myActualSpots = mySpots.filter((s) => s.spot_type === 'spot');
@@ -421,37 +426,41 @@ export function ProfileModal({
                             padding: 4,
                         }}
                     >
-                        {(['spots', 'reviews'] as Tab[]).map((tab) => (
-                            <Pressable
-                                key={tab}
-                                onPress={() => setActiveTab(tab)}
-                                style={{
-                                    flex: 1,
-                                    paddingVertical: 8,
-                                    borderRadius: 6,
-                                    alignItems: 'center',
-                                    backgroundColor:
-                                        activeTab === tab
-                                            ? c.surface
-                                            : 'transparent',
-                                }}
-                            >
-                                <Text
+                        {(['spots', 'reviews', 'friends'] as Tab[]).map(
+                            (tab) => (
+                                <Pressable
+                                    key={tab}
+                                    onPress={() => setActiveTab(tab)}
                                     style={{
-                                        fontSize: 13,
-                                        fontWeight: '600',
-                                        color:
+                                        flex: 1,
+                                        paddingVertical: 8,
+                                        borderRadius: 6,
+                                        alignItems: 'center',
+                                        backgroundColor:
                                             activeTab === tab
-                                                ? c.text
-                                                : c.subtext,
+                                                ? c.surface
+                                                : 'transparent',
                                     }}
                                 >
-                                    {tab === 'spots'
-                                        ? 'My Spots'
-                                        : 'My Reviews'}
-                                </Text>
-                            </Pressable>
-                        ))}
+                                    <Text
+                                        style={{
+                                            fontSize: 13,
+                                            fontWeight: '600',
+                                            color:
+                                                activeTab === tab
+                                                    ? c.text
+                                                    : c.subtext,
+                                        }}
+                                    >
+                                        {tab === 'spots'
+                                            ? 'My Spots'
+                                            : tab === 'reviews'
+                                              ? 'My Reviews'
+                                              : 'Friends'}
+                                    </Text>
+                                </Pressable>
+                            )
+                        )}
                     </View>
 
                     <View style={{ paddingHorizontal: 16, paddingBottom: 32 }}>
@@ -527,85 +536,158 @@ export function ProfileModal({
                                     </Pressable>
                                 ))
                             )
-                        ) : myReviews.length === 0 ? (
-                            <Text
-                                style={{
-                                    color: c.subtext,
-                                    fontSize: 14,
-                                    textAlign: 'center',
-                                    marginTop: 24,
-                                }}
-                            >
-                                {"You haven't left any reviews yet."}
-                            </Text>
-                        ) : (
-                            myReviews.map((r) => (
-                                <Pressable
-                                    key={r.id}
-                                    onPress={() => {
-                                        const spot = allSpots.find(
-                                            (s) => s.id === r.spot_id
-                                        );
-                                        if (spot) {
-                                            onSelectSpot(spot);
-                                            onClose();
-                                        }
-                                    }}
+                        ) : activeTab === 'reviews' ? (
+                            myReviews.length === 0 ? (
+                                <Text
                                     style={{
-                                        paddingVertical: 14,
-                                        borderBottomWidth: 1,
-                                        borderColor: c.border,
+                                        color: c.subtext,
+                                        fontSize: 14,
+                                        textAlign: 'center',
+                                        marginTop: 24,
                                     }}
                                 >
-                                    <Text
+                                    {"You haven't left any reviews yet."}
+                                </Text>
+                            ) : (
+                                myReviews.map((r) => (
+                                    <Pressable
+                                        key={r.id}
+                                        onPress={() => {
+                                            const spot = allSpots.find(
+                                                (s) => s.id === r.spot_id
+                                            );
+                                            if (spot) {
+                                                onSelectSpot(spot);
+                                                onClose();
+                                            }
+                                        }}
                                         style={{
-                                            fontWeight: '700',
-                                            color: c.text,
-                                            marginBottom: 4,
+                                            paddingVertical: 14,
+                                            borderBottomWidth: 1,
+                                            borderColor: c.border,
                                         }}
                                     >
-                                        {r.spot_name}
-                                    </Text>
-                                    <Text
-                                        style={{
-                                            fontSize: 14,
-                                            color: '#F5A623',
-                                            letterSpacing: 1,
-                                            marginBottom: 4,
-                                        }}
-                                    >
-                                        {'★'.repeat(r.rating)}
-                                        {'☆'.repeat(5 - r.rating)}
-                                    </Text>
-                                    {r.comment ? (
                                         <Text
                                             style={{
-                                                fontSize: 14,
+                                                fontWeight: '700',
                                                 color: c.text,
-                                                lineHeight: 20,
                                                 marginBottom: 4,
                                             }}
                                         >
-                                            {r.comment}
+                                            {r.spot_name}
                                         </Text>
-                                    ) : null}
-                                    <Text
+                                        <Text
+                                            style={{
+                                                fontSize: 14,
+                                                color: '#F5A623',
+                                                letterSpacing: 1,
+                                                marginBottom: 4,
+                                            }}
+                                        >
+                                            {'★'.repeat(r.rating)}
+                                            {'☆'.repeat(5 - r.rating)}
+                                        </Text>
+                                        {r.comment ? (
+                                            <Text
+                                                style={{
+                                                    fontSize: 14,
+                                                    color: c.text,
+                                                    lineHeight: 20,
+                                                    marginBottom: 4,
+                                                }}
+                                            >
+                                                {r.comment}
+                                            </Text>
+                                        ) : null}
+                                        <Text
+                                            style={{
+                                                fontSize: 11,
+                                                color: c.subtext,
+                                            }}
+                                        >
+                                            {new Date(
+                                                r.created_at
+                                            ).toLocaleDateString([], {
+                                                month: 'short',
+                                                day: 'numeric',
+                                                year: 'numeric',
+                                            })}
+                                        </Text>
+                                    </Pressable>
+                                ))
+                            )
+                        ) : activeTab === 'friends' ? (
+                            friends.length === 0 ? (
+                                <Text
+                                    style={{
+                                        color: c.subtext,
+                                        fontSize: 14,
+                                        textAlign: 'center',
+                                        marginTop: 24,
+                                    }}
+                                >
+                                    No friends yet. Find skaters add them!
+                                </Text>
+                            ) : (
+                                friends.map((f) => (
+                                    <Pressable
+                                        key={f.id}
+                                        onPress={() => onViewProfile?.(f.id)}
                                         style={{
-                                            fontSize: 11,
-                                            color: c.subtext,
+                                            flexDirection: 'row',
+                                            alignItems: 'center',
+                                            paddingVertical: 12,
+                                            borderBottomWidth: 1,
+                                            borderColor: c.border,
+                                            gap: 10,
                                         }}
                                     >
-                                        {new Date(
-                                            r.created_at
-                                        ).toLocaleDateString([], {
-                                            month: 'short',
-                                            day: 'numeric',
-                                            year: 'numeric',
-                                        })}
-                                    </Text>
-                                </Pressable>
-                            ))
-                        )}
+                                        {f.avatar_url ? (
+                                            <Image
+                                                source={{ uri: f.avatar_url }}
+                                                style={{
+                                                    width: 40,
+                                                    height: 40,
+                                                    borderRadius: 20,
+                                                }}
+                                            />
+                                        ) : (
+                                            <View
+                                                style={{
+                                                    width: 40,
+                                                    height: 40,
+                                                    borderRadius: 20,
+                                                    backgroundColor: c.tagBg,
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                }}
+                                            >
+                                                <Ionicons
+                                                    name="person-outline"
+                                                    size={20}
+                                                    color={c.subtext}
+                                                />
+                                            </View>
+                                        )}
+                                        <Text
+                                            style={{
+                                                flex: 1,
+                                                fontWeight: '600',
+                                                color: c.text,
+                                            }}
+                                        >
+                                            @{f.username}
+                                        </Text>
+                                        <Ionicons
+                                            name="chevron-forward"
+                                            size={16}
+                                            color={c.subtext}
+                                        />
+                                    </Pressable>
+                                ))
+                            )
+                        ) : null}
+
                         <Pressable
                             onPress={onSignOut}
                             style={{
