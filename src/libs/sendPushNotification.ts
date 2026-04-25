@@ -13,3 +13,16 @@ export async function sendPushNotification(
         },
     });
 }
+
+export async function sendFriendRequestNotification(
+    addresseeId: string,
+    actorUsername: string
+) {
+    await supabase.functions.invoke('send-push-notification', {
+        body: {
+            addressee_id: addresseeId,
+            event_type: 'friend_request',
+            actor_username: actorUsername,
+        },
+    });
+}
