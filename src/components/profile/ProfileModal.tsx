@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/src/libs/supabase';
 import { useTheme } from '@/src/context/ThemeContext';
 import { Spot } from '@/src/types';
+import { useFriendships, Friend } from '@/src/hooks/social/useFriendships';
 
 type MyReview = {
     id: string;
@@ -60,6 +61,13 @@ export function ProfileModal({
     const [editUsername, setEditUsername] = useState('');
     const [editLoading, setEditLoading] = useState(false);
 
+    const {
+        loadPendingRequests,
+        acceptFriendRequest,
+        removeFriend,
+        pendingReceived,
+    } = useFriendships();
+
     useEffect(() => {
         if (!visible) return;
         async function loadProfile() {
@@ -78,6 +86,7 @@ export function ProfileModal({
         }
         loadProfile();
         onLoadMyReviews();
+        loadPendingRequests();
     }, [visible]);
 
     const myActualSpots = mySpots.filter((s) => s.spot_type === 'spot');
@@ -187,6 +196,124 @@ export function ProfileModal({
                             </Text>
                         ) : null}
                     </View>
+
+                    {pendingReceived.length > 0 ? (
+                        <View
+                            style={{
+                                marginHorizontal: 16,
+                                marginBottom: 16,
+                                borderRadius: 12,
+                                backgroundColor: c.tagBg,
+                                padding: 12,
+                            }}
+                        >
+                            <Text
+                                style={{
+                                    fontSize: 13,
+                                    fontWeight: '700',
+                                    color: c.text,
+                                    marginBottom: 10,
+                                }}
+                            >
+                                Friend Requests ({pendingReceived.length})
+                            </Text>
+                            {pendingReceived.map((f) => (
+                                <View
+                                    key={f.id}
+                                    style={{
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        paddingVertical: 8,
+                                        borderBottomWidth: 1,
+                                        borderColor: c.border,
+                                        gap: 10,
+                                    }}
+                                >
+                                    {f.avatar_url ? (
+                                        <Image
+                                            source={{ uri: f.avatar_url }}
+                                            style={{
+                                                width: 36,
+                                                height: 36,
+                                                borderRadius: 18,
+                                            }}
+                                        />
+                                    ) : (
+                                        <View
+                                            style={{
+                                                width: 36,
+                                                height: 36,
+                                                borderRadius: 18,
+                                                backgroundColor: c.surface,
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                            }}
+                                        >
+                                            <Ionicons
+                                                name="person-outline"
+                                                size={18}
+                                                color={c.subtext}
+                                            />
+                                        </View>
+                                    )}
+                                    <Text
+                                        style={{
+                                            flex: 1,
+                                            fontWeight: '600',
+                                            color: c.text,
+                                        }}
+                                    >
+                                        @{f.username}
+                                    </Text>
+                                    <Pressable
+                                        onPress={async () => {
+                                            await acceptFriendRequest(f.id);
+                                            loadPendingRequests();
+                                        }}
+                                        style={{
+                                            backgroundColor: '#007AFF',
+                                            borderRadius: 8,
+                                            paddingHorizontal: 12,
+                                            paddingVertical: 6,
+                                        }}
+                                    >
+                                        <Text
+                                            style={{
+                                                color: 'white',
+                                                fontWeight: '600',
+                                                fontSize: 13,
+                                            }}
+                                        >
+                                            Accept
+                                        </Text>
+                                    </Pressable>
+                                    <Pressable
+                                        onPress={async () => {
+                                            await removeFriend(f.id);
+                                            loadPendingRequests();
+                                        }}
+                                        style={{
+                                            borderWidth: 1,
+                                            borderColor: c.border,
+                                            borderRadius: 8,
+                                            paddingHorizontal: 12,
+                                            paddingVertical: 6,
+                                        }}
+                                    >
+                                        <Text
+                                            style={{
+                                                color: c.subtext,
+                                                fontWeight: '600',
+                                                fontSize: 13,
+                                            }}
+                                        >
+                                            Decline
+                                        </Text>
+                                    </Pressable>
+                                </View>
+                            ))}
+                        </View>
+                    ) : null}
 
                     <View
                         style={{
