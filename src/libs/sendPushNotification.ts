@@ -26,3 +26,18 @@ export async function sendFriendRequestNotification(
         },
     });
 }
+
+export async function sendFriendAcceptedNotification(
+    addresseeId: string,
+    actorUsername: string,
+    actorId: string
+) {
+    await supabase.functions.invoke('send-push-notification', {
+        body: {
+            addressee_id: addresseeId,
+            event_type: 'friend_accepted',
+            actor_username: actorUsername,
+            actor_id: actorId,
+        },
+    });
+}

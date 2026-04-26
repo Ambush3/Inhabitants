@@ -16,6 +16,7 @@ import { supabase } from '@/src/libs/supabase';
 import { useTheme } from '@/src/context/ThemeContext';
 import { Spot } from '@/src/types';
 import { useFriendships, Friend } from '@/src/hooks/social/useFriendships';
+import { sendFriendAcceptedNotification } from '@/src/libs/sendPushNotification';
 
 type MyReview = {
     id: string;
@@ -274,6 +275,17 @@ export function ProfileModal({
                                         onPress={async () => {
                                             await acceptFriendRequest(f.id);
                                             loadPendingRequests();
+                                            loadFriends();
+                                            const {
+                                                data: { user },
+                                            } = await supabase.auth.getUser();
+                                            if (username && user) {
+                                                sendFriendAcceptedNotification(
+                                                    f.id,
+                                                    username,
+                                                    user.id
+                                                );
+                                            }
                                         }}
                                         style={{
                                             backgroundColor: '#007AFF',

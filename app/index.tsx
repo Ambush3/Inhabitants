@@ -438,7 +438,11 @@ export default function Index() {
                 openSpotDetails(spot);
             }
         },
-        () => setProfileOpen(true)
+        () => setProfileOpen(true),
+        (actorId) => {
+            setPublicProfileUserId(actorId);
+            setPublicProfileOpen(true);
+        }
     );
 
     useEffect(() => {
@@ -617,6 +621,14 @@ export default function Index() {
             if (!val) return;
             setProfileOpen(true);
         });
+
+        AsyncStorage.getItem('pendingNotificationPublicProfile').then(
+            (actorId) => {
+                if (!actorId) return;
+                setPublicProfileUserId(actorId);
+                setPublicProfileOpen(true);
+            }
+        );
     }, [session]);
 
     useEffect(() => {
@@ -626,6 +638,14 @@ export default function Index() {
         }, 3000);
         return () => clearTimeout(timer);
     }, [profileOpen]);
+
+    useEffect(() => {
+        if (!publicProfileOpen) return;
+        const timer = setTimeout(() => {
+            AsyncStorage.removeItem('pendingNotificationPublicProfile');
+        }, 3000);
+        return () => clearTimeout(timer);
+    }, [publicProfileOpen]);
 
     useEffect(() => {
         if (pathname === '/reset-password') {
@@ -1592,6 +1612,9 @@ export default function Index() {
                         onClose={() => {
                             setPublicProfileOpen(false);
                             setPublicProfileUserId(null);
+                            AsyncStorage.removeItem(
+                                'pendingNotificationPublicProfile'
+                            );
                         }}
                         userId={publicProfileUserId}
                         allSpots={spots}

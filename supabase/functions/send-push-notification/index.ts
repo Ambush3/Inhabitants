@@ -9,10 +9,19 @@ const supabase = createClient(
 
 Deno.serve(async (req) => {
     try {
-        const { spot_id, addressee_id, event_type, actor_username, reason } =
-            await req.json();
+        const {
+            spot_id,
+            addressee_id,
+            event_type,
+            actor_username,
+            actor_id,
+            reason,
+        } = await req.json();
 
-        if (event_type === 'friend_request') {
+        if (
+            event_type === 'friend_request' ||
+            event_type === 'friend_accepted'
+        ) {
             const { data: tokenRow } = await supabase
                 .from('push_tokens')
                 .select('token')
@@ -22,6 +31,7 @@ Deno.serve(async (req) => {
             if (!tokenRow)
                 return new Response('No push token', { status: 200 });
 
+            const isAccepted = event_type === 'friend_accepted';
             const response = await fetch(
                 'https://exp.host/--/api/v2/push/send',
                 {
@@ -33,10 +43,18 @@ Deno.serve(async (req) => {
                     },
                     body: JSON.stringify({
                         to: tokenRow.token,
-                        title: '👋 Friend Request',
-                        body: `${actor_username} sent you a friend request`,
+                        title: isAccepted
+                            ? 'Friend Request Accepted'
+                            : 'Friend Request',
+                        body: isAccepted
+                            ? `${actor_username} accepted your friend request`
+                            : `${actor_username} sent you a friend request`,
                         sound: 'default',
-                        data: { url: 'skatespotapp:///friend_request' },
+                        data: {
+                            url: isAccepted
+                                ? `skatespotapp:///friend_accepted?actorId=${actor_id ?? ''}`
+                                : 'skatespotapp:///friend_request',
+                        },
                     }),
                 }
             );
