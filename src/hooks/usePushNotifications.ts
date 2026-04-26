@@ -19,11 +19,13 @@ export function usePushNotifications(
     userId: string | null,
     session: any,
     onSpotOpen?: (spotId: string, lat: number, lng: number) => void,
-    onOpenProfile?: () => void
+    onOpenProfile?: () => void,
+    onOpenPublicProfile?: (userId: string) => void
 ) {
     const sessionRef = useRef(session);
     const onSpotOpenRef = useRef(onSpotOpen);
     const onOpenProfileRef = useRef(onOpenProfile);
+    const onOpenPublicProfileRef = useRef(onOpenPublicProfile);
 
     useEffect(() => {
         sessionRef.current = session;
@@ -34,6 +36,9 @@ export function usePushNotifications(
     useEffect(() => {
         onOpenProfileRef.current = onOpenProfile;
     }, [onOpenProfile]);
+    useEffect(() => {
+        onOpenPublicProfileRef.current = onOpenPublicProfile;
+    }, [onOpenPublicProfile]);
 
     useEffect(() => {
         (async () => {
@@ -43,7 +48,16 @@ export function usePushNotifications(
                 const data = response.notification.request.content
                     .data as Record<string, any>;
                 const url = data?.url as string;
-                if (url?.includes('friend_request')) {
+                if (url?.includes('friend_accepted')) {
+                    const params = new URLSearchParams(url.split('?')[1]);
+                    const actorId = params.get('actorId');
+                    if (actorId) {
+                        await AsyncStorage.setItem(
+                            'pendingNotificationPublicProfile',
+                            actorId
+                        );
+                    }
+                } else if (url?.includes('friend_request')) {
                     await AsyncStorage.setItem(
                         'pendingNotificationProfile',
                         'true'
@@ -76,6 +90,23 @@ export function usePushNotifications(
                         .data as Record<string, any>;
                     const url = data?.url as string;
                     if (!url) return;
+
+                    if (url.includes('friend_accepted')) {
+                        const params = new URLSearchParams(
+                            url.split('?')[1]
+                        );
+                        const actorId = params.get('actorId');
+                        if (!actorId) return;
+                        if (sessionRef.current) {
+                            onOpenPublicProfileRef.current?.(actorId);
+                        } else {
+                            await AsyncStorage.setItem(
+                                'pendingNotificationPublicProfile',
+                                actorId
+                            );
+                        }
+                        return;
+                    }
 
                     if (url.includes('friend_request')) {
                         if (sessionRef.current) {
