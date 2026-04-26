@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
                         title: '👋 Friend Request',
                         body: `${actor_username} sent you a friend request`,
                         sound: 'default',
-                        data: { url: 'skatespotapp:///' },
+                        data: { url: 'skatespotapp:///friend_request' },
                     }),
                 }
             );

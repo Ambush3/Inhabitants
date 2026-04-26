@@ -437,7 +437,8 @@ export default function Index() {
                 animateToSpotWithModalOffset(lat, lng);
                 openSpotDetails(spot);
             }
-        }
+        },
+        () => setProfileOpen(true)
     );
 
     useEffect(() => {
@@ -593,7 +594,7 @@ export default function Index() {
 
     useEffect(() => {
         if (!session) return;
-        if (hasNavigatedFromNotification.current) return;
+        //
 
         AsyncStorage.getItem('pendingNotificationSpot').then((raw) => {
             if (!raw) return;
@@ -611,7 +612,20 @@ export default function Index() {
                 });
             }, 1000);
         });
+
+        AsyncStorage.getItem('pendingNotificationProfile').then((val) => {
+            if (!val) return;
+            setProfileOpen(true);
+        });
     }, [session]);
+
+    useEffect(() => {
+        if (!profileOpen) return;
+        const timer = setTimeout(() => {
+            AsyncStorage.removeItem('pendingNotificationProfile');
+        }, 3000);
+        return () => clearTimeout(timer);
+    }, [profileOpen]);
 
     useEffect(() => {
         if (pathname === '/reset-password') {
@@ -1516,7 +1530,12 @@ export default function Index() {
 
                     <ProfileModal
                         visible={profileOpen}
-                        onClose={() => setProfileOpen(false)}
+                        onClose={() => {
+                            setProfileOpen(false);
+                            AsyncStorage.removeItem(
+                                'pendingNotificationProfile'
+                            );
+                        }}
                         mySpots={mySpots}
                         myReviews={myReviews}
                         onLoadMyReviews={loadMyReviews}
