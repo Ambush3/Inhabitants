@@ -10,6 +10,7 @@ import {
     SafeAreaView,
     KeyboardAvoidingView,
     Platform,
+    Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/src/libs/supabase';
@@ -64,6 +65,12 @@ export function ProfileModal({
     const [editUsername, setEditUsername] = useState('');
     const [editLoading, setEditLoading] = useState(false);
 
+    const [selectionMode, setSelectionMode] = useState(false);
+    const [selectedFriendIds, setSelectedFriendIds] = useState<Set<string>>(
+        new Set()
+    );
+    const [bulkRemoving, setBulkRemoving] = useState(false);
+
     const {
         loadPendingRequests,
         acceptFriendRequest,
@@ -72,6 +79,39 @@ export function ProfileModal({
         loadFriends,
         friends,
     } = useFriendships();
+
+    function toggleFriendSelected(id: string) {
+        setSelectedFriendIds((prev) => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    }
+
+    function exitSelection() {
+        setSelectionMode(false);
+        setSelectedFriendIds(new Set());
+    }
+
+    async function bulkRemoveSelected() {
+        if (selectedFriendIds.size === 0) return;
+        setBulkRemoving(true);
+        await Promise.all(
+            Array.from(selectedFriendIds).map((id) => removeFriend(id))
+        );
+        await loadFriends();
+        setBulkRemoving(false);
+        exitSelection();
+    }
+
+    useEffect(() => {
+        if (!visible) exitSelection();
+    }, [visible]);
+
+    useEffect(() => {
+        if (activeTab !== 'friends') exitSelection();
+    }, [activeTab]);
 
     useEffect(() => {
         if (!visible) return;
@@ -641,62 +681,181 @@ export function ProfileModal({
                                     No friends yet. Find skaters add them!
                                 </Text>
                             ) : (
-                                friends.map((f) => (
-                                    <Pressable
-                                        key={f.id}
-                                        onPress={() => onViewProfile?.(f.id)}
-                                        style={{
-                                            flexDirection: 'row',
-                                            alignItems: 'center',
-                                            paddingVertical: 12,
-                                            borderBottomWidth: 1,
-                                            borderColor: c.border,
-                                            gap: 10,
-                                        }}
-                                    >
-                                        {f.avatar_url ? (
-                                            <Image
-                                                source={{ uri: f.avatar_url }}
+                                <>
+                                    {selectionMode ? (
+                                        <View
+                                            style={{
+                                                flexDirection: 'row',
+                                                alignItems: 'center',
+                                                justifyContent: 'space-between',
+                                                paddingVertical: 8,
+                                                paddingHorizontal: 4,
+                                                marginBottom: 4,
+                                                borderBottomWidth: 1,
+                                                borderColor: c.border,
+                                            }}
+                                        >
+                                            <Pressable
+                                                onPress={exitSelection}
+                                                disabled={bulkRemoving}
+                                            >
+                                                <Text
+                                                    style={{
+                                                        color: '#007AFF',
+                                                        fontWeight: '600',
+                                                        fontSize: 14,
+                                                    }}
+                                                >
+                                                    Cancel
+                                                </Text>
+                                            </Pressable>
+                                            <Text
                                                 style={{
-                                                    width: 40,
-                                                    height: 40,
-                                                    borderRadius: 20,
+                                                    color: c.text,
+                                                    fontWeight: '600',
+                                                    fontSize: 14,
                                                 }}
-                                            />
-                                        ) : (
-                                            <View
-                                                style={{
-                                                    width: 40,
-                                                    height: 40,
-                                                    borderRadius: 20,
-                                                    backgroundColor: c.tagBg,
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center',
+                                            >
+                                                {selectedFriendIds.size}{' '}
+                                                selected
+                                            </Text>
+                                            <Pressable
+                                                disabled={
+                                                    selectedFriendIds.size ===
+                                                        0 || bulkRemoving
+                                                }
+                                                onPress={() => {
+                                                    Alert.alert(
+                                                        `Remove ${selectedFriendIds.size} friend${selectedFriendIds.size === 1 ? '' : 's'}?`,
+                                                        undefined,
+                                                        [
+                                                            {
+                                                                text: 'Cancel',
+                                                                style: 'cancel',
+                                                            },
+                                                            {
+                                                                text: 'Remove',
+                                                                style: 'destructive',
+                                                                onPress:
+                                                                    bulkRemoveSelected,
+                                                            },
+                                                        ]
+                                                    );
                                                 }}
                                             >
                                                 <Ionicons
-                                                    name="person-outline"
-                                                    size={20}
-                                                    color={c.subtext}
+                                                    name="trash-outline"
+                                                    size={22}
+                                                    color={
+                                                        selectedFriendIds.size ===
+                                                            0 || bulkRemoving
+                                                            ? c.subtext
+                                                            : c.danger
+                                                    }
                                                 />
-                                            </View>
-                                        )}
-                                        <Text
-                                            style={{
-                                                flex: 1,
-                                                fontWeight: '600',
-                                                color: c.text,
-                                            }}
-                                        >
-                                            @{f.username}
-                                        </Text>
-                                        <Ionicons
-                                            name="chevron-forward"
-                                            size={16}
-                                            color={c.subtext}
-                                        />
-                                    </Pressable>
-                                ))
+                                            </Pressable>
+                                        </View>
+                                    ) : null}
+                                    {friends.map((f) => {
+                                        const selected = selectedFriendIds.has(
+                                            f.id
+                                        );
+                                        return (
+                                            <Pressable
+                                                key={f.id}
+                                                onLongPress={() => {
+                                                    if (!selectionMode) {
+                                                        setSelectionMode(true);
+                                                    }
+                                                    toggleFriendSelected(f.id);
+                                                }}
+                                                onPress={() => {
+                                                    if (selectionMode) {
+                                                        toggleFriendSelected(
+                                                            f.id
+                                                        );
+                                                    } else {
+                                                        onViewProfile?.(f.id);
+                                                    }
+                                                }}
+                                                style={{
+                                                    flexDirection: 'row',
+                                                    alignItems: 'center',
+                                                    paddingVertical: 12,
+                                                    borderBottomWidth: 1,
+                                                    borderColor: c.border,
+                                                    gap: 10,
+                                                    backgroundColor: selected
+                                                        ? c.tagBg
+                                                        : 'transparent',
+                                                }}
+                                            >
+                                                {f.avatar_url ? (
+                                                    <Image
+                                                        source={{
+                                                            uri: f.avatar_url,
+                                                        }}
+                                                        style={{
+                                                            width: 40,
+                                                            height: 40,
+                                                            borderRadius: 20,
+                                                        }}
+                                                    />
+                                                ) : (
+                                                    <View
+                                                        style={{
+                                                            width: 40,
+                                                            height: 40,
+                                                            borderRadius: 20,
+                                                            backgroundColor:
+                                                                c.tagBg,
+                                                            alignItems:
+                                                                'center',
+                                                            justifyContent:
+                                                                'center',
+                                                        }}
+                                                    >
+                                                        <Ionicons
+                                                            name="person-outline"
+                                                            size={20}
+                                                            color={c.subtext}
+                                                        />
+                                                    </View>
+                                                )}
+                                                <Text
+                                                    style={{
+                                                        flex: 1,
+                                                        fontWeight: '600',
+                                                        color: c.text,
+                                                    }}
+                                                >
+                                                    @{f.username}
+                                                </Text>
+                                                {selectionMode ? (
+                                                    <Ionicons
+                                                        name={
+                                                            selected
+                                                                ? 'checkbox'
+                                                                : 'square-outline'
+                                                        }
+                                                        size={22}
+                                                        color={
+                                                            selected
+                                                                ? '#007AFF'
+                                                                : c.subtext
+                                                        }
+                                                    />
+                                                ) : (
+                                                    <Ionicons
+                                                        name="chevron-forward"
+                                                        size={16}
+                                                        color={c.subtext}
+                                                    />
+                                                )}
+                                            </Pressable>
+                                        );
+                                    })}
+                                </>
                             )
                         ) : null}
 

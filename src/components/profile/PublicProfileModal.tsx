@@ -7,6 +7,7 @@ import {
     Pressable,
     Image,
     SafeAreaView,
+    Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/src/libs/supabase';
@@ -62,6 +63,12 @@ export function PublicProfileModal({
     const [friendshipStatus, setFriendshipStatus] =
         useState<FriendshipStatus>('none');
     const [friendshipLoading, setFriendshipLoading] = useState(false);
+    const [cooldown, setCooldown] = useState(false);
+
+    function startCooldown() {
+        setCooldown(true);
+        setTimeout(() => setCooldown(false), 3000);
+    }
 
     function getFriendButtonLabel(): string {
         if (friendshipStatus === 'accepted') return 'Friends';
@@ -225,8 +232,41 @@ export function PublicProfileModal({
                             ) : null}
 
                             <Pressable
+                                disabled={friendshipLoading || cooldown}
                                 onPress={async () => {
-                                    if (friendshipLoading) return;
+                                    if (friendshipLoading || cooldown) return;
+                                    if (friendshipStatus === 'pending_sent') {
+                                        Alert.alert(
+                                            'Cancel friend request?',
+                                            undefined,
+                                            [
+                                                {
+                                                    text: 'Keep',
+                                                    style: 'cancel',
+                                                },
+                                                {
+                                                    text: 'Cancel Request',
+                                                    style: 'destructive',
+                                                    onPress: async () => {
+                                                        setFriendshipLoading(
+                                                            true
+                                                        );
+                                                        await removeFriend(
+                                                            userId!
+                                                        );
+                                                        setFriendshipStatus(
+                                                            'none'
+                                                        );
+                                                        setFriendshipLoading(
+                                                            false
+                                                        );
+                                                        startCooldown();
+                                                    },
+                                                },
+                                            ]
+                                        );
+                                        return;
+                                    }
                                     setFriendshipLoading(true);
                                     if (friendshipStatus === 'none') {
                                         await sendFriendRequest(userId!);
@@ -258,6 +298,7 @@ export function PublicProfileModal({
                                         setFriendshipStatus('none');
                                     }
                                     setFriendshipLoading(false);
+                                    startCooldown();
                                 }}
                                 style={{
                                     marginTop: 14,

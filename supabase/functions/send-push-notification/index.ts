@@ -24,7 +24,7 @@ Deno.serve(async (req) => {
         ) {
             const { data: tokenRow } = await supabase
                 .from('push_tokens')
-                .select('token')
+                .select('token, last_friend_request_notify')
                 .eq('user_id', addressee_id)
                 .single();
 
@@ -32,6 +32,21 @@ Deno.serve(async (req) => {
                 return new Response('No push token', { status: 200 });
 
             const isAccepted = event_type === 'friend_accepted';
+
+            const now = new Date();
+            const last = tokenRow.last_friend_request_notify
+                ? new Date(tokenRow.last_friend_request_notify)
+                : null;
+            if (last && now.getTime() - last.getTime() < 60000) {
+                return new Response(JSON.stringify({ debounced: true }), {
+                    status: 200,
+                });
+            }
+            await supabase
+                .from('push_tokens')
+                .update({ last_friend_request_notify: now.toISOString() })
+                .eq('user_id', addressee_id);
+
             const response = await fetch(
                 'https://exp.host/--/api/v2/push/send',
                 {
