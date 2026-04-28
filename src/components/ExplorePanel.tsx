@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
     View,
     Text,
@@ -16,6 +16,7 @@ import { AnimatedSpotCard } from '@/src/components/AnimatedSpotCard';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { TopRatedItem } from '@/src/hooks/useTopRated';
 import { AppNotification } from '@/src/hooks/useNotifications';
+import { FeedItem } from '@/src/hooks/useSocialFeed';
 
 import { supabase } from '@/src/libs/supabase';
 
@@ -60,9 +61,12 @@ type Props = {
     activityNotifications: AppNotification[];
     onSelectNotification: (notification: AppNotification) => void;
     onMarkAllNotificationsRead: () => void;
+    feedItems: FeedItem[];
+    feedLoading: boolean;
+    onSelectFeedSpot: (spot: Spot) => void;
 };
 
-type Tab = 'explore' | 'myspots' | 'favorites';
+type Tab = 'explore' | 'myspots' | 'favorites' | 'feed';
 
 export function ExplorePanel({
     visible,
@@ -97,6 +101,9 @@ export function ExplorePanel({
     activityNotifications,
     onSelectNotification,
     onMarkAllNotificationsRead,
+    feedItems,
+    feedLoading,
+    onSelectFeedSpot,
 }: Props) {
     function notificationLabel(n: AppNotification): string {
         const actor = n.actor_username ? `@${n.actor_username}` : 'Someone';
@@ -152,6 +159,24 @@ export function ExplorePanel({
 
     const [topRatedSearched, setTopRatedSearched] = useState(false);
 
+    const swipeableRefs = useRef<Map<string, any>>(new Map());
+    const openRowsRef = useRef<Set<string>>(new Set());
+
+    function handleRowPress(id: string, fallback: () => void) {
+        if (openRowsRef.current.has(id)) {
+            swipeableRefs.current.get(id)?.close();
+            return;
+        }
+        fallback();
+    }
+
+    function setSwipeableRef(id: string) {
+        return (ref: any) => {
+            if (ref) swipeableRefs.current.set(id, ref);
+            else swipeableRefs.current.delete(id);
+        };
+    }
+
     useEffect(() => {
         async function loadProfile() {
             const {
@@ -185,8 +210,9 @@ export function ExplorePanel({
 
     const tabs: { key: Tab; label: string; icon: string }[] = [
         { key: 'explore', label: 'Explore', icon: 'compass-outline' },
-        { key: 'myspots', label: 'My Spots', icon: 'pin-outline' },
-        { key: 'favorites', label: 'Favorites', icon: 'bookmark-outline' },
+        { key: 'myspots', label: 'Mine', icon: 'pin-outline' },
+        { key: 'favorites', label: 'Saved', icon: 'bookmark-outline' },
+        { key: 'feed', label: 'Feed', icon: 'people-outline' },
     ];
 
     const favParks = [
@@ -902,6 +928,7 @@ export function ExplorePanel({
                                             index={index}
                                         >
                                             <Swipeable
+                                                ref={setSwipeableRef(s.id)}
                                                 renderLeftActions={() => (
                                                     <Pressable
                                                         onPress={() =>
@@ -942,16 +969,27 @@ export function ExplorePanel({
                                                 onSwipeableOpen={(
                                                     direction
                                                 ) => {
+                                                    openRowsRef.current.add(
+                                                        s.id
+                                                    );
                                                     if (direction === 'right')
                                                         onDeleteSpot(s);
                                                 }}
+                                                onSwipeableClose={() => {
+                                                    openRowsRef.current.delete(
+                                                        s.id
+                                                    );
+                                                }}
                                                 renderRightActions={() => (
                                                     <Pressable
-                                                        onPress={() =>
+                                                        onPress={() => {
+                                                            swipeableRefs.current
+                                                                .get(s.id)
+                                                                ?.close();
                                                             onCycleSpotVisibility(
                                                                 s
-                                                            )
-                                                        }
+                                                            );
+                                                        }}
                                                         style={{
                                                             justifyContent:
                                                                 'center',
@@ -987,7 +1025,9 @@ export function ExplorePanel({
                                             >
                                                 <Pressable
                                                     onPress={() =>
-                                                        onSelectSpot(s)
+                                                        handleRowPress(s.id, () =>
+                                                            onSelectSpot(s)
+                                                        )
                                                     }
                                                     style={{
                                                         flexDirection: 'row',
@@ -1121,6 +1161,7 @@ export function ExplorePanel({
                                                 index={index}
                                             >
                                                 <Swipeable
+                                                    ref={setSwipeableRef(s.id)}
                                                     renderLeftActions={() => (
                                                         <Pressable
                                                             onPress={() => {
@@ -1162,16 +1203,30 @@ export function ExplorePanel({
                                                     onSwipeableOpen={(
                                                         direction
                                                     ) => {
+                                                        openRowsRef.current.add(
+                                                            s.id
+                                                        );
                                                         if (
                                                             direction ===
                                                             'right'
                                                         )
                                                             onDeleteSpot(s);
                                                     }}
+                                                    onSwipeableClose={() => {
+                                                        openRowsRef.current.delete(
+                                                            s.id
+                                                        );
+                                                    }}
                                                 >
                                                     <Pressable
                                                         onPress={() =>
-                                                            onSelectSpot(s)
+                                                            handleRowPress(
+                                                                s.id,
+                                                                () =>
+                                                                    onSelectSpot(
+                                                                        s
+                                                                    )
+                                                            )
                                                         }
                                                         style={{
                                                             flexDirection:
@@ -1241,6 +1296,7 @@ export function ExplorePanel({
                                                 index={index}
                                             >
                                                 <Swipeable
+                                                    ref={setSwipeableRef(s.id)}
                                                     renderLeftActions={() => (
                                                         <Pressable
                                                             onPress={() => {
@@ -1282,16 +1338,30 @@ export function ExplorePanel({
                                                     onSwipeableOpen={(
                                                         direction
                                                     ) => {
+                                                        openRowsRef.current.add(
+                                                            s.id
+                                                        );
                                                         if (
                                                             direction ===
                                                             'right'
                                                         )
                                                             onDeleteSpot(s);
                                                     }}
+                                                    onSwipeableClose={() => {
+                                                        openRowsRef.current.delete(
+                                                            s.id
+                                                        );
+                                                    }}
                                                 >
                                                     <Pressable
                                                         onPress={() =>
-                                                            onSelectSpot(s)
+                                                            handleRowPress(
+                                                                s.id,
+                                                                () =>
+                                                                    onSelectSpot(
+                                                                        s
+                                                                    )
+                                                            )
                                                         }
                                                         style={{
                                                             flexDirection:
@@ -1801,6 +1871,158 @@ export function ExplorePanel({
                                         </Text>
                                     )
                                 ) : null}
+                            </View>
+                        ) : null}
+
+                        {activeTab === 'feed' ? (
+                            <View>
+                                <Text
+                                    style={{
+                                        fontSize: 11,
+                                        fontWeight: '600',
+                                        color: c.subtext,
+                                        marginBottom: 12,
+                                        letterSpacing: 0.8,
+                                    }}
+                                >
+                                    FRIEND ACTIVITY
+                                </Text>
+                                {feedLoading ? (
+                                    <Text
+                                        style={{
+                                            color: c.subtext,
+                                            fontSize: 13,
+                                        }}
+                                    >
+                                        Loading...
+                                    </Text>
+                                ) : feedItems.length === 0 ? (
+                                    <Text
+                                        style={{
+                                            color: c.subtext,
+                                            fontSize: 13,
+                                            opacity: 0.6,
+                                        }}
+                                    >
+                                        No friend activity yet. Add friends to
+                                        see what they create and review.
+                                    </Text>
+                                ) : (
+                                    feedItems.map((item) => (
+                                        <Pressable
+                                            key={item.id}
+                                            onPress={() =>
+                                                onSelectFeedSpot(item.spot)
+                                            }
+                                            style={{
+                                                flexDirection: 'row',
+                                                gap: 10,
+                                                paddingVertical: 12,
+                                                borderBottomWidth: 1,
+                                                borderColor: c.border,
+                                            }}
+                                        >
+                                            {item.actor.avatar_url ? (
+                                                <Image
+                                                    source={{
+                                                        uri: item.actor
+                                                            .avatar_url,
+                                                    }}
+                                                    style={{
+                                                        width: 36,
+                                                        height: 36,
+                                                        borderRadius: 18,
+                                                    }}
+                                                />
+                                            ) : (
+                                                <View
+                                                    style={{
+                                                        width: 36,
+                                                        height: 36,
+                                                        borderRadius: 18,
+                                                        backgroundColor: c.tagBg,
+                                                        alignItems: 'center',
+                                                        justifyContent:
+                                                            'center',
+                                                    }}
+                                                >
+                                                    <Ionicons
+                                                        name="person-outline"
+                                                        size={18}
+                                                        color={c.subtext}
+                                                    />
+                                                </View>
+                                            )}
+                                            <View style={{ flex: 1 }}>
+                                                <Text
+                                                    style={{
+                                                        fontSize: 13,
+                                                        color: c.text,
+                                                    }}
+                                                >
+                                                    <Text
+                                                        style={{
+                                                            fontWeight: '700',
+                                                        }}
+                                                    >
+                                                        @
+                                                        {item.actor.username ??
+                                                            'someone'}
+                                                    </Text>{' '}
+                                                    {item.kind === 'spot_created'
+                                                        ? 'created'
+                                                        : 'reviewed'}{' '}
+                                                    <Text
+                                                        style={{
+                                                            fontWeight: '600',
+                                                        }}
+                                                    >
+                                                        "{item.spot.name}"
+                                                    </Text>
+                                                </Text>
+                                                {item.kind === 'review_left' ? (
+                                                    <Text
+                                                        style={{
+                                                            fontSize: 13,
+                                                            color: '#F5A623',
+                                                            letterSpacing: 1,
+                                                            marginTop: 2,
+                                                        }}
+                                                    >
+                                                        {'★'.repeat(
+                                                            item.rating
+                                                        )}
+                                                        {'☆'.repeat(
+                                                            5 - item.rating
+                                                        )}
+                                                    </Text>
+                                                ) : null}
+                                                {item.kind === 'review_left' &&
+                                                item.comment ? (
+                                                    <Text
+                                                        style={{
+                                                            fontSize: 12,
+                                                            color: c.subtext,
+                                                            marginTop: 2,
+                                                        }}
+                                                        numberOfLines={2}
+                                                    >
+                                                        {item.comment}
+                                                    </Text>
+                                                ) : null}
+                                                <Text
+                                                    style={{
+                                                        fontSize: 11,
+                                                        color: c.subtext,
+                                                        marginTop: 4,
+                                                    }}
+                                                >
+                                                    {timeAgo(item.created_at)}
+                                                </Text>
+                                            </View>
+                                        </Pressable>
+                                    ))
+                                )}
                             </View>
                         ) : null}
                     </ScrollView>

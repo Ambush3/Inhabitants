@@ -67,6 +67,7 @@ import { Place, Spot } from '@/src/types';
 import { useWishlist } from '@/src/hooks/useWishlist';
 import { useFriendships } from '@/src/hooks/social/useFriendships';
 import { useNotifications } from '@/src/hooks/useNotifications';
+import { useSocialFeed } from '@/src/hooks/useSocialFeed';
 import { SpotVisibility, spotVisibility } from '@/src/hooks/useSpots';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -178,6 +179,11 @@ export default function Index() {
     const { pendingReceived, loadPendingRequests, friends, loadFriends } =
         useFriendships();
     const friendIds = new Set(friends.map((f) => f.id));
+    const {
+        items: feedItems,
+        loading: feedLoading,
+        loadFeed,
+    } = useSocialFeed();
     const {
         notifications: activityNotifications,
         unreadCount: unreadActivityCount,
@@ -500,12 +506,30 @@ export default function Index() {
             if (status !== 'granted') {
                 setError('Location permission denied.');
                 setUseDeviceLocation(false);
+                setLocationReady(true);
                 return;
             }
 
-            const pos = await Location.getCurrentPositionAsync({
-                accuracy: Location.Accuracy.Balanced,
-            });
+            let pos;
+            try {
+                pos = await Location.getCurrentPositionAsync({
+                    accuracy: Location.Accuracy.Balanced,
+                });
+            } catch (e) {
+                try {
+                    pos = await Location.getLastKnownPositionAsync();
+                } catch {
+                    pos = null;
+                }
+                if (!pos) {
+                    setError(
+                        'Could not determine your location. Showing default view.'
+                    );
+                    setUseDeviceLocation(false);
+                    setLocationReady(true);
+                    return;
+                }
+            }
 
             if (!autoCenterRef.current) {
                 setUseDeviceLocation(false);
@@ -545,6 +569,47 @@ export default function Index() {
             spinAnim.setValue(0);
         }
     }, [refreshing]);
+
+    useEffect(() => {
+        loadFeed(friends.map((f) => f.id));
+    }, [friends]);
+
+    useEffect(() => {
+        if (panelOpen) {
+            loadFeed(friends.map((f) => f.id));
+        }
+    }, [panelOpen]);
+
+    useEffect(() => {
+        if (!session?.user.id) return;
+        const fids = new Set(friends.map((f) => f.id));
+        const refresh = (payload: any) => {
+            const uid = payload?.new?.user_id;
+            if (uid && fids.has(uid)) {
+                loadFeed(friends.map((f) => f.id));
+            }
+        };
+        const spotsCh = supabase
+            .channel(`feed-spots-${session.user.id}`)
+            .on(
+                'postgres_changes',
+                { event: 'INSERT', schema: 'public', table: 'spots' },
+                refresh
+            )
+            .subscribe();
+        const reviewsCh = supabase
+            .channel(`feed-reviews-${session.user.id}`)
+            .on(
+                'postgres_changes',
+                { event: 'INSERT', schema: 'public', table: 'reviews' },
+                refresh
+            )
+            .subscribe();
+        return () => {
+            supabase.removeChannel(spotsCh);
+            supabase.removeChannel(reviewsCh);
+        };
+    }, [session?.user.id, friends]);
 
     useEffect(() => {
         if (session?.user.id) {
@@ -916,6 +981,42 @@ export default function Index() {
                     <ExplorePanel
                         visible={panelOpen}
                         pendingFriendRequestsCount={pendingReceived.length}
+                        feedItems={feedItems}
+                        feedLoading={feedLoading}
+                        onSelectFeedSpot={(s) => {
+                            setPanelOpen(false);
+                            setHighlightSpotId(s.id);
+                            highlightSpotIdRef.current = s.id;
+                            if (
+                                s.spot_type === 'skatepark' ||
+                                s.spot_type === 'skateshop'
+                            ) {
+                                setPlacesWithAutoClear((prev) =>
+                                    prev.some((p) => p.id === s.id)
+                                        ? prev
+                                        : [
+                                              ...prev,
+                                              {
+                                                  id: s.id,
+                                                  name: s.name,
+                                                  type: s.spot_type as
+                                                      | 'skatepark'
+                                                      | 'skateshop',
+                                                  lat: s.lat,
+                                                  lng: s.lng,
+                                                  tags: {},
+                                              },
+                                          ]
+                                );
+                                setTimeout(() => {
+                                    animateToSpotWithModalOffset(s.lat, s.lng);
+                                    openSpotDetails(s);
+                                }, 400);
+                            } else {
+                                animateToSpotWithModalOffset(s.lat, s.lng);
+                                openSpotDetails(s);
+                            }
+                        }}
                         activityNotifications={activityNotifications}
                         onMarkAllNotificationsRead={markAllAsRead}
                         onSelectNotification={(n) => {
