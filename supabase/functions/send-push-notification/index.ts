@@ -143,6 +143,15 @@ Deno.serve(async (req) => {
         if (!message)
             return new Response('Unknown event type', { status: 400 });
 
+        await supabase.from('notifications').insert({
+            user_id: spot.user_id,
+            type: event_type,
+            actor_id: actor_id ?? null,
+            actor_username: actor_username ?? null,
+            spot_id,
+            spot_name: spot.name,
+        });
+
         const response = await fetch('https://exp.host/--/api/v2/push/send', {
             method: 'POST',
             headers: {
