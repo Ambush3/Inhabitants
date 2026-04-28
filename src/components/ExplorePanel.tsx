@@ -54,7 +54,7 @@ type Props = {
     mySpotsLoading: boolean;
     wishlist: Spot[];
     wishlistLoading: boolean;
-    onToggleSpotPrivacy: (spot: Spot) => void;
+    onCycleSpotVisibility: (spot: Spot) => void;
     onOpenProfile: () => void;
     pendingFriendRequestsCount: number;
     activityNotifications: AppNotification[];
@@ -91,7 +91,7 @@ export function ExplorePanel({
     mySpotsLoading,
     wishlist,
     wishlistLoading,
-    onToggleSpotPrivacy,
+    onCycleSpotVisibility,
     onOpenProfile,
     pendingFriendRequestsCount,
     activityNotifications,
@@ -948,7 +948,7 @@ export function ExplorePanel({
                                                 renderRightActions={() => (
                                                     <Pressable
                                                         onPress={() =>
-                                                            onToggleSpotPrivacy(
+                                                            onCycleSpotVisibility(
                                                                 s
                                                             )
                                                         }
@@ -959,9 +959,7 @@ export function ExplorePanel({
                                                                 'center',
                                                             width: 75,
                                                             backgroundColor:
-                                                                s.is_private
-                                                                    ? '#34C759'
-                                                                    : '#FF9500',
+                                                                '#5856D6',
                                                             borderTopRightRadius: 8,
                                                             borderBottomRightRadius: 8,
                                                             marginVertical: 2,
@@ -969,11 +967,7 @@ export function ExplorePanel({
                                                         }}
                                                     >
                                                         <Ionicons
-                                                            name={
-                                                                s.is_private
-                                                                    ? 'lock-open-outline'
-                                                                    : 'lock-closed'
-                                                            }
+                                                            name="eye-outline"
                                                             size={18}
                                                             color="white"
                                                         />
@@ -986,9 +980,7 @@ export function ExplorePanel({
                                                                 letterSpacing: 0.3,
                                                             }}
                                                         >
-                                                            {s.is_private
-                                                                ? 'Public'
-                                                                : 'Private'}
+                                                            Visibility
                                                         </Text>
                                                     </Pressable>
                                                 )}
@@ -1060,6 +1052,32 @@ export function ExplorePanel({
                                                                 }}
                                                             >
                                                                 Private
+                                                            </Text>
+                                                        </View>
+                                                    ) : s.friends_only ? (
+                                                        <View
+                                                            style={{
+                                                                flexDirection:
+                                                                    'row',
+                                                                alignItems:
+                                                                    'center',
+                                                                gap: 4,
+                                                            }}
+                                                        >
+                                                            <Ionicons
+                                                                name="people"
+                                                                size={14}
+                                                                color="#5856D6"
+                                                            />
+                                                            <Text
+                                                                style={{
+                                                                    fontSize: 11,
+                                                                    color: '#5856D6',
+                                                                    fontWeight:
+                                                                        '600',
+                                                                }}
+                                                            >
+                                                                Friends
                                                             </Text>
                                                         </View>
                                                     ) : null}

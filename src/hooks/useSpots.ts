@@ -3,6 +3,30 @@ import { supabase } from '@/src/libs/supabase';
 import { Spot } from '@/src/types';
 import { moderateText } from '@/src/libs/moderator/textModerator';
 
+export type SpotVisibility = 'public' | 'friends' | 'private';
+
+export function spotVisibility(s: {
+    is_private: boolean;
+    friends_only: boolean;
+}): SpotVisibility {
+    if (s.is_private) return 'private';
+    if (s.friends_only) return 'friends';
+    return 'public';
+}
+
+function visibilityFlags(v: SpotVisibility) {
+    return {
+        is_private: v === 'private',
+        friends_only: v === 'friends',
+    };
+}
+
+export function nextVisibility(v: SpotVisibility): SpotVisibility {
+    if (v === 'public') return 'friends';
+    if (v === 'friends') return 'private';
+    return 'public';
+}
+
 export function useSpots() {
     const [spots, setSpots] = useState<Spot[]>([]);
     const [loading, setLoading] = useState(false);
@@ -57,7 +81,7 @@ export function useSpots() {
         description?: string,
         initialRating?: number,
         tags: string[] = [],
-        isPrivate: boolean = false,
+        visibility: SpotVisibility = 'public',
         spotType: 'spot' | 'skatepark' | 'skateshop' = 'spot'
     ): Promise<Spot | undefined> {
         setError(null);
@@ -90,6 +114,7 @@ export function useSpots() {
             }
         }
 
+        const flags = visibilityFlags(visibility);
         const { data: spotData, error: spotErr } = await supabase
             .from('spots')
             .insert({
@@ -99,7 +124,8 @@ export function useSpots() {
                 lng,
                 user_id: (await supabase.auth.getUser()).data.user?.id,
                 tags,
-                is_private: isPrivate,
+                is_private: flags.is_private,
+                friends_only: flags.friends_only,
                 spot_type: spotType,
             })
             .select()
@@ -128,10 +154,11 @@ export function useSpots() {
         return spot;
     }
 
-    async function toggleSpotPrivacy(spot: Spot) {
+    async function setSpotVisibility(spot: Spot, visibility: SpotVisibility) {
+        const flags = visibilityFlags(visibility);
         const { error } = await supabase
             .from('spots')
-            .update({ is_private: !spot.is_private })
+            .update(flags)
             .eq('id', spot.id);
 
         if (error) {
@@ -139,8 +166,12 @@ export function useSpots() {
             return;
         }
 
-        setSpots(prev => prev.map(s => s.id === spot.id ? { ...s, is_private: !s.is_private } : s));
-        setMySpots(prev => prev.map(s => s.id === spot.id ? { ...s, is_private: !s.is_private } : s));
+        setSpots((prev) =>
+            prev.map((s) => (s.id === spot.id ? { ...s, ...flags } : s))
+        );
+        setMySpots((prev) =>
+            prev.map((s) => (s.id === spot.id ? { ...s, ...flags } : s))
+        );
     }
 
     async function deleteSpotById(id: string, onDeleted?: () => void) {
@@ -178,5 +209,5 @@ export function useSpots() {
         setSearchResults([]);
     }
 
-    return { spots, mySpots, mySpotsLoading, loading, error, setError, reload, loadMySpots, createSpotAt, deleteSpotById, searchResults, searching, searchByTag, clearSearch, toggleSpotPrivacy };
+    return { spots, mySpots, mySpotsLoading, loading, error, setError, reload, loadMySpots, createSpotAt, deleteSpotById, searchResults, searching, searchByTag, clearSearch, setSpotVisibility };
 }

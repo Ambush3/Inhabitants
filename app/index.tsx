@@ -13,6 +13,7 @@ import {
     Pressable,
     Animated,
     Easing,
+    ActionSheetIOS,
 } from 'react-native';
 import MapView, {
     Marker,
@@ -66,6 +67,7 @@ import { Place, Spot } from '@/src/types';
 import { useWishlist } from '@/src/hooks/useWishlist';
 import { useFriendships } from '@/src/hooks/social/useFriendships';
 import { useNotifications } from '@/src/hooks/useNotifications';
+import { SpotVisibility, spotVisibility } from '@/src/hooks/useSpots';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 ExpoSplashScreen.preventAutoHideAsync();
@@ -147,7 +149,8 @@ export default function Index() {
         clearTopRated,
     } = useTopRated();
 
-    const [spotIsPrivate, setSpotIsPrivate] = useState(false);
+    const [createSpotVisibility, setCreateSpotVisibility] =
+        useState<SpotVisibility>('public');
 
     const {
         placeFavorites,
@@ -172,7 +175,9 @@ export default function Index() {
         resetConditions,
     } = useSpotConditions();
 
-    const { pendingReceived, loadPendingRequests } = useFriendships();
+    const { pendingReceived, loadPendingRequests, friends, loadFriends } =
+        useFriendships();
+    const friendIds = new Set(friends.map((f) => f.id));
     const {
         notifications: activityNotifications,
         unreadCount: unreadActivityCount,
@@ -269,7 +274,7 @@ export default function Index() {
         searchResults,
         searchByTag,
         clearSearch,
-        toggleSpotPrivacy,
+        setSpotVisibility,
     } = useSpots();
     const { deepLinkSpotId, deepLinkLat, deepLinkLng } = useLocalSearchParams<{
         deepLinkSpotId?: string;
@@ -304,7 +309,7 @@ export default function Index() {
         setPendingCoord(null);
         setSpotTags([]);
         setPendingImages([]);
-        setSpotIsPrivate(false);
+        setCreateSpotVisibility('public');
         setSpotComment('');
         setSpotType('spot');
     }
@@ -547,6 +552,7 @@ export default function Index() {
             loadFlags();
             loadReviewFlags();
             loadPendingRequests();
+            loadFriends();
             loadNotifications();
             supabase
                 .from('profiles')
@@ -584,8 +590,13 @@ export default function Index() {
 
     useEffect(() => {
         if (!session?.user.id) return;
-        const channel = supabase
-            .channel(`friendships-${session.user.id}`)
+        const handler = () => {
+            loadPendingRequests();
+            loadFriends();
+            reload();
+        };
+        const inboundCh = supabase
+            .channel(`friendships-in-${session.user.id}`)
             .on(
                 'postgres_changes',
                 {
@@ -594,13 +605,25 @@ export default function Index() {
                     table: 'friendships',
                     filter: `addressee_id=eq.${session.user.id}`,
                 },
-                () => {
-                    loadPendingRequests();
-                }
+                handler
+            )
+            .subscribe();
+        const outboundCh = supabase
+            .channel(`friendships-out-${session.user.id}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'friendships',
+                    filter: `requester_id=eq.${session.user.id}`,
+                },
+                handler
             )
             .subscribe();
         return () => {
-            supabase.removeChannel(channel);
+            supabase.removeChannel(inboundCh);
+            supabase.removeChannel(outboundCh);
         };
     }, [session?.user.id]);
 
@@ -1075,12 +1098,36 @@ export default function Index() {
                         }}
                         wishlist={wishlist}
                         wishlistLoading={wishlistLoading}
-                        onToggleSpotPrivacy={async (spot) => {
+                        onCycleSpotVisibility={async (spot) => {
                             await Haptics.impactAsync(
                                 Haptics.ImpactFeedbackStyle.Light
                             );
-                            await toggleSpotPrivacy(spot);
-                            await loadMySpots();
+                            const current = spotVisibility(spot);
+                            const options: SpotVisibility[] = [
+                                'public',
+                                'friends',
+                                'private',
+                            ];
+                            const labels = [
+                                'Public',
+                                'Friends',
+                                'Private',
+                                'Cancel',
+                            ];
+                            ActionSheetIOS.showActionSheetWithOptions(
+                                {
+                                    title: 'Visibility',
+                                    options: labels,
+                                    cancelButtonIndex: 3,
+                                },
+                                async (idx) => {
+                                    if (idx === 3) return;
+                                    const picked = options[idx];
+                                    if (picked === current) return;
+                                    await setSpotVisibility(spot, picked);
+                                    await loadMySpots();
+                                }
+                            );
                         }}
                         onDeleteSpot={async (spot) => {
                             await Haptics.impactAsync(
@@ -1207,6 +1254,13 @@ export default function Index() {
                                                 <OtherUsersSpotMarkers
                                                     selected={
                                                         s.id === highlightSpotId
+                                                    }
+                                                    isFriend={
+                                                        s.user_id
+                                                            ? friendIds.has(
+                                                                  s.user_id
+                                                              )
+                                                            : false
                                                     }
                                                 />
                                             </Marker>
@@ -1352,10 +1406,8 @@ export default function Index() {
                             setSpotTags((prev) => prev.filter((t) => t !== tag))
                         }
                         onCancel={closeCreateModal}
-                        isPrivate={spotIsPrivate}
-                        onTogglePrivate={() =>
-                            setSpotIsPrivate((prev) => !prev)
-                        }
+                        visibility={createSpotVisibility}
+                        onChangeVisibility={setCreateSpotVisibility}
                         onCreate={async () => {
                             if (!pendingCoord) return;
                             const newSpot = await createSpotAt(
@@ -1365,7 +1417,7 @@ export default function Index() {
                                 spotDesc,
                                 spotRating,
                                 spotTags,
-                                spotIsPrivate,
+                                createSpotVisibility,
                                 spotType
                             );
                             if (newSpot) {
@@ -1429,7 +1481,8 @@ export default function Index() {
                         spotType={spotType}
                         onChangeSpotType={(v) => {
                             setSpotType(v);
-                            if (v !== 'spot') setSpotIsPrivate(false);
+                            if (v !== 'spot')
+                                setCreateSpotVisibility('public');
                         }}
                     />
 
@@ -1523,18 +1576,6 @@ export default function Index() {
                         onUploadImages={async (uris) => {
                             if (!selectedSpot) return;
                             await uploadImages(selectedSpot.id, uris);
-                        }}
-                        onTogglePrivacy={async () => {
-                            if (!selectedSpot) return;
-                            await Haptics.impactAsync(
-                                Haptics.ImpactFeedbackStyle.Light
-                            );
-                            await toggleSpotPrivacy(selectedSpot);
-                            setSelectedSpot((prev) =>
-                                prev
-                                    ? { ...prev, is_private: !prev.is_private }
-                                    : prev
-                            );
                         }}
                         creatorUsername={spotCreatorUsername ?? undefined}
                         creatorAvatarUrl={spotCreatorAvatarUrl ?? undefined}
