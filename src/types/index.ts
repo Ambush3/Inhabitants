@@ -8,6 +8,7 @@ export type Spot = {
     user_id: string | null;
     tags: string[];
     is_private: boolean;
+    friends_only: boolean;
     spot_type: 'spot' | 'skatepark' | 'skateshop';
     flag_count: number;
     is_verified: boolean;
