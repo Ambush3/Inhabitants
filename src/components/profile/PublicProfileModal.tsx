@@ -7,11 +7,17 @@ import {
     Pressable,
     Image,
     SafeAreaView,
+    Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/src/libs/supabase';
 import { useTheme } from '@/src/context/ThemeContext';
 import { Spot } from '@/src/types';
+import {
+    useFriendships,
+    FriendshipStatus,
+} from '@/src/hooks/social/useFriendships';
+import { sendFriendRequestNotification } from '@/src/libs/sendPushNotification';
 
 type PublicReview = {
     id: string;
@@ -48,31 +54,56 @@ export function PublicProfileModal({
     const [activeTab, setActiveTab] = useState<'spots' | 'reviews'>('spots');
     const [loading, setLoading] = useState(false);
 
+    const {
+        getFriendshipStatus,
+        sendFriendRequest,
+        acceptFriendRequest,
+        removeFriend,
+    } = useFriendships();
+    const [friendshipStatus, setFriendshipStatus] =
+        useState<FriendshipStatus>('none');
+    const [friendshipLoading, setFriendshipLoading] = useState(false);
+    const [cooldown, setCooldown] = useState(false);
+
+    function startCooldown() {
+        setCooldown(true);
+        setTimeout(() => setCooldown(false), 3000);
+    }
+
+    function getFriendButtonLabel(): string {
+        if (friendshipStatus === 'accepted') return 'Friends';
+        if (friendshipStatus === 'pending_sent') return 'Request Sent';
+        if (friendshipStatus === 'pending_received') return 'Accept Request';
+        return 'Add Friend';
+    }
+
     useEffect(() => {
         if (!visible || !userId) return;
         async function load() {
             setLoading(true);
-            const [profileRes, spotsRes, reviewsRes] = await Promise.all([
-                supabase
-                    .from('profiles')
-                    .select('avatar_url, username, created_at')
-                    .eq('id', userId)
-                    .single(),
-                supabase
-                    .from('spots')
-                    .select('*')
-                    .eq('user_id', userId)
-                    .eq('is_private', false)
-                    .eq('spot_type', 'spot')
-                    .order('created_at', { ascending: false }),
-                supabase
-                    .from('reviews')
-                    .select(
-                        'id, spot_id, rating, comment, created_at, spots(name)'
-                    )
-                    .eq('user_id', userId)
-                    .order('created_at', { ascending: false }),
-            ]);
+            const [profileRes, spotsRes, reviewsRes, status] =
+                await Promise.all([
+                    supabase
+                        .from('profiles')
+                        .select('avatar_url, username, created_at')
+                        .eq('id', userId)
+                        .single(),
+                    supabase
+                        .from('spots')
+                        .select('*')
+                        .eq('user_id', userId!)
+                        .eq('is_private', false)
+                        .eq('spot_type', 'spot')
+                        .order('created_at', { ascending: false }),
+                    supabase
+                        .from('reviews')
+                        .select(
+                            'id, spot_id, rating, comment, created_at, spots(name)'
+                        )
+                        .eq('user_id', userId!)
+                        .order('created_at', { ascending: false }),
+                    getFriendshipStatus(userId!),
+                ]);
             setAvatarUrl(profileRes.data?.avatar_url ?? null);
             setUsername(profileRes.data?.username ?? null);
             setJoinDate(profileRes.data?.created_at ?? null);
@@ -87,6 +118,7 @@ export function PublicProfileModal({
                     created_at: r.created_at,
                 }))
             );
+            setFriendshipStatus(status);
             setLoading(false);
         }
         load();
@@ -198,6 +230,110 @@ export function PublicProfileModal({
                                     })}
                                 </Text>
                             ) : null}
+
+                            <Pressable
+                                disabled={friendshipLoading || cooldown}
+                                onPress={async () => {
+                                    if (friendshipLoading || cooldown) return;
+                                    if (friendshipStatus === 'pending_sent') {
+                                        Alert.alert(
+                                            'Cancel friend request?',
+                                            undefined,
+                                            [
+                                                {
+                                                    text: 'Keep',
+                                                    style: 'cancel',
+                                                },
+                                                {
+                                                    text: 'Cancel Request',
+                                                    style: 'destructive',
+                                                    onPress: async () => {
+                                                        setFriendshipLoading(
+                                                            true
+                                                        );
+                                                        await removeFriend(
+                                                            userId!
+                                                        );
+                                                        setFriendshipStatus(
+                                                            'none'
+                                                        );
+                                                        setFriendshipLoading(
+                                                            false
+                                                        );
+                                                        startCooldown();
+                                                    },
+                                                },
+                                            ]
+                                        );
+                                        return;
+                                    }
+                                    setFriendshipLoading(true);
+                                    if (friendshipStatus === 'none') {
+                                        await sendFriendRequest(userId!);
+                                        setFriendshipStatus('pending_sent');
+                                        const {
+                                            data: { user },
+                                        } = await supabase.auth.getUser();
+                                        if (user) {
+                                            const { data: profile } =
+                                                await supabase
+                                                    .from('profiles')
+                                                    .select('username')
+                                                    .eq('id', user.id)
+                                                    .single();
+                                            await sendFriendRequestNotification(
+                                                userId!,
+                                                profile?.username ?? 'Someone'
+                                            );
+                                        }
+                                    } else if (
+                                        friendshipStatus === 'pending_received'
+                                    ) {
+                                        await acceptFriendRequest(userId!);
+                                        setFriendshipStatus('accepted');
+                                    } else if (
+                                        friendshipStatus === 'accepted'
+                                    ) {
+                                        await removeFriend(userId!);
+                                        setFriendshipStatus('none');
+                                    }
+                                    setFriendshipLoading(false);
+                                    startCooldown();
+                                }}
+                                style={{
+                                    marginTop: 14,
+                                    paddingHorizontal: 24,
+                                    paddingVertical: 8,
+                                    borderRadius: 20,
+                                    alignSelf: 'center',
+                                    backgroundColor:
+                                        friendshipStatus === 'accepted'
+                                            ? c.tagBg
+                                            : friendshipStatus ===
+                                                'pending_sent'
+                                              ? c.tagBg
+                                              : '#007AFF',
+                                    borderWidth:
+                                        friendshipStatus === 'accepted' ? 1 : 0,
+                                    borderColor: c.border,
+                                }}
+                            >
+                                <Text
+                                    style={{
+                                        fontWeight: '600',
+                                        fontSize: 14,
+                                        color:
+                                            friendshipStatus === 'accepted' ||
+                                            friendshipStatus === 'pending_sent'
+                                                ? c.text
+                                                : 'white',
+                                    }}
+                                >
+                                    {friendshipLoading
+                                        ? '...'
+                                        : getFriendButtonLabel()}
+                                </Text>
+                            </Pressable>
                         </View>
 
                         <View

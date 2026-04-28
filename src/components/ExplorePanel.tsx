@@ -15,6 +15,7 @@ import { useTheme } from '@/src/context/ThemeContext';
 import { AnimatedSpotCard } from '@/src/components/AnimatedSpotCard';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { TopRatedItem } from '@/src/hooks/useTopRated';
+import { AppNotification } from '@/src/hooks/useNotifications';
 
 import { supabase } from '@/src/libs/supabase';
 
@@ -53,8 +54,12 @@ type Props = {
     mySpotsLoading: boolean;
     wishlist: Spot[];
     wishlistLoading: boolean;
-    onToggleSpotPrivacy: (spot: Spot) => void;
+    onCycleSpotVisibility: (spot: Spot) => void;
     onOpenProfile: () => void;
+    pendingFriendRequestsCount: number;
+    activityNotifications: AppNotification[];
+    onSelectNotification: (notification: AppNotification) => void;
+    onMarkAllNotificationsRead: () => void;
 };
 
 type Tab = 'explore' | 'myspots' | 'favorites';
@@ -86,9 +91,48 @@ export function ExplorePanel({
     mySpotsLoading,
     wishlist,
     wishlistLoading,
-    onToggleSpotPrivacy,
+    onCycleSpotVisibility,
     onOpenProfile,
+    pendingFriendRequestsCount,
+    activityNotifications,
+    onSelectNotification,
+    onMarkAllNotificationsRead,
 }: Props) {
+    function notificationLabel(n: AppNotification): string {
+        const actor = n.actor_username ? `@${n.actor_username}` : 'Someone';
+        const spot = n.spot_name ?? 'your spot';
+        switch (n.type) {
+            case 'review':
+                return `${actor} reviewed "${spot}"`;
+            case 'favorite':
+                return `${actor} saved "${spot}"`;
+            case 'wishlist':
+                return `${actor} wishlisted "${spot}"`;
+            case 'condition':
+                return `${actor} reported a condition at "${spot}"`;
+            case 'flag':
+                return `"${spot}" was flagged`;
+            case 'image_removed':
+                return `An image on "${spot}" was removed`;
+            default:
+                return `Activity on "${spot}"`;
+        }
+    }
+
+    function timeAgo(iso: string): string {
+        const then = new Date(iso).getTime();
+        const now = Date.now();
+        const diff = Math.max(0, now - then);
+        const m = Math.floor(diff / 60000);
+        if (m < 1) return 'now';
+        if (m < 60) return `${m}m ago`;
+        const h = Math.floor(m / 60);
+        if (h < 24) return `${h}h ago`;
+        const d = Math.floor(h / 24);
+        if (d < 7) return `${d}d ago`;
+        return new Date(iso).toLocaleDateString();
+    }
+
     const insets = useSafeAreaInsets();
     const { theme } = useTheme();
     const c = theme.colors;
@@ -242,6 +286,184 @@ export function ExplorePanel({
                         {/* EXPLORE TAB */}
                         {activeTab === 'explore' ? (
                             <View>
+                                {pendingFriendRequestsCount > 0 ? (
+                                    <View style={{ marginBottom: 16 }}>
+                                        <Text
+                                            style={{
+                                                fontSize: 11,
+                                                fontWeight: '600',
+                                                color: c.subtext,
+                                                marginBottom: 8,
+                                                letterSpacing: 0.8,
+                                            }}
+                                        >
+                                            NOTIFICATIONS
+                                        </Text>
+                                        <Pressable
+                                            onPress={onOpenProfile}
+                                            style={{
+                                                backgroundColor: c.tagBg,
+                                                borderRadius: 8,
+                                                padding: 12,
+                                                flexDirection: 'row',
+                                                alignItems: 'center',
+                                                gap: 10,
+                                            }}
+                                        >
+                                            <Ionicons
+                                                name="person-add-outline"
+                                                size={20}
+                                                color={c.text}
+                                            />
+                                            <Text
+                                                style={{
+                                                    flex: 1,
+                                                    color: c.text,
+                                                    fontWeight: '600',
+                                                    fontSize: 13,
+                                                }}
+                                            >
+                                                Pending Friend Requests
+                                            </Text>
+                                            <View
+                                                style={{
+                                                    minWidth: 22,
+                                                    height: 22,
+                                                    borderRadius: 11,
+                                                    backgroundColor: c.danger,
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    paddingHorizontal: 6,
+                                                }}
+                                            >
+                                                <Text
+                                                    style={{
+                                                        color: 'white',
+                                                        fontSize: 12,
+                                                        fontWeight: '700',
+                                                    }}
+                                                >
+                                                    {pendingFriendRequestsCount}
+                                                </Text>
+                                            </View>
+                                            <Ionicons
+                                                name="chevron-forward"
+                                                size={16}
+                                                color={c.subtext}
+                                            />
+                                        </Pressable>
+                                    </View>
+                                ) : null}
+
+                                {activityNotifications.some(
+                                    (n) => !n.read
+                                ) ? (
+                                    <View style={{ marginBottom: 16 }}>
+                                        <View
+                                            style={{
+                                                flexDirection: 'row',
+                                                justifyContent: 'space-between',
+                                                alignItems: 'center',
+                                                marginBottom: 8,
+                                            }}
+                                        >
+                                            <Text
+                                                style={{
+                                                    fontSize: 11,
+                                                    fontWeight: '600',
+                                                    color: c.subtext,
+                                                    letterSpacing: 0.8,
+                                                }}
+                                            >
+                                                ACTIVITY
+                                            </Text>
+                                            <Pressable
+                                                onPress={
+                                                    onMarkAllNotificationsRead
+                                                }
+                                            >
+                                                <Text
+                                                    style={{
+                                                        fontSize: 11,
+                                                        color: '#007AFF',
+                                                        fontWeight: '600',
+                                                    }}
+                                                >
+                                                    Mark all read
+                                                </Text>
+                                            </Pressable>
+                                        </View>
+                                        {activityNotifications
+                                            .filter((n) => !n.read)
+                                            .slice(0, 20)
+                                            .map((n) => (
+                                                <Pressable
+                                                    key={n.id}
+                                                    onPress={() =>
+                                                        onSelectNotification(n)
+                                                    }
+                                                    style={{
+                                                        flexDirection: 'row',
+                                                        alignItems: 'center',
+                                                        gap: 10,
+                                                        paddingVertical: 10,
+                                                        paddingHorizontal: 10,
+                                                        borderRadius: 8,
+                                                        backgroundColor: n.read
+                                                            ? 'transparent'
+                                                            : c.tagBg,
+                                                        marginBottom: 4,
+                                                    }}
+                                                >
+                                                    {!n.read ? (
+                                                        <View
+                                                            style={{
+                                                                width: 8,
+                                                                height: 8,
+                                                                borderRadius: 4,
+                                                                backgroundColor:
+                                                                    '#007AFF',
+                                                            }}
+                                                        />
+                                                    ) : (
+                                                        <View
+                                                            style={{
+                                                                width: 8,
+                                                            }}
+                                                        />
+                                                    )}
+                                                    <View style={{ flex: 1 }}>
+                                                        <Text
+                                                            style={{
+                                                                fontSize: 13,
+                                                                color: c.text,
+                                                                fontWeight:
+                                                                    n.read
+                                                                        ? '400'
+                                                                        : '600',
+                                                            }}
+                                                            numberOfLines={2}
+                                                        >
+                                                            {notificationLabel(
+                                                                n
+                                                            )}
+                                                        </Text>
+                                                        <Text
+                                                            style={{
+                                                                fontSize: 11,
+                                                                color: c.subtext,
+                                                                marginTop: 2,
+                                                            }}
+                                                        >
+                                                            {timeAgo(
+                                                                n.created_at
+                                                            )}
+                                                        </Text>
+                                                    </View>
+                                                </Pressable>
+                                            ))}
+                                    </View>
+                                ) : null}
                                 <Text
                                     style={{
                                         fontSize: 11,
@@ -726,7 +948,7 @@ export function ExplorePanel({
                                                 renderRightActions={() => (
                                                     <Pressable
                                                         onPress={() =>
-                                                            onToggleSpotPrivacy(
+                                                            onCycleSpotVisibility(
                                                                 s
                                                             )
                                                         }
@@ -737,9 +959,7 @@ export function ExplorePanel({
                                                                 'center',
                                                             width: 75,
                                                             backgroundColor:
-                                                                s.is_private
-                                                                    ? '#34C759'
-                                                                    : '#FF9500',
+                                                                '#5856D6',
                                                             borderTopRightRadius: 8,
                                                             borderBottomRightRadius: 8,
                                                             marginVertical: 2,
@@ -747,11 +967,7 @@ export function ExplorePanel({
                                                         }}
                                                     >
                                                         <Ionicons
-                                                            name={
-                                                                s.is_private
-                                                                    ? 'lock-open-outline'
-                                                                    : 'lock-closed'
-                                                            }
+                                                            name="eye-outline"
                                                             size={18}
                                                             color="white"
                                                         />
@@ -764,9 +980,7 @@ export function ExplorePanel({
                                                                 letterSpacing: 0.3,
                                                             }}
                                                         >
-                                                            {s.is_private
-                                                                ? 'Public'
-                                                                : 'Private'}
+                                                            Visibility
                                                         </Text>
                                                     </Pressable>
                                                 )}
@@ -838,6 +1052,32 @@ export function ExplorePanel({
                                                                 }}
                                                             >
                                                                 Private
+                                                            </Text>
+                                                        </View>
+                                                    ) : s.friends_only ? (
+                                                        <View
+                                                            style={{
+                                                                flexDirection:
+                                                                    'row',
+                                                                alignItems:
+                                                                    'center',
+                                                                gap: 4,
+                                                            }}
+                                                        >
+                                                            <Ionicons
+                                                                name="people"
+                                                                size={14}
+                                                                color="#5856D6"
+                                                            />
+                                                            <Text
+                                                                style={{
+                                                                    fontSize: 11,
+                                                                    color: '#5856D6',
+                                                                    fontWeight:
+                                                                        '600',
+                                                                }}
+                                                            >
+                                                                Friends
                                                             </Text>
                                                         </View>
                                                     ) : null}

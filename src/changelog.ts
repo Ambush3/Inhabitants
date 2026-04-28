@@ -1,5 +1,10 @@
 export const changelog = [
     {
+        version: '1.2',
+        date: 'May 2026',
+        changes: ['Profiles for each user', 'Be able to add friends'],
+    },
+    {
         version: '1.1',
         date: 'April 2026',
         changes: [
