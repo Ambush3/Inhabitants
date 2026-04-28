@@ -13,6 +13,7 @@ import {
     Pressable,
     Animated,
     Easing,
+    ActionSheetIOS,
 } from 'react-native';
 import MapView, {
     Marker,
@@ -64,6 +65,9 @@ import { useTheme } from '@/src/context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { Place, Spot } from '@/src/types';
 import { useWishlist } from '@/src/hooks/useWishlist';
+import { useFriendships } from '@/src/hooks/social/useFriendships';
+import { useNotifications } from '@/src/hooks/useNotifications';
+import { SpotVisibility, spotVisibility } from '@/src/hooks/useSpots';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 ExpoSplashScreen.preventAutoHideAsync();
@@ -145,7 +149,8 @@ export default function Index() {
         clearTopRated,
     } = useTopRated();
 
-    const [spotIsPrivate, setSpotIsPrivate] = useState(false);
+    const [createSpotVisibility, setCreateSpotVisibility] =
+        useState<SpotVisibility>('public');
 
     const {
         placeFavorites,
@@ -169,6 +174,17 @@ export default function Index() {
         toggleCondition,
         resetConditions,
     } = useSpotConditions();
+
+    const { pendingReceived, loadPendingRequests, friends, loadFriends } =
+        useFriendships();
+    const friendIds = new Set(friends.map((f) => f.id));
+    const {
+        notifications: activityNotifications,
+        unreadCount: unreadActivityCount,
+        loadNotifications,
+        markAsRead,
+        markAllAsRead,
+    } = useNotifications();
 
     const { flaggedSpotIds, loadFlags, toggleFlag, isFlaggedByMe } =
         useSpotFlags(session?.user.id ?? null);
@@ -258,7 +274,7 @@ export default function Index() {
         searchResults,
         searchByTag,
         clearSearch,
-        toggleSpotPrivacy,
+        setSpotVisibility,
     } = useSpots();
     const { deepLinkSpotId, deepLinkLat, deepLinkLng } = useLocalSearchParams<{
         deepLinkSpotId?: string;
@@ -293,7 +309,7 @@ export default function Index() {
         setPendingCoord(null);
         setSpotTags([]);
         setPendingImages([]);
-        setSpotIsPrivate(false);
+        setCreateSpotVisibility('public');
         setSpotComment('');
         setSpotType('spot');
     }
@@ -437,6 +453,11 @@ export default function Index() {
                 animateToSpotWithModalOffset(lat, lng);
                 openSpotDetails(spot);
             }
+        },
+        () => setProfileOpen(true),
+        (actorId) => {
+            setPublicProfileUserId(actorId);
+            setPublicProfileOpen(true);
         }
     );
 
@@ -448,6 +469,7 @@ export default function Index() {
         loadWishlist();
         loadFlags();
         loadReviewFlags();
+        loadPendingRequests();
     }, []);
 
     useFocusEffect(
@@ -457,6 +479,7 @@ export default function Index() {
             loadWishlist();
             loadFlags();
             loadReviewFlags();
+            loadPendingRequests();
         }, [])
     );
 
@@ -528,6 +551,9 @@ export default function Index() {
             loadThemeForUser(session.user.id);
             loadFlags();
             loadReviewFlags();
+            loadPendingRequests();
+            loadFriends();
+            loadNotifications();
             supabase
                 .from('profiles')
                 .select('avatar_url')
@@ -538,6 +564,67 @@ export default function Index() {
             resetTheme();
             setMyAvatarUrl(null);
         }
+    }, [session?.user.id]);
+
+    useEffect(() => {
+        if (!session?.user.id) return;
+        const channel = supabase
+            .channel(`notifications-${session.user.id}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'notifications',
+                    filter: `user_id=eq.${session.user.id}`,
+                },
+                () => {
+                    loadNotifications();
+                }
+            )
+            .subscribe();
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [session?.user.id]);
+
+    useEffect(() => {
+        if (!session?.user.id) return;
+        const handler = () => {
+            loadPendingRequests();
+            loadFriends();
+            reload();
+        };
+        const inboundCh = supabase
+            .channel(`friendships-in-${session.user.id}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'friendships',
+                    filter: `addressee_id=eq.${session.user.id}`,
+                },
+                handler
+            )
+            .subscribe();
+        const outboundCh = supabase
+            .channel(`friendships-out-${session.user.id}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'friendships',
+                    filter: `requester_id=eq.${session.user.id}`,
+                },
+                handler
+            )
+            .subscribe();
+        return () => {
+            supabase.removeChannel(inboundCh);
+            supabase.removeChannel(outboundCh);
+        };
     }, [session?.user.id]);
 
     useEffect(() => {
@@ -593,7 +680,7 @@ export default function Index() {
 
     useEffect(() => {
         if (!session) return;
-        if (hasNavigatedFromNotification.current) return;
+        //
 
         AsyncStorage.getItem('pendingNotificationSpot').then((raw) => {
             if (!raw) return;
@@ -611,7 +698,36 @@ export default function Index() {
                 });
             }, 1000);
         });
+
+        AsyncStorage.getItem('pendingNotificationProfile').then((val) => {
+            if (!val) return;
+            setProfileOpen(true);
+        });
+
+        AsyncStorage.getItem('pendingNotificationPublicProfile').then(
+            (actorId) => {
+                if (!actorId) return;
+                setPublicProfileUserId(actorId);
+                setPublicProfileOpen(true);
+            }
+        );
     }, [session]);
+
+    useEffect(() => {
+        if (!profileOpen) return;
+        const timer = setTimeout(() => {
+            AsyncStorage.removeItem('pendingNotificationProfile');
+        }, 3000);
+        return () => clearTimeout(timer);
+    }, [profileOpen]);
+
+    useEffect(() => {
+        if (!publicProfileOpen) return;
+        const timer = setTimeout(() => {
+            AsyncStorage.removeItem('pendingNotificationPublicProfile');
+        }, 3000);
+        return () => clearTimeout(timer);
+    }, [publicProfileOpen]);
 
     useEffect(() => {
         if (pathname === '/reset-password') {
@@ -713,6 +829,34 @@ export default function Index() {
                             style={{ padding: 8 }}
                         >
                             <Ionicons name="menu" size={24} color={c.text} />
+                            {pendingReceived.length + unreadActivityCount >
+                            0 ? (
+                                <View
+                                    style={{
+                                        position: 'absolute',
+                                        top: 2,
+                                        right: 2,
+                                        minWidth: 18,
+                                        height: 18,
+                                        borderRadius: 9,
+                                        backgroundColor: c.danger,
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        paddingHorizontal: 4,
+                                    }}
+                                >
+                                    <Text
+                                        style={{
+                                            color: 'white',
+                                            fontSize: 11,
+                                            fontWeight: '700',
+                                        }}
+                                    >
+                                        {pendingReceived.length +
+                                            unreadActivityCount}
+                                    </Text>
+                                </View>
+                            ) : null}
                         </Pressable>
                         <Text
                             style={{
@@ -771,6 +915,22 @@ export default function Index() {
 
                     <ExplorePanel
                         visible={panelOpen}
+                        pendingFriendRequestsCount={pendingReceived.length}
+                        activityNotifications={activityNotifications}
+                        onMarkAllNotificationsRead={markAllAsRead}
+                        onSelectNotification={(n) => {
+                            markAsRead(n.id);
+                            const spot = n.spot_id
+                                ? spots.find((s) => s.id === n.spot_id)
+                                : null;
+                            if (spot) {
+                                setPanelOpen(false);
+                                setHighlightSpotId(spot.id);
+                                highlightSpotIdRef.current = spot.id;
+                                animateToSpotWithModalOffset(spot.lat, spot.lng);
+                                openSpotDetails(spot);
+                            }
+                        }}
                         onClose={() => {
                             setPanelOpen(false);
                             reload();
@@ -938,12 +1098,36 @@ export default function Index() {
                         }}
                         wishlist={wishlist}
                         wishlistLoading={wishlistLoading}
-                        onToggleSpotPrivacy={async (spot) => {
+                        onCycleSpotVisibility={async (spot) => {
                             await Haptics.impactAsync(
                                 Haptics.ImpactFeedbackStyle.Light
                             );
-                            await toggleSpotPrivacy(spot);
-                            await loadMySpots();
+                            const current = spotVisibility(spot);
+                            const options: SpotVisibility[] = [
+                                'public',
+                                'friends',
+                                'private',
+                            ];
+                            const labels = [
+                                'Public',
+                                'Friends',
+                                'Private',
+                                'Cancel',
+                            ];
+                            ActionSheetIOS.showActionSheetWithOptions(
+                                {
+                                    title: 'Visibility',
+                                    options: labels,
+                                    cancelButtonIndex: 3,
+                                },
+                                async (idx) => {
+                                    if (idx === 3) return;
+                                    const picked = options[idx];
+                                    if (picked === current) return;
+                                    await setSpotVisibility(spot, picked);
+                                    await loadMySpots();
+                                }
+                            );
                         }}
                         onDeleteSpot={async (spot) => {
                             await Haptics.impactAsync(
@@ -1070,6 +1254,13 @@ export default function Index() {
                                                 <OtherUsersSpotMarkers
                                                     selected={
                                                         s.id === highlightSpotId
+                                                    }
+                                                    isFriend={
+                                                        s.user_id
+                                                            ? friendIds.has(
+                                                                  s.user_id
+                                                              )
+                                                            : false
                                                     }
                                                 />
                                             </Marker>
@@ -1215,10 +1406,8 @@ export default function Index() {
                             setSpotTags((prev) => prev.filter((t) => t !== tag))
                         }
                         onCancel={closeCreateModal}
-                        isPrivate={spotIsPrivate}
-                        onTogglePrivate={() =>
-                            setSpotIsPrivate((prev) => !prev)
-                        }
+                        visibility={createSpotVisibility}
+                        onChangeVisibility={setCreateSpotVisibility}
                         onCreate={async () => {
                             if (!pendingCoord) return;
                             const newSpot = await createSpotAt(
@@ -1228,7 +1417,7 @@ export default function Index() {
                                 spotDesc,
                                 spotRating,
                                 spotTags,
-                                spotIsPrivate,
+                                createSpotVisibility,
                                 spotType
                             );
                             if (newSpot) {
@@ -1292,7 +1481,8 @@ export default function Index() {
                         spotType={spotType}
                         onChangeSpotType={(v) => {
                             setSpotType(v);
-                            if (v !== 'spot') setSpotIsPrivate(false);
+                            if (v !== 'spot')
+                                setCreateSpotVisibility('public');
                         }}
                     />
 
@@ -1335,7 +1525,8 @@ export default function Index() {
                                     await sendPushNotification(
                                         selectedSpot.id,
                                         'review',
-                                        username
+                                        username,
+                                        session?.user.id
                                     );
                                 }
                             }
@@ -1363,7 +1554,8 @@ export default function Index() {
                                 await sendPushNotification(
                                     selectedSpot.id,
                                     'favorite',
-                                    username
+                                    username,
+                                    session?.user.id
                                 );
                             }
                         }}
@@ -1385,18 +1577,6 @@ export default function Index() {
                             if (!selectedSpot) return;
                             await uploadImages(selectedSpot.id, uris);
                         }}
-                        onTogglePrivacy={async () => {
-                            if (!selectedSpot) return;
-                            await Haptics.impactAsync(
-                                Haptics.ImpactFeedbackStyle.Light
-                            );
-                            await toggleSpotPrivacy(selectedSpot);
-                            setSelectedSpot((prev) =>
-                                prev
-                                    ? { ...prev, is_private: !prev.is_private }
-                                    : prev
-                            );
-                        }}
                         creatorUsername={spotCreatorUsername ?? undefined}
                         creatorAvatarUrl={spotCreatorAvatarUrl ?? undefined}
                         activeConditions={activeConditions}
@@ -1412,7 +1592,8 @@ export default function Index() {
                                 await sendPushNotification(
                                     selectedSpot.id,
                                     'condition',
-                                    username
+                                    username,
+                                    session?.user.id
                                 );
                             }
                         }}
@@ -1436,7 +1617,8 @@ export default function Index() {
                                 await sendPushNotification(
                                     selectedSpot.id,
                                     'wishlist',
-                                    username
+                                    username,
+                                    session?.user.id
                                 );
                             }
                         }}
@@ -1516,7 +1698,13 @@ export default function Index() {
 
                     <ProfileModal
                         visible={profileOpen}
-                        onClose={() => setProfileOpen(false)}
+                        onClose={() => {
+                            setProfileOpen(false);
+                            AsyncStorage.removeItem(
+                                'pendingNotificationProfile'
+                            );
+                            loadPendingRequests();
+                        }}
                         mySpots={mySpots}
                         myReviews={myReviews}
                         onLoadMyReviews={loadMyReviews}
@@ -1559,6 +1747,13 @@ export default function Index() {
                             await signOut();
                             setProfileOpen(false);
                         }}
+                        onViewProfile={(userId) => {
+                            setProfileOpen(false);
+                            setTimeout(() => {
+                                setPublicProfileUserId(userId);
+                                setPublicProfileOpen(true);
+                            }, 350);
+                        }}
                     />
 
                     <PublicProfileModal
@@ -1566,6 +1761,9 @@ export default function Index() {
                         onClose={() => {
                             setPublicProfileOpen(false);
                             setPublicProfileUserId(null);
+                            AsyncStorage.removeItem(
+                                'pendingNotificationPublicProfile'
+                            );
                         }}
                         userId={publicProfileUserId}
                         allSpots={spots}

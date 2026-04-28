@@ -36,6 +36,7 @@ export function useSpotFlags(userId: string | null) {
                         spot_id: spotId,
                         event_type: 'flag',
                         actor_username: actorUsername,
+                        actor_id: userId,
                         reason,
                     },
                 });

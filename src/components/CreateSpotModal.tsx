@@ -7,6 +7,7 @@ import { Stars } from '@/src/components/Stars';
 import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '@/src/context/ThemeContext';
 import { Ionicons } from "@expo/vector-icons";
+import { SpotVisibility } from '@/src/hooks/useSpots';
 
 type Props = {
     visible: boolean;
@@ -25,8 +26,8 @@ type Props = {
     onRemoveImage: (uri: string) => void;
     onCancel: () => void;
     onCreate: () => void;
-    isPrivate: boolean;
-    onTogglePrivate: () => void;
+    visibility: SpotVisibility;
+    onChangeVisibility: (v: SpotVisibility) => void;
     spotComment: string;
     onChangeComment: (v: string) => void;
     spotType: 'spot' | 'skatepark' | 'skateshop';
@@ -36,7 +37,7 @@ type Props = {
 export function CreateSpotModal({
     visible, pendingCoord, spotName, spotDesc, spotRating, spotTags, pendingImages,
     onChangeName, onChangeDesc, onChangeRating, onAddTag, onRemoveTag,
-    onAddImage, onRemoveImage, onCancel, onCreate, isPrivate, onTogglePrivate, spotComment, onChangeComment,
+    onAddImage, onRemoveImage, onCancel, onCreate, visibility, onChangeVisibility, spotComment, onChangeComment,
     spotType, onChangeSpotType,
 }: Props) {
 
@@ -114,16 +115,33 @@ export function CreateSpotModal({
                             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                                 <Text style={{ fontSize: 18, fontWeight: '600', color: c.text }}>{modalTitle}</Text>
                                 {spotType === 'spot' ? (
-                                    <Pressable onPress={onTogglePrivate} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, padding: 6, backgroundColor: c.tagBg, borderRadius: 8 }}>
-                                        <Ionicons
-                                            name={isPrivate ? 'lock-closed' : 'lock-open'}
-                                            size={16}
-                                            color={isPrivate ? c.danger : c.subtext}
-                                        />
-                                        <Text style={{ fontSize: 12, color: isPrivate ? c.danger : c.subtext, fontWeight: '600' }}>
-                                            {isPrivate ? 'Private' : 'Public'}
-                                        </Text>
-                                    </Pressable>
+                                    <View style={{ flexDirection: 'row', backgroundColor: c.tagBg, borderRadius: 8, padding: 2 }}>
+                                        {(['public', 'friends', 'private'] as const).map((v) => {
+                                            const active = visibility === v;
+                                            const label = v === 'public' ? 'Public' : v === 'friends' ? 'Friends' : 'Private';
+                                            const icon = v === 'public' ? 'globe-outline' : v === 'friends' ? 'people-outline' : 'lock-closed';
+                                            return (
+                                                <Pressable
+                                                    key={v}
+                                                    onPress={() => onChangeVisibility(v)}
+                                                    style={{
+                                                        flexDirection: 'row',
+                                                        alignItems: 'center',
+                                                        gap: 4,
+                                                        paddingHorizontal: 8,
+                                                        paddingVertical: 4,
+                                                        borderRadius: 6,
+                                                        backgroundColor: active ? c.surface : 'transparent',
+                                                    }}
+                                                >
+                                                    <Ionicons name={icon as any} size={12} color={active ? c.text : c.subtext} />
+                                                    <Text style={{ fontSize: 11, fontWeight: '600', color: active ? c.text : c.subtext }}>
+                                                        {label}
+                                                    </Text>
+                                                </Pressable>
+                                            );
+                                        })}
+                                    </View>
                                 ) : null}
                             </View>
 

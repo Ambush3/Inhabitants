@@ -94,7 +94,6 @@ type Props = {
     imagesLoading: boolean;
     onDeleteImage: (url: string) => void;
     onUploadImages: (uris: string[]) => Promise<void>;
-    onTogglePrivacy: () => void;
     creatorUsername?: string;
     creatorAvatarUrl?: string;
     activeConditions: SpotCondition[];
@@ -135,7 +134,6 @@ export function SpotDetailsModal({
     imagesLoading,
     onDeleteImage,
     onUploadImages,
-    onTogglePrivacy,
     creatorUsername,
     creatorAvatarUrl,
     activeConditions,
