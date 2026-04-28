@@ -64,6 +64,8 @@ import { useTheme } from '@/src/context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { Place, Spot } from '@/src/types';
 import { useWishlist } from '@/src/hooks/useWishlist';
+import { useFriendships } from '@/src/hooks/social/useFriendships';
+import { useNotifications } from '@/src/hooks/useNotifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 ExpoSplashScreen.preventAutoHideAsync();
@@ -169,6 +171,15 @@ export default function Index() {
         toggleCondition,
         resetConditions,
     } = useSpotConditions();
+
+    const { pendingReceived, loadPendingRequests } = useFriendships();
+    const {
+        notifications: activityNotifications,
+        unreadCount: unreadActivityCount,
+        loadNotifications,
+        markAsRead,
+        markAllAsRead,
+    } = useNotifications();
 
     const { flaggedSpotIds, loadFlags, toggleFlag, isFlaggedByMe } =
         useSpotFlags(session?.user.id ?? null);
@@ -453,6 +464,7 @@ export default function Index() {
         loadWishlist();
         loadFlags();
         loadReviewFlags();
+        loadPendingRequests();
     }, []);
 
     useFocusEffect(
@@ -462,6 +474,7 @@ export default function Index() {
             loadWishlist();
             loadFlags();
             loadReviewFlags();
+            loadPendingRequests();
         }, [])
     );
 
@@ -533,6 +546,8 @@ export default function Index() {
             loadThemeForUser(session.user.id);
             loadFlags();
             loadReviewFlags();
+            loadPendingRequests();
+            loadNotifications();
             supabase
                 .from('profiles')
                 .select('avatar_url')
@@ -543,6 +558,50 @@ export default function Index() {
             resetTheme();
             setMyAvatarUrl(null);
         }
+    }, [session?.user.id]);
+
+    useEffect(() => {
+        if (!session?.user.id) return;
+        const channel = supabase
+            .channel(`notifications-${session.user.id}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'notifications',
+                    filter: `user_id=eq.${session.user.id}`,
+                },
+                () => {
+                    loadNotifications();
+                }
+            )
+            .subscribe();
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [session?.user.id]);
+
+    useEffect(() => {
+        if (!session?.user.id) return;
+        const channel = supabase
+            .channel(`friendships-${session.user.id}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'friendships',
+                    filter: `addressee_id=eq.${session.user.id}`,
+                },
+                () => {
+                    loadPendingRequests();
+                }
+            )
+            .subscribe();
+        return () => {
+            supabase.removeChannel(channel);
+        };
     }, [session?.user.id]);
 
     useEffect(() => {
@@ -747,6 +806,34 @@ export default function Index() {
                             style={{ padding: 8 }}
                         >
                             <Ionicons name="menu" size={24} color={c.text} />
+                            {pendingReceived.length + unreadActivityCount >
+                            0 ? (
+                                <View
+                                    style={{
+                                        position: 'absolute',
+                                        top: 2,
+                                        right: 2,
+                                        minWidth: 18,
+                                        height: 18,
+                                        borderRadius: 9,
+                                        backgroundColor: c.danger,
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        paddingHorizontal: 4,
+                                    }}
+                                >
+                                    <Text
+                                        style={{
+                                            color: 'white',
+                                            fontSize: 11,
+                                            fontWeight: '700',
+                                        }}
+                                    >
+                                        {pendingReceived.length +
+                                            unreadActivityCount}
+                                    </Text>
+                                </View>
+                            ) : null}
                         </Pressable>
                         <Text
                             style={{
@@ -805,6 +892,22 @@ export default function Index() {
 
                     <ExplorePanel
                         visible={panelOpen}
+                        pendingFriendRequestsCount={pendingReceived.length}
+                        activityNotifications={activityNotifications}
+                        onMarkAllNotificationsRead={markAllAsRead}
+                        onSelectNotification={(n) => {
+                            markAsRead(n.id);
+                            const spot = n.spot_id
+                                ? spots.find((s) => s.id === n.spot_id)
+                                : null;
+                            if (spot) {
+                                setPanelOpen(false);
+                                setHighlightSpotId(spot.id);
+                                highlightSpotIdRef.current = spot.id;
+                                animateToSpotWithModalOffset(spot.lat, spot.lng);
+                                openSpotDetails(spot);
+                            }
+                        }}
                         onClose={() => {
                             setPanelOpen(false);
                             reload();
@@ -1369,7 +1472,8 @@ export default function Index() {
                                     await sendPushNotification(
                                         selectedSpot.id,
                                         'review',
-                                        username
+                                        username,
+                                        session?.user.id
                                     );
                                 }
                             }
@@ -1397,7 +1501,8 @@ export default function Index() {
                                 await sendPushNotification(
                                     selectedSpot.id,
                                     'favorite',
-                                    username
+                                    username,
+                                    session?.user.id
                                 );
                             }
                         }}
@@ -1446,7 +1551,8 @@ export default function Index() {
                                 await sendPushNotification(
                                     selectedSpot.id,
                                     'condition',
-                                    username
+                                    username,
+                                    session?.user.id
                                 );
                             }
                         }}
@@ -1470,7 +1576,8 @@ export default function Index() {
                                 await sendPushNotification(
                                     selectedSpot.id,
                                     'wishlist',
-                                    username
+                                    username,
+                                    session?.user.id
                                 );
                             }
                         }}
@@ -1555,6 +1662,7 @@ export default function Index() {
                             AsyncStorage.removeItem(
                                 'pendingNotificationProfile'
                             );
+                            loadPendingRequests();
                         }}
                         mySpots={mySpots}
                         myReviews={myReviews}
