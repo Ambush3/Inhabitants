@@ -100,6 +100,7 @@ export default function Index() {
     const openedFromFavoritesRef = useRef(false);
 
     const suppressMapPressRef = useRef(false);
+    const actionSheetOpenRef = useRef(false);
 
     const {
         reviews: spotReviews,
@@ -1127,6 +1128,7 @@ export default function Index() {
                             }, 60000);
                         }}
                         onSelectSpot={(s) => {
+                            if (actionSheetOpenRef.current) return;
                             setPanelOpen(false);
                             if (
                                 s.spot_type === 'skatepark' ||
@@ -1158,8 +1160,10 @@ export default function Index() {
                             } else {
                                 setHighlightSpotId(s.id);
                                 highlightSpotIdRef.current = s.id;
-                                animateToSpotWithModalOffset(s.lat, s.lng);
-                                openSpotDetails(s);
+                                setTimeout(() => {
+                                    animateToSpotWithModalOffset(s.lat, s.lng);
+                                    openSpotDetails(s);
+                                }, 350);
                             }
                         }}
                         onSignOut={async () => {
@@ -1203,6 +1207,8 @@ export default function Index() {
                         wishlist={wishlist}
                         wishlistLoading={wishlistLoading}
                         onCycleSpotVisibility={async (spot) => {
+                            if (actionSheetOpenRef.current) return;
+                            actionSheetOpenRef.current = true;
                             await Haptics.impactAsync(
                                 Haptics.ImpactFeedbackStyle.Light
                             );
@@ -1225,6 +1231,7 @@ export default function Index() {
                                     cancelButtonIndex: 3,
                                 },
                                 async (idx) => {
+                                    actionSheetOpenRef.current = false;
                                     if (idx === 3) return;
                                     const picked = options[idx];
                                     if (picked === current) return;
