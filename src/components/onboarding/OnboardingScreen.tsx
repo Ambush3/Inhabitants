@@ -18,7 +18,7 @@ const slides = [
         emoji: '📍',
         title: 'Explore the Map',
         subtitle:
-            "Gold circular pins are your spots. Dark pins are other skaters' spots — they turn red when selected. Skate parks and shops have their own icons.",
+            "Gold circular pins are your spots. Dark pins are other skaters' spots. Skate parks and shops have their own icons.",
     },
     {
         id: '3',
@@ -39,7 +39,42 @@ const slides = [
         emoji: '👤',
         title: 'Your Profile',
         subtitle:
-            'Set a profile picture, track your spots and reviews, and edit your username. Access your profile from the menu footer.',
+            'Set a profile picture, add your first and last name, track your spots and reviews, and edit your username. Access your profile from the menu footer.',
+    },
+    {
+        id: '6',
+        emoji: '👥',
+        title: 'Add Friends',
+        subtitle:
+            "Tap any other skater's username or pin to view their public profile, then tap Add Friend. Cancel a request by tapping Request Sent. Accept incoming requests from your profile.",
+    },
+    {
+        id: '7',
+        emoji: '🔒',
+        title: 'Spot Visibility',
+        subtitle:
+            'Each spot you create can be Public (everyone), Friends (only your friends), or Private (only you). Swipe right on a spot in Mine to change visibility anytime.',
+    },
+    {
+        id: '8',
+        emoji: '🟣',
+        title: 'Friend Spots on the Map',
+        subtitle:
+            "Pins from your friends show in purple so you can spot them quickly. Friends-only spots appear only if you're connected.",
+    },
+    {
+        id: '9',
+        emoji: '🔔',
+        title: 'Notifications & Activity',
+        subtitle:
+            'A red badge on the menu shows pending friend requests and unread activity. Open the menu to see who reviewed, saved, or flagged your spots — tap a row to jump to it.',
+    },
+    {
+        id: '10',
+        emoji: '📰',
+        title: 'Friend Feed',
+        subtitle:
+            'The Feed tab in the menu shows what your friends are doing — new spots they created and reviews they left. Tap any item to open the spot.',
     },
 ];
 
