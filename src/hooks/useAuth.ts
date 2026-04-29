@@ -21,20 +21,40 @@ export function useAuth() {
         return () => subscription.unsubscribe();
     }, []);
 
-    async function signUp(email: string, password: string, username: string): Promise<string | null> {
+    async function signUp(
+        email: string,
+        password: string,
+        username: string,
+        firstName?: string,
+        lastName?: string
+    ): Promise<string | null> {
         const usernameCheck = moderateText(username);
         if (!usernameCheck.allowed) {
             return 'This username is not allowed.';
         }
-    
+
+        if (firstName) {
+            const fnCheck = moderateText(firstName);
+            if (!fnCheck.allowed) return 'First name is not allowed.';
+        }
+        if (lastName) {
+            const lnCheck = moderateText(lastName);
+            if (!lnCheck.allowed) return 'Last name is not allowed.';
+        }
+
         const { data, error } = await supabase.auth.signUp({ email, password });
         if (error) return error.message;
         if (!data.user) return 'Something went wrong.';
-    
+
         const { error: profileError } = await supabase
             .from('profiles')
-            .insert({ id: data.user.id, username });
-    
+            .insert({
+                id: data.user.id,
+                username,
+                first_name: firstName?.trim() || null,
+                last_name: lastName?.trim() || null,
+            });
+
         return profileError?.message ?? null;
     }
 

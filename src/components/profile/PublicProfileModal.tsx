@@ -48,6 +48,8 @@ export function PublicProfileModal({
 
     const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
     const [username, setUsername] = useState<string | null>(null);
+    const [firstName, setFirstName] = useState<string | null>(null);
+    const [lastName, setLastName] = useState<string | null>(null);
     const [joinDate, setJoinDate] = useState<string | null>(null);
     const [publicSpots, setPublicSpots] = useState<Spot[]>([]);
     const [publicReviews, setPublicReviews] = useState<PublicReview[]>([]);
@@ -85,7 +87,7 @@ export function PublicProfileModal({
                 await Promise.all([
                     supabase
                         .from('profiles')
-                        .select('avatar_url, username, created_at')
+                        .select('avatar_url, username, created_at, first_name, last_name')
                         .eq('id', userId)
                         .single(),
                     supabase
@@ -106,6 +108,8 @@ export function PublicProfileModal({
                 ]);
             setAvatarUrl(profileRes.data?.avatar_url ?? null);
             setUsername(profileRes.data?.username ?? null);
+            setFirstName(profileRes.data?.first_name ?? null);
+            setLastName(profileRes.data?.last_name ?? null);
             setJoinDate(profileRes.data?.created_at ?? null);
             setPublicSpots((spotsRes.data as Spot[]) ?? []);
             setPublicReviews(
@@ -207,12 +211,33 @@ export function PublicProfileModal({
                                     />
                                 </View>
                             )}
-                            {username ? (
+                            {firstName || lastName ? (
                                 <Text
                                     style={{
                                         fontSize: 22,
                                         fontWeight: '700',
                                         color: c.text,
+                                        marginBottom: 2,
+                                    }}
+                                >
+                                    {[firstName, lastName]
+                                        .filter(Boolean)
+                                        .join(' ')}
+                                </Text>
+                            ) : null}
+                            {username ? (
+                                <Text
+                                    style={{
+                                        fontSize:
+                                            firstName || lastName ? 14 : 22,
+                                        fontWeight:
+                                            firstName || lastName
+                                                ? '500'
+                                                : '700',
+                                        color:
+                                            firstName || lastName
+                                                ? c.subtext
+                                                : c.text,
                                         marginBottom: 4,
                                     }}
                                 >
