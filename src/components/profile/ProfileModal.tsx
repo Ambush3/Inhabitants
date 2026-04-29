@@ -59,10 +59,14 @@ export function ProfileModal({
     const [activeTab, setActiveTab] = useState<Tab>('spots');
     const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
     const [username, setUsername] = useState<string | null>(null);
+    const [firstName, setFirstName] = useState<string | null>(null);
+    const [lastName, setLastName] = useState<string | null>(null);
     const [joinDate, setJoinDate] = useState<string | null>(null);
 
     const [editOpen, setEditOpen] = useState(false);
     const [editUsername, setEditUsername] = useState('');
+    const [editFirstName, setEditFirstName] = useState('');
+    const [editLastName, setEditLastName] = useState('');
     const [editLoading, setEditLoading] = useState(false);
 
     const [selectionMode, setSelectionMode] = useState(false);
@@ -122,11 +126,13 @@ export function ProfileModal({
             if (!user) return;
             const { data } = await supabase
                 .from('profiles')
-                .select('avatar_url, username, created_at')
+                .select('avatar_url, username, created_at, first_name, last_name')
                 .eq('id', user.id)
                 .single();
             setAvatarUrl(data?.avatar_url ?? null);
             setUsername(data?.username ?? null);
+            setFirstName(data?.first_name ?? null);
+            setLastName(data?.last_name ?? null);
             setJoinDate(data?.created_at ?? null);
         }
         loadProfile();
@@ -173,6 +179,8 @@ export function ProfileModal({
                     <Pressable
                         onPress={() => {
                             setEditUsername(username ?? '');
+                            setEditFirstName(firstName ?? '');
+                            setEditLastName(lastName ?? '');
                             setEditOpen(true);
                         }}
                         style={{ padding: 4 }}
@@ -220,12 +228,30 @@ export function ProfileModal({
                                 />
                             </View>
                         )}
-                        {username ? (
+                        {firstName || lastName ? (
                             <Text
                                 style={{
                                     fontSize: 22,
                                     fontWeight: '700',
                                     color: c.text,
+                                    marginBottom: 2,
+                                }}
+                            >
+                                {[firstName, lastName]
+                                    .filter(Boolean)
+                                    .join(' ')}
+                            </Text>
+                        ) : null}
+                        {username ? (
+                            <Text
+                                style={{
+                                    fontSize: firstName || lastName ? 14 : 22,
+                                    fontWeight:
+                                        firstName || lastName ? '500' : '700',
+                                    color:
+                                        firstName || lastName
+                                            ? c.subtext
+                                            : c.text,
                                     marginBottom: 4,
                                 }}
                             >
@@ -941,6 +967,62 @@ export function ProfileModal({
                                 fontSize: 15,
                                 color: c.text,
                                 backgroundColor: c.surface,
+                                marginBottom: 14,
+                            }}
+                        />
+
+                        <Text
+                            style={{
+                                fontSize: 13,
+                                color: c.subtext,
+                                marginBottom: 6,
+                            }}
+                        >
+                            First Name{' '}
+                            <Text style={{ opacity: 0.5 }}>(optional)</Text>
+                        </Text>
+                        <TextInput
+                            value={editFirstName}
+                            onChangeText={setEditFirstName}
+                            placeholder="First name"
+                            placeholderTextColor={c.placeholder}
+                            autoCapitalize="words"
+                            style={{
+                                borderWidth: 1,
+                                borderColor: c.inputBorder,
+                                borderRadius: 10,
+                                padding: 12,
+                                fontSize: 15,
+                                color: c.text,
+                                backgroundColor: c.surface,
+                                marginBottom: 14,
+                            }}
+                        />
+
+                        <Text
+                            style={{
+                                fontSize: 13,
+                                color: c.subtext,
+                                marginBottom: 6,
+                            }}
+                        >
+                            Last Name{' '}
+                            <Text style={{ opacity: 0.5 }}>(optional)</Text>
+                        </Text>
+                        <TextInput
+                            value={editLastName}
+                            onChangeText={setEditLastName}
+                            placeholder="Last name"
+                            placeholderTextColor={c.placeholder}
+                            autoCapitalize="words"
+                            style={{
+                                borderWidth: 1,
+                                borderColor: c.inputBorder,
+                                borderRadius: 10,
+                                padding: 12,
+                                fontSize: 15,
+                                color: c.text,
+                                backgroundColor: c.surface,
                                 marginBottom: 20,
                             }}
                         />
@@ -953,13 +1035,19 @@ export function ProfileModal({
                                     data: { user },
                                 } = await supabase.auth.getUser();
                                 if (user) {
+                                    const trimmedFirst = editFirstName.trim();
+                                    const trimmedLast = editLastName.trim();
                                     await supabase
                                         .from('profiles')
                                         .update({
                                             username: editUsername.trim(),
+                                            first_name: trimmedFirst || null,
+                                            last_name: trimmedLast || null,
                                         })
                                         .eq('id', user.id);
                                     setUsername(editUsername.trim());
+                                    setFirstName(trimmedFirst || null);
+                                    setLastName(trimmedLast || null);
                                 }
                                 setEditLoading(false);
                                 setEditOpen(false);
