@@ -7,6 +7,29 @@ const supabase = createClient(
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 );
 
+const PREF_COLUMN_BY_TYPE: Record<string, string | null> = {
+    friend_request: 'notify_friend_request',
+    friend_accepted: 'notify_friend_accepted',
+    review: 'notify_review',
+    favorite: 'notify_favorite',
+    wishlist: 'notify_wishlist',
+    condition: 'notify_condition',
+    flag: 'notify_flag',
+    image_removed: null,
+};
+
+async function isAllowed(userId: string, eventType: string): Promise<boolean> {
+    const col = PREF_COLUMN_BY_TYPE[eventType];
+    if (!col) return true;
+    const { data } = await supabase
+        .from('notification_preferences')
+        .select(col)
+        .eq('user_id', userId)
+        .maybeSingle();
+    if (!data) return true;
+    return data[col] !== false;
+}
+
 Deno.serve(async (req) => {
     try {
         const {
@@ -22,6 +45,12 @@ Deno.serve(async (req) => {
             event_type === 'friend_request' ||
             event_type === 'friend_accepted'
         ) {
+            if (!(await isAllowed(addressee_id, event_type))) {
+                return new Response(JSON.stringify({ muted: true }), {
+                    status: 200,
+                });
+            }
+
             const { data: tokenRow } = await supabase
                 .from('push_tokens')
                 .select('token, last_friend_request_notify')
@@ -85,6 +114,12 @@ Deno.serve(async (req) => {
             .single();
 
         if (!spot) return new Response('Spot not found', { status: 404 });
+
+        if (!(await isAllowed(spot.user_id, event_type))) {
+            return new Response(JSON.stringify({ muted: true }), {
+                status: 200,
+            });
+        }
 
         const { data: tokenRow } = await supabase
             .from('push_tokens')
