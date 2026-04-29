@@ -14,6 +14,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/src/libs/supabase';
 import { useTheme } from '@/src/context/ThemeContext';
 import { changelog } from '@/src/changelog';
+import {
+    useNotificationPreferences,
+    NotificationPrefs,
+} from '@/src/hooks/useNotificationPreferences';
 
 import * as ImagePicker from 'expo-image-picker';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
@@ -41,6 +45,13 @@ export function SettingsPanel({
     const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
     const [avatarLoading, setAvatarLoading] = useState(false);
     const [username, setUsername] = useState<string | null>(null);
+
+    const { prefs, loadPrefs, updatePref } = useNotificationPreferences();
+    const [notifSectionOpen, setNotifSectionOpen] = useState(false);
+
+    useEffect(() => {
+        if (visible) loadPrefs();
+    }, [visible]);
 
     useEffect(() => {
         async function loadAvatar() {
@@ -350,6 +361,95 @@ export function SettingsPanel({
                                 Reset Password
                             </Text>
                         </Pressable>
+
+                        <Pressable
+                            onPress={() => setNotifSectionOpen((p) => !p)}
+                            style={{
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                gap: 10,
+                                paddingVertical: 14,
+                                borderBottomWidth: notifSectionOpen ? 0 : 1,
+                                borderColor: c.border,
+                            }}
+                        >
+                            <Ionicons
+                                name="notifications-outline"
+                                size={20}
+                                color={c.text}
+                            />
+                            <Text
+                                style={{
+                                    flex: 1,
+                                    fontSize: 15,
+                                    color: c.text,
+                                }}
+                            >
+                                Notifications
+                            </Text>
+                            <Ionicons
+                                name={
+                                    notifSectionOpen
+                                        ? 'chevron-up'
+                                        : 'chevron-down'
+                                }
+                                size={16}
+                                color={c.subtext}
+                            />
+                        </Pressable>
+                        {notifSectionOpen ? (
+                            <View
+                                style={{
+                                    paddingLeft: 30,
+                                    paddingBottom: 8,
+                                    borderBottomWidth: 1,
+                                    borderColor: c.border,
+                                }}
+                            >
+                                {(
+                                    [
+                                        ['notify_review', 'Reviews'],
+                                        ['notify_favorite', 'Saves'],
+                                        ['notify_wishlist', 'Wishlists'],
+                                        ['notify_condition', 'Conditions'],
+                                        ['notify_flag', 'Flags'],
+                                        [
+                                            'notify_friend_request',
+                                            'Friend Requests',
+                                        ],
+                                        [
+                                            'notify_friend_accepted',
+                                            'Friend Accepted',
+                                        ],
+                                    ] as [keyof NotificationPrefs, string][]
+                                ).map(([key, label]) => (
+                                    <View
+                                        key={key}
+                                        style={{
+                                            flexDirection: 'row',
+                                            alignItems: 'center',
+                                            justifyContent: 'space-between',
+                                            paddingVertical: 8,
+                                        }}
+                                    >
+                                        <Text
+                                            style={{
+                                                fontSize: 14,
+                                                color: c.text,
+                                            }}
+                                        >
+                                            {label}
+                                        </Text>
+                                        <Switch
+                                            value={prefs[key]}
+                                            onValueChange={(v) =>
+                                                updatePref(key, v)
+                                            }
+                                        />
+                                    </View>
+                                ))}
+                            </View>
+                        ) : null}
 
                         <Pressable
                             onPress={() => {
