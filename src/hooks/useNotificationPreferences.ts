@@ -6,7 +6,6 @@ export type NotificationPrefs = {
     notify_favorite: boolean;
     notify_wishlist: boolean;
     notify_condition: boolean;
-    notify_flag: boolean;
     notify_friend_request: boolean;
     notify_friend_accepted: boolean;
 };
@@ -16,7 +15,6 @@ const DEFAULTS: NotificationPrefs = {
     notify_favorite: true,
     notify_wishlist: true,
     notify_condition: true,
-    notify_flag: true,
     notify_friend_request: true,
     notify_friend_accepted: true,
 };
@@ -42,7 +40,6 @@ export function useNotificationPreferences() {
                 notify_favorite: data.notify_favorite,
                 notify_wishlist: data.notify_wishlist,
                 notify_condition: data.notify_condition,
-                notify_flag: data.notify_flag,
                 notify_friend_request: data.notify_friend_request,
                 notify_friend_accepted: data.notify_friend_accepted,
             });

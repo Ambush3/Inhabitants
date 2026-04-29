@@ -412,7 +412,6 @@ export function SettingsPanel({
                                         ['notify_favorite', 'Saves'],
                                         ['notify_wishlist', 'Wishlists'],
                                         ['notify_condition', 'Conditions'],
-                                        ['notify_flag', 'Flags'],
                                         [
                                             'notify_friend_request',
                                             'Friend Requests',
