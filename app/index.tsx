@@ -1028,7 +1028,10 @@ export default function Index() {
                                 setPanelOpen(false);
                                 setHighlightSpotId(spot.id);
                                 highlightSpotIdRef.current = spot.id;
-                                animateToSpotWithModalOffset(spot.lat, spot.lng);
+                                animateToSpotWithModalOffset(
+                                    spot.lat,
+                                    spot.lng
+                                );
                                 openSpotDetails(spot);
                             }
                         }}
@@ -1582,8 +1585,7 @@ export default function Index() {
                         spotType={spotType}
                         onChangeSpotType={(v) => {
                             setSpotType(v);
-                            if (v !== 'spot')
-                                setCreateSpotVisibility('public');
+                            if (v !== 'spot') setCreateSpotVisibility('public');
                         }}
                     />
 

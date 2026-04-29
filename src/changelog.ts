@@ -1,8 +1,24 @@
 export const changelog = [
     {
         version: '1.2',
-        date: 'May 2026',
-        changes: ['Profiles for each user', 'Be able to add friends'],
+        date: 'April 2026',
+        changes: [
+            'Add friends with send, accept, and cancel friend requests',
+            'Bulk remove friends with long-press selection in Friends tab',
+            'Spot visibility now supports Public, Friends, and Private',
+            'Purple map markers for spots created by your friends',
+            'Friends-only spots visible only to accepted friends',
+            'Activity feed in Explore panel for reviews, saves, wishlists, flags, and conditions on your spots',
+            'Friend social feed showing new spots and reviews from friends',
+            'Notification badge on the menu for pending requests and unread activity',
+            'Push notification when a friend request is accepted, deep links into the accepter profile',
+            'Friend request notifications open your profile to accept or decline',
+            'Notification preferences in Settings to opt out per event type',
+            'Server side rate limiting plus client cooldown to prevent friend request spam',
+            'Optional first and last name fields at signup and in profile edit',
+            'Real time updates for friendships, spots, and activity without manual refresh',
+            'Action sheet to switch spot visibility from the Mine tab',
+        ],
     },
     {
         version: '1.1',
