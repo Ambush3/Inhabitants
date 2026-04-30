@@ -344,8 +344,6 @@ export default function Index() {
                 setPlaces([]);
             }
             openedFromDeepLinkRef.current = false;
-        } else {
-            console.log('idToHide was null, skipping places clear');
         }
 
         highlightSpotIdRef.current = null;
@@ -1764,6 +1762,7 @@ export default function Index() {
                                 setPlaces([]);
                                 openedFromFavoritesRef.current = false;
                             }
+                            closeDetailsModal();
                         }}
                         isFavorite={
                             selectedPlace
