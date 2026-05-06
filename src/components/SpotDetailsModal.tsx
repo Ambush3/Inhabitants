@@ -108,6 +108,7 @@ type Props = {
     ) => void | Promise<void>;
     detailsLoading: boolean;
     onViewProfile?: (userId: string) => void;
+    onConditionDone?: () => void;
 };
 
 export function SpotDetailsModal({
@@ -145,6 +146,7 @@ export function SpotDetailsModal({
     onToggleReviewFlag,
     detailsLoading,
     onViewProfile,
+    onConditionDone,
 }: Props) {
     const { width } = Dimensions.get('window');
     const { theme } = useTheme();
@@ -160,8 +162,12 @@ export function SpotDetailsModal({
     const [currentIndex, setCurrentIndex] = useState(0);
     const [editingReviewId, setEditingReviewId] = useState<string | null>(null);
 
+    const [showConditionPicker, setShowConditionPicker] = useState(false);
+
     const reviewFormRef = useRef<View>(null);
     const reviewFormY = useRef(0);
+
+    const conditionsChangedRef = useRef(false);
 
     const viewabilityConfig = useRef({ viewAreaCoveragePercentThreshold: 50 });
     const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
@@ -249,6 +255,7 @@ export function SpotDetailsModal({
             return () => clearTimeout(timer);
         } else {
             setScrollEnabled(false);
+            setShowConditionPicker(false);
         }
     }, [visible]);
 
@@ -955,94 +962,212 @@ export function SpotDetailsModal({
                                         { backgroundColor: c.border },
                                     ]}
                                 />
-                                <Text
+                                <View
                                     style={{
-                                        fontSize: 13,
-                                        fontWeight: '700',
-                                        color: c.text,
-                                        marginBottom: 10,
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        marginBottom: 8,
                                     }}
                                 >
-                                    Conditions
-                                </Text>
-                                <View style={styles.tagsRow}>
-                                    {(
-                                        Object.keys(
-                                            CONDITION_META
-                                        ) as SpotCondition[]
-                                    ).map((condition) => {
-                                        const meta = CONDITION_META[condition];
-                                        const isActive =
-                                            activeConditions.includes(
-                                                condition
-                                            );
-                                        const isMine =
-                                            myConditions.includes(condition);
-                                        return (
-                                            <Pressable
-                                                key={condition}
-                                                onPress={() =>
-                                                    onToggleCondition(condition)
+                                    <Text
+                                        style={{
+                                            fontSize: 13,
+                                            fontWeight: '700',
+                                            color: c.text,
+                                        }}
+                                    >
+                                        Current Conditions
+                                    </Text>
+                                    <Pressable
+                                        onPress={async () => {
+                                            if (showConditionPicker) {
+                                                if (
+                                                    conditionsChangedRef.current
+                                                ) {
+                                                    onConditionDone?.();
                                                 }
-                                                style={{
-                                                    flexDirection: 'row',
-                                                    alignItems: 'center',
-                                                    gap: 4,
-                                                    paddingHorizontal: 10,
-                                                    paddingVertical: 6,
-                                                    borderRadius: 20,
-                                                    backgroundColor: isActive
-                                                        ? meta.bg
-                                                        : c.tagBg,
-                                                    borderWidth: 1,
-                                                    borderColor: isMine
-                                                        ? meta.color
-                                                        : 'transparent',
-                                                }}
-                                            >
-                                                <Text style={{ fontSize: 12 }}>
-                                                    {meta.icon}
-                                                </Text>
-                                                <Text
-                                                    style={{
-                                                        fontSize: 12,
-                                                        color: isActive
-                                                            ? meta.color
-                                                            : c.subtext,
-                                                        fontWeight: isActive
-                                                            ? '700'
-                                                            : '400',
-                                                    }}
-                                                >
-                                                    {meta.label}
-                                                </Text>
-                                                {isActive && !isMine ? (
-                                                    <View
-                                                        style={{
-                                                            width: 6,
-                                                            height: 6,
-                                                            borderRadius: 3,
-                                                            backgroundColor:
-                                                                meta.color,
-                                                            marginLeft: 2,
-                                                        }}
-                                                    />
-                                                ) : null}
-                                            </Pressable>
-                                        );
-                                    })}
+                                                conditionsChangedRef.current = false;
+                                                setShowConditionPicker(false);
+                                            } else {
+                                                setShowConditionPicker(true);
+                                            }
+                                        }}
+                                        style={{
+                                            flexDirection: 'row',
+                                            alignItems: 'center',
+                                            gap: 4,
+                                            paddingHorizontal: 10,
+                                            paddingVertical: 5,
+                                            borderRadius: 12,
+                                            backgroundColor: showConditionPicker
+                                                ? c.border
+                                                : c.tagBg,
+                                        }}
+                                    >
+                                        <Ionicons
+                                            name={
+                                                showConditionPicker
+                                                    ? 'close'
+                                                    : 'add'
+                                            }
+                                            size={14}
+                                            color={c.subtext}
+                                        />
+                                        <Text
+                                            style={{
+                                                fontSize: 12,
+                                                color: c.subtext,
+                                                fontWeight: '500',
+                                            }}
+                                        >
+                                            {showConditionPicker
+                                                ? 'Done'
+                                                : myConditions.length > 0
+                                                  ? 'Update'
+                                                  : 'Report'}
+                                        </Text>
+                                    </Pressable>
                                 </View>
-                                {activeConditions.length === 0 ? (
+
+                                {activeConditions.length === 0 &&
+                                !showConditionPicker ? (
                                     <Text
                                         style={{
                                             fontSize: 12,
                                             color: c.subtext,
-                                            marginTop: 4,
                                         }}
                                     >
-                                        No conditions reported yet. Tap to
-                                        report one.
+                                        No conditions reported yet.
                                     </Text>
+                                ) : null}
+
+                                {activeConditions.length > 0 &&
+                                !showConditionPicker ? (
+                                    <View
+                                        style={{
+                                            flexDirection: 'row',
+                                            flexWrap: 'wrap',
+                                            gap: 6,
+                                        }}
+                                    >
+                                        {activeConditions.map((condition) => {
+                                            const meta =
+                                                CONDITION_META[condition];
+                                            const isMine =
+                                                myConditions.includes(
+                                                    condition
+                                                );
+                                            return (
+                                                <View
+                                                    key={condition}
+                                                    style={{
+                                                        flexDirection: 'row',
+                                                        alignItems: 'center',
+                                                        gap: 4,
+                                                        paddingHorizontal: 10,
+                                                        paddingVertical: 6,
+                                                        borderRadius: 20,
+                                                        backgroundColor:
+                                                            meta.bg,
+                                                        borderWidth: isMine
+                                                            ? 1.5
+                                                            : 0,
+                                                        borderColor: isMine
+                                                            ? meta.color
+                                                            : 'transparent',
+                                                    }}
+                                                >
+                                                    <Text
+                                                        style={{ fontSize: 12 }}
+                                                    >
+                                                        {meta.icon}
+                                                    </Text>
+                                                    <Text
+                                                        style={{
+                                                            fontSize: 12,
+                                                            color: meta.color,
+                                                            fontWeight: '700',
+                                                        }}
+                                                    >
+                                                        {meta.label}
+                                                    </Text>
+                                                </View>
+                                            );
+                                        })}
+                                    </View>
+                                ) : null}
+
+                                {showConditionPicker ? (
+                                    <View
+                                        style={{
+                                            flexDirection: 'row',
+                                            flexWrap: 'wrap',
+                                            gap: 6,
+                                        }}
+                                    >
+                                        {(
+                                            Object.keys(
+                                                CONDITION_META
+                                            ) as SpotCondition[]
+                                        ).map((condition) => {
+                                            const meta =
+                                                CONDITION_META[condition];
+                                            const isActive =
+                                                activeConditions.includes(
+                                                    condition
+                                                );
+                                            const isMine =
+                                                myConditions.includes(
+                                                    condition
+                                                );
+                                            return (
+                                                <Pressable
+                                                    key={condition}
+                                                    onPress={() =>
+                                                        onToggleCondition(
+                                                            condition
+                                                        )
+                                                    }
+                                                    style={{
+                                                        flexDirection: 'row',
+                                                        alignItems: 'center',
+                                                        gap: 4,
+                                                        paddingHorizontal: 10,
+                                                        paddingVertical: 6,
+                                                        borderRadius: 20,
+                                                        backgroundColor:
+                                                            isActive
+                                                                ? meta.bg
+                                                                : c.tagBg,
+                                                        borderWidth: 1,
+                                                        borderColor: isMine
+                                                            ? meta.color
+                                                            : 'transparent',
+                                                    }}
+                                                >
+                                                    <Text
+                                                        style={{ fontSize: 12 }}
+                                                    >
+                                                        {meta.icon}
+                                                    </Text>
+                                                    <Text
+                                                        style={{
+                                                            fontSize: 12,
+                                                            color: isActive
+                                                                ? meta.color
+                                                                : c.subtext,
+                                                            fontWeight: isActive
+                                                                ? '700'
+                                                                : '400',
+                                                        }}
+                                                    >
+                                                        {meta.label}
+                                                    </Text>
+                                                </Pressable>
+                                            );
+                                        })}
+                                    </View>
                                 ) : null}
                             </View>
                         ) : null}

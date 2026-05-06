@@ -454,16 +454,25 @@ export default function Index() {
         session?.user.id ?? null,
         session,
         (spotId, lat, lng) => {
-            const spot = spots.find((s) => s.id === spotId);
-            if (spot) {
-                animateToSpotWithModalOffset(lat, lng);
-                openSpotDetails(spot);
-            }
+            setPanelOpen(false);
+            setTimeout(() => {
+                const spot = spots.find((s) => s.id === spotId);
+                if (spot) {
+                    animateToSpotWithModalOffset(lat, lng);
+                    openSpotDetails(spot);
+                }
+            }, 300);
         },
         () => setProfileOpen(true),
         (actorId) => {
             setPublicProfileUserId(actorId);
             setPublicProfileOpen(true);
+        },
+        (spotId) => {
+            const notif = activityNotifications.find(
+                (n) => n.spot_id === spotId && !n.read
+            );
+            if (notif) markAsRead(notif.id);
         }
     );
 
@@ -1749,6 +1758,20 @@ export default function Index() {
                                 setPublicProfileUserId(userId);
                                 setPublicProfileOpen(true);
                             }, 350);
+                        }}
+                        onConditionDone={async () => {
+                            if (
+                                selectedSpot &&
+                                selectedSpot.user_id !== session?.user.id
+                            ) {
+                                const username = await getMyUsername();
+                                await sendPushNotification(
+                                    selectedSpot.id,
+                                    'condition',
+                                    username,
+                                    session?.user.id
+                                );
+                            }
                         }}
                     />
 
