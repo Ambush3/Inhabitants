@@ -1750,6 +1750,20 @@ export default function Index() {
                                 setPublicProfileOpen(true);
                             }, 350);
                         }}
+                        onConditionDone={async () => {
+                            if (
+                                selectedSpot &&
+                                selectedSpot.user_id !== session?.user.id
+                            ) {
+                                const username = await getMyUsername();
+                                await sendPushNotification(
+                                    selectedSpot.id,
+                                    'condition',
+                                    username,
+                                    session?.user.id
+                                );
+                            }
+                        }}
                     />
 
                     <SkateShopDetailsModal
