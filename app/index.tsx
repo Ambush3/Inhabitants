@@ -330,9 +330,10 @@ export default function Index() {
         setSpotCreatorUsername(null);
         setSpotCreatorAvatarUrl(null);
 
-        if (!openedFromPanelRef.current) {
+        if (openedFromPanelRef.current || openedFromDeepLinkRef.current) {
             mapRef.current?.animateToRegion(preModalRegionRef.current, 400);
         }
+
         openedFromPanelRef.current = false;
         resetConditions();
 
@@ -984,6 +985,7 @@ export default function Index() {
                         feedLoading={feedLoading}
                         onSelectFeedSpot={(s) => {
                             setPanelOpen(false);
+                            openedFromPanelRef.current = true;
                             setHighlightSpotId(s.id);
                             highlightSpotIdRef.current = s.id;
                             if (
@@ -1020,6 +1022,7 @@ export default function Index() {
                         onMarkAllNotificationsRead={markAllAsRead}
                         onSelectNotification={(n) => {
                             markAsRead(n.id);
+                            openedFromPanelRef.current = true;
                             const spot = n.spot_id
                                 ? spots.find((s) => s.id === n.spot_id)
                                 : null;
@@ -1128,6 +1131,7 @@ export default function Index() {
                         onSelectSpot={(s) => {
                             if (actionSheetOpenRef.current) return;
                             setPanelOpen(false);
+                            openedFromPanelRef.current = true;
                             if (
                                 s.spot_type === 'skatepark' ||
                                 s.spot_type === 'skateshop'
