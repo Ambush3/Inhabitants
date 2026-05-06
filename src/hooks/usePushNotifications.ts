@@ -20,12 +20,19 @@ export function usePushNotifications(
     session: any,
     onSpotOpen?: (spotId: string, lat: number, lng: number) => void,
     onOpenProfile?: () => void,
-    onOpenPublicProfile?: (userId: string) => void
+    onOpenPublicProfile?: (userId: string) => void,
+    onMarkSpotNotificationRead?: (spotId: string) => void
 ) {
     const sessionRef = useRef(session);
     const onSpotOpenRef = useRef(onSpotOpen);
     const onOpenProfileRef = useRef(onOpenProfile);
     const onOpenPublicProfileRef = useRef(onOpenPublicProfile);
+
+    const onMarkSpotNotificationReadRef = useRef(onMarkSpotNotificationRead);
+
+    useEffect(() => {
+        onMarkSpotNotificationReadRef.current = onMarkSpotNotificationRead;
+    }, [onMarkSpotNotificationRead]);
 
     useEffect(() => {
         sessionRef.current = session;
@@ -92,9 +99,7 @@ export function usePushNotifications(
                     if (!url) return;
 
                     if (url.includes('friend_accepted')) {
-                        const params = new URLSearchParams(
-                            url.split('?')[1]
-                        );
+                        const params = new URLSearchParams(url.split('?')[1]);
                         const actorId = params.get('actorId');
                         if (!actorId) return;
                         if (sessionRef.current) {
@@ -132,6 +137,7 @@ export function usePushNotifications(
                                 parseFloat(lat),
                                 parseFloat(lng)
                             );
+                            onMarkSpotNotificationReadRef.current?.(spot_id);
                         }
                     } else {
                         await AsyncStorage.setItem(
