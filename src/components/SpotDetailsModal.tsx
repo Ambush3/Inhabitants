@@ -977,7 +977,7 @@ export function SpotDetailsModal({
                                             color: c.text,
                                         }}
                                     >
-                                        Conditions
+                                        Current Conditions
                                     </Text>
                                     <Pressable
                                         onPress={async () => {
