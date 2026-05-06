@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "SkateSpotApp",
+    "name": "Inhabitants",
     "slug": "SkateSpotApp",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "skatespotapp",
+    "scheme": "inhabitants",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
@@ -17,7 +17,7 @@
           "comgooglemaps"
         ]
       },
-      "bundleIdentifier": "com.anonymous.SkateSpotApp"
+      "bundleIdentifier": "com.aaronbush.inhabitants"
     },
     "android": {
       "adaptiveIcon": {
