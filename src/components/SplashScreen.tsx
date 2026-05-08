@@ -1,28 +1,28 @@
-import * as ExpoSplashScreen from 'expo-splash-screen'
-import { useEffect, useRef } from 'react'
-import { Animated, StyleSheet, Text, View } from 'react-native'
-import LottieView from 'lottie-react-native'
+import * as ExpoSplashScreen from 'expo-splash-screen';
+import { useEffect, useRef } from 'react';
+import { Animated, StyleSheet, Text, View } from 'react-native';
+import LottieView from 'lottie-react-native';
 
 interface SplashScreenProps {
-    onFinish: () => void
+    onFinish: () => void;
 }
 
 export default function SplashScreen({ onFinish }: SplashScreenProps) {
-    const opacity = useRef(new Animated.Value(1)).current
+    const opacity = useRef(new Animated.Value(1)).current;
 
     useEffect(() => {
-        ExpoSplashScreen.hideAsync()
+        ExpoSplashScreen.hideAsync();
 
         const timer = setTimeout(() => {
             Animated.timing(opacity, {
                 toValue: 0,
                 duration: 400,
                 useNativeDriver: true,
-            }).start(onFinish)
-        }, 2000)
+            }).start(onFinish);
+        }, 2000);
 
-        return () => clearTimeout(timer)
-    }, [])
+        return () => clearTimeout(timer);
+    }, []);
 
     return (
         <Animated.View style={[styles.container, { opacity }]}>
@@ -32,10 +32,10 @@ export default function SplashScreen({ onFinish }: SplashScreenProps) {
                 loop={false}
                 style={styles.animation}
             />
-            <Text style={styles.title}>SkateSpot</Text>
+            <Text style={styles.title}>Inhabitants</Text>
             <Text style={styles.subtitle}>find your spot.</Text>
         </Animated.View>
-    )
+    );
 }
 
 const styles = StyleSheet.create({
@@ -64,4 +64,4 @@ const styles = StyleSheet.create({
         marginTop: 6,
         fontFamily: 'monospace',
     },
-})
+});

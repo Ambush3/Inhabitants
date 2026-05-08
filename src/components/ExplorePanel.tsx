@@ -381,9 +381,7 @@ export function ExplorePanel({
                                     </View>
                                 ) : null}
 
-                                {activityNotifications.some(
-                                    (n) => !n.read
-                                ) ? (
+                                {activityNotifications.some((n) => !n.read) ? (
                                     <View style={{ marginBottom: 16 }}>
                                         <View
                                             style={{
@@ -632,7 +630,7 @@ export function ExplorePanel({
                                     }}
                                 >
                                     <Image
-                                        source={require('@/assets/pin-images/icons8-ramp-100.png')}
+                                        source={require('@/assets/pin-images/icons8-ramp-80.png')}
                                         style={{ width: 25, height: 30 }}
                                     />
                                     <Text
@@ -1025,8 +1023,10 @@ export function ExplorePanel({
                                             >
                                                 <Pressable
                                                     onPress={() =>
-                                                        handleRowPress(s.id, () =>
-                                                            onSelectSpot(s)
+                                                        handleRowPress(
+                                                            s.id,
+                                                            () =>
+                                                                onSelectSpot(s)
                                                         )
                                                     }
                                                     style={{
@@ -1138,7 +1138,7 @@ export function ExplorePanel({
                                             }}
                                         >
                                             <Image
-                                                source={require('@/assets/pin-images/icons8-ramp-100.png')}
+                                                source={require('@/assets/pin-images/icons8-ramp-80.png')}
                                                 style={{
                                                     width: 18,
                                                     height: 18,
@@ -1940,7 +1940,8 @@ export function ExplorePanel({
                                                         width: 36,
                                                         height: 36,
                                                         borderRadius: 18,
-                                                        backgroundColor: c.tagBg,
+                                                        backgroundColor:
+                                                            c.tagBg,
                                                         alignItems: 'center',
                                                         justifyContent:
                                                             'center',
@@ -1969,7 +1970,8 @@ export function ExplorePanel({
                                                         {item.actor.username ??
                                                             'someone'}
                                                     </Text>{' '}
-                                                    {item.kind === 'spot_created'
+                                                    {item.kind ===
+                                                    'spot_created'
                                                         ? 'created'
                                                         : 'reviewed'}{' '}
                                                     <Text
