@@ -332,6 +332,15 @@ export default function Index() {
 
         if (openedFromPanelRef.current || openedFromDeepLinkRef.current) {
             mapRef.current?.animateToRegion(preModalRegionRef.current, 400);
+        } else {
+            mapRef.current?.animateToRegion(
+                {
+                    ...mapRegionRef.current,
+                    latitudeDelta: 0.08,
+                    longitudeDelta: 0.08,
+                },
+                400
+            );
         }
 
         openedFromPanelRef.current = false;
@@ -362,7 +371,7 @@ export default function Index() {
     function animateToSpotWithModalOffset(lat: number, lng: number) {
         preModalRegionRef.current = mapRegionRef.current;
 
-        const MODAL_HEIGHT_RATIO = 0.4;
+        const MODAL_HEIGHT_RATIO = 0.55;
         const latDelta = 0.03;
         const offsetLat = lat - latDelta * MODAL_HEIGHT_RATIO;
 

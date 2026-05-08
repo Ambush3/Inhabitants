@@ -1,19 +1,20 @@
-# SkateSpotApp
+# Inhabitants
+
 This is an app where users will be able to upload pictures and reviews of skate spots that they come across.
 
 ## Get started
 
 1. Install dependencies
 
-   ```bash
-   npm install
-   ```
+    ```bash
+    npm install
+    ```
 
 2. Start the app
 
-   ```bash
-   npx expo start
-   ```
+    ```bash
+    npx expo start
+    ```
 
 In the output, you'll find options to open the app in a
 
