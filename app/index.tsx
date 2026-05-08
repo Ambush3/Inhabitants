@@ -368,10 +368,14 @@ export default function Index() {
         }, 120000);
     }
 
-    function animateToSpotWithModalOffset(lat: number, lng: number) {
+    function animateToSpotWithModalOffset(
+        lat: number,
+        lng: number,
+        modalSize: 'full' | 'small' = 'full'
+    ) {
         preModalRegionRef.current = mapRegionRef.current;
 
-        const MODAL_HEIGHT_RATIO = 0.55;
+        const MODAL_HEIGHT_RATIO = modalSize === 'small' ? 0.25 : 0.55;
         const latDelta = 0.03;
         const offsetLat = lat - latDelta * MODAL_HEIGHT_RATIO;
 
@@ -1202,15 +1206,7 @@ export default function Index() {
                             setPanelOpen(false);
                             openedFromFavoritesRef.current = true;
                             setSelectedPlaceId(p.id);
-                            mapRef.current?.animateToRegion(
-                                {
-                                    latitude: p.lat,
-                                    longitude: p.lng,
-                                    latitudeDelta: 0.03,
-                                    longitudeDelta: 0.03,
-                                },
-                                600
-                            );
+                            animateToSpotWithModalOffset(p.lat, p.lng, 'small');
                             const full = await fetchPlaceById(p.id);
                             const resolved = full ?? p;
                             setSelectedPlace(resolved);
@@ -1459,7 +1455,8 @@ export default function Index() {
                                             setSelectedPlaceId(p.id);
                                             animateToSpotWithModalOffset(
                                                 p.lat,
-                                                p.lng
+                                                p.lng,
+                                                'small'
                                             );
                                             setSelectedPlace(p);
                                             setPlaceDetailsOpen(true);
