@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Animated } from 'react-native';
+import { PinMarker } from '@/src/components/SpotMarkers/PinMarker';
 
 type Props = {
     selected: boolean;
@@ -30,52 +31,32 @@ export function MySpotMarker({ selected }: Props) {
         }
     }, [selected]);
 
-    const pulseScale = pulseAnim.interpolate({
-        inputRange: [0, 1],
-        outputRange: [1, 2.2],
-    });
-
     const pulseOpacity = pulseAnim.interpolate({
         inputRange: [0, 1],
-        outputRange: [0.5, 0],
+        outputRange: [0.4, 0],
+    });
+
+    const pulseScale = pulseAnim.interpolate({
+        inputRange: [0, 1],
+        outputRange: [1, 2.0],
     });
 
     return (
-        <View
-            style={{
-                width: 44,
-                height: 44,
-                alignItems: 'center',
-                justifyContent: 'center',
-            }}
-        >
+        <View style={{ alignItems: 'center', justifyContent: 'center' }}>
             {selected ? (
                 <Animated.View
                     style={{
                         position: 'absolute',
-                        width: 44,
+                        width: 33,
                         height: 44,
-                        borderRadius: 22,
-                        backgroundColor: '#FFD700',
+                        borderRadius: 16,
+                        backgroundColor: '#D9D9D9',
                         opacity: pulseOpacity,
                         transform: [{ scale: pulseScale }],
                     }}
                 />
             ) : null}
-            <View
-                style={{
-                    width: 26,
-                    height: 26,
-                    borderRadius: 13,
-                    backgroundColor: '#FFD700',
-                    borderWidth: 2.5,
-                    borderColor: 'white',
-                    shadowColor: '#000',
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.35,
-                    shadowRadius: 3,
-                }}
-            />
+            <PinMarker color="#D9D9D9" size={44} />
         </View>
     );
 }

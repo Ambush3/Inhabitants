@@ -629,10 +629,17 @@ export function ExplorePanel({
                                         marginBottom: 10,
                                     }}
                                 >
-                                    <Image
-                                        source={require('@/assets/pin-images/icons8-ramp-80.png')}
-                                        style={{ width: 25, height: 30 }}
-                                    />
+                                    <View
+                                        style={{
+                                            width: 32,
+                                            alignItems: 'center',
+                                        }}
+                                    >
+                                        <Image
+                                            source={require('@/assets/pin-images/skatepark-ramp.png')}
+                                            style={{ width: 25, height: 30 }}
+                                        />
+                                    </View>
                                     <Text
                                         style={{
                                             color: c.text,
@@ -660,10 +667,17 @@ export function ExplorePanel({
                                         marginBottom: 10,
                                     }}
                                 >
-                                    <Image
-                                        source={require('@/assets/pin-images/icons8-shop-80.png')}
-                                        style={{ width: 24, height: 24 }}
-                                    />
+                                    <View
+                                        style={{
+                                            width: 32,
+                                            alignItems: 'center',
+                                        }}
+                                    >
+                                        <Image
+                                            source={require('@/assets/pin-images/skate-shop.png')}
+                                            style={{ width: 24, height: 24 }}
+                                        />
+                                    </View>
                                     <Text
                                         style={{
                                             color: c.text,
@@ -694,7 +708,17 @@ export function ExplorePanel({
                                         marginBottom: 10,
                                     }}
                                 >
-                                    <Text style={{ fontSize: 16 }}>⭐</Text>
+                                    <View
+                                        style={{
+                                            width: 32,
+                                            alignItems: 'center',
+                                        }}
+                                    >
+                                        <Image
+                                            source={require('@/assets/pin-images/top-rated.png')}
+                                            style={{ width: 26, height: 32 }}
+                                        />
+                                    </View>
                                     <Text
                                         style={{
                                             color: c.text,
@@ -1138,7 +1162,7 @@ export function ExplorePanel({
                                             }}
                                         >
                                             <Image
-                                                source={require('@/assets/pin-images/icons8-ramp-80.png')}
+                                                source={require('@/assets/pin-images/skatepark-ramp.png')}
                                                 style={{
                                                     width: 18,
                                                     height: 18,
@@ -1273,7 +1297,7 @@ export function ExplorePanel({
                                             }}
                                         >
                                             <Image
-                                                source={require('@/assets/pin-images/icons8-shop-80.png')}
+                                                source={require('@/assets/pin-images/skate-shop.png')}
                                                 style={{
                                                     width: 18,
                                                     height: 18,
