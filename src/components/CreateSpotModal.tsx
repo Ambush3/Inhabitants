@@ -1,12 +1,21 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
-    View, Text, Button, Modal, TextInput as RNTextInput, Pressable,
-    Platform, KeyboardAvoidingView, ScrollView, TextInput, Image
+    View,
+    Text,
+    Button,
+    Modal,
+    TextInput as RNTextInput,
+    Pressable,
+    Platform,
+    KeyboardAvoidingView,
+    ScrollView,
+    TextInput,
+    Image,
 } from 'react-native';
 import { Stars } from '@/src/components/Stars';
 import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '@/src/context/ThemeContext';
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from '@expo/vector-icons';
 import { SpotVisibility } from '@/src/hooks/useSpots';
 
 type Props = {
@@ -35,45 +44,62 @@ type Props = {
 };
 
 export function CreateSpotModal({
-    visible, pendingCoord, spotName, spotDesc, spotRating, spotTags, pendingImages,
-    onChangeName, onChangeDesc, onChangeRating, onAddTag, onRemoveTag,
-    onAddImage, onRemoveImage, onCancel, onCreate, visibility, onChangeVisibility, spotComment, onChangeComment,
-    spotType, onChangeSpotType,
+    visible,
+    pendingCoord,
+    spotName,
+    spotDesc,
+    spotRating,
+    spotTags,
+    pendingImages,
+    onChangeName,
+    onChangeDesc,
+    onChangeRating,
+    onAddTag,
+    onRemoveTag,
+    onAddImage,
+    onRemoveImage,
+    onCancel,
+    onCreate,
+    visibility,
+    onChangeVisibility,
+    spotComment,
+    onChangeComment,
+    spotType,
+    onChangeSpotType,
 }: Props) {
-
     const { theme } = useTheme();
     const c = theme.colors;
     const [tagInput, setTagInput] = useState('');
     const descRef = useRef<RNTextInput>(null);
     const tagInputRef = useRef<RNTextInput>(null);
 
-    const spotCommentRef = useRef<RNTextInput>(null)
-    const commentFieldY = useRef(0)
-    const scrollRef = useRef<ScrollView>(null)
+    const spotCommentRef = useRef<RNTextInput>(null);
+    const commentFieldY = useRef(0);
+    const scrollRef = useRef<ScrollView>(null);
 
     const namePlaceholder = {
         spot: 'e.g. Downtown ledges',
         skatepark: 'e.g. Riverside Skate Park',
         skateshop: 'e.g. Tactics Board Shop',
-    }[spotType]
+    }[spotType];
 
     const descPlaceholder = {
         spot: 'Surface, obstacles, best time to skate, etc.',
         skatepark: 'Ramps, bowls, street section, opening hours, etc.',
         skateshop: 'Brands carried, services offered, hours, etc.',
-    }[spotType]
+    }[spotType];
 
     const tagsPlaceholder = {
         spot: 'e.g. stairs, ledges, rails',
         skatepark: 'e.g. bowl, vert, street',
         skateshop: 'e.g. decks, shoes, repairs',
-    }[spotType]
+    }[spotType];
 
     const modalTitle = {
         spot: 'Create spot',
         skatepark: 'Add skate park',
         skateshop: 'Add skate shop',
-    }[spotType]
+    }[spotType];
 
     useEffect(() => {
         if (!visible) setTagInput('');
@@ -88,7 +114,8 @@ export function CreateSpotModal({
     }
 
     async function handlePickImages() {
-        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        const { status } =
+            await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (status !== 'granted') return;
         const result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -97,33 +124,94 @@ export function CreateSpotModal({
             selectionLimit: 5,
         });
         if (result.canceled) return;
-        result.assets.forEach(asset => onAddImage(asset.uri));
+        result.assets.forEach((asset) => onAddImage(asset.uri));
     }
 
     return (
-        <Modal visible={visible} transparent animationType="slide" onRequestClose={onCancel}>
-            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+        <Modal
+            visible={visible}
+            transparent
+            animationType="slide"
+            onRequestClose={onCancel}
+        >
+            <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                style={{ flex: 1 }}
+            >
                 <Pressable
-                    style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'flex-end' }}
+                    style={{
+                        flex: 1,
+                        backgroundColor: 'rgba(0,0,0,0.3)',
+                        justifyContent: 'flex-end',
+                    }}
                     onPress={onCancel}
                 >
                     <Pressable
-                        style={{ backgroundColor: c.surface, padding: 16, borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '75%' }}
-                        onPress={() => { }}
+                        style={{
+                            backgroundColor: c.surface,
+                            padding: 16,
+                            borderTopLeftRadius: 16,
+                            borderTopRightRadius: 16,
+                            maxHeight: '75%',
+                        }}
+                        onPress={() => {}}
                     >
-                        <ScrollView ref={scrollRef} keyboardShouldPersistTaps="handled">
-                            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                                <Text style={{ fontSize: 18, fontWeight: '600', color: c.text }}>{modalTitle}</Text>
+                        <ScrollView
+                            ref={scrollRef}
+                            keyboardShouldPersistTaps="handled"
+                        >
+                            <View
+                                style={{
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    marginBottom: 12,
+                                }}
+                            >
+                                <Text
+                                    style={{
+                                        fontSize: 18,
+                                        fontWeight: '600',
+                                        color: c.text,
+                                    }}
+                                >
+                                    {modalTitle}
+                                </Text>
                                 {spotType === 'spot' ? (
-                                    <View style={{ flexDirection: 'row', backgroundColor: c.tagBg, borderRadius: 8, padding: 2 }}>
-                                        {(['public', 'friends', 'private'] as const).map((v) => {
+                                    <View
+                                        style={{
+                                            flexDirection: 'row',
+                                            backgroundColor: c.tagBg,
+                                            borderRadius: 8,
+                                            padding: 2,
+                                        }}
+                                    >
+                                        {(
+                                            [
+                                                'public',
+                                                'friends',
+                                                'private',
+                                            ] as const
+                                        ).map((v) => {
                                             const active = visibility === v;
-                                            const label = v === 'public' ? 'Public' : v === 'friends' ? 'Friends' : 'Private';
-                                            const icon = v === 'public' ? 'globe-outline' : v === 'friends' ? 'people-outline' : 'lock-closed';
+                                            const label =
+                                                v === 'public'
+                                                    ? 'Public'
+                                                    : v === 'friends'
+                                                      ? 'Friends'
+                                                      : 'Private';
+                                            const icon =
+                                                v === 'public'
+                                                    ? 'globe-outline'
+                                                    : v === 'friends'
+                                                      ? 'people-outline'
+                                                      : 'lock-closed';
                                             return (
                                                 <Pressable
                                                     key={v}
-                                                    onPress={() => onChangeVisibility(v)}
+                                                    onPress={() =>
+                                                        onChangeVisibility(v)
+                                                    }
                                                     style={{
                                                         flexDirection: 'row',
                                                         alignItems: 'center',
@@ -131,11 +219,29 @@ export function CreateSpotModal({
                                                         paddingHorizontal: 8,
                                                         paddingVertical: 4,
                                                         borderRadius: 6,
-                                                        backgroundColor: active ? c.surface : 'transparent',
+                                                        backgroundColor: active
+                                                            ? c.surface
+                                                            : 'transparent',
                                                     }}
                                                 >
-                                                    <Ionicons name={icon as any} size={12} color={active ? c.text : c.subtext} />
-                                                    <Text style={{ fontSize: 11, fontWeight: '600', color: active ? c.text : c.subtext }}>
+                                                    <Ionicons
+                                                        name={icon as any}
+                                                        size={12}
+                                                        color={
+                                                            active
+                                                                ? c.text
+                                                                : c.subtext
+                                                        }
+                                                    />
+                                                    <Text
+                                                        style={{
+                                                            fontSize: 11,
+                                                            fontWeight: '600',
+                                                            color: active
+                                                                ? c.text
+                                                                : c.subtext,
+                                                        }}
+                                                    >
                                                         {label}
                                                     </Text>
                                                 </Pressable>
@@ -146,47 +252,127 @@ export function CreateSpotModal({
                             </View>
 
                             {pendingCoord ? (
-                                <Text style={{ marginBottom: 12, color: c.subtext }}>
-                                    {pendingCoord.lat.toFixed(5)}, {pendingCoord.lng.toFixed(5)}
+                                <Text
+                                    style={{
+                                        marginBottom: 12,
+                                        color: c.subtext,
+                                    }}
+                                >
+                                    {pendingCoord.lat.toFixed(5)},{' '}
+                                    {pendingCoord.lng.toFixed(5)}
                                 </Text>
                             ) : null}
 
-                            <Text style={{ marginBottom: 6, color: c.text }}>Type</Text>
-                            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
-                                {(['spot', 'skatepark', 'skateshop'] as const).map((type) => {
+                            <Text style={{ marginBottom: 6, color: c.text }}>
+                                Type
+                            </Text>
+                            <View
+                                style={{
+                                    flexDirection: 'row',
+                                    gap: 8,
+                                    marginBottom: 12,
+                                }}
+                            >
+                                {(
+                                    ['spot', 'skatepark', 'skateshop'] as const
+                                ).map((type) => {
                                     const isSelected = spotType === type;
                                     return (
                                         <Pressable
                                             key={type}
-                                            onPress={() => onChangeSpotType(type)}
+                                            onPress={() =>
+                                                onChangeSpotType(type)
+                                            }
                                             style={{
                                                 flex: 1,
                                                 padding: 8,
                                                 borderRadius: 8,
                                                 borderWidth: 1.5,
-                                                borderColor: isSelected ? c.buttonBg : c.inputBorder,
-                                                backgroundColor: isSelected ? c.buttonBg : c.surface,
+                                                borderColor: isSelected
+                                                    ? c.buttonBg
+                                                    : c.inputBorder,
+                                                backgroundColor: isSelected
+                                                    ? c.buttonBg
+                                                    : c.surface,
                                                 alignItems: 'center',
                                             }}
                                         >
                                             {type === 'skatepark' ? (
-                                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                                                    <Image source={require('@/assets/pin-images/icons8-ramp-100.png')} style={{ width: 16, height: 16 }} />
-                                                    <Text style={{ fontSize: 11, fontWeight: '600', color: isSelected ? c.background : c.subtext }}>
+                                                <View
+                                                    style={{
+                                                        flexDirection: 'row',
+                                                        alignItems: 'center',
+                                                        gap: 4,
+                                                    }}
+                                                >
+                                                    <Image
+                                                        source={require('@/assets/pin-images/skatepark-ramp.png')}
+                                                        style={{
+                                                            width: 16,
+                                                            height: 16,
+                                                        }}
+                                                    />
+                                                    <Text
+                                                        style={{
+                                                            fontSize: 11,
+                                                            fontWeight: '600',
+                                                            color: isSelected
+                                                                ? c.background
+                                                                : c.subtext,
+                                                        }}
+                                                    >
                                                         Skate Park
                                                     </Text>
                                                 </View>
                                             ) : type === 'skateshop' ? (
-                                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                                                    <Image source={require('@/assets/pin-images/icons8-shop-80.png')} style={{ width: 16, height: 16 }} />
-                                                    <Text style={{ fontSize: 11, fontWeight: '600', color: isSelected ? c.background : c.subtext }}>
+                                                <View
+                                                    style={{
+                                                        flexDirection: 'row',
+                                                        alignItems: 'center',
+                                                        gap: 4,
+                                                    }}
+                                                >
+                                                    <Image
+                                                        source={require('@/assets/pin-images/skate-shop.png')}
+                                                        style={{
+                                                            width: 16,
+                                                            height: 16,
+                                                        }}
+                                                    />
+                                                    <Text
+                                                        style={{
+                                                            fontSize: 11,
+                                                            fontWeight: '600',
+                                                            color: isSelected
+                                                                ? c.background
+                                                                : c.subtext,
+                                                        }}
+                                                    >
                                                         Skate Shop
                                                     </Text>
                                                 </View>
                                             ) : (
-                                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                                                    <Text style={{ fontSize: 14 }}>📍</Text>
-                                                    <Text style={{ fontSize: 11, fontWeight: '600', color: isSelected ? c.background : c.subtext }}>
+                                                <View
+                                                    style={{
+                                                        flexDirection: 'row',
+                                                        alignItems: 'center',
+                                                        gap: 4,
+                                                    }}
+                                                >
+                                                    <Text
+                                                        style={{ fontSize: 14 }}
+                                                    >
+                                                        📍
+                                                    </Text>
+                                                    <Text
+                                                        style={{
+                                                            fontSize: 11,
+                                                            fontWeight: '600',
+                                                            color: isSelected
+                                                                ? c.background
+                                                                : c.subtext,
+                                                        }}
+                                                    >
                                                         Spot
                                                     </Text>
                                                 </View>
@@ -196,14 +382,16 @@ export function CreateSpotModal({
                                 })}
                             </View>
 
-                            <Text style={{ marginBottom: 6, color: c.text }}>Name</Text>
+                            <Text style={{ marginBottom: 6, color: c.text }}>
+                                Name
+                            </Text>
                             <TextInput
                                 value={spotName}
                                 onChangeText={(text) => {
                                     if (text.length === 1) {
-                                        onChangeName(text.toUpperCase())
+                                        onChangeName(text.toUpperCase());
                                     } else {
-                                        onChangeName(text)
+                                        onChangeName(text);
                                     }
                                 }}
                                 placeholder={namePlaceholder}
@@ -213,11 +401,21 @@ export function CreateSpotModal({
                                 spellCheck={true}
                                 returnKeyType="next"
                                 onSubmitEditing={() => descRef.current?.focus()}
-                                style={{ borderWidth: 1, borderColor: c.inputBorder, borderRadius: 8, padding: 10, marginBottom: 12, color: c.text, backgroundColor: c.surface }}
+                                style={{
+                                    borderWidth: 1,
+                                    borderColor: c.inputBorder,
+                                    borderRadius: 8,
+                                    padding: 10,
+                                    marginBottom: 12,
+                                    color: c.text,
+                                    backgroundColor: c.surface,
+                                }}
                                 autoCapitalize="sentences"
                             />
 
-                            <Text style={{ marginBottom: 6, color: c.text }}>Description (optional)</Text>
+                            <Text style={{ marginBottom: 6, color: c.text }}>
+                                Description (optional)
+                            </Text>
                             <TextInput
                                 ref={descRef}
                                 value={spotDesc}
@@ -228,12 +426,29 @@ export function CreateSpotModal({
                                 multiline
                                 returnKeyType="done"
                                 submitBehavior="blurAndSubmit"
-                                style={{ borderWidth: 1, borderColor: c.inputBorder, borderRadius: 8, padding: 10, height: 60, marginBottom: 12, color: c.text, backgroundColor: c.surface }}
+                                style={{
+                                    borderWidth: 1,
+                                    borderColor: c.inputBorder,
+                                    borderRadius: 8,
+                                    padding: 10,
+                                    height: 60,
+                                    marginBottom: 12,
+                                    color: c.text,
+                                    backgroundColor: c.surface,
+                                }}
                                 autoCapitalize="sentences"
                             />
 
-                            <Text style={{ marginBottom: 6, color: c.text }}>Tags (optional)</Text>
-                            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
+                            <Text style={{ marginBottom: 6, color: c.text }}>
+                                Tags (optional)
+                            </Text>
+                            <View
+                                style={{
+                                    flexDirection: 'row',
+                                    gap: 8,
+                                    marginBottom: 8,
+                                }}
+                            >
                                 <TextInput
                                     ref={tagInputRef}
                                     value={tagInput}
@@ -248,71 +463,182 @@ export function CreateSpotModal({
                                     placeholderTextColor={c.placeholder}
                                     autoCapitalize="none"
                                     multiline
-                                    style={{ flex: 1, borderWidth: 1, borderColor: c.inputBorder, borderRadius: 8, padding: 10, color: c.text, backgroundColor: c.surface }}
+                                    style={{
+                                        flex: 1,
+                                        borderWidth: 1,
+                                        borderColor: c.inputBorder,
+                                        borderRadius: 8,
+                                        padding: 10,
+                                        color: c.text,
+                                        backgroundColor: c.surface,
+                                    }}
                                 />
                                 <Pressable
                                     onPress={handleAddTag}
-                                    style={{ backgroundColor: c.buttonBg, borderRadius: 8, padding: 10, justifyContent: 'center' }}
+                                    style={{
+                                        backgroundColor: c.buttonBg,
+                                        borderRadius: 8,
+                                        padding: 10,
+                                        justifyContent: 'center',
+                                    }}
                                 >
-                                    <Text style={{ color: c.background, fontWeight: '600' }}>Add</Text>
+                                    <Text
+                                        style={{
+                                            color: c.background,
+                                            fontWeight: '600',
+                                        }}
+                                    >
+                                        Add
+                                    </Text>
                                 </Pressable>
                             </View>
 
-                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
-                                {spotTags.map(tag => (
+                            <View
+                                style={{
+                                    flexDirection: 'row',
+                                    flexWrap: 'wrap',
+                                    gap: 8,
+                                    marginBottom: 12,
+                                }}
+                            >
+                                {spotTags.map((tag) => (
                                     <Pressable
                                         key={tag}
                                         onPress={() => onRemoveTag(tag)}
-                                        style={{ backgroundColor: c.tagBg, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6, flexDirection: 'row', alignItems: 'center', gap: 6 }}
+                                        style={{
+                                            backgroundColor: c.tagBg,
+                                            borderRadius: 20,
+                                            paddingHorizontal: 12,
+                                            paddingVertical: 6,
+                                            flexDirection: 'row',
+                                            alignItems: 'center',
+                                            gap: 6,
+                                        }}
                                     >
-                                        <Text style={{ fontSize: 13, color: c.text }}>#{tag}</Text>
-                                        <Text style={{ fontSize: 13, opacity: 0.5, color: c.text }}>✕</Text>
+                                        <Text
+                                            style={{
+                                                fontSize: 13,
+                                                color: c.text,
+                                            }}
+                                        >
+                                            #{tag}
+                                        </Text>
+                                        <Text
+                                            style={{
+                                                fontSize: 13,
+                                                opacity: 0.5,
+                                                color: c.text,
+                                            }}
+                                        >
+                                            ✕
+                                        </Text>
                                     </Pressable>
                                 ))}
                             </View>
 
-                            <Text style={{ marginBottom: 6, color: c.text }}>Photos (optional)</Text>
-                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
-                                {pendingImages.map(uri => (
-                                    <View key={uri} style={{ position: 'relative' }}>
+                            <Text style={{ marginBottom: 6, color: c.text }}>
+                                Photos (optional)
+                            </Text>
+                            <View
+                                style={{
+                                    flexDirection: 'row',
+                                    flexWrap: 'wrap',
+                                    gap: 8,
+                                    marginBottom: 12,
+                                }}
+                            >
+                                {pendingImages.map((uri) => (
+                                    <View
+                                        key={uri}
+                                        style={{ position: 'relative' }}
+                                    >
                                         <Image
                                             source={{ uri }}
-                                            style={{ width: 80, height: 80, borderRadius: 8 }}
+                                            style={{
+                                                width: 80,
+                                                height: 80,
+                                                borderRadius: 8,
+                                            }}
                                             resizeMode="cover"
                                         />
                                         <Pressable
                                             onPress={() => onRemoveImage(uri)}
-                                            style={{ position: 'absolute', top: 2, right: 2, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 10, padding: 2 }}
+                                            style={{
+                                                position: 'absolute',
+                                                top: 2,
+                                                right: 2,
+                                                backgroundColor:
+                                                    'rgba(0,0,0,0.5)',
+                                                borderRadius: 10,
+                                                padding: 2,
+                                            }}
                                         >
-                                            <Text style={{ color: 'white', fontSize: 10 }}>✕</Text>
+                                            <Text
+                                                style={{
+                                                    color: 'white',
+                                                    fontSize: 10,
+                                                }}
+                                            >
+                                                ✕
+                                            </Text>
                                         </Pressable>
                                     </View>
                                 ))}
                                 {pendingImages.length < 5 ? (
                                     <Pressable
                                         onPress={handlePickImages}
-                                        style={{ width: 80, height: 80, borderRadius: 8, borderWidth: 1, borderColor: c.inputBorder, borderStyle: 'dashed', justifyContent: 'center', alignItems: 'center' }}
+                                        style={{
+                                            width: 80,
+                                            height: 80,
+                                            borderRadius: 8,
+                                            borderWidth: 1,
+                                            borderColor: c.inputBorder,
+                                            borderStyle: 'dashed',
+                                            justifyContent: 'center',
+                                            alignItems: 'center',
+                                        }}
                                     >
-                                        <Text style={{ fontSize: 28, color: c.subtext }}>+</Text>
+                                        <Text
+                                            style={{
+                                                fontSize: 28,
+                                                color: c.subtext,
+                                            }}
+                                        >
+                                            +
+                                        </Text>
                                     </Pressable>
                                 ) : null}
                             </View>
 
-                            <Text style={{ marginBottom: 6, color: c.text }}>Rating (optional)</Text>
-                            <Stars value={spotRating} onChange={onChangeRating} />
+                            <Text style={{ marginBottom: 6, color: c.text }}>
+                                Rating (optional)
+                            </Text>
+                            <Stars
+                                value={spotRating}
+                                onChange={onChangeRating}
+                            />
 
                             {spotRating > 0 ? (
-                                <View onLayout={(e) => { commentFieldY.current = e.nativeEvent.layout.y }}>
+                                <View
+                                    onLayout={(e) => {
+                                        commentFieldY.current =
+                                            e.nativeEvent.layout.y;
+                                    }}
+                                >
                                     <TextInput
                                         ref={spotCommentRef}
                                         value={spotComment}
                                         onChangeText={onChangeComment}
                                         placeholder={
-                                            spotRating === 1 ? 'What made this spot difficult or disappointing?' :
-                                                spotRating === 2 ? 'What could be improved?' :
-                                                    spotRating === 3 ? 'What was average about it?' :
-                                                        spotRating === 4 ? 'What did you enjoy about it?' :
-                                                            'What made this spot great?'
+                                            spotRating === 1
+                                                ? 'What made this spot difficult or disappointing?'
+                                                : spotRating === 2
+                                                  ? 'What could be improved?'
+                                                  : spotRating === 3
+                                                    ? 'What was average about it?'
+                                                    : spotRating === 4
+                                                      ? 'What did you enjoy about it?'
+                                                      : 'What made this spot great?'
                                         }
                                         placeholderTextColor={c.placeholder}
                                         autoCorrect
@@ -322,8 +648,13 @@ export function CreateSpotModal({
                                         autoCapitalize="sentences"
                                         onFocus={() => {
                                             setTimeout(() => {
-                                                scrollRef.current?.scrollTo({ y: commentFieldY.current - 16, animated: true })
-                                            }, 300)
+                                                scrollRef.current?.scrollTo({
+                                                    y:
+                                                        commentFieldY.current -
+                                                        16,
+                                                    animated: true,
+                                                });
+                                            }, 300);
                                         }}
                                         style={{
                                             borderWidth: 1,
@@ -339,7 +670,14 @@ export function CreateSpotModal({
                                 </View>
                             ) : null}
 
-                            <View style={{ flexDirection: 'row', gap: 12, justifyContent: 'flex-end', marginTop: 12 }}>
+                            <View
+                                style={{
+                                    flexDirection: 'row',
+                                    gap: 12,
+                                    justifyContent: 'flex-end',
+                                    marginTop: 12,
+                                }}
+                            >
                                 <Button title="Cancel" onPress={onCancel} />
                                 <Button title="Create" onPress={onCreate} />
                             </View>

@@ -13,8 +13,8 @@ type Props = {
 };
 
 const ICONS = {
-    skatepark: require('@/assets/pin-images/icons8-ramp-100.png'),
-    skateshop: require('@/assets/pin-images/icons8-shop-80.png'),
+    skatepark: require('@/assets/pin-images/skatepark-ramp.png'),
+    skateshop: require('@/assets/pin-images/skate-shop.png'),
 };
 
 export const SkateMarker = forwardRef<any, Props>(
