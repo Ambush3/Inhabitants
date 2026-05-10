@@ -102,6 +102,8 @@ export default function Index() {
     const suppressMapPressRef = useRef(false);
     const actionSheetOpenRef = useRef(false);
 
+    const openedPublicProfileFromProfileRef = useRef(false);
+
     const {
         reviews: spotReviews,
         avgRating,
@@ -364,8 +366,9 @@ export default function Index() {
         if (placesTimerRef.current) clearTimeout(placesTimerRef.current);
         setPlaces(updater);
         placesTimerRef.current = setTimeout(() => {
+            console.log('timer fired, clearing places');
             setPlaces([]);
-        }, 120000);
+        }, 60000);
     }
 
     function animateToSpotWithModalOffset(
@@ -1891,6 +1894,7 @@ export default function Index() {
                         }}
                         onViewProfile={(userId) => {
                             setProfileOpen(false);
+                            openedPublicProfileFromProfileRef.current = true;
                             setTimeout(() => {
                                 setPublicProfileUserId(userId);
                                 setPublicProfileOpen(true);
@@ -1906,11 +1910,17 @@ export default function Index() {
                             AsyncStorage.removeItem(
                                 'pendingNotificationPublicProfile'
                             );
+                            if (openedPublicProfileFromProfileRef.current) {
+                                openedPublicProfileFromProfileRef.current = false;
+                                setTimeout(() => setProfileOpen(true), 350);
+                            }
                         }}
                         userId={publicProfileUserId}
                         allSpots={spots}
                         onSelectSpot={(s) => {
                             setPublicProfileOpen(false);
+                            setPublicProfileUserId(null);
+                            openedPublicProfileFromProfileRef.current = false;
                             setHighlightSpotId(s.id);
                             highlightSpotIdRef.current = s.id;
                             animateToSpotWithModalOffset(s.lat, s.lng);
