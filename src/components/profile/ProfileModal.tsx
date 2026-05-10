@@ -817,11 +817,41 @@ export function ProfileModal({
                                                 >
                                                     @{u.username}
                                                 </Text>
-                                                <Ionicons
-                                                    name="chevron-forward"
-                                                    size={16}
-                                                    color={c.subtext}
-                                                />
+                                                {friends.some(
+                                                    (f) => f.id === u.id
+                                                ) ? (
+                                                    <View
+                                                        style={{
+                                                            flexDirection:
+                                                                'row',
+                                                            alignItems:
+                                                                'center',
+                                                            gap: 4,
+                                                        }}
+                                                    >
+                                                        <Ionicons
+                                                            name="checkmark-circle"
+                                                            size={16}
+                                                            color="#34C759"
+                                                        />
+                                                        <Text
+                                                            style={{
+                                                                fontSize: 12,
+                                                                color: '#34C759',
+                                                                fontWeight:
+                                                                    '600',
+                                                            }}
+                                                        >
+                                                            Friends
+                                                        </Text>
+                                                    </View>
+                                                ) : (
+                                                    <Ionicons
+                                                        name="chevron-forward"
+                                                        size={16}
+                                                        color={c.subtext}
+                                                    />
+                                                )}
                                             </Pressable>
                                         ))
                                     ) : null}
