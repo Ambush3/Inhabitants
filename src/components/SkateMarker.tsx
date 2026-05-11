@@ -1,6 +1,6 @@
 import React, { forwardRef } from 'react';
-import { Image } from 'react-native';
 import { Marker } from 'react-native-maps';
+import { PinMarker } from '@/src/components/SpotMarkers/PinMarker';
 
 type Props = {
     id: string;
@@ -12,13 +12,28 @@ type Props = {
     selected?: boolean;
 };
 
-const ICONS = {
-    skatepark: require('@/assets/pin-images/skatepark-ramp.png'),
-    skateshop: require('@/assets/pin-images/skate-shop.png'),
+const TYPE_CONFIG = {
+    skatepark: {
+        color: '#34C759',
+        icon: require('@/assets/pin-images/skatepark-ramp.png'),
+        iconX: 15,
+        iconY: 14,
+        iconWidth: 45,
+        iconHeight: 45,
+    },
+    skateshop: {
+        color: '#007AFF',
+        icon: require('@/assets/pin-images/skate-shop.png'),
+        iconX: 15,
+        iconY: 14,
+        iconWidth: 45,
+        iconHeight: 45,
+    },
 };
 
 export const SkateMarker = forwardRef<any, Props>(
-    ({ id, lat, lng, type = 'skatepark', onPress, selected }, ref) => {
+    ({ id, lat, lng, type = 'skatepark', onPress }, ref) => {
+        const config = TYPE_CONFIG[type ?? 'skatepark'];
         return (
             <Marker
                 ref={ref}
@@ -26,11 +41,16 @@ export const SkateMarker = forwardRef<any, Props>(
                 coordinate={{ latitude: lat, longitude: lng }}
                 onPress={onPress}
                 anchor={{ x: 0.5, y: 1.0 }}
+                tracksViewChanges={false}
             >
-                <Image
-                    source={ICONS[type ?? 'skatepark']}
-                    style={{ width: 36, height: 36 }}
-                    resizeMode="contain"
+                <PinMarker
+                    color={config.color}
+                    size={55}
+                    icon={config.icon}
+                    iconX={config.iconX}
+                    iconY={config.iconY}
+                    iconWidth={config.iconWidth}
+                    iconHeight={config.iconHeight}
                 />
             </Marker>
         );

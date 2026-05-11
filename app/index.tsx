@@ -1332,9 +1332,7 @@ export default function Index() {
                                                     latitude: s.lat,
                                                     longitude: s.lng,
                                                 }}
-                                                tracksViewChanges={
-                                                    s.id === highlightSpotId
-                                                }
+                                                tracksViewChanges={false}
                                                 anchor={{ x: 0.5, y: 0.5 }}
                                                 onPress={() => {
                                                     suppressMapPressRef.current = true;
@@ -1365,9 +1363,7 @@ export default function Index() {
                                                     latitude: s.lat,
                                                     longitude: s.lng,
                                                 }}
-                                                tracksViewChanges={
-                                                    s.id === highlightSpotId
-                                                }
+                                                tracksViewChanges={false}
                                                 anchor={{ x: 0.5, y: 0.5 }}
                                                 onPress={() => {
                                                     suppressMapPressRef.current = true;
