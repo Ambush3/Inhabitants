@@ -35,6 +35,7 @@ type Props = {
     onRemoveImage: (uri: string) => void;
     onCancel: () => void;
     onCreate: () => void;
+    isVetted?: boolean;
     visibility: SpotVisibility;
     onChangeVisibility: (v: SpotVisibility) => void;
     spotComment: string;
@@ -60,6 +61,7 @@ export function CreateSpotModal({
     onRemoveImage,
     onCancel,
     onCreate,
+    isVetted,
     visibility,
     onChangeVisibility,
     spotComment,
@@ -273,113 +275,126 @@ export function CreateSpotModal({
                                     marginBottom: 12,
                                 }}
                             >
-                                {(
-                                    ['spot', 'skatepark', 'skateshop'] as const
-                                ).map((type) => {
-                                    const isSelected = spotType === type;
-                                    return (
-                                        <Pressable
-                                            key={type}
-                                            onPress={() =>
-                                                onChangeSpotType(type)
-                                            }
-                                            style={{
-                                                flex: 1,
-                                                padding: 8,
-                                                borderRadius: 8,
-                                                borderWidth: 1.5,
-                                                borderColor: isSelected
-                                                    ? c.buttonBg
-                                                    : c.inputBorder,
-                                                backgroundColor: isSelected
-                                                    ? c.buttonBg
-                                                    : c.surface,
-                                                alignItems: 'center',
-                                            }}
-                                        >
-                                            {type === 'skatepark' ? (
-                                                <View
-                                                    style={{
-                                                        flexDirection: 'row',
-                                                        alignItems: 'center',
-                                                        gap: 4,
-                                                    }}
-                                                >
-                                                    <Image
-                                                        source={require('@/assets/pin-images/skatepark-ramp.png')}
+                                {(['spot', 'skatepark', 'skateshop'] as const)
+                                    .filter(
+                                        (type) => type === 'spot' || isVetted
+                                    )
+                                    .map((type) => {
+                                        const isSelected = spotType === type;
+                                        return (
+                                            <Pressable
+                                                key={type}
+                                                onPress={() =>
+                                                    onChangeSpotType(type)
+                                                }
+                                                style={{
+                                                    flex: 1,
+                                                    padding: 8,
+                                                    borderRadius: 8,
+                                                    borderWidth: 1.5,
+                                                    borderColor: isSelected
+                                                        ? c.buttonBg
+                                                        : c.inputBorder,
+                                                    backgroundColor: isSelected
+                                                        ? c.buttonBg
+                                                        : c.surface,
+                                                    alignItems: 'center',
+                                                }}
+                                            >
+                                                {type === 'skatepark' ? (
+                                                    <View
                                                         style={{
-                                                            width: 16,
-                                                            height: 16,
-                                                        }}
-                                                    />
-                                                    <Text
-                                                        style={{
-                                                            fontSize: 11,
-                                                            fontWeight: '600',
-                                                            color: isSelected
-                                                                ? c.background
-                                                                : c.subtext,
+                                                            flexDirection:
+                                                                'row',
+                                                            alignItems:
+                                                                'center',
+                                                            gap: 4,
                                                         }}
                                                     >
-                                                        Skate Park
-                                                    </Text>
-                                                </View>
-                                            ) : type === 'skateshop' ? (
-                                                <View
-                                                    style={{
-                                                        flexDirection: 'row',
-                                                        alignItems: 'center',
-                                                        gap: 4,
-                                                    }}
-                                                >
-                                                    <Image
-                                                        source={require('@/assets/pin-images/skate-shop.png')}
+                                                        <Image
+                                                            source={require('@/assets/pin-images/skatepark-ramp.png')}
+                                                            style={{
+                                                                width: 16,
+                                                                height: 16,
+                                                            }}
+                                                        />
+                                                        <Text
+                                                            style={{
+                                                                fontSize: 11,
+                                                                fontWeight:
+                                                                    '600',
+                                                                color: isSelected
+                                                                    ? c.background
+                                                                    : c.subtext,
+                                                            }}
+                                                        >
+                                                            Skate Park
+                                                        </Text>
+                                                    </View>
+                                                ) : type === 'skateshop' ? (
+                                                    <View
                                                         style={{
-                                                            width: 16,
-                                                            height: 16,
-                                                        }}
-                                                    />
-                                                    <Text
-                                                        style={{
-                                                            fontSize: 11,
-                                                            fontWeight: '600',
-                                                            color: isSelected
-                                                                ? c.background
-                                                                : c.subtext,
-                                                        }}
-                                                    >
-                                                        Skate Shop
-                                                    </Text>
-                                                </View>
-                                            ) : (
-                                                <View
-                                                    style={{
-                                                        flexDirection: 'row',
-                                                        alignItems: 'center',
-                                                        gap: 4,
-                                                    }}
-                                                >
-                                                    <Text
-                                                        style={{ fontSize: 14 }}
-                                                    >
-                                                        📍
-                                                    </Text>
-                                                    <Text
-                                                        style={{
-                                                            fontSize: 11,
-                                                            fontWeight: '600',
-                                                            color: isSelected
-                                                                ? c.background
-                                                                : c.subtext,
+                                                            flexDirection:
+                                                                'row',
+                                                            alignItems:
+                                                                'center',
+                                                            gap: 4,
                                                         }}
                                                     >
-                                                        Spot
-                                                    </Text>
-                                                </View>
-                                            )}
-                                        </Pressable>
-                                    );
-                                })}
+                                                        <Image
+                                                            source={require('@/assets/pin-images/skate-shop.png')}
+                                                            style={{
+                                                                width: 16,
+                                                                height: 16,
+                                                            }}
+                                                        />
+                                                        <Text
+                                                            style={{
+                                                                fontSize: 11,
+                                                                fontWeight:
+                                                                    '600',
+                                                                color: isSelected
+                                                                    ? c.background
+                                                                    : c.subtext,
+                                                            }}
+                                                        >
+                                                            Skate Shop
+                                                        </Text>
+                                                    </View>
+                                                ) : (
+                                                    <View
+                                                        style={{
+                                                            flexDirection:
+                                                                'row',
+                                                            alignItems:
+                                                                'center',
+                                                            gap: 4,
+                                                        }}
+                                                    >
+                                                        <Text
+                                                            style={{
+                                                                fontSize: 14,
+                                                            }}
+                                                        >
+                                                            📍
+                                                        </Text>
+                                                        <Text
+                                                            style={{
+                                                                fontSize: 11,
+                                                                fontWeight:
+                                                                    '600',
+                                                                color: isSelected
+                                                                    ? c.background
+                                                                    : c.subtext,
+                                                            }}
+                                                        >
+                                                            Spot
+                                                        </Text>
+                                                    </View>
+                                                )}
+                                            </Pressable>
+                                        );
+                                    })}
                             </View>
 
                             <Text style={{ marginBottom: 6, color: c.text }}>
