@@ -1315,7 +1315,7 @@ export default function Index() {
                                         longitude: pendingCoord.lng,
                                     }}
                                     title="New spot"
-                                    pinColor="orange"
+                                    pinColor="red"
                                 />
                             ) : null}
                             {visibleSpots

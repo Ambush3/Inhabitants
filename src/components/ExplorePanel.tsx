@@ -638,6 +638,7 @@ export function ExplorePanel({
                                         <Image
                                             source={require('@/assets/pin-images/skatepark-ramp.png')}
                                             style={{ width: 25, height: 30 }}
+                                            tintColor={c.text}
                                         />
                                     </View>
                                     <Text
@@ -676,6 +677,7 @@ export function ExplorePanel({
                                         <Image
                                             source={require('@/assets/pin-images/skate-shop.png')}
                                             style={{ width: 24, height: 24 }}
+                                            tintColor={c.text}
                                         />
                                     </View>
                                     <Text
@@ -717,6 +719,7 @@ export function ExplorePanel({
                                         <Image
                                             source={require('@/assets/pin-images/top-rated.png')}
                                             style={{ width: 26, height: 32 }}
+                                            tintColor={c.text}
                                         />
                                     </View>
                                     <Text
