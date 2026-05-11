@@ -651,7 +651,10 @@ export default function Index() {
                 .select('avatar_url, is_vetted')
                 .eq('id', session.user.id)
                 .single()
-                .then(({ data }) => setMyAvatarUrl(data?.avatar_url ?? null));
+                .then(({ data }) => {
+                    setMyAvatarUrl(data?.avatar_url ?? null);
+                    setIsVetted(data?.is_vetted ?? false);
+                });
         } else {
             resetTheme();
             setMyAvatarUrl(null);
