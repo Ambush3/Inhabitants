@@ -317,6 +317,11 @@ export function CreateSpotModal({
                                                                 width: 16,
                                                                 height: 16,
                                                             }}
+                                                            tintColor={
+                                                                isSelected
+                                                                    ? c.background
+                                                                    : c.text
+                                                            }
                                                         />
                                                         <Text
                                                             style={{
@@ -347,6 +352,11 @@ export function CreateSpotModal({
                                                                 width: 16,
                                                                 height: 16,
                                                             }}
+                                                            tintColor={
+                                                                isSelected
+                                                                    ? c.background
+                                                                    : c.text
+                                                            }
                                                         />
                                                         <Text
                                                             style={{
