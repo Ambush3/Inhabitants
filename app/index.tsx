@@ -263,6 +263,8 @@ export default function Index() {
     >(null);
     const [publicProfileOpen, setPublicProfileOpen] = useState(false);
 
+    const [isVetted, setIsVetted] = useState(false);
+
     const { theme, loadThemeForUser, resetTheme } = useTheme();
     const c = theme.colors;
 
@@ -646,7 +648,7 @@ export default function Index() {
             loadNotifications();
             supabase
                 .from('profiles')
-                .select('avatar_url')
+                .select('avatar_url, is_vetted')
                 .eq('id', session.user.id)
                 .single()
                 .then(({ data }) => setMyAvatarUrl(data?.avatar_url ?? null));
@@ -1594,6 +1596,7 @@ export default function Index() {
                             }
                             closeCreateModal();
                         }}
+                        isVetted={isVetted}
                         pendingImages={pendingImages}
                         onAddImage={(uri) =>
                             setPendingImages((prev) =>
