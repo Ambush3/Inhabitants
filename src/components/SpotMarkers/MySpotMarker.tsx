@@ -56,7 +56,15 @@ export function MySpotMarker({ selected }: Props) {
                     }}
                 />
             ) : null}
-            <PinMarker color="#D9D9D9" size={44} />
+            <PinMarker
+                color={selected ? '#FFD700' : '#D9D9D9'}
+                size={55}
+                icon={require('@/assets/pin-images/SkateboardOnly.png')}
+                iconX={6}
+                iconY={8}
+                iconWidth={63}
+                iconHeight={63}
+            />
         </View>
     );
 }

@@ -1,57 +1,42 @@
 import React from 'react';
-import Svg, { Path, Ellipse, Rect } from 'react-native-svg';
+import Svg, { Path, Image, Defs, ClipPath, Rect } from 'react-native-svg';
 
 type Props = {
     color?: string;
     size?: number;
+    icon: any;
+    iconX?: number;
+    iconY?: number;
+    iconWidth?: number;
+    iconHeight?: number;
 };
 
-export function PinMarker({ color = '#D9D9D9', size = 44 }: Props) {
-    const aspect = 0.75;
-    const w = size * aspect;
+export function PinMarker({
+    color = '#D9D9D9',
+    size = 44,
+    icon,
+    iconX = 8,
+    iconY = 10,
+    iconWidth = 59,
+    iconHeight = 59,
+}: Props) {
+    const w = size * 0.75;
     const h = size;
 
     return (
         <Svg width={w} height={h} viewBox="0 0 75 100">
-            {/* Teardrop pin shape */}
             <Path
-                d="M37.5 0 C16.79 0 0 16.79 0 37.5 C0 58.21 37.5 100 37.5 100 C37.5 100 75 58.21 75 37.5 C75 16.79 58.21 0 37.5 0 Z"
+                d="M37.5 2 C18.5 2 3 17.5 3 36.5 C3 55.5 37.5 98 37.5 98 C37.5 98 72 55.5 72 36.5 C72 17.5 56.5 2 37.5 2 Z"
                 fill={color}
             />
-            {/* Skateboard deck */}
-            <Ellipse cx="37.5" cy="37" rx="11" ry="19" fill="#1a1a1a" />
-            {/* Top truck axle */}
-            <Rect
-                x="24"
-                y="21"
-                width="27"
-                height="4"
-                rx="2"
-                fill={color}
-                opacity="0.9"
+            <Image
+                x={iconX}
+                y={iconY}
+                width={iconWidth}
+                height={iconHeight}
+                href={icon}
+                preserveAspectRatio="xMidYMid meet"
             />
-            {/* Top truck hanger */}
-            <Rect x="29" y="19" width="17" height="4" rx="2" fill="#1a1a1a" />
-            {/* Top wheels left */}
-            <Ellipse cx="25" cy="23" rx="3" ry="3" fill={color} opacity="0.9" />
-            {/* Top wheels right */}
-            <Ellipse cx="50" cy="23" rx="3" ry="3" fill={color} opacity="0.9" />
-            {/* Bottom truck axle */}
-            <Rect
-                x="24"
-                y="50"
-                width="27"
-                height="4"
-                rx="2"
-                fill={color}
-                opacity="0.9"
-            />
-            {/* Bottom truck hanger */}
-            <Rect x="29" y="50" width="17" height="4" rx="2" fill="#1a1a1a" />
-            {/* Bottom wheels left */}
-            <Ellipse cx="25" cy="52" rx="3" ry="3" fill={color} opacity="0.9" />
-            {/* Bottom wheels right */}
-            <Ellipse cx="50" cy="52" rx="3" ry="3" fill={color} opacity="0.9" />
         </Svg>
     );
 }

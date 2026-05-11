@@ -8,11 +8,19 @@ type Props = {
 };
 
 export function OtherUsersSpotMarkers({ selected, isFriend }: Props) {
-    const color = isFriend ? '#5856D6' : '#F0E6C8';
+    const color = selected ? '#FF6B6B' : isFriend ? '#5856D6' : '#F0E6C8';
 
     return (
         <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-            <PinMarker color={selected ? '#FF6B6B' : color} size={44} />
+            <PinMarker
+                color={color}
+                size={55}
+                icon={require('@/assets/pin-images/SkateboardOnly.png')}
+                iconX={6}
+                iconY={8}
+                iconWidth={63}
+                iconHeight={63}
+            />
         </View>
     );
 }
