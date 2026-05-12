@@ -55,7 +55,13 @@ export function useAuth() {
                 last_name: lastName?.trim() || null,
             });
 
-        return profileError?.message ?? null;
+        if (profileError) {
+            if (/disallowed content/i.test(profileError.message)) {
+                return 'Your profile contains inappropriate content and cannot be created.';
+            }
+            return profileError.message;
+        }
+        return null;
     }
 
     async function signIn(email: string, password: string): Promise<string | null> {

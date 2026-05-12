@@ -18,6 +18,7 @@ import { useTheme } from '@/src/context/ThemeContext';
 import { Spot } from '@/src/types';
 import { useFriendships, Friend } from '@/src/hooks/social/useFriendships';
 import { sendFriendAcceptedNotification } from '@/src/libs/sendPushNotification';
+import { moderateText } from '@/src/libs/moderator/textModerator';
 
 type MyReview = {
     id: string;
@@ -565,7 +566,7 @@ export function ProfileModal({
                                             ? 'My Spots'
                                             : tab === 'reviews'
                                               ? 'My Reviews'
-                                              : 'Friends'}
+                                              : `Friends (${friends.length})`}
                                     </Text>
                                 </Pressable>
                             )
@@ -1202,23 +1203,67 @@ export function ProfileModal({
 
                         <Pressable
                             onPress={async () => {
-                                if (!editUsername.trim()) return;
+                                const trimmedUsername = editUsername.trim();
+                                const trimmedFirst = editFirstName.trim();
+                                const trimmedLast = editLastName.trim();
+                                if (!trimmedUsername) return;
+
+                                const usernameCheck =
+                                    moderateText(trimmedUsername);
+                                if (!usernameCheck.allowed) {
+                                    Alert.alert(
+                                        'Username not allowed',
+                                        usernameCheck.reason
+                                    );
+                                    return;
+                                }
+                                if (trimmedFirst) {
+                                    const fnCheck = moderateText(trimmedFirst);
+                                    if (!fnCheck.allowed) {
+                                        Alert.alert(
+                                            'First name not allowed',
+                                            fnCheck.reason
+                                        );
+                                        return;
+                                    }
+                                }
+                                if (trimmedLast) {
+                                    const lnCheck = moderateText(trimmedLast);
+                                    if (!lnCheck.allowed) {
+                                        Alert.alert(
+                                            'Last name not allowed',
+                                            lnCheck.reason
+                                        );
+                                        return;
+                                    }
+                                }
+
                                 setEditLoading(true);
                                 const {
                                     data: { user },
                                 } = await supabase.auth.getUser();
                                 if (user) {
-                                    const trimmedFirst = editFirstName.trim();
-                                    const trimmedLast = editLastName.trim();
-                                    await supabase
+                                    const { error } = await supabase
                                         .from('profiles')
                                         .update({
-                                            username: editUsername.trim(),
+                                            username: trimmedUsername,
                                             first_name: trimmedFirst || null,
                                             last_name: trimmedLast || null,
                                         })
                                         .eq('id', user.id);
-                                    setUsername(editUsername.trim());
+                                    if (error) {
+                                        setEditLoading(false);
+                                        Alert.alert(
+                                            'Could not save profile',
+                                            /disallowed content/i.test(
+                                                error.message
+                                            )
+                                                ? 'Your profile contains inappropriate content and cannot be saved.'
+                                                : error.message
+                                        );
+                                        return;
+                                    }
+                                    setUsername(trimmedUsername);
                                     setFirstName(trimmedFirst || null);
                                     setLastName(trimmedLast || null);
                                 }

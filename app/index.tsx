@@ -310,6 +310,24 @@ export default function Index() {
     const [showSplash, setShowSplash] = useState(!deepLinkSpotId);
 
     const visibleSpots = searchResults.length > 0 ? searchResults : spots;
+
+    const filteredSearchResults = searchResults.filter((s) => {
+        const delta = mapRegionRef.current.latitudeDelta;
+        const radiusKm = Math.max(5, Math.min((delta / 2) * 111, 100));
+        const R = 6371;
+        const lat1 = mapRegionRef.current.latitude;
+        const lng1 = mapRegionRef.current.longitude;
+        const dLat = ((s.lat - lat1) * Math.PI) / 180;
+        const dLng = ((s.lng - lng1) * Math.PI) / 180;
+        const a =
+            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos((lat1 * Math.PI) / 180) *
+                Math.cos((s.lat * Math.PI) / 180) *
+                Math.sin(dLng / 2) *
+                Math.sin(dLng / 2);
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) <= radiusKm;
+    });
+
     const displayError = error ?? nearbyError ?? topRatedError;
     const openedFromPanelRef = useRef(false);
 
@@ -1202,7 +1220,7 @@ export default function Index() {
                             await signOut();
                             setPanelOpen(false);
                         }}
-                        searchResults={searchResults}
+                        searchResults={filteredSearchResults}
                         onSearch={(tag) => searchByTag(tag)}
                         onClearSearch={clearSearch}
                         hasSearchResults={searchResults.length > 0}
@@ -1784,6 +1802,16 @@ export default function Index() {
                                 );
                             }
                         }}
+                        userLocation={
+                            userLocationRef.current
+                                ? {
+                                      latitude:
+                                          userLocationRef.current.latitude,
+                                      longitude:
+                                          userLocationRef.current.longitude,
+                                  }
+                                : null
+                        }
                     />
 
                     <SkateShopDetailsModal

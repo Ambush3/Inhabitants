@@ -57,7 +57,7 @@ export function MySpotMarker({ selected }: Props) {
                 />
             ) : null}
             <PinMarker
-                color={selected ? '#FFD700' : '#D9D9D9'}
+                color={selected ? '#FFD700' : '#FFD700'}
                 size={55}
                 icon={require('@/assets/pin-images/SkateboardOnly.png')}
                 iconX={6}

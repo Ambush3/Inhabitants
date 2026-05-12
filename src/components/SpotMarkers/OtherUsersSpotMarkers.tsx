@@ -8,7 +8,7 @@ type Props = {
 };
 
 export function OtherUsersSpotMarkers({ selected, isFriend }: Props) {
-    const color = selected ? '#FF6B6B' : isFriend ? '#5856D6' : '#F0E6C8';
+    const color = selected ? '#FF6B6B' : isFriend ? '#5856D6' : '#8E8E93';
 
     return (
         <View style={{ alignItems: 'center', justifyContent: 'center' }}>

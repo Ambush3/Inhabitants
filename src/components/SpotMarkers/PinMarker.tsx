@@ -13,7 +13,7 @@ type Props = {
 
 export function PinMarker({
     color = '#D9D9D9',
-    size = 44,
+    size = 30,
     icon,
     iconX = 8,
     iconY = 10,
@@ -28,6 +28,8 @@ export function PinMarker({
             <Path
                 d="M37.5 2 C18.5 2 3 17.5 3 36.5 C3 55.5 37.5 98 37.5 98 C37.5 98 72 55.5 72 36.5 C72 17.5 56.5 2 37.5 2 Z"
                 fill={color}
+                stroke="white"
+                strokeWidth={3}
             />
             <Image
                 x={iconX}
