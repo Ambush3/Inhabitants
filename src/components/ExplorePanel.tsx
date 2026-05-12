@@ -506,30 +506,61 @@ export function ExplorePanel({
                                         marginBottom: 16,
                                     }}
                                 >
-                                    <TextInput
-                                        value={searchQuery}
-                                        onChangeText={(text) => {
-                                            setSearchQuery(text);
-                                            if (text.trim().length > 0) {
-                                                onSearch(text.trim());
-                                            } else {
-                                                onClearSearch();
-                                            }
-                                        }}
-                                        placeholder="e.g. stairs, rails..."
-                                        placeholderTextColor={c.placeholder}
-                                        autoCapitalize="none"
+                                    <View
                                         style={{
                                             flex: 1,
-                                            borderWidth: 1,
-                                            borderColor: c.inputBorder,
-                                            borderRadius: 8,
-                                            padding: 10,
-                                            color: c.text,
-                                            backgroundColor: c.surface,
-                                            fontSize: 13,
+                                            position: 'relative',
+                                            justifyContent: 'center',
                                         }}
-                                    />
+                                    >
+                                        <TextInput
+                                            value={searchQuery}
+                                            onChangeText={(text) => {
+                                                setSearchQuery(text);
+                                                if (text.trim().length > 0) {
+                                                    onSearch(text.trim());
+                                                } else {
+                                                    onClearSearch();
+                                                }
+                                            }}
+                                            placeholder="e.g. stairs, rails..."
+                                            placeholderTextColor={c.placeholder}
+                                            autoCapitalize="none"
+                                            style={{
+                                                borderWidth: 1,
+                                                borderColor: c.inputBorder,
+                                                borderRadius: 8,
+                                                paddingVertical: 10,
+                                                paddingLeft: 10,
+                                                paddingRight: searchQuery
+                                                    ? 34
+                                                    : 10,
+                                                color: c.text,
+                                                backgroundColor: c.surface,
+                                                fontSize: 13,
+                                            }}
+                                        />
+                                        {searchQuery.length > 0 ? (
+                                            <Pressable
+                                                onPress={() => {
+                                                    setSearchQuery('');
+                                                    onClearSearch();
+                                                }}
+                                                hitSlop={8}
+                                                style={{
+                                                    position: 'absolute',
+                                                    right: 8,
+                                                    padding: 4,
+                                                }}
+                                            >
+                                                <Ionicons
+                                                    name="close-circle"
+                                                    size={18}
+                                                    color={c.subtext}
+                                                />
+                                            </Pressable>
+                                        ) : null}
+                                    </View>
                                 </View>
 
                                 {searchQuery.trim().length > 0 &&
@@ -625,6 +656,7 @@ export function ExplorePanel({
                                         alignItems: 'center',
                                         justifyContent: 'center',
                                         gap: 8,
+                                        height: 56,
                                         opacity: parksLoading ? 0.6 : 1,
                                         marginBottom: 10,
                                     }}

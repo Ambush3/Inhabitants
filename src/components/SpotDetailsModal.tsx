@@ -23,8 +23,33 @@ import { Stars } from '@/src/components/Stars';
 import { Spot, Review } from '@/src/types';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import * as Location from 'expo-location';
 import { useTheme } from '@/src/context/ThemeContext';
 import { CONDITION_META, SpotCondition } from '@/src/hooks/useSpotConditions';
+
+const geocodeCache = new Map<string, string>();
+
+function haversineMiles(
+    lat1: number,
+    lng1: number,
+    lat2: number,
+    lng2: number
+): number {
+    const R = 3958.8;
+    const toRad = (d: number) => (d * Math.PI) / 180;
+    const dLat = toRad(lat2 - lat1);
+    const dLng = toRad(lng2 - lng1);
+    const a =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+function formatDistance(miles: number): string {
+    if (miles < 0.1) return '<0.1 mi';
+    if (miles < 10) return `${miles.toFixed(1)} mi`;
+    return `${Math.round(miles).toLocaleString('en-US')} mi`;
+}
 
 function SkeletonBar({
     width,
@@ -109,6 +134,7 @@ type Props = {
     detailsLoading: boolean;
     onViewProfile?: (userId: string) => void;
     onConditionDone?: () => void;
+    userLocation?: { latitude: number; longitude: number } | null;
 };
 
 export function SpotDetailsModal({
@@ -147,6 +173,7 @@ export function SpotDetailsModal({
     detailsLoading,
     onViewProfile,
     onConditionDone,
+    userLocation,
 }: Props) {
     const { width } = Dimensions.get('window');
     const { theme } = useTheme();
@@ -163,6 +190,54 @@ export function SpotDetailsModal({
     const [editingReviewId, setEditingReviewId] = useState<string | null>(null);
 
     const [showConditionPicker, setShowConditionPicker] = useState(false);
+    const [spotAddress, setSpotAddress] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (!spot || !visible) {
+            setSpotAddress(null);
+            return;
+        }
+        const key = `${spot.lat.toFixed(5)},${spot.lng.toFixed(5)}`;
+        const cached = geocodeCache.get(key);
+        if (cached !== undefined) {
+            setSpotAddress(cached);
+            return;
+        }
+        let cancelled = false;
+        (async () => {
+            try {
+                const results = await Location.reverseGeocodeAsync({
+                    latitude: spot.lat,
+                    longitude: spot.lng,
+                });
+                if (cancelled) return;
+                const r = results[0];
+                let label = '';
+                if (r) {
+                    const city = r.city || r.subregion || r.district || '';
+                    const region = r.region || r.country || '';
+                    label = [city, region].filter(Boolean).join(', ');
+                }
+                geocodeCache.set(key, label);
+                setSpotAddress(label || null);
+            } catch {
+                if (!cancelled) setSpotAddress(null);
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, [spot?.id, visible]);
+
+    const distanceMiles =
+        spot && userLocation
+            ? haversineMiles(
+                  userLocation.latitude,
+                  userLocation.longitude,
+                  spot.lat,
+                  spot.lng
+              )
+            : null;
 
     const reviewFormRef = useRef<View>(null);
     const reviewFormY = useRef(0);
@@ -468,15 +543,48 @@ export function SpotDetailsModal({
                                             </View>
                                         ) : null}
                                     </View>
-                                    {spot?.description ? (
-                                        <Text
-                                            style={[
-                                                styles.description,
-                                                { color: c.text },
-                                            ]}
+                                    {spotAddress || distanceMiles !== null ? (
+                                        <View
+                                            style={{
+                                                flexDirection: 'row',
+                                                alignItems: 'center',
+                                                gap: 4,
+                                                marginTop: 2,
+                                                marginBottom: 5,
+                                            }}
                                         >
-                                            {spot.description}
-                                        </Text>
+                                            <Ionicons
+                                                name="location-outline"
+                                                size={12}
+                                                color={c.subtext}
+                                            />
+                                            <Text
+                                                style={{
+                                                    fontSize: 12,
+                                                    color: c.subtext,
+                                                    flexShrink: 1,
+                                                }}
+                                                numberOfLines={1}
+                                            >
+                                                {spotAddress ? (
+                                                    <Text
+                                                        style={{
+                                                            color: c.text,
+                                                            fontWeight: '600',
+                                                        }}
+                                                    >
+                                                        {spotAddress}
+                                                    </Text>
+                                                ) : null}
+                                                {spotAddress &&
+                                                distanceMiles !== null
+                                                    ? ' · '
+                                                    : ''}
+                                                {distanceMiles !== null
+                                                    ? `${formatDistance(distanceMiles)} away`
+                                                    : ''}
+                                            </Text>
+                                        </View>
                                     ) : null}
                                     {creatorUsername ? (
                                         <Pressable
