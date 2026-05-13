@@ -16,16 +16,16 @@ const slides = [
     {
         id: '2',
         emoji: '📍',
-        title: 'Explore the Map',
+        title: 'Reading the Map',
         subtitle:
-            "Gold circular pins are your spots. Dark pins are other skaters' spots. Skate parks and shops have their own icons.",
+            'Your spots show as gray pins. Friends appear in purple. Other skaters are cream. Green pins are skate parks and blue pins are skate shops.',
     },
     {
         id: '3',
         emoji: '✋',
         title: 'Add a Spot',
         subtitle:
-            'Long press anywhere on the map to drop a pin and create a new spot. Add tags, photos, and a rating.',
+            'Long press anywhere on the map to drop a pin and create a new spot. Add tags, photos, and a rating. Vetted users can also add skate parks and shops.',
     },
     {
         id: '4',
@@ -53,7 +53,7 @@ const slides = [
         emoji: '🔒',
         title: 'Spot Visibility',
         subtitle:
-            'Each spot you create can be Public (everyone), Friends (only your friends), or Private (only you). Swipe right on a spot in Mine to change visibility anytime.',
+            'Each spot you create can be Public (everyone), Friends (only your friends), or Private (only you). Swipe right on a spot in Mine to change visibility anytime. Tap a pin to select it — your pins highlight in gold.',
     },
     {
         id: '8',
