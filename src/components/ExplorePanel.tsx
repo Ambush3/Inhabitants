@@ -13,7 +13,9 @@ import { Place, Spot } from '@/src/types';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/src/context/ThemeContext';
 import { AnimatedSpotCard } from '@/src/components/AnimatedSpotCard';
-import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
+import Swipeable, {
+    SwipeableMethods,
+} from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { TopRatedItem } from '@/src/hooks/useTopRated';
 import { AppNotification } from '@/src/hooks/useNotifications';
 import { FeedItem } from '@/src/hooks/useSocialFeed';
@@ -159,7 +161,7 @@ export function ExplorePanel({
 
     const [topRatedSearched, setTopRatedSearched] = useState(false);
 
-    const swipeableRefs = useRef<Map<string, any>>(new Map());
+    const swipeableRefs = useRef<Map<string, SwipeableMethods>>(new Map());
     const openRowsRef = useRef<Set<string>>(new Set());
 
     function handleRowPress(id: string, fallback: () => void) {
@@ -171,7 +173,7 @@ export function ExplorePanel({
     }
 
     function setSwipeableRef(id: string) {
-        return (ref: any) => {
+        return (ref: SwipeableMethods | null) => {
             if (ref) swipeableRefs.current.set(id, ref);
             else swipeableRefs.current.delete(id);
         };
@@ -985,7 +987,9 @@ export function ExplorePanel({
                                             index={index}
                                         >
                                             <Swipeable
-                                                ref={setSwipeableRef(s.id)}
+                                                ref={
+                                                    setSwipeableRef(s.id) as any
+                                                }
                                                 renderLeftActions={() => (
                                                     <Pressable
                                                         onPress={() =>
@@ -1220,7 +1224,11 @@ export function ExplorePanel({
                                                 index={index}
                                             >
                                                 <Swipeable
-                                                    ref={setSwipeableRef(s.id)}
+                                                    ref={
+                                                        setSwipeableRef(
+                                                            s.id
+                                                        ) as any
+                                                    }
                                                     renderLeftActions={() => (
                                                         <Pressable
                                                             onPress={() => {
@@ -1355,7 +1363,11 @@ export function ExplorePanel({
                                                 index={index}
                                             >
                                                 <Swipeable
-                                                    ref={setSwipeableRef(s.id)}
+                                                    ref={
+                                                        setSwipeableRef(
+                                                            s.id
+                                                        ) as any
+                                                    }
                                                     renderLeftActions={() => (
                                                         <Pressable
                                                             onPress={() => {
@@ -2038,7 +2050,7 @@ export function ExplorePanel({
                                                             fontWeight: '600',
                                                         }}
                                                     >
-                                                        "{item.spot.name}"
+                                                        {`"${item.spot.name}"`}
                                                     </Text>
                                                 </Text>
                                                 {item.kind === 'review_left' ? (
