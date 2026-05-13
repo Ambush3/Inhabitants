@@ -9,6 +9,7 @@ import {
     Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Place, Spot } from '@/src/types';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/src/context/ThemeContext';
@@ -160,6 +161,7 @@ export function ExplorePanel({
     const [myUsername, setMyUsername] = useState<string | null>(null);
 
     const [topRatedSearched, setTopRatedSearched] = useState(false);
+    const [searchHistory, setSearchHistory] = useState<string[]>([]);
 
     const swipeableRefs = useRef<Map<string, SwipeableMethods>>(new Map());
     const openRowsRef = useRef<Set<string>>(new Set());
@@ -179,6 +181,25 @@ export function ExplorePanel({
         };
     }
 
+    async function loadSearchHistory() {
+        const raw = await AsyncStorage.getItem('spotSearchHistory');
+        setSearchHistory(raw ? JSON.parse(raw) : []);
+    }
+
+    async function saveToHistory(query: string) {
+        const trimmed = query.trim().toLowerCase();
+        if (!trimmed) return;
+        const updated = [
+            trimmed,
+            ...searchHistory.filter((h) => h !== trimmed),
+        ].slice(0, 5);
+        setSearchHistory(updated);
+        await AsyncStorage.setItem(
+            'spotSearchHistory',
+            JSON.stringify(updated)
+        );
+    }
+
     useEffect(() => {
         async function loadProfile() {
             const {
@@ -193,7 +214,10 @@ export function ExplorePanel({
             setMyAvatarUrl(data?.avatar_url ?? null);
             setMyUsername(data?.username ?? null);
         }
-        if (visible) loadProfile();
+        if (visible) {
+            loadProfile();
+            loadSearchHistory();
+        }
     }, [visible]);
 
     useEffect(() => {
@@ -601,9 +625,12 @@ export function ExplorePanel({
                                                         borderBottomWidth: 1,
                                                         borderColor: c.border,
                                                     }}
-                                                    onPress={() =>
-                                                        onSelectSpot(s)
-                                                    }
+                                                    onPress={() => {
+                                                        saveToHistory(
+                                                            searchQuery
+                                                        );
+                                                        onSelectSpot(s);
+                                                    }}
                                                 >
                                                     <Text
                                                         style={{
@@ -633,6 +660,90 @@ export function ExplorePanel({
                                                 </Pressable>
                                             </AnimatedSpotCard>
                                         ))}
+                                    </View>
+                                ) : null}
+
+                                {searchQuery.length === 0 &&
+                                searchHistory.length > 0 ? (
+                                    <View style={{ marginBottom: 16 }}>
+                                        <View
+                                            style={{
+                                                flexDirection: 'row',
+                                                justifyContent: 'space-between',
+                                                alignItems: 'center',
+                                                marginBottom: 8,
+                                            }}
+                                        >
+                                            <Text
+                                                style={{
+                                                    fontSize: 11,
+                                                    fontWeight: '600',
+                                                    color: c.subtext,
+                                                    letterSpacing: 0.8,
+                                                }}
+                                            >
+                                                RECENT SEARCHES
+                                            </Text>
+                                            <Pressable
+                                                onPress={async () => {
+                                                    setSearchHistory([]);
+                                                    await AsyncStorage.removeItem(
+                                                        'spotSearchHistory'
+                                                    );
+                                                }}
+                                            >
+                                                <Text
+                                                    style={{
+                                                        fontSize: 11,
+                                                        color: '#007AFF',
+                                                        fontWeight: '600',
+                                                    }}
+                                                >
+                                                    Clear
+                                                </Text>
+                                            </Pressable>
+                                        </View>
+                                        <View
+                                            style={{
+                                                flexDirection: 'row',
+                                                flexWrap: 'wrap',
+                                                gap: 8,
+                                            }}
+                                        >
+                                            {searchHistory.map((h) => (
+                                                <Pressable
+                                                    key={h}
+                                                    onPress={() => {
+                                                        setSearchQuery(h);
+                                                        onSearch(h);
+                                                    }}
+                                                    style={{
+                                                        backgroundColor:
+                                                            c.tagBg,
+                                                        borderRadius: 20,
+                                                        paddingHorizontal: 12,
+                                                        paddingVertical: 6,
+                                                        flexDirection: 'row',
+                                                        alignItems: 'center',
+                                                        gap: 6,
+                                                    }}
+                                                >
+                                                    <Ionicons
+                                                        name="time-outline"
+                                                        size={12}
+                                                        color={c.subtext}
+                                                    />
+                                                    <Text
+                                                        style={{
+                                                            fontSize: 13,
+                                                            color: c.text,
+                                                        }}
+                                                    >
+                                                        {h}
+                                                    </Text>
+                                                </Pressable>
+                                            ))}
+                                        </View>
                                     </View>
                                 ) : null}
 
