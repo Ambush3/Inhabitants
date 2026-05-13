@@ -1,36 +1,62 @@
 # Inhabitants
 
-This is an app where users will be able to upload pictures and reviews of skate spots that they come across.
+A community-driven skateboarding spot finder built with React Native and Expo. Skaters can discover, add, and review spots, skate parks, and skate shops near them — and connect with friends to share the spots they find.
 
-## Get started
+## Features
+
+- Interactive map with color-coded teardrop pins for your spots, friends, strangers, parks, and shops
+- Long press the map to create a spot with photos, tags, and a rating
+- Tag-based search filtered to your current map view
+- Find nearby skate parks and skate shops via Google Places
+- Top rated spots nearby
+- Friends system with friend requests, visibility controls, and a social feed
+- Spot visibility: Public, Friends Only, or Private
+- Push notifications for reviews, saves, flags, friend requests, and more
+- Vetted account system for adding parks and shops
+- Dark mode support
+- Profile pages with stats, spots, and review history
+
+## Tech Stack
+
+- React Native / Expo
+- Expo Router (file-based routing)
+- Supabase (auth, database, storage)
+- react-native-maps
+- react-native-svg
+- EAS Build and Submit
+
+## Get Started
 
 1. Install dependencies
 
-    ```bash
-    npm install
-    ```
+```bash
+npm install
+```
 
 2. Start the app
 
-    ```bash
-    npx expo start
-    ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
 ```bash
-npm run reset-project
+npx expo start
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+For a full native build on iOS simulator:
+
+```bash
+npx expo run:ios
+```
+
+## Environment Variables
+
+Set the following in your EAS dashboard or `.env`:
+
+- `EXPO_PUBLIC_SUPABASE_URL`
+- `EXPO_PUBLIC_SUPABASE_ANON_KEY`
+- `EXPO_PUBLIC_GOOGLE_PLACES_API_KEY`
+
+## Project Structure
+
+- `app/` — screens and routing
+- `src/components/` — UI components including map markers
+- `src/hooks/` — data fetching and business logic
+- `src/libs/` — Supabase client and utilities
+- `assets/` — images, icons, animations
