@@ -369,9 +369,8 @@ export default function Index() {
         if (placesTimerRef.current) clearTimeout(placesTimerRef.current);
         setPlaces(updater);
         placesTimerRef.current = setTimeout(() => {
-            console.log('timer fired, clearing places');
             setPlaces([]);
-        }, 60000);
+        }, 30000);
     }
 
     function animateToSpotWithModalOffset(
@@ -1103,7 +1102,7 @@ export default function Index() {
                                 20000,
                                 undefined,
                                 (googleParks) => {
-                                    setPlaces([
+                                    setPlacesWithAutoClear(() => [
                                         ...communityParks,
                                         ...googleParks,
                                     ]);
@@ -1132,7 +1131,7 @@ export default function Index() {
                                 20000,
                                 undefined,
                                 (googleShops) => {
-                                    setPlaces([
+                                    setPlacesWithAutoClear(() => [
                                         ...communityShops,
                                         ...googleShops,
                                     ]);
@@ -1825,6 +1824,16 @@ export default function Index() {
                             );
                             await togglePlaceFavorite(selectedPlace);
                         }}
+                        userLocation={
+                            userLocationRef.current
+                                ? {
+                                      latitude:
+                                          userLocationRef.current.latitude,
+                                      longitude:
+                                          userLocationRef.current.longitude,
+                                  }
+                                : null
+                        }
                     />
 
                     <SettingsPanel
