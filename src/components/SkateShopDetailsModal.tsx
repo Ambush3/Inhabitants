@@ -17,10 +17,35 @@ import {
 } from 'react-native';
 import { Place } from '@/src/types';
 import { Ionicons } from '@expo/vector-icons';
+import * as Location from 'expo-location';
 import { useTheme } from '@/src/context/ThemeContext';
 import { usePlaceReviews } from '@/src/hooks/usePlaceReviews';
 import { usePlaceOverrides } from '@/src/hooks/usePlaceOverrides';
 import { useAuth } from '@/src/hooks/useAuth';
+
+const geocodeCache = new Map<string, string>();
+
+function haversineMiles(
+    lat1: number,
+    lng1: number,
+    lat2: number,
+    lng2: number
+): number {
+    const R = 3958.8;
+    const toRad = (d: number) => (d * Math.PI) / 180;
+    const dLat = toRad(lat2 - lat1);
+    const dLng = toRad(lng2 - lng1);
+    const a =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+function formatDistance(miles: number): string {
+    if (miles < 0.1) return '<0.1 mi';
+    if (miles < 10) return `${miles.toFixed(1)} mi`;
+    return `${Math.round(miles).toLocaleString('en-US')} mi`;
+}
 
 type Props = {
     visible: boolean;
@@ -28,6 +53,7 @@ type Props = {
     onClose: () => void;
     onToggleFavorite: () => void;
     isFavorite: boolean;
+    userLocation?: { latitude: number; longitude: number } | null;
 };
 
 export function SkateShopDetailsModal({
@@ -36,9 +62,58 @@ export function SkateShopDetailsModal({
     onClose,
     onToggleFavorite,
     isFavorite,
+    userLocation,
 }: Props) {
     const { theme } = useTheme();
     const c = theme.colors;
+    const [placeAddress, setPlaceAddress] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (!place || !visible) {
+            setPlaceAddress(null);
+            return;
+        }
+        const key = `${place.lat.toFixed(5)},${place.lng.toFixed(5)}`;
+        const cached = geocodeCache.get(key);
+        if (cached !== undefined) {
+            setPlaceAddress(cached);
+            return;
+        }
+        let cancelled = false;
+        (async () => {
+            try {
+                const results = await Location.reverseGeocodeAsync({
+                    latitude: place.lat,
+                    longitude: place.lng,
+                });
+                if (cancelled) return;
+                const r = results[0];
+                let label = '';
+                if (r) {
+                    const city = r.city || r.subregion || r.district || '';
+                    const region = r.region || r.country || '';
+                    label = [city, region].filter(Boolean).join(', ');
+                }
+                geocodeCache.set(key, label);
+                setPlaceAddress(label || null);
+            } catch {
+                if (!cancelled) setPlaceAddress(null);
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, [place?.id, visible]);
+
+    const distanceMiles =
+        place && userLocation
+            ? haversineMiles(
+                  userLocation.latitude,
+                  userLocation.longitude,
+                  place.lat,
+                  place.lng
+              )
+            : null;
     const { session } = useAuth();
 
     const {
@@ -210,7 +285,7 @@ export function SkateShopDetailsModal({
                             style={{
                                 flexDirection: 'row',
                                 alignItems: 'center',
-                                marginBottom: 4,
+                                marginBottom: 2,
                             }}
                         >
                             <Image
@@ -219,7 +294,11 @@ export function SkateShopDetailsModal({
                                         ? require('@/assets/pin-images/skate-shop.png')
                                         : require('@/assets/pin-images/skatepark-ramp.png')
                                 }
-                                style={{ width: 20, height: 20 }}
+                                style={{
+                                    width: 20,
+                                    height: 20,
+                                    tintColor: c.text,
+                                }}
                             />
                             <Text
                                 style={{
@@ -269,6 +348,48 @@ export function SkateShopDetailsModal({
                                 />
                             </Pressable>
                         </View>
+
+                        {placeAddress || distanceMiles !== null ? (
+                            <View
+                                style={{
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    gap: 4,
+                                    marginBottom: 8,
+                                }}
+                            >
+                                <Ionicons
+                                    name="location-outline"
+                                    size={12}
+                                    color={c.subtext}
+                                />
+                                <Text
+                                    style={{
+                                        fontSize: 12,
+                                        color: c.subtext,
+                                        flexShrink: 1,
+                                    }}
+                                    numberOfLines={1}
+                                >
+                                    {placeAddress ? (
+                                        <Text
+                                            style={{
+                                                color: c.text,
+                                                fontWeight: '600',
+                                            }}
+                                        >
+                                            {placeAddress}
+                                        </Text>
+                                    ) : null}
+                                    {placeAddress && distanceMiles !== null
+                                        ? ' · '
+                                        : ''}
+                                    {distanceMiles !== null
+                                        ? `${formatDistance(distanceMiles)} away`
+                                        : ''}
+                                </Text>
+                            </View>
+                        ) : null}
 
                         <View
                             style={{
