@@ -1,5 +1,22 @@
 export const changelog = [
     {
+        version: '1.3',
+        date: 'May 2026',
+        changes: [
+            'New SVG teardrop pin markers for all spot types',
+            'Gray pins for your own spots, purple for friends, cream for strangers',
+            'Green pins for skate parks, blue pins for skate shops',
+            'Selected pins highlight in gold',
+            'User search in Friends tab with friend indicator on results',
+            'Closing a public profile returns to your profile modal',
+            'Skate park and shop creation restricted to vetted accounts',
+            'Splash screen background color matches animated splash',
+            'Nearby buttons now equal height with consistent icon alignment',
+            'Dark mode tinted icons in Explore panel and Create Spot modal',
+            'Distance and location shown in spot details',
+        ],
+    },
+    {
         version: '1.2',
         date: 'April 2026',
         changes: [
