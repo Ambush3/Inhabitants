@@ -123,7 +123,7 @@ const SpotMap = React.memo(
                 ref={(ref) => {
                   markerRefs.current[s.id] = ref;
                 }}
-                key={s.id}
+                key={`${s.id}-${s.id === highlightSpotId}`}
                 coordinate={{ latitude: s.lat, longitude: s.lng }}
                 tracksViewChanges={false}
                 anchor={{ x: 0.5, y: 0.5 }}
@@ -141,7 +141,7 @@ const SpotMap = React.memo(
                 ref={(ref) => {
                   markerRefs.current[s.id] = ref;
                 }}
-                key={s.id}
+                key={`${s.id}-${s.id === highlightSpotId}`}
                 coordinate={{ latitude: s.lat, longitude: s.lng }}
                 tracksViewChanges={false}
                 anchor={{ x: 0.5, y: 0.5 }}

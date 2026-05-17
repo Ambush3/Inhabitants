@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   Image,
   StyleSheet,
   ActivityIndicator,
+  Animated,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -25,6 +26,49 @@ type Props = {
   currentUserId: string | null;
   onCommentCountChange?: (count: number) => void;
 };
+
+function CommentRow({ item, currentUserId, deleteComment, c }: any) {
+  const isOwn = item.user_id === currentUserId;
+  return (
+    <Animated.View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        marginBottom: 12,
+        gap: 10,
+      }}>
+      {item.profiles?.avatar_url ? (
+        <Image source={{ uri: item.profiles.avatar_url }} style={{ width: 32, height: 32, borderRadius: 16 }} />
+      ) : (
+        <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: c.border }} />
+      )}
+      <View style={{ flex: 1 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+          <Text style={{ fontWeight: '600', fontSize: 13, color: c.text }}>
+            {item.profiles?.username ?? 'Unknown'}
+          </Text>
+          <Text style={{ fontSize: 11, color: c.subtext }}>{timeAgo(item.created_at)}</Text>
+        </View>
+        <Text style={{ fontSize: 14, color: c.text }}>{item.content}</Text>
+      </View>
+      {isOwn && (
+        <Pressable onPress={() => deleteComment(item.id, item.spot_id)}>
+          <Ionicons name="trash-outline" size={16} color={c.subtext} />
+        </Pressable>
+      )}
+    </Animated.View>
+  );
+}
+
+function timeAgo(iso: string): string {
+  const diff = Math.max(0, Date.now() - new Date(iso).getTime());
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return 'now';
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
 
 export function SpotCommentsModal({ visible, onClose, spotId, spotName, currentUserId, onCommentCountChange }: Props) {
   const { theme } = useTheme();
@@ -42,8 +86,11 @@ export function SpotCommentsModal({ visible, onClose, spotId, spotName, currentU
   const [input, setInput] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [cooldown, setCooldown] = useState(false);
+  const [cooldownSeconds, setCooldownSeconds] = useState(0);
 
   const flatListRef = useRef<FlatList>(null);
+
+  const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (visible && spotId) {
@@ -62,6 +109,14 @@ export function SpotCommentsModal({ visible, onClose, spotId, spotName, currentU
     onCommentCountChange?.(liveCount);
   }, [liveCount]);
 
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  }, []);
+
   async function handleSubmit() {
     if (!spotId || !input.trim() || cooldown) return;
     setSubmitting(true);
@@ -69,51 +124,28 @@ export function SpotCommentsModal({ visible, onClose, spotId, spotName, currentU
     setInput('');
     setSubmitting(false);
     setCooldown(true);
-    setTimeout(() => setCooldown(false), 15000);
+    setCooldownSeconds(15);
+    const interval = setInterval(() => {
+      setCooldownSeconds((s) => {
+        if (s <= 1) {
+          clearInterval(interval);
+          setCooldown(false);
+          return 0;
+        }
+        return s - 1;
+      });
+    }, 1000);
     setTimeout(() => {
       flatListRef.current?.scrollToEnd({ animated: true });
     }, 100);
   }
 
-  function timeAgo(iso: string): string {
-    const diff = Math.max(0, Date.now() - new Date(iso).getTime());
-    const m = Math.floor(diff / 60000);
-    if (m < 1) return 'now';
-    if (m < 60) return `${m}m ago`;
-    const h = Math.floor(m / 60);
-    if (h < 24) return `${h}h ago`;
-    return `${Math.floor(h / 24)}d ago`;
-  }
-
-  function renderComment({ item }: { item: SpotComment }) {
-    const isOwn = item.user_id === currentUserId;
-    return (
-      <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12, gap: 10 }}>
-        {item.profiles?.avatar_url ? (
-          <Image
-            source={{ uri: item.profiles.avatar_url }}
-            style={{ width: 32, height: 32, borderRadius: 16 }}
-          />
-        ) : (
-          <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: c.border }} />
-        )}
-        <View style={{ flex: 1 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-            <Text style={{ fontWeight: '600', fontSize: 13, color: c.text }}>
-              {item.profiles?.username ?? 'Unknown'}
-            </Text>
-            <Text style={{ fontSize: 11, color: c.subtext }}>{timeAgo(item.created_at)}</Text>
-          </View>
-          <Text style={{ fontSize: 14, color: c.text }}>{item.content}</Text>
-        </View>
-        {isOwn && (
-          <Pressable onPress={() => deleteComment(item.id, item.spot_id)}>
-            <Ionicons name="trash-outline" size={16} color={c.subtext} />
-          </Pressable>
-        )}
-      </View>
-    );
-  }
+  const renderComment = useCallback(
+    ({ item }: { item: SpotComment }) => {
+      return <CommentRow item={item} currentUserId={currentUserId} deleteComment={deleteComment} c={c} />;
+    },
+    [currentUserId, deleteComment, c]
+  );
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
@@ -186,7 +218,7 @@ export function SpotCommentsModal({ visible, onClose, spotId, spotName, currentU
               }}>
               <TextInput
                 value={input}
-                onChangeText={setInput}
+                onChangeText={(text) => setInput(text.slice(0, 280))}
                 placeholder="Add a comment..."
                 placeholderTextColor={c.placeholder}
                 multiline
@@ -202,13 +234,33 @@ export function SpotCommentsModal({ visible, onClose, spotId, spotName, currentU
                   maxHeight: 80,
                 }}
               />
-              <Pressable
-                onPress={handleSubmit}
-                disabled={submitting || !input.trim() || cooldown}
-                style={{ opacity: submitting || !input.trim() || cooldown ? 0.4 : 1 }}>
-                <Ionicons name="send" size={24} color="#007AFF" />
-              </Pressable>
+              <View style={{ alignItems: 'center', justifyContent: 'center', width: 32 }}>
+                {cooldown ? (
+                  <Text style={{ fontSize: 11, color: c.subtext, fontWeight: '600' }}>
+                    {cooldownSeconds}s
+                  </Text>
+                ) : (
+                  <Pressable
+                    onPress={handleSubmit}
+                    disabled={submitting || !input.trim()}
+                    style={{ opacity: submitting || !input.trim() ? 0.4 : 1 }}>
+                    <Ionicons name="send" size={24} color="#007AFF" />
+                  </Pressable>
+                )}
+              </View>
             </View>
+            {input.length > 200 ? (
+              <Text
+                style={{
+                  fontSize: 11,
+                  color: input.length >= 280 ? '#FF3B30' : c.subtext,
+                  textAlign: 'right',
+                  paddingRight: 16,
+                  paddingBottom: 4,
+                }}>
+                {280 - input.length}
+              </Text>
+            ) : null}
           </View>
         </KeyboardAvoidingView>
       </View>

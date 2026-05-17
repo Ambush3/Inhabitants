@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -19,7 +19,6 @@ import {
   PanResponder,
   Animated,
 } from 'react-native';
-import { Stars } from '@/src/components/Stars';
 import { Spot, Review } from '@/src/types';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -349,6 +348,54 @@ export function SpotDetailsModal({
   }
 
   const isOwner = spot?.user_id === currentUserId;
+
+  const renderImageItem = useCallback(
+    ({ item }: { item: string }) => {
+      if (item === 'add') {
+        if (images.length + pendingImages.length >= 5) return null;
+        return (
+          <Pressable onPress={handlePickImages} style={[styles.addImageBtn, { borderColor: c.inputBorder }]}>
+            <Ionicons name="camera-outline" size={22} color={c.subtext} />
+            <Text style={[styles.addImageText, { color: c.subtext }]}>Add</Text>
+          </Pressable>
+        );
+      }
+      const isPending = pendingImages.includes(item);
+      return (
+        <View style={{ marginRight: 8, position: 'relative' }}>
+          <Pressable onPress={() => !isPending && setSelectedImageIndex(images.indexOf(item))}>
+            <Image
+              source={{ uri: item }}
+              style={[styles.thumbnail, { opacity: isPending ? 0.5 : 1 }]}
+              resizeMode="cover"
+            />
+          </Pressable>
+          <Pressable
+            onPress={() =>
+              isPending ? setPendingImages((prev) => prev.filter((u) => u !== item)) : onDeleteImage(item)
+            }
+            style={styles.deleteImageBtn}>
+            <Ionicons name="close" size={12} color="white" />
+          </Pressable>
+          {isPending ? (
+            <View style={styles.pendingBadge}>
+              <Text style={styles.pendingText}>Pending</Text>
+            </View>
+          ) : null}
+        </View>
+      );
+    },
+    [images, pendingImages, c]
+  );
+
+  const renderViewImageItem = useCallback(
+    ({ item: url }: { item: string }) => (
+      <Pressable onPress={() => setSelectedImageIndex(images.indexOf(url))} style={{ marginRight: 8 }}>
+        <Image source={{ uri: url }} style={styles.thumbnail} resizeMode="cover" />
+      </Pressable>
+    ),
+    [images]
+  );
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -722,7 +769,7 @@ export function SpotDetailsModal({
               </View>
             ) : null}
             {/* Images */}
-            {detailsLoading ? (
+            {visible && detailsLoading ? (
               <View
                 style={{
                   flexDirection: 'row',
@@ -732,84 +779,23 @@ export function SpotDetailsModal({
                 <SkeletonBar width={110} height={82} style={{ borderRadius: 10 }} />
                 <SkeletonBar width={110} height={82} style={{ borderRadius: 10 }} />
               </View>
-            ) : isOwner ? (
+            ) : visible && isOwner ? (
               <FlatList
                 data={[...images, ...pendingImages, 'add']}
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 keyExtractor={(item) => item}
                 style={styles.imageList}
-                renderItem={({ item }) => {
-                  if (item === 'add') {
-                    if (images.length + pendingImages.length >= 5) return null;
-                    return (
-                      <Pressable
-                        onPress={handlePickImages}
-                        style={[
-                          styles.addImageBtn,
-                          {
-                            borderColor: c.inputBorder,
-                          },
-                        ]}>
-                        <Ionicons name="camera-outline" size={22} color={c.subtext} />
-                        <Text style={[styles.addImageText, { color: c.subtext }]}>Add</Text>
-                      </Pressable>
-                    );
-                  }
-                  const isPending = pendingImages.includes(item);
-                  return (
-                    <View
-                      style={{
-                        marginRight: 8,
-                        position: 'relative',
-                      }}>
-                      <Pressable
-                        onPress={() =>
-                          !isPending && setSelectedImageIndex(images.indexOf(item))
-                        }>
-                        <Image
-                          source={{ uri: item }}
-                          style={[
-                            styles.thumbnail,
-                            {
-                              opacity: isPending ? 0.5 : 1,
-                            },
-                          ]}
-                          resizeMode="cover"
-                        />
-                      </Pressable>
-                      <Pressable
-                        onPress={() =>
-                          isPending
-                            ? setPendingImages((prev) => prev.filter((u) => u !== item))
-                            : onDeleteImage(item)
-                        }
-                        style={styles.deleteImageBtn}>
-                        <Ionicons name="close" size={12} color="white" />
-                      </Pressable>
-                      {isPending ? (
-                        <View style={styles.pendingBadge}>
-                          <Text style={styles.pendingText}>Pending</Text>
-                        </View>
-                      ) : null}
-                    </View>
-                  );
-                }}
+                renderItem={renderImageItem}
               />
-            ) : images.length > 0 ? (
+            ) : visible && images.length > 0 ? (
               <FlatList
                 data={images}
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 keyExtractor={(url) => url}
                 style={styles.imageList}
-                renderItem={({ item: url }) => (
-                  <Pressable
-                    onPress={() => setSelectedImageIndex(images.indexOf(url))}
-                    style={{ marginRight: 8 }}>
-                    <Image source={{ uri: url }} style={styles.thumbnail} resizeMode="cover" />
-                  </Pressable>
-                )}
+                renderItem={renderViewImageItem}
               />
             ) : null}
             {pendingImages.length > 0 && isOwner ? (
