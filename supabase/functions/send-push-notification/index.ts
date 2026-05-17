@@ -2,10 +2,7 @@
 // eslint-disable-next-line import/no-unresolved
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const supabase = createClient(
-    Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-);
+const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 
 const PREF_COLUMN_BY_TYPE: Record<string, string | null> = {
     friend_request: 'notify_friend_request',
@@ -21,30 +18,16 @@ const PREF_COLUMN_BY_TYPE: Record<string, string | null> = {
 async function isAllowed(userId: string, eventType: string): Promise<boolean> {
     const col = PREF_COLUMN_BY_TYPE[eventType];
     if (!col) return true;
-    const { data } = await supabase
-        .from('notification_preferences')
-        .select(col)
-        .eq('user_id', userId)
-        .maybeSingle();
+    const { data } = await supabase.from('notification_preferences').select(col).eq('user_id', userId).maybeSingle();
     if (!data) return true;
     return data[col] !== false;
 }
 
 Deno.serve(async (req) => {
     try {
-        const {
-            spot_id,
-            addressee_id,
-            event_type,
-            actor_username,
-            actor_id,
-            reason,
-        } = await req.json();
+        const { spot_id, addressee_id, event_type, actor_username, actor_id, reason } = await req.json();
 
-        if (
-            event_type === 'friend_request' ||
-            event_type === 'friend_accepted'
-        ) {
+        if (event_type === 'friend_request' || event_type === 'friend_accepted') {
             if (!(await isAllowed(addressee_id, event_type))) {
                 return new Response(JSON.stringify({ muted: true }), {
                     status: 200,
@@ -57,15 +40,12 @@ Deno.serve(async (req) => {
                 .eq('user_id', addressee_id)
                 .single();
 
-            if (!tokenRow)
-                return new Response('No push token', { status: 200 });
+            if (!tokenRow) return new Response('No push token', { status: 200 });
 
             const isAccepted = event_type === 'friend_accepted';
 
             const now = new Date();
-            const last = tokenRow.last_friend_request_notify
-                ? new Date(tokenRow.last_friend_request_notify)
-                : null;
+            const last = tokenRow.last_friend_request_notify ? new Date(tokenRow.last_friend_request_notify) : null;
             if (last && now.getTime() - last.getTime() < 60000) {
                 return new Response(JSON.stringify({ debounced: true }), {
                     status: 200,
@@ -76,32 +56,27 @@ Deno.serve(async (req) => {
                 .update({ last_friend_request_notify: now.toISOString() })
                 .eq('user_id', addressee_id);
 
-            const response = await fetch(
-                'https://exp.host/--/api/v2/push/send',
-                {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        Accept: 'application/json',
-                        'Accept-Encoding': 'gzip, deflate',
+            const response = await fetch('https://exp.host/--/api/v2/push/send', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    'Accept-Encoding': 'gzip, deflate',
+                },
+                body: JSON.stringify({
+                    to: tokenRow.token,
+                    title: isAccepted ? 'Friend Request Accepted' : 'Friend Request',
+                    body: isAccepted
+                        ? `${actor_username} accepted your friend request`
+                        : `${actor_username} sent you a friend request`,
+                    sound: 'default',
+                    data: {
+                        url: isAccepted
+                            ? `skatespotapp:///friend_accepted?actorId=${actor_id ?? ''}`
+                            : 'skatespotapp:///friend_request',
                     },
-                    body: JSON.stringify({
-                        to: tokenRow.token,
-                        title: isAccepted
-                            ? 'Friend Request Accepted'
-                            : 'Friend Request',
-                        body: isAccepted
-                            ? `${actor_username} accepted your friend request`
-                            : `${actor_username} sent you a friend request`,
-                        sound: 'default',
-                        data: {
-                            url: isAccepted
-                                ? `skatespotapp:///friend_accepted?actorId=${actor_id ?? ''}`
-                                : 'skatespotapp:///friend_request',
-                        },
-                    }),
-                }
-            );
+                }),
+            });
 
             const result = await response.json();
             return new Response(JSON.stringify(result), { status: 200 });
@@ -131,9 +106,7 @@ Deno.serve(async (req) => {
 
         if (event_type === 'condition') {
             const now = new Date();
-            const last = tokenRow.last_condition_notify
-                ? new Date(tokenRow.last_condition_notify)
-                : null;
+            const last = tokenRow.last_condition_notify ? new Date(tokenRow.last_condition_notify) : null;
 
             if (last && now.getTime() - last.getTime() < 10000) {
                 return new Response(JSON.stringify({ debounced: true }), {
@@ -150,7 +123,7 @@ Deno.serve(async (req) => {
         const messages: Record<string, { title: string; body: string }> = {
             review: {
                 title: '⭐ New Review',
-                body: `${actor_username} reviewed your spot "${spot.name}"`,
+                body: `${actor_username} rated your spot "${spot.name}"`,
             },
             favorite: {
                 title: '🔖 New Save',
@@ -175,8 +148,7 @@ Deno.serve(async (req) => {
         };
 
         const message = messages[event_type];
-        if (!message)
-            return new Response('Unknown event type', { status: 400 });
+        if (!message) return new Response('Unknown event type', { status: 400 });
 
         await supabase.from('notifications').insert({
             user_id: spot.user_id,

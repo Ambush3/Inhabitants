@@ -1,652 +1,531 @@
 import React, { useEffect, useState } from 'react';
-import {
-    View,
-    Text,
-    Modal,
-    ScrollView,
-    Pressable,
-    Image,
-    SafeAreaView,
-    Alert,
-} from 'react-native';
+import { View, Text, Modal, ScrollView, Pressable, Image, SafeAreaView, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/src/libs/supabase';
 import { useTheme } from '@/src/context/ThemeContext';
 import { Spot } from '@/src/types';
-import {
-    useFriendships,
-    FriendshipStatus,
-} from '@/src/hooks/social/useFriendships';
+import { useFriendships, FriendshipStatus } from '@/src/hooks/social/useFriendships';
 import { sendFriendRequestNotification } from '@/src/libs/sendPushNotification';
 
 type PublicReview = {
-    id: string;
-    spot_id: string;
-    spot_name: string;
-    rating: number;
-    comment: string | null;
-    created_at: string;
+  id: string;
+  spot_id: string;
+  spot_name: string;
+  rating: number;
+  comment: string | null;
+  created_at: string;
 };
 
 type Props = {
-    visible: boolean;
-    onClose: () => void;
-    userId: string | null;
-    onSelectSpot: (spot: Spot) => void;
-    allSpots: Spot[];
+  visible: boolean;
+  onClose: () => void;
+  userId: string | null;
+  onSelectSpot: (spot: Spot) => void;
+  allSpots: Spot[];
 };
 
-export function PublicProfileModal({
-    visible,
-    onClose,
-    userId,
-    onSelectSpot,
-    allSpots,
-}: Props) {
-    const { theme } = useTheme();
-    const c = theme.colors;
+export function PublicProfileModal({ visible, onClose, userId, onSelectSpot, allSpots }: Props) {
+  const { theme } = useTheme();
+  const c = theme.colors;
 
-    const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-    const [username, setUsername] = useState<string | null>(null);
-    const [firstName, setFirstName] = useState<string | null>(null);
-    const [lastName, setLastName] = useState<string | null>(null);
-    const [joinDate, setJoinDate] = useState<string | null>(null);
-    const [publicSpots, setPublicSpots] = useState<Spot[]>([]);
-    const [publicReviews, setPublicReviews] = useState<PublicReview[]>([]);
-    const [activeTab, setActiveTab] = useState<'spots' | 'reviews'>('spots');
-    const [loading, setLoading] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [username, setUsername] = useState<string | null>(null);
+  const [firstName, setFirstName] = useState<string | null>(null);
+  const [lastName, setLastName] = useState<string | null>(null);
+  const [joinDate, setJoinDate] = useState<string | null>(null);
+  const [publicSpots, setPublicSpots] = useState<Spot[]>([]);
+  const [publicReviews, setPublicReviews] = useState<PublicReview[]>([]);
+  const [activeTab, setActiveTab] = useState<'spots' | 'reviews'>('spots');
+  const [loading, setLoading] = useState(false);
 
-    const {
-        getFriendshipStatus,
-        sendFriendRequest,
-        acceptFriendRequest,
-        removeFriend,
-    } = useFriendships();
-    const [friendshipStatus, setFriendshipStatus] =
-        useState<FriendshipStatus>('none');
-    const [friendshipLoading, setFriendshipLoading] = useState(false);
-    const [cooldown, setCooldown] = useState(false);
+  const { getFriendshipStatus, sendFriendRequest, acceptFriendRequest, removeFriend } = useFriendships();
+  const [friendshipStatus, setFriendshipStatus] = useState<FriendshipStatus>('none');
+  const [friendshipLoading, setFriendshipLoading] = useState(false);
+  const [cooldown, setCooldown] = useState(false);
 
-    function startCooldown() {
-        setCooldown(true);
-        setTimeout(() => setCooldown(false), 3000);
+  function startCooldown() {
+    setCooldown(true);
+    setTimeout(() => setCooldown(false), 3000);
+  }
+
+  function getFriendButtonLabel(): string {
+    if (friendshipStatus === 'accepted') return 'Friends';
+    if (friendshipStatus === 'pending_sent') return 'Request Sent';
+    if (friendshipStatus === 'pending_received') return 'Accept Request';
+    return 'Add Friend';
+  }
+
+  useEffect(() => {
+    if (!visible || !userId) return;
+    async function load() {
+      setLoading(true);
+      const [profileRes, spotsRes, reviewsRes, status] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('avatar_url, username, created_at, first_name, last_name')
+          .eq('id', userId)
+          .single(),
+        supabase
+          .from('spots')
+          .select('*')
+          .eq('user_id', userId!)
+          .eq('is_private', false)
+          .eq('spot_type', 'spot')
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('reviews')
+          .select('id, spot_id, rating, comment, created_at, spots(name)')
+          .eq('user_id', userId!)
+          .order('created_at', { ascending: false }),
+        getFriendshipStatus(userId!),
+      ]);
+      setAvatarUrl(profileRes.data?.avatar_url ?? null);
+      setUsername(profileRes.data?.username ?? null);
+      setFirstName(profileRes.data?.first_name ?? null);
+      setLastName(profileRes.data?.last_name ?? null);
+      setJoinDate(profileRes.data?.created_at ?? null);
+      setPublicSpots((spotsRes.data as Spot[]) ?? []);
+      setPublicReviews(
+        (reviewsRes.data ?? []).map((r: any) => ({
+          id: r.id,
+          spot_id: r.spot_id,
+          spot_name: r.spots?.name ?? 'Unknown spot',
+          rating: r.rating,
+          comment: r.comment,
+          created_at: r.created_at,
+        }))
+      );
+      setFriendshipStatus(status);
+      setLoading(false);
     }
+    load();
+  }, [visible, userId]);
 
-    function getFriendButtonLabel(): string {
-        if (friendshipStatus === 'accepted') return 'Friends';
-        if (friendshipStatus === 'pending_sent') return 'Request Sent';
-        if (friendshipStatus === 'pending_received') return 'Accept Request';
-        return 'Add Friend';
-    }
+  const avgRating =
+    publicReviews.length === 0 ? null : publicReviews.reduce((sum, r) => sum + r.rating, 0) / publicReviews.length;
 
-    useEffect(() => {
-        if (!visible || !userId) return;
-        async function load() {
-            setLoading(true);
-            const [profileRes, spotsRes, reviewsRes, status] =
-                await Promise.all([
-                    supabase
-                        .from('profiles')
-                        .select('avatar_url, username, created_at, first_name, last_name')
-                        .eq('id', userId)
-                        .single(),
-                    supabase
-                        .from('spots')
-                        .select('*')
-                        .eq('user_id', userId!)
-                        .eq('is_private', false)
-                        .eq('spot_type', 'spot')
-                        .order('created_at', { ascending: false }),
-                    supabase
-                        .from('reviews')
-                        .select(
-                            'id, spot_id, rating, comment, created_at, spots(name)'
-                        )
-                        .eq('user_id', userId!)
-                        .order('created_at', { ascending: false }),
-                    getFriendshipStatus(userId!),
-                ]);
-            setAvatarUrl(profileRes.data?.avatar_url ?? null);
-            setUsername(profileRes.data?.username ?? null);
-            setFirstName(profileRes.data?.first_name ?? null);
-            setLastName(profileRes.data?.last_name ?? null);
-            setJoinDate(profileRes.data?.created_at ?? null);
-            setPublicSpots((spotsRes.data as Spot[]) ?? []);
-            setPublicReviews(
-                (reviewsRes.data ?? []).map((r: any) => ({
-                    id: r.id,
-                    spot_id: r.spot_id,
-                    spot_name: r.spots?.name ?? 'Unknown spot',
-                    rating: r.rating,
-                    comment: r.comment,
-                    created_at: r.created_at,
-                }))
-            );
-            setFriendshipStatus(status);
-            setLoading(false);
-        }
-        load();
-    }, [visible, userId]);
+  return (
+    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: c.surface }}>
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            paddingHorizontal: 16,
+            paddingVertical: 12,
+            borderBottomWidth: 1,
+            borderColor: c.border,
+          }}>
+          <Pressable onPress={onClose} style={{ padding: 4 }}>
+            <Ionicons name="close" size={24} color={c.text} />
+          </Pressable>
+          <Text
+            style={{
+              flex: 1,
+              textAlign: 'center',
+              fontSize: 16,
+              fontWeight: '700',
+              color: c.text,
+            }}>
+            Profile
+          </Text>
+          <View style={{ width: 32 }} />
+        </View>
 
-    const avgRating =
-        publicReviews.length === 0
-            ? null
-            : publicReviews.reduce((sum, r) => sum + r.rating, 0) /
-              publicReviews.length;
-
-    return (
-        <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-            <SafeAreaView style={{ flex: 1, backgroundColor: c.surface }}>
+        {loading ? (
+          <View
+            style={{
+              flex: 1,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+            <Text style={{ color: c.subtext }}>Loading...</Text>
+          </View>
+        ) : (
+          <ScrollView showsVerticalScrollIndicator={false}>
+            <View
+              style={{
+                alignItems: 'center',
+                paddingVertical: 28,
+              }}>
+              {avatarUrl ? (
+                <Image
+                  source={{ uri: avatarUrl }}
+                  style={{
+                    width: 90,
+                    height: 90,
+                    borderRadius: 45,
+                    marginBottom: 12,
+                  }}
+                />
+              ) : (
                 <View
+                  style={{
+                    width: 90,
+                    height: 90,
+                    borderRadius: 45,
+                    backgroundColor: c.tagBg,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginBottom: 12,
+                  }}>
+                  <Ionicons name="person-outline" size={40} color={c.subtext} />
+                </View>
+              )}
+              {firstName || lastName ? (
+                <Text
+                  style={{
+                    fontSize: 22,
+                    fontWeight: '700',
+                    color: c.text,
+                    marginBottom: 2,
+                  }}>
+                  {[firstName, lastName].filter(Boolean).join(' ')}
+                </Text>
+              ) : null}
+              {username ? (
+                <Text
+                  style={{
+                    fontSize: firstName || lastName ? 14 : 22,
+                    fontWeight: firstName || lastName ? '500' : '700',
+                    color: firstName || lastName ? c.subtext : c.text,
+                    marginBottom: 4,
+                  }}>
+                  @{username}
+                </Text>
+              ) : null}
+              {joinDate ? (
+                <Text style={{ fontSize: 13, color: c.subtext }}>
+                  Joined{' '}
+                  {new Date(joinDate).toLocaleDateString([], {
+                    month: 'long',
+                    year: 'numeric',
+                  })}
+                </Text>
+              ) : null}
+
+              <Pressable
+                disabled={friendshipLoading || cooldown}
+                onPress={async () => {
+                  if (friendshipLoading || cooldown) return;
+                  if (friendshipStatus === 'pending_sent') {
+                    Alert.alert('Cancel friend request?', undefined, [
+                      {
+                        text: 'Keep',
+                        style: 'cancel',
+                      },
+                      {
+                        text: 'Cancel Request',
+                        style: 'destructive',
+                        onPress: async () => {
+                          setFriendshipLoading(true);
+                          await removeFriend(userId!);
+                          setFriendshipStatus('none');
+                          setFriendshipLoading(false);
+                          startCooldown();
+                        },
+                      },
+                    ]);
+                    return;
+                  }
+                  setFriendshipLoading(true);
+                  if (friendshipStatus === 'none') {
+                    await sendFriendRequest(userId!);
+                    setFriendshipStatus('pending_sent');
+                    const {
+                      data: { user },
+                    } = await supabase.auth.getUser();
+                    if (user) {
+                      const { data: profile } = await supabase
+                        .from('profiles')
+                        .select('username')
+                        .eq('id', user.id)
+                        .single();
+                      await sendFriendRequestNotification(
+                        userId!,
+                        profile?.username ?? 'Someone'
+                      );
+                    }
+                  } else if (friendshipStatus === 'pending_received') {
+                    await acceptFriendRequest(userId!);
+                    setFriendshipStatus('accepted');
+                  } else if (friendshipStatus === 'accepted') {
+                    await removeFriend(userId!);
+                    setFriendshipStatus('none');
+                  }
+                  setFriendshipLoading(false);
+                  startCooldown();
+                }}
+                style={{
+                  marginTop: 14,
+                  paddingHorizontal: 24,
+                  paddingVertical: 8,
+                  borderRadius: 20,
+                  alignSelf: 'center',
+                  backgroundColor:
+                    friendshipStatus === 'accepted'
+                      ? c.tagBg
+                      : friendshipStatus === 'pending_sent'
+                        ? c.tagBg
+                        : '#007AFF',
+                  borderWidth: friendshipStatus === 'accepted' ? 1 : 0,
+                  borderColor: c.border,
+                }}>
+                <Text
+                  style={{
+                    fontWeight: '600',
+                    fontSize: 14,
+                    color:
+                      friendshipStatus === 'accepted' || friendshipStatus === 'pending_sent'
+                        ? c.text
+                        : 'white',
+                  }}>
+                  {friendshipLoading ? '...' : getFriendButtonLabel()}
+                </Text>
+              </Pressable>
+            </View>
+
+            <View
+              style={{
+                flexDirection: 'row',
+                marginHorizontal: 16,
+                marginBottom: 24,
+                borderRadius: 12,
+                backgroundColor: c.tagBg,
+                overflow: 'hidden',
+              }}>
+              <View
+                style={{
+                  flex: 1,
+                  alignItems: 'center',
+                  paddingVertical: 16,
+                  borderRightWidth: 1,
+                  borderColor: c.border,
+                }}>
+                <Text
+                  style={{
+                    fontSize: 22,
+                    fontWeight: '700',
+                    color: c.text,
+                  }}>
+                  {publicSpots.length}
+                </Text>
+                <Text
+                  style={{
+                    fontSize: 12,
+                    color: c.subtext,
+                    marginTop: 2,
+                  }}>
+                  Spots
+                </Text>
+              </View>
+              <View
+                style={{
+                  flex: 1,
+                  alignItems: 'center',
+                  paddingVertical: 16,
+                  borderRightWidth: 1,
+                  borderColor: c.border,
+                }}>
+                <Text
+                  style={{
+                    fontSize: 22,
+                    fontWeight: '700',
+                    color: c.text,
+                  }}>
+                  {publicReviews.length}
+                </Text>
+                <Text
+                  style={{
+                    fontSize: 12,
+                    color: c.subtext,
+                    marginTop: 2,
+                  }}>
+                  Reviews
+                </Text>
+              </View>
+              <View
+                style={{
+                  flex: 1,
+                  alignItems: 'center',
+                  paddingVertical: 16,
+                }}>
+                <Text
+                  style={{
+                    fontSize: 22,
+                    fontWeight: '700',
+                    color: c.text,
+                  }}>
+                  {avgRating ? avgRating.toFixed(1) : '—'}
+                </Text>
+                <Text
+                  style={{
+                    fontSize: 12,
+                    color: c.subtext,
+                    marginTop: 2,
+                  }}>
+                  Avg Rating
+                </Text>
+              </View>
+            </View>
+
+            <View
+              style={{
+                flexDirection: 'row',
+                marginHorizontal: 16,
+                marginBottom: 16,
+                borderRadius: 8,
+                backgroundColor: c.tagBg,
+                padding: 4,
+              }}>
+              {(['spots', 'reviews'] as const).map((tab) => (
+                <Pressable
+                  key={tab}
+                  onPress={() => setActiveTab(tab)}
+                  style={{
+                    flex: 1,
+                    paddingVertical: 8,
+                    borderRadius: 6,
+                    alignItems: 'center',
+                    backgroundColor: activeTab === tab ? c.surface : 'transparent',
+                  }}>
+                  <Text
                     style={{
+                      fontSize: 13,
+                      fontWeight: '600',
+                      color: activeTab === tab ? c.text : c.subtext,
+                    }}>
+                    {tab === 'spots' ? 'Spots' : 'Ratings'}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+
+            <View style={{ paddingHorizontal: 16, paddingBottom: 32 }}>
+              {activeTab === 'spots' ? (
+                publicSpots.length === 0 ? (
+                  <Text
+                    style={{
+                      color: c.subtext,
+                      fontSize: 14,
+                      textAlign: 'center',
+                      marginTop: 24,
+                    }}>
+                    No public spots yet.
+                  </Text>
+                ) : (
+                  publicSpots.map((s) => (
+                    <Pressable
+                      key={s.id}
+                      onPress={() => {
+                        onSelectSpot(s);
+                        onClose();
+                      }}
+                      style={{
                         flexDirection: 'row',
                         alignItems: 'center',
-                        paddingHorizontal: 16,
                         paddingVertical: 12,
                         borderBottomWidth: 1,
                         borderColor: c.border,
-                    }}
-                >
-                    <Pressable onPress={onClose} style={{ padding: 4 }}>
-                        <Ionicons name="close" size={24} color={c.text} />
-                    </Pressable>
-                    <Text
-                        style={{
-                            flex: 1,
-                            textAlign: 'center',
-                            fontSize: 16,
-                            fontWeight: '700',
+                        gap: 10,
+                      }}>
+                      <Ionicons name="location-outline" size={16} color={c.subtext} />
+                      <View style={{ flex: 1 }}>
+                        <Text
+                          style={{
+                            fontWeight: '600',
                             color: c.text,
-                        }}
-                    >
-                        Profile
+                          }}>
+                          {s.name}
+                        </Text>
+                        {s.tags?.length > 0 ? (
+                          <Text
+                            style={{
+                              fontSize: 12,
+                              color: c.subtext,
+                              marginTop: 2,
+                            }}>
+                            {s.tags.map((t) => `#${t}`).join(' ')}
+                          </Text>
+                        ) : null}
+                      </View>
+                      <Ionicons name="chevron-forward" size={16} color={c.subtext} />
+                    </Pressable>
+                  ))
+                )
+              ) : publicReviews.length === 0 ? (
+                <Text
+                  style={{
+                    color: c.subtext,
+                    fontSize: 14,
+                    textAlign: 'center',
+                    marginTop: 24,
+                  }}>
+                  No reviews yet.
+                </Text>
+              ) : (
+                publicReviews.map((r) => (
+                  <Pressable
+                    key={r.id}
+                    onPress={() => {
+                      const spot = allSpots.find((s) => s.id === r.spot_id);
+                      if (spot) {
+                        onSelectSpot(spot);
+                        onClose();
+                      }
+                    }}
+                    style={{
+                      paddingVertical: 14,
+                      borderBottomWidth: 1,
+                      borderColor: c.border,
+                    }}>
+                    <Text
+                      style={{
+                        fontWeight: '700',
+                        color: c.text,
+                        marginBottom: 4,
+                      }}>
+                      {r.spot_name}
                     </Text>
-                    <View style={{ width: 32 }} />
-                </View>
-
-                {loading ? (
-                    <View
+                    <Text
+                      style={{
+                        fontSize: 14,
+                        color: '#F5A623',
+                        letterSpacing: 1,
+                        marginBottom: 4,
+                      }}>
+                      {'★'.repeat(r.rating)}
+                      {'☆'.repeat(5 - r.rating)}
+                    </Text>
+                    {r.comment ? (
+                      <Text
                         style={{
-                            flex: 1,
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                        }}
-                    >
-                        <Text style={{ color: c.subtext }}>Loading...</Text>
-                    </View>
-                ) : (
-                    <ScrollView showsVerticalScrollIndicator={false}>
-                        <View
-                            style={{
-                                alignItems: 'center',
-                                paddingVertical: 28,
-                            }}
-                        >
-                            {avatarUrl ? (
-                                <Image
-                                    source={{ uri: avatarUrl }}
-                                    style={{
-                                        width: 90,
-                                        height: 90,
-                                        borderRadius: 45,
-                                        marginBottom: 12,
-                                    }}
-                                />
-                            ) : (
-                                <View
-                                    style={{
-                                        width: 90,
-                                        height: 90,
-                                        borderRadius: 45,
-                                        backgroundColor: c.tagBg,
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        marginBottom: 12,
-                                    }}
-                                >
-                                    <Ionicons
-                                        name="person-outline"
-                                        size={40}
-                                        color={c.subtext}
-                                    />
-                                </View>
-                            )}
-                            {firstName || lastName ? (
-                                <Text
-                                    style={{
-                                        fontSize: 22,
-                                        fontWeight: '700',
-                                        color: c.text,
-                                        marginBottom: 2,
-                                    }}
-                                >
-                                    {[firstName, lastName]
-                                        .filter(Boolean)
-                                        .join(' ')}
-                                </Text>
-                            ) : null}
-                            {username ? (
-                                <Text
-                                    style={{
-                                        fontSize:
-                                            firstName || lastName ? 14 : 22,
-                                        fontWeight:
-                                            firstName || lastName
-                                                ? '500'
-                                                : '700',
-                                        color:
-                                            firstName || lastName
-                                                ? c.subtext
-                                                : c.text,
-                                        marginBottom: 4,
-                                    }}
-                                >
-                                    @{username}
-                                </Text>
-                            ) : null}
-                            {joinDate ? (
-                                <Text
-                                    style={{ fontSize: 13, color: c.subtext }}
-                                >
-                                    Joined{' '}
-                                    {new Date(joinDate).toLocaleDateString([], {
-                                        month: 'long',
-                                        year: 'numeric',
-                                    })}
-                                </Text>
-                            ) : null}
-
-                            <Pressable
-                                disabled={friendshipLoading || cooldown}
-                                onPress={async () => {
-                                    if (friendshipLoading || cooldown) return;
-                                    if (friendshipStatus === 'pending_sent') {
-                                        Alert.alert(
-                                            'Cancel friend request?',
-                                            undefined,
-                                            [
-                                                {
-                                                    text: 'Keep',
-                                                    style: 'cancel',
-                                                },
-                                                {
-                                                    text: 'Cancel Request',
-                                                    style: 'destructive',
-                                                    onPress: async () => {
-                                                        setFriendshipLoading(
-                                                            true
-                                                        );
-                                                        await removeFriend(
-                                                            userId!
-                                                        );
-                                                        setFriendshipStatus(
-                                                            'none'
-                                                        );
-                                                        setFriendshipLoading(
-                                                            false
-                                                        );
-                                                        startCooldown();
-                                                    },
-                                                },
-                                            ]
-                                        );
-                                        return;
-                                    }
-                                    setFriendshipLoading(true);
-                                    if (friendshipStatus === 'none') {
-                                        await sendFriendRequest(userId!);
-                                        setFriendshipStatus('pending_sent');
-                                        const {
-                                            data: { user },
-                                        } = await supabase.auth.getUser();
-                                        if (user) {
-                                            const { data: profile } =
-                                                await supabase
-                                                    .from('profiles')
-                                                    .select('username')
-                                                    .eq('id', user.id)
-                                                    .single();
-                                            await sendFriendRequestNotification(
-                                                userId!,
-                                                profile?.username ?? 'Someone'
-                                            );
-                                        }
-                                    } else if (
-                                        friendshipStatus === 'pending_received'
-                                    ) {
-                                        await acceptFriendRequest(userId!);
-                                        setFriendshipStatus('accepted');
-                                    } else if (
-                                        friendshipStatus === 'accepted'
-                                    ) {
-                                        await removeFriend(userId!);
-                                        setFriendshipStatus('none');
-                                    }
-                                    setFriendshipLoading(false);
-                                    startCooldown();
-                                }}
-                                style={{
-                                    marginTop: 14,
-                                    paddingHorizontal: 24,
-                                    paddingVertical: 8,
-                                    borderRadius: 20,
-                                    alignSelf: 'center',
-                                    backgroundColor:
-                                        friendshipStatus === 'accepted'
-                                            ? c.tagBg
-                                            : friendshipStatus ===
-                                                'pending_sent'
-                                              ? c.tagBg
-                                              : '#007AFF',
-                                    borderWidth:
-                                        friendshipStatus === 'accepted' ? 1 : 0,
-                                    borderColor: c.border,
-                                }}
-                            >
-                                <Text
-                                    style={{
-                                        fontWeight: '600',
-                                        fontSize: 14,
-                                        color:
-                                            friendshipStatus === 'accepted' ||
-                                            friendshipStatus === 'pending_sent'
-                                                ? c.text
-                                                : 'white',
-                                    }}
-                                >
-                                    {friendshipLoading
-                                        ? '...'
-                                        : getFriendButtonLabel()}
-                                </Text>
-                            </Pressable>
-                        </View>
-
-                        <View
-                            style={{
-                                flexDirection: 'row',
-                                marginHorizontal: 16,
-                                marginBottom: 24,
-                                borderRadius: 12,
-                                backgroundColor: c.tagBg,
-                                overflow: 'hidden',
-                            }}
-                        >
-                            <View
-                                style={{
-                                    flex: 1,
-                                    alignItems: 'center',
-                                    paddingVertical: 16,
-                                    borderRightWidth: 1,
-                                    borderColor: c.border,
-                                }}
-                            >
-                                <Text
-                                    style={{
-                                        fontSize: 22,
-                                        fontWeight: '700',
-                                        color: c.text,
-                                    }}
-                                >
-                                    {publicSpots.length}
-                                </Text>
-                                <Text
-                                    style={{
-                                        fontSize: 12,
-                                        color: c.subtext,
-                                        marginTop: 2,
-                                    }}
-                                >
-                                    Spots
-                                </Text>
-                            </View>
-                            <View
-                                style={{
-                                    flex: 1,
-                                    alignItems: 'center',
-                                    paddingVertical: 16,
-                                    borderRightWidth: 1,
-                                    borderColor: c.border,
-                                }}
-                            >
-                                <Text
-                                    style={{
-                                        fontSize: 22,
-                                        fontWeight: '700',
-                                        color: c.text,
-                                    }}
-                                >
-                                    {publicReviews.length}
-                                </Text>
-                                <Text
-                                    style={{
-                                        fontSize: 12,
-                                        color: c.subtext,
-                                        marginTop: 2,
-                                    }}
-                                >
-                                    Reviews
-                                </Text>
-                            </View>
-                            <View
-                                style={{
-                                    flex: 1,
-                                    alignItems: 'center',
-                                    paddingVertical: 16,
-                                }}
-                            >
-                                <Text
-                                    style={{
-                                        fontSize: 22,
-                                        fontWeight: '700',
-                                        color: c.text,
-                                    }}
-                                >
-                                    {avgRating ? avgRating.toFixed(1) : '—'}
-                                </Text>
-                                <Text
-                                    style={{
-                                        fontSize: 12,
-                                        color: c.subtext,
-                                        marginTop: 2,
-                                    }}
-                                >
-                                    Avg Rating
-                                </Text>
-                            </View>
-                        </View>
-
-                        <View
-                            style={{
-                                flexDirection: 'row',
-                                marginHorizontal: 16,
-                                marginBottom: 16,
-                                borderRadius: 8,
-                                backgroundColor: c.tagBg,
-                                padding: 4,
-                            }}
-                        >
-                            {(['spots', 'reviews'] as const).map((tab) => (
-                                <Pressable
-                                    key={tab}
-                                    onPress={() => setActiveTab(tab)}
-                                    style={{
-                                        flex: 1,
-                                        paddingVertical: 8,
-                                        borderRadius: 6,
-                                        alignItems: 'center',
-                                        backgroundColor:
-                                            activeTab === tab
-                                                ? c.surface
-                                                : 'transparent',
-                                    }}
-                                >
-                                    <Text
-                                        style={{
-                                            fontSize: 13,
-                                            fontWeight: '600',
-                                            color:
-                                                activeTab === tab
-                                                    ? c.text
-                                                    : c.subtext,
-                                        }}
-                                    >
-                                        {tab === 'spots' ? 'Spots' : 'Reviews'}
-                                    </Text>
-                                </Pressable>
-                            ))}
-                        </View>
-
-                        <View
-                            style={{ paddingHorizontal: 16, paddingBottom: 32 }}
-                        >
-                            {activeTab === 'spots' ? (
-                                publicSpots.length === 0 ? (
-                                    <Text
-                                        style={{
-                                            color: c.subtext,
-                                            fontSize: 14,
-                                            textAlign: 'center',
-                                            marginTop: 24,
-                                        }}
-                                    >
-                                        No public spots yet.
-                                    </Text>
-                                ) : (
-                                    publicSpots.map((s) => (
-                                        <Pressable
-                                            key={s.id}
-                                            onPress={() => {
-                                                onSelectSpot(s);
-                                                onClose();
-                                            }}
-                                            style={{
-                                                flexDirection: 'row',
-                                                alignItems: 'center',
-                                                paddingVertical: 12,
-                                                borderBottomWidth: 1,
-                                                borderColor: c.border,
-                                                gap: 10,
-                                            }}
-                                        >
-                                            <Ionicons
-                                                name="location-outline"
-                                                size={16}
-                                                color={c.subtext}
-                                            />
-                                            <View style={{ flex: 1 }}>
-                                                <Text
-                                                    style={{
-                                                        fontWeight: '600',
-                                                        color: c.text,
-                                                    }}
-                                                >
-                                                    {s.name}
-                                                </Text>
-                                                {s.tags?.length > 0 ? (
-                                                    <Text
-                                                        style={{
-                                                            fontSize: 12,
-                                                            color: c.subtext,
-                                                            marginTop: 2,
-                                                        }}
-                                                    >
-                                                        {s.tags
-                                                            .map((t) => `#${t}`)
-                                                            .join(' ')}
-                                                    </Text>
-                                                ) : null}
-                                            </View>
-                                            <Ionicons
-                                                name="chevron-forward"
-                                                size={16}
-                                                color={c.subtext}
-                                            />
-                                        </Pressable>
-                                    ))
-                                )
-                            ) : publicReviews.length === 0 ? (
-                                <Text
-                                    style={{
-                                        color: c.subtext,
-                                        fontSize: 14,
-                                        textAlign: 'center',
-                                        marginTop: 24,
-                                    }}
-                                >
-                                    No reviews yet.
-                                </Text>
-                            ) : (
-                                publicReviews.map((r) => (
-                                    <Pressable
-                                        key={r.id}
-                                        onPress={() => {
-                                            const spot = allSpots.find(
-                                                (s) => s.id === r.spot_id
-                                            );
-                                            if (spot) {
-                                                onSelectSpot(spot);
-                                                onClose();
-                                            }
-                                        }}
-                                        style={{
-                                            paddingVertical: 14,
-                                            borderBottomWidth: 1,
-                                            borderColor: c.border,
-                                        }}
-                                    >
-                                        <Text
-                                            style={{
-                                                fontWeight: '700',
-                                                color: c.text,
-                                                marginBottom: 4,
-                                            }}
-                                        >
-                                            {r.spot_name}
-                                        </Text>
-                                        <Text
-                                            style={{
-                                                fontSize: 14,
-                                                color: '#F5A623',
-                                                letterSpacing: 1,
-                                                marginBottom: 4,
-                                            }}
-                                        >
-                                            {'★'.repeat(r.rating)}
-                                            {'☆'.repeat(5 - r.rating)}
-                                        </Text>
-                                        {r.comment ? (
-                                            <Text
-                                                style={{
-                                                    fontSize: 14,
-                                                    color: c.text,
-                                                    lineHeight: 20,
-                                                    marginBottom: 4,
-                                                }}
-                                            >
-                                                {r.comment}
-                                            </Text>
-                                        ) : null}
-                                        <Text
-                                            style={{
-                                                fontSize: 11,
-                                                color: c.subtext,
-                                            }}
-                                        >
-                                            {new Date(
-                                                r.created_at
-                                            ).toLocaleDateString([], {
-                                                month: 'short',
-                                                day: 'numeric',
-                                                year: 'numeric',
-                                            })}
-                                        </Text>
-                                    </Pressable>
-                                ))
-                            )}
-                        </View>
-                    </ScrollView>
-                )}
-            </SafeAreaView>
-        </Modal>
-    );
+                          fontSize: 14,
+                          color: c.text,
+                          lineHeight: 20,
+                          marginBottom: 4,
+                        }}>
+                        {r.comment}
+                      </Text>
+                    ) : null}
+                    <Text
+                      style={{
+                        fontSize: 11,
+                        color: c.subtext,
+                      }}>
+                      {new Date(r.created_at).toLocaleDateString([], {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })}
+                    </Text>
+                  </Pressable>
+                ))
+              )}
+            </View>
+          </ScrollView>
+        )}
+      </SafeAreaView>
+    </Modal>
+  );
 }
