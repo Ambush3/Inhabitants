@@ -26,6 +26,7 @@ import * as Location from 'expo-location';
 import { useTheme } from '@/src/context/ThemeContext';
 import { CONDITION_META, SpotCondition } from '@/src/hooks/useSpotConditions';
 import { SpotCommentsModal } from '@/src/components/SpotCommentsModal';
+import { CollectionsModal } from '@/src/components/CollectionsModal';
 
 const geocodeCache = new Map<string, string>();
 
@@ -177,6 +178,7 @@ export function SpotDetailsModal({
   const [spotAddress, setSpotAddress] = useState<string | null>(null);
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [liveCommentCount, setLiveCommentCount] = useState(commentCount);
+  const [collectionsOpen, setCollectionsOpen] = useState(false);
 
   useEffect(() => {
     if (!spot || !visible) {
@@ -646,30 +648,19 @@ export function SpotDetailsModal({
                   </Text>
                 </Pressable>
                 <Pressable
-                  onPress={onToggleWishlist}
+                  onPress={() => setCollectionsOpen(true)}
                   style={{
                     flex: 1,
                     flexDirection: 'row',
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: 6,
-                    backgroundColor: isWishlisted ? 'rgba(255,149,0,0.12)' : c.tagBg,
+                    backgroundColor: c.tagBg,
                     borderRadius: 20,
                     paddingVertical: 10,
                   }}>
-                  <Ionicons
-                    name={isWishlisted ? 'star' : 'star-outline'}
-                    size={16}
-                    color={isWishlisted ? '#FF9500' : c.text}
-                  />
-                  <Text
-                    style={{
-                      fontSize: 10,
-                      fontWeight: '600',
-                      color: isWishlisted ? '#FF9500' : c.text,
-                    }}>
-                    Wishlist
-                  </Text>
+                  <Ionicons name="folder-outline" size={16} color={c.text} />
+                  <Text style={{ fontSize: 10, fontWeight: '600', color: c.text }}>Collections</Text>
                 </Pressable>
               </View>
               {/* Row 2 - Share, Directions */}
@@ -1056,6 +1047,7 @@ export function SpotDetailsModal({
           ) : null}
         </Animated.View>
       </Modal>
+      <CollectionsModal visible={collectionsOpen} onClose={() => setCollectionsOpen(false)} spotId={spotId} />
       <SpotCommentsModal
         visible={commentsOpen}
         onClose={() => setCommentsOpen(false)}

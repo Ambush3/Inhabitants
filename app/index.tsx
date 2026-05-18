@@ -106,43 +106,7 @@ const SpotMap = React.memo(
       showsUserLocation
       showsMyLocationButton
       followsUserLocation={false}
-      onLongPress={onLongPress}
-      clusterColor="#007AFF"
-      clusterTextColor="white"
-      radius={50}
-      maxZoom={14}
-      minPoints={3}
-      spiderLineColor="transparent"
-      renderCluster={(cluster: any) => {
-        const { id, geometry, onPress: onClusterPress, properties } = cluster;
-        const points = properties.point_count;
-        return (
-          <Marker
-            key={`cluster-${id}`}
-            coordinate={{
-              longitude: geometry.coordinates[0],
-              latitude: geometry.coordinates[1],
-            }}
-            onPress={onClusterPress}
-            tracksViewChanges={false}>
-            <View
-              style={{
-                width: points > 10 ? 50 : 40,
-                height: points > 10 ? 50 : 40,
-                borderRadius: points > 10 ? 25 : 20,
-                backgroundColor: '#007AFF',
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderWidth: 2,
-                borderColor: 'white',
-              }}>
-              <Text style={{ color: 'white', fontWeight: '700', fontSize: points > 10 ? 14 : 12 }}>
-                {points}
-              </Text>
-            </View>
-          </Marker>
-        );
-      }}>
+      onLongPress={onLongPress}>
       {pendingCoord ? (
         <Marker
           key="pending"
@@ -442,7 +406,6 @@ export default function Index() {
     const base = searchResults.length > 0 ? searchResults : spots;
     return base.filter((s) => s.lat && s.lng);
   }, [searchResults, spots]);
-
   const displayError = error ?? nearbyError ?? topRatedError;
   const openedFromPanelRef = useRef(false);
 
@@ -1265,8 +1228,6 @@ export default function Index() {
                 markerRefs.current[p.id]?.showCallout();
               }, 650);
             }}
-            wishlist={wishlist}
-            wishlistLoading={wishlistLoading}
             onCycleSpotVisibility={async (spot) => {
               if (actionSheetOpenRef.current) return;
               actionSheetOpenRef.current = true;
