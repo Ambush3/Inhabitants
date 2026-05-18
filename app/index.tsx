@@ -1500,6 +1500,7 @@ export default function Index() {
             }
             spotId={selectedSpot?.id ?? null}
             commentCount={commentCount}
+            friendIds={friendIds}
           />
           <SkateShopDetailsModal
             visible={placeDetailsOpen}
