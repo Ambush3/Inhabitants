@@ -46,8 +46,6 @@ type Props = {
   onOpenSettings: () => void;
   mySpots: Spot[];
   mySpotsLoading: boolean;
-  wishlist: Spot[];
-  wishlistLoading: boolean;
   onCycleSpotVisibility: (spot: Spot) => void;
   onOpenProfile: () => void;
   pendingFriendRequestsCount: number;
@@ -86,8 +84,6 @@ export function ExplorePanel({
   onOpenSettings,
   mySpots,
   mySpotsLoading,
-  wishlist,
-  wishlistLoading,
   onCycleSpotVisibility,
   onOpenProfile,
   pendingFriendRequestsCount,
@@ -142,7 +138,6 @@ export function ExplorePanel({
   const [favoritesOpen, setFavoritesOpen] = useState(false);
   const [parkFavoritesOpen, setParkFavoritesOpen] = useState(false);
   const [shopFavoritesOpen, setShopFavoritesOpen] = useState(false);
-  const [wishlistOpen, setWishlistOpen] = useState(false);
   const [topRatedTab, setTopRatedTab] = useState<'spot' | 'skatepark' | 'skateshop'>('spot');
 
   const [myAvatarUrl, setMyAvatarUrl] = useState<string | null>(null);
@@ -1495,83 +1490,8 @@ export function ExplorePanel({
                     </Text>
                   )
                 ) : null}
-
-                <Pressable
-                  onPress={() => setWishlistOpen((prev) => !prev)}
-                  style={{
-                    flexDirection: 'row',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    paddingVertical: 12,
-                    borderBottomWidth: 1,
-                    borderColor: c.border,
-                    marginBottom: 4,
-                    marginTop: 8,
-                  }}>
-                  <Text
-                    style={{
-                      fontWeight: '700',
-                      color: c.text,
-                    }}>
-                    {wishlistLoading ? 'Loading...' : `My Wishlist (${wishlist.length})`}
-                  </Text>
-                  <Ionicons
-                    name={wishlistOpen ? 'chevron-up' : 'chevron-down'}
-                    size={16}
-                    color={c.subtext}
-                  />
-                </Pressable>
-                {wishlistOpen ? (
-                  wishlist.length > 0 ? (
-                    wishlist.map((s, index) => (
-                      <AnimatedSpotCard key={s.id} index={index}>
-                        <Pressable
-                          style={{
-                            paddingVertical: 10,
-                            borderBottomWidth: 1,
-                            borderColor: c.border,
-                            paddingLeft: 12,
-                          }}
-                          onPress={() => {
-                            setWishlistOpen(false);
-                            onSelectSpot(s);
-                          }}>
-                          <Text
-                            style={{
-                              fontWeight: '600',
-                              color: c.text,
-                            }}>
-                            {s.name}
-                          </Text>
-                          {s.tags?.length > 0 ? (
-                            <Text
-                              style={{
-                                opacity: 0.6,
-                                fontSize: 12,
-                                marginTop: 2,
-                                color: c.text,
-                              }}>
-                              {s.tags.map((t) => `#${t}`).join(' ')}
-                            </Text>
-                          ) : null}
-                        </Pressable>
-                      </AnimatedSpotCard>
-                    ))
-                  ) : (
-                    <Text
-                      style={{
-                        opacity: 0.5,
-                        fontSize: 13,
-                        padding: 12,
-                        color: c.text,
-                      }}>
-                      No spots wishlisted yet
-                    </Text>
-                  )
-                ) : null}
               </View>
             ) : null}
-
             {activeTab === 'feed' ? (
               <View>
                 <Text
