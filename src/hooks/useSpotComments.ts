@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '@/src/libs/supabase';
+import { moderateText } from '@/src/libs/moderator/textModerator';
 
 export type SpotComment = {
   id: string;
@@ -40,6 +41,8 @@ export function useSpotComments() {
     if (!user) return 'Not logged in';
     const trimmed = content.trim();
     if (!trimmed) return 'Comment cannot be empty';
+    const modResult = moderateText(trimmed);
+    if (!modResult.allowed) return 'Comment contains inappropriate content';
     const { error } = await supabase
       .from('spot_comments')
       .insert({ spot_id: spotId, user_id: user.id, content: trimmed });

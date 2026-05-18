@@ -119,6 +119,7 @@ type Props = {
   onConditionDone?: () => void;
   userLocation?: { latitude: number; longitude: number } | null;
   spotId: string | null;
+  friendIds?: Set<string>;
 };
 
 export function SpotDetailsModal({
@@ -160,6 +161,7 @@ export function SpotDetailsModal({
   onConditionDone,
   userLocation,
   spotId,
+  friendIds,
 }: Props) {
   const { width } = Dimensions.get('window');
   const { theme } = useTheme();
@@ -994,7 +996,6 @@ export function SpotDetailsModal({
           </ScrollView>
         </View>
       </KeyboardAvoidingView>
-
       {/* Fullscreen Image Viewer */}
       <Modal
         visible={selectedImageIndex !== null}
@@ -1062,6 +1063,16 @@ export function SpotDetailsModal({
         spotName={spot?.name ?? null}
         currentUserId={currentUserId}
         onCommentCountChange={(count) => setLiveCommentCount(count)}
+        friendIds={friendIds}
+        onViewProfile={(userId) => {
+          setCommentsOpen(false);
+          setTimeout(() => {
+            onClose();
+            setTimeout(() => {
+              onViewProfile?.(userId);
+            }, 350);
+          }, 300);
+        }}
       />
     </Modal>
   );

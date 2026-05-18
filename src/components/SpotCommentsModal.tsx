@@ -25,9 +25,11 @@ type Props = {
   spotName: string | null;
   currentUserId: string | null;
   onCommentCountChange?: (count: number) => void;
+  onViewProfile?: (userId: string) => void;
+  friendIds?: Set<string>;
 };
 
-function CommentRow({ item, currentUserId, deleteComment, c }: any) {
+function CommentRow({ item, currentUserId, deleteComment, c, onViewProfile, friendIds }: any) {
   const isOwn = item.user_id === currentUserId;
   return (
     <Animated.View
@@ -43,12 +45,34 @@ function CommentRow({ item, currentUserId, deleteComment, c }: any) {
         <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: c.border }} />
       )}
       <View style={{ flex: 1 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-          <Text style={{ fontWeight: '600', fontSize: 13, color: c.text }}>
+        <Pressable
+          onPress={() => {
+            if (onViewProfile && item.user_id !== currentUserId) {
+              onViewProfile(item.user_id);
+            }
+          }}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+          <Text
+            style={{
+              fontWeight: '600',
+              fontSize: 13,
+              color: item.user_id !== currentUserId ? '#007AFF' : c.text,
+            }}>
             {item.profiles?.username ?? 'Unknown'}
           </Text>
+          {friendIds?.has(item.user_id) ? (
+            <View
+              style={{
+                backgroundColor: 'rgba(0,122,255,0.12)',
+                borderRadius: 6,
+                paddingHorizontal: 5,
+                paddingVertical: 2,
+              }}>
+              <Text style={{ fontSize: 9, color: '#007AFF', fontWeight: '700' }}>FRIEND</Text>
+            </View>
+          ) : null}
           <Text style={{ fontSize: 11, color: c.subtext }}>{timeAgo(item.created_at)}</Text>
-        </View>
+        </Pressable>
         <Text style={{ fontSize: 14, color: c.text }}>{item.content}</Text>
       </View>
       {isOwn && (
@@ -70,7 +94,16 @@ function timeAgo(iso: string): string {
   return `${Math.floor(h / 24)}d ago`;
 }
 
-export function SpotCommentsModal({ visible, onClose, spotId, spotName, currentUserId, onCommentCountChange }: Props) {
+export function SpotCommentsModal({
+  visible,
+  onClose,
+  spotId,
+  spotName,
+  currentUserId,
+  onCommentCountChange,
+  onViewProfile,
+  friendIds,
+}: Props) {
   const { theme } = useTheme();
   const c = theme.colors;
   const insets = useSafeAreaInsets();
@@ -142,7 +175,16 @@ export function SpotCommentsModal({ visible, onClose, spotId, spotName, currentU
 
   const renderComment = useCallback(
     ({ item }: { item: SpotComment }) => {
-      return <CommentRow item={item} currentUserId={currentUserId} deleteComment={deleteComment} c={c} />;
+      return (
+        <CommentRow
+          item={item}
+          currentUserId={currentUserId}
+          deleteComment={deleteComment}
+          c={c}
+          onViewProfile={onViewProfile}
+          friendIds={friendIds}
+        />
+      );
     },
     [currentUserId, deleteComment, c]
   );
