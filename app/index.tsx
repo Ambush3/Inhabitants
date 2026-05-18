@@ -13,6 +13,7 @@ import {
   ActionSheetIOS,
 } from 'react-native';
 import MapView, { Marker, Region, LongPressEvent, MapMarker } from 'react-native-maps';
+import MapViewClustering from 'react-native-map-clustering';
 import * as Location from 'expo-location';
 import * as Haptics from 'expo-haptics';
 import * as ExpoSplashScreen from 'expo-splash-screen';
@@ -95,7 +96,7 @@ const SpotMap = React.memo(
     setPlaceDetailsOpen,
     spots,
   }: any) => (
-    <MapView
+    <MapViewClustering
       ref={mapRef}
       style={{ flex: 1, marginBottom: -34 }}
       initialRegion={initialRegion}
@@ -105,7 +106,43 @@ const SpotMap = React.memo(
       showsUserLocation
       showsMyLocationButton
       followsUserLocation={false}
-      onLongPress={onLongPress}>
+      onLongPress={onLongPress}
+      clusterColor="#007AFF"
+      clusterTextColor="white"
+      radius={50}
+      maxZoom={14}
+      minPoints={3}
+      spiderLineColor="transparent"
+      renderCluster={(cluster: any) => {
+        const { id, geometry, onPress: onClusterPress, properties } = cluster;
+        const points = properties.point_count;
+        return (
+          <Marker
+            key={`cluster-${id}`}
+            coordinate={{
+              longitude: geometry.coordinates[0],
+              latitude: geometry.coordinates[1],
+            }}
+            onPress={onClusterPress}
+            tracksViewChanges={false}>
+            <View
+              style={{
+                width: points > 10 ? 50 : 40,
+                height: points > 10 ? 50 : 40,
+                borderRadius: points > 10 ? 25 : 20,
+                backgroundColor: '#007AFF',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderWidth: 2,
+                borderColor: 'white',
+              }}>
+              <Text style={{ color: 'white', fontWeight: '700', fontSize: points > 10 ? 14 : 12 }}>
+                {points}
+              </Text>
+            </View>
+          </Marker>
+        );
+      }}>
       {pendingCoord ? (
         <Marker
           key="pending"
@@ -212,7 +249,7 @@ const SpotMap = React.memo(
             }}
           />
         ))}
-    </MapView>
+    </MapViewClustering>
   ),
   (prevProps, nextProps) => {
     return (
@@ -401,10 +438,11 @@ export default function Index() {
 
   const [commentCount, setCommentCount] = useState(0);
 
-  const visibleSpots = useMemo(
-    () => (searchResults.length > 0 ? searchResults : spots).filter((s) => s.lat && s.lng),
-    [searchResults, spots]
-  );
+  const visibleSpots = useMemo(() => {
+    const base = searchResults.length > 0 ? searchResults : spots;
+    return base.filter((s) => s.lat && s.lng);
+  }, [searchResults, spots]);
+
   const displayError = error ?? nearbyError ?? topRatedError;
   const openedFromPanelRef = useRef(false);
 
