@@ -487,7 +487,7 @@ export function ProfileModal({
               backgroundColor: c.tagBg,
               padding: 4,
             }}>
-            {(['spots', 'reviews', 'friends', 'collections'] as Tab[]).map((tab) => (
+            {(['spots', 'reviews', 'collections', 'friends'] as Tab[]).map((tab) => (
               <Pressable
                 key={tab}
                 onPress={() => {

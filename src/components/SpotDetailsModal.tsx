@@ -180,6 +180,11 @@ export function SpotDetailsModal({
   const [liveCommentCount, setLiveCommentCount] = useState(commentCount);
   const [collectionsOpen, setCollectionsOpen] = useState(false);
 
+  const [flagModalOpen, setFlagModalOpen] = useState(false);
+  const [flagReason, setFlagReason] = useState('');
+  const [otherFlagText, setOtherFlagText] = useState('');
+  const [flagging, setFlagging] = useState(false);
+
   useEffect(() => {
     if (!spot || !visible) {
       setSpotAddress(null);
@@ -316,20 +321,8 @@ export function SpotDetailsModal({
       onToggleFlag(undefined);
       return;
     }
-    ActionSheetIOS.showActionSheetWithOptions(
-      {
-        title: 'Why are you flagging this spot?',
-        options: ['Cancel', 'Incorrect location', "Doesn't exist", 'Inappropriate name', 'Spam', 'Other'],
-        cancelButtonIndex: 0,
-      },
-      (buttonIndex) => {
-        if (buttonIndex === 0) return;
-        const reasons = ['Incorrect location', "Doesn't exist", 'Inappropriate name', 'Spam', 'Other'];
-        onToggleFlag(reasons[buttonIndex - 1]);
-      }
-    );
+    setFlagModalOpen(true);
   }
-
   async function handlePickImages() {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') return;
@@ -1066,6 +1059,102 @@ export function SpotDetailsModal({
           }, 300);
         }}
       />
+      <Modal
+        visible={flagModalOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setFlagModalOpen(false)}>
+        <Pressable
+          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' }}
+          onPress={() => setFlagModalOpen(false)}>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+            <Pressable
+              style={{
+                backgroundColor: c.surface,
+                borderTopLeftRadius: 20,
+                borderTopRightRadius: 20,
+                padding: 20,
+                gap: 10,
+              }}
+              onPress={() => { }}>
+              <Text style={{ fontWeight: '700', fontSize: 16, color: c.text, marginBottom: 4 }}>
+                Why are you flagging this spot?
+              </Text>
+              {['Incorrect location', "Doesn't exist", 'Inappropriate name', 'Spam', 'Other'].map(
+                (reason) => (
+                  <Pressable
+                    key={reason}
+                    onPress={() => setFlagReason(reason)}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 10,
+                      paddingVertical: 10,
+                      borderBottomWidth: 1,
+                      borderColor: c.border,
+                    }}>
+                    <Ionicons
+                      name={flagReason === reason ? 'radio-button-on' : 'radio-button-off'}
+                      size={18}
+                      color={flagReason === reason ? '#007AFF' : c.subtext}
+                    />
+                    <Text style={{ fontSize: 14, color: c.text }}>{reason}</Text>
+                  </Pressable>
+                )
+              )}
+              {flagReason === 'Other' ? (
+                <TextInput
+                  value={otherFlagText}
+                  onChangeText={setOtherFlagText}
+                  placeholder="Describe the issue..."
+                  placeholderTextColor={c.placeholder}
+                  multiline
+                  autoFocus
+                  autoCapitalize="sentences"
+                  style={{
+                    borderWidth: 1,
+                    borderColor: c.inputBorder,
+                    borderRadius: 8,
+                    padding: 10,
+                    fontSize: 14,
+                    color: c.text,
+                    backgroundColor: c.surface,
+                    maxHeight: 80,
+                    marginTop: 4,
+                  }}
+                />
+              ) : null}
+              <Pressable
+                onPress={async () => {
+                  const reason = flagReason === 'Other' ? otherFlagText.trim() : flagReason;
+                  if (!reason) return;
+                  setFlagging(true);
+                  await onToggleFlag(reason);
+                  setFlagging(false);
+                  setFlagModalOpen(false);
+                  setFlagReason('');
+                  setOtherFlagText('');
+                }}
+                disabled={flagging || !flagReason || (flagReason === 'Other' && !otherFlagText.trim())}
+                style={{
+                  backgroundColor: '#FF3B30',
+                  borderRadius: 10,
+                  padding: 13,
+                  alignItems: 'center',
+                  marginTop: 8,
+                  opacity:
+                    flagging || !flagReason || (flagReason === 'Other' && !otherFlagText.trim())
+                      ? 0.4
+                      : 1,
+                }}>
+                <Text style={{ color: 'white', fontWeight: '700', fontSize: 15 }}>
+                  {flagging ? 'Submitting...' : 'Submit Flag'}
+                </Text>
+              </Pressable>
+            </Pressable>
+          </KeyboardAvoidingView>
+        </Pressable>
+      </Modal>
     </Modal>
   );
 }
