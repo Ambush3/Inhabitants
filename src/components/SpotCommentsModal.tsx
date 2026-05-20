@@ -16,6 +16,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/src/context/ThemeContext';
+import * as Haptics from 'expo-haptics';
 import { useSpotComments, SpotComment } from '@/src/hooks/useSpotComments';
 
 type Props = {
@@ -29,16 +30,57 @@ type Props = {
   friendIds?: Set<string>;
 };
 
-function CommentRow({ item, currentUserId, deleteComment, c, onViewProfile, friendIds }: any) {
+function CommentRow({
+  item,
+  currentUserId,
+  deleteComment,
+  updateComment,
+  flagComment,
+  c,
+  onViewProfile,
+  friendIds,
+}: any) {
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const [editing, setEditing] = useState(false);
+  const [editText, setEditText] = useState(item.content);
+  const [saving, setSaving] = useState(false);
+  const [flagModalOpen, setFlagModalOpen] = useState(false);
+  const [flagReason, setFlagReason] = useState('');
+  const [otherText, setOtherText] = useState('');
+  const [flagging, setFlagging] = useState(false);
+  const [flagged, setFlagged] = useState(false);
+
+  useEffect(() => {
+    Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: true }).start();
+  }, []);
+
   const isOwn = item.user_id === currentUserId;
+
+  async function handleSave() {
+    if (!editText.trim()) return;
+    setSaving(true);
+    await updateComment(item.id, item.spot_id, editText.trim());
+    setSaving(false);
+    setEditing(false);
+  }
+
+  async function handleFlag() {
+    const reason = flagReason === 'Other' ? otherText.trim() : flagReason;
+    if (!reason) return;
+    setFlagging(true);
+    await flagComment(item.id, reason);
+    setFlagging(false);
+    setFlagged(true);
+    setFlagModalOpen(false);
+    setFlagReason('');
+    setOtherText('');
+  }
+
+  const FLAG_REASONS = ['Spam', 'Harassment', 'Inappropriate content', 'Other'];
+
   return (
     <Animated.View
-      style={{
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-        marginBottom: 12,
-        gap: 10,
-      }}>
+      style={{ opacity: fadeAnim, flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12, gap: 10 }}>
       {item.profiles?.avatar_url ? (
         <Image source={{ uri: item.profiles.avatar_url }} style={{ width: 32, height: 32, borderRadius: 16 }} />
       ) : (
@@ -71,19 +113,166 @@ function CommentRow({ item, currentUserId, deleteComment, c, onViewProfile, frie
               <Text style={{ fontSize: 9, color: '#007AFF', fontWeight: '700' }}>FRIEND</Text>
             </View>
           ) : null}
+          {item.user_id === currentUserId ? (
+            <View
+              style={{
+                backgroundColor: 'rgba(88,86,214,0.12)',
+                borderRadius: 6,
+                paddingHorizontal: 5,
+                paddingVertical: 2,
+              }}>
+              <Text style={{ fontSize: 9, color: '#5856D6', fontWeight: '700' }}>YOU</Text>
+            </View>
+          ) : null}
           <Text style={{ fontSize: 11, color: c.subtext }}>{timeAgo(item.created_at)}</Text>
         </Pressable>
-        <Text style={{ fontSize: 14, color: c.text }}>{item.content}</Text>
+        {editing ? (
+          <View style={{ gap: 6 }}>
+            <TextInput
+              value={editText}
+              onChangeText={(t) => setEditText(t.slice(0, 280))}
+              multiline
+              autoFocus
+              autoCorrect={true}
+              spellCheck={true}
+              autoCapitalize="sentences"
+              style={{
+                borderWidth: 1,
+                borderColor: c.inputBorder,
+                borderRadius: 8,
+                padding: 8,
+                fontSize: 14,
+                color: c.text,
+                backgroundColor: c.surface,
+                maxHeight: 80,
+              }}
+            />
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <Pressable
+                onPress={handleSave}
+                disabled={saving || !editText.trim()}
+                style={{ opacity: saving || !editText.trim() ? 0.4 : 1 }}>
+                <Text style={{ fontSize: 12, color: '#007AFF', fontWeight: '700' }}>
+                  {saving ? 'Saving...' : 'Save'}
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => {
+                  setEditing(false);
+                  setEditText(item.content);
+                }}>
+                <Text style={{ fontSize: 12, color: c.subtext, fontWeight: '600' }}>Cancel</Text>
+              </Pressable>
+            </View>
+          </View>
+        ) : (
+          <Pressable
+            onLongPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              isOwn ? setEditing(true) : setFlagModalOpen(true);
+            }}
+            delayLongPress={400}>
+            <Text style={{ fontSize: 14, color: c.text }}>{item.content}</Text>
+            {item.updated_at && item.updated_at !== item.created_at ? (
+              <Text style={{ fontSize: 10, color: c.subtext, marginTop: 2 }}>edited</Text>
+            ) : null}
+          </Pressable>
+        )}
       </View>
-      {isOwn && (
+      {isOwn && !editing ? (
         <Pressable onPress={() => deleteComment(item.id, item.spot_id)}>
           <Ionicons name="trash-outline" size={16} color={c.subtext} />
         </Pressable>
-      )}
+      ) : null}
+
+      <Modal
+        visible={flagModalOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setFlagModalOpen(false)}>
+        <Pressable
+          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' }}
+          onPress={() => setFlagModalOpen(false)}>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+            <Pressable
+              style={{
+                backgroundColor: c.surface,
+                borderTopLeftRadius: 20,
+                borderTopRightRadius: 20,
+                padding: 20,
+                gap: 10,
+              }}
+              onPress={() => { }}>
+              <Text style={{ fontWeight: '700', fontSize: 16, color: c.text, marginBottom: 4 }}>
+                Flag Comment
+              </Text>
+              {FLAG_REASONS.map((reason) => (
+                <Pressable
+                  key={reason}
+                  onPress={() => setFlagReason(reason)}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 10,
+                    paddingVertical: 10,
+                    borderBottomWidth: 1,
+                    borderColor: c.border,
+                  }}>
+                  <Ionicons
+                    name={flagReason === reason ? 'radio-button-on' : 'radio-button-off'}
+                    size={18}
+                    color={flagReason === reason ? '#007AFF' : c.subtext}
+                  />
+                  <Text style={{ fontSize: 14, color: c.text }}>{reason}</Text>
+                </Pressable>
+              ))}
+              {flagReason === 'Other' ? (
+                <TextInput
+                  value={otherText}
+                  onChangeText={setOtherText}
+                  placeholder="Describe the issue..."
+                  placeholderTextColor={c.placeholder}
+                  multiline
+                  autoFocus
+                  autoCapitalize="sentences"
+                  style={{
+                    borderWidth: 1,
+                    borderColor: c.inputBorder,
+                    borderRadius: 8,
+                    padding: 10,
+                    fontSize: 14,
+                    color: c.text,
+                    backgroundColor: c.surface,
+                    maxHeight: 80,
+                    marginTop: 4,
+                  }}
+                />
+              ) : null}
+              <Pressable
+                onPress={handleFlag}
+                disabled={flagging || !flagReason || (flagReason === 'Other' && !otherText.trim())}
+                style={{
+                  backgroundColor: '#FF3B30',
+                  borderRadius: 10,
+                  padding: 13,
+                  alignItems: 'center',
+                  marginTop: 8,
+                  opacity:
+                    flagging || !flagReason || (flagReason === 'Other' && !otherText.trim())
+                      ? 0.4
+                      : 1,
+                }}>
+                <Text style={{ color: 'white', fontWeight: '700', fontSize: 15 }}>
+                  {flagging ? 'Submitting...' : 'Submit Flag'}
+                </Text>
+              </Pressable>
+            </Pressable>
+          </KeyboardAvoidingView>
+        </Pressable>
+      </Modal>
     </Animated.View>
   );
 }
-
 function timeAgo(iso: string): string {
   const diff = Math.max(0, Date.now() - new Date(iso).getTime());
   const m = Math.floor(diff / 60000);
@@ -113,7 +302,9 @@ export function SpotCommentsModal({
     loading,
     loadComments,
     addComment,
+    updateComment,
     deleteComment,
+    flagComment,
     resetComments,
   } = useSpotComments();
   const [input, setInput] = useState('');
@@ -180,13 +371,15 @@ export function SpotCommentsModal({
           item={item}
           currentUserId={currentUserId}
           deleteComment={deleteComment}
+          flagComment={flagComment}
+          updateComment={updateComment}
           c={c}
           onViewProfile={onViewProfile}
           friendIds={friendIds}
         />
       );
     },
-    [currentUserId, deleteComment, c]
+    [currentUserId, deleteComment, updateComment, flagComment, c]
   );
 
   return (
@@ -264,6 +457,9 @@ export function SpotCommentsModal({
                 placeholder="Add a comment..."
                 placeholderTextColor={c.placeholder}
                 multiline
+                autoCorrect={true}
+                spellCheck={true}
+                autoCapitalize="sentences"
                 style={{
                   flex: 1,
                   borderWidth: 1,
