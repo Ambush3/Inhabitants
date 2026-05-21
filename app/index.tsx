@@ -403,6 +403,8 @@ export default function Index() {
 
   const [commentCount, setCommentCount] = useState(0);
 
+  const [spotCreatorBadge, setSpotCreatorBadge] = useState<'local' | 'regular' | 'ambassador' | null>(null);
+
   const visibleSpots = useMemo(() => {
     const base = searchResults.length > 0 ? searchResults : spots;
     return base.filter((s) => s.lat && s.lng);
@@ -430,6 +432,7 @@ export default function Index() {
     resetReviews();
     setSpotCreatorUsername(null);
     setSpotCreatorAvatarUrl(null);
+    setSpotCreatorBadge(null);
 
     if (openedFromPanelRef.current || openedFromDeepLinkRef.current) {
       mapRef.current?.animateToRegion(preModalRegionRef.current, 400);
@@ -499,7 +502,7 @@ export default function Index() {
     clearImages();
 
     const [profileResult, , , , commentResult] = await Promise.all([
-      supabase.from('profiles').select('username, avatar_url').eq('id', spot.user_id).single(),
+      supabase.from('profiles').select('username, avatar_url, badge').eq('id', spot.user_id).single(),
       loadReviews(spot.id),
       loadImages(spot.id),
       loadConditions(spot.id),
@@ -508,6 +511,7 @@ export default function Index() {
 
     setSpotCreatorUsername(profileResult.data?.username ?? null);
     setSpotCreatorAvatarUrl(profileResult.data?.avatar_url ?? null);
+    setSpotCreatorBadge(profileResult.data?.badge ?? null);
     setCommentCount(commentResult.count ?? 0);
     setDetailsLoading(false);
   }, []);
@@ -1510,6 +1514,7 @@ export default function Index() {
               }
               return err;
             }}
+            creatorBadge={spotCreatorBadge}
           />
           <SkateShopDetailsModal
             visible={placeDetailsOpen}
