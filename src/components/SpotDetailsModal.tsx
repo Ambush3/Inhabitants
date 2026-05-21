@@ -122,6 +122,7 @@ type Props = {
   spotId: string | null;
   friendIds?: Set<string>;
   onUpdateSpot: (spotId: string, name: string, description: string, tags: string[]) => Promise<string | null>;
+  creatorBadge?: 'local' | 'regular' | 'ambassador' | null;
 };
 
 export function SpotDetailsModal({
@@ -165,6 +166,7 @@ export function SpotDetailsModal({
   spotId,
   friendIds,
   onUpdateSpot,
+  creatorBadge,
 }: Props) {
   const { width } = Dimensions.get('window');
   const { theme } = useTheme();
@@ -512,15 +514,15 @@ export function SpotDetailsModal({
                             top: 0,
                             right: 2,
                             minWidth: 16,
-                            height: 16,
-                            borderRadius: 8,
+                            height: 18,
+                            borderRadius: 9,
                             backgroundColor: '#007AFF',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            paddingHorizontal: 3,
+                            paddingHorizontal: 4,
                           }}>
                           <Text style={{ color: 'white', fontSize: 9, fontWeight: '700' }}>
-                            {liveCommentCount}
+                            {liveCommentCount > 99 ? '99+' : liveCommentCount}
                           </Text>
                         </View>
                       ) : null}
@@ -573,14 +575,8 @@ export function SpotDetailsModal({
                       }}>
                       {creatorAvatarUrl ? (
                         <Image
-                          source={{
-                            uri: creatorAvatarUrl,
-                          }}
-                          style={{
-                            width: 20,
-                            height: 20,
-                            borderRadius: 10,
-                          }}
+                          source={{ uri: creatorAvatarUrl }}
+                          style={{ width: 20, height: 20, borderRadius: 10 }}
                         />
                       ) : (
                         <View
@@ -598,6 +594,48 @@ export function SpotDetailsModal({
                       <Text style={[styles.creatorText, { color: '#007AFF' }]}>
                         @{creatorUsername}
                       </Text>
+                      {creatorBadge ? (
+                        <View
+                          style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            gap: 3,
+                            paddingHorizontal: 6,
+                            paddingVertical: 2,
+                            borderRadius: 6,
+                            backgroundColor:
+                              creatorBadge === 'ambassador'
+                                ? 'rgba(255,149,0,0.12)'
+                                : creatorBadge === 'regular'
+                                  ? 'rgba(0,122,255,0.12)'
+                                  : 'rgba(52,199,89,0.12)',
+                          }}>
+                          <Ionicons
+                            name="shield-checkmark"
+                            size={10}
+                            color={
+                              creatorBadge === 'ambassador'
+                                ? '#FF9500'
+                                : creatorBadge === 'regular'
+                                  ? '#007AFF'
+                                  : '#34C759'
+                            }
+                          />
+                          <Text
+                            style={{
+                              fontSize: 9,
+                              fontWeight: '700',
+                              color:
+                                creatorBadge === 'ambassador'
+                                  ? '#FF9500'
+                                  : creatorBadge === 'regular'
+                                    ? '#007AFF'
+                                    : '#34C759',
+                            }}>
+                            {creatorBadge.toUpperCase()}
+                          </Text>
+                        </View>
+                      ) : null}
                     </Pressable>
                   ) : null}
                   {spot?.tags && spot.tags.length > 0 ? (

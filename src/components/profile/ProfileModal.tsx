@@ -92,6 +92,8 @@ export function ProfileModal({
   const [collectionSpots, setCollectionSpots] = useState<Spot[]>([]);
   const [collectionSpotsLoading, setCollectionSpotsLoading] = useState(false);
 
+  const [badge, setBadge] = useState<'local' | 'regular' | 'ambassador' | null>(null);
+
   const { loadPendingRequests, acceptFriendRequest, removeFriend, pendingReceived, loadFriends, friends } =
     useFriendships();
 
@@ -159,7 +161,7 @@ export function ProfileModal({
       if (!user) return;
       const { data } = await supabase
         .from('profiles')
-        .select('avatar_url, username, created_at, first_name, last_name')
+        .select('avatar_url, username, created_at, first_name, last_name, badge')
         .eq('id', user.id)
         .single();
       setAvatarUrl(data?.avatar_url ?? null);
@@ -167,6 +169,7 @@ export function ProfileModal({
       setFirstName(data?.first_name ?? null);
       setLastName(data?.last_name ?? null);
       setJoinDate(data?.created_at ?? null);
+      setBadge(data?.badge ?? null);
     }
     loadProfile();
     onLoadMyReviews();
@@ -273,12 +276,51 @@ export function ProfileModal({
             ) : null}
             {joinDate ? (
               <Text style={{ fontSize: 13, color: c.subtext }}>
-                Joined{' '}
+                Joined
                 {new Date(joinDate).toLocaleDateString([], {
                   month: 'long',
                   year: 'numeric',
                 })}
               </Text>
+            ) : null}
+            {badge ? (
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 4,
+                  marginTop: 8,
+                  paddingHorizontal: 10,
+                  paddingVertical: 4,
+                  borderRadius: 8,
+                  backgroundColor:
+                    badge === 'ambassador'
+                      ? 'rgba(255,149,0,0.12)'
+                      : badge === 'regular'
+                        ? 'rgba(0,122,255,0.12)'
+                        : 'rgba(52,199,89,0.12)',
+                }}>
+                <Ionicons
+                  name="shield-checkmark"
+                  size={14}
+                  color={
+                    badge === 'ambassador' ? '#FF9500' : badge === 'regular' ? '#007AFF' : '#34C759'
+                  }
+                />
+                <Text
+                  style={{
+                    fontSize: 12,
+                    fontWeight: '700',
+                    color:
+                      badge === 'ambassador'
+                        ? '#FF9500'
+                        : badge === 'regular'
+                          ? '#007AFF'
+                          : '#34C759',
+                  }}>
+                  {badge.toUpperCase()}
+                </Text>
+              </View>
             ) : null}
           </View>
 

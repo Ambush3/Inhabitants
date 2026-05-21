@@ -43,6 +43,8 @@ export function PublicProfileModal({ visible, onClose, userId, onSelectSpot, all
   const [friendshipLoading, setFriendshipLoading] = useState(false);
   const [cooldown, setCooldown] = useState(false);
 
+  const [badge, setBadge] = useState<'local' | 'regular' | 'ambassador' | null>(null);
+
   function startCooldown() {
     setCooldown(true);
     setTimeout(() => setCooldown(false), 3000);
@@ -62,7 +64,7 @@ export function PublicProfileModal({ visible, onClose, userId, onSelectSpot, all
       const [profileRes, spotsRes, reviewsRes, status] = await Promise.all([
         supabase
           .from('profiles')
-          .select('avatar_url, username, created_at, first_name, last_name')
+          .select('avatar_url, username, created_at, first_name, last_name, badge')
           .eq('id', userId)
           .single(),
         supabase
@@ -83,6 +85,7 @@ export function PublicProfileModal({ visible, onClose, userId, onSelectSpot, all
       setUsername(profileRes.data?.username ?? null);
       setFirstName(profileRes.data?.first_name ?? null);
       setLastName(profileRes.data?.last_name ?? null);
+      setBadge(profileRes.data?.badge ?? null);
       setJoinDate(profileRes.data?.created_at ?? null);
       setPublicSpots((spotsRes.data as Spot[]) ?? []);
       setPublicReviews(
@@ -100,6 +103,10 @@ export function PublicProfileModal({ visible, onClose, userId, onSelectSpot, all
     }
     load();
   }, [visible, userId]);
+
+  useEffect(() => {
+    if (!visible) setBadge(null);
+  }, [visible]);
 
   const avgRating =
     publicReviews.length === 0 ? null : publicReviews.reduce((sum, r) => sum + r.rating, 0) / publicReviews.length;
@@ -202,6 +209,50 @@ export function PublicProfileModal({ visible, onClose, userId, onSelectSpot, all
                     year: 'numeric',
                   })}
                 </Text>
+              ) : null}
+
+              {badge ? (
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 4,
+                    marginTop: 8,
+                    paddingHorizontal: 10,
+                    paddingVertical: 4,
+                    borderRadius: 8,
+                    backgroundColor:
+                      badge === 'ambassador'
+                        ? 'rgba(255,149,0,0.12)'
+                        : badge === 'regular'
+                          ? 'rgba(0,122,255,0.12)'
+                          : 'rgba(52,199,89,0.12)',
+                  }}>
+                  <Ionicons
+                    name="shield-checkmark"
+                    size={14}
+                    color={
+                      badge === 'ambassador'
+                        ? '#FF9500'
+                        : badge === 'regular'
+                          ? '#007AFF'
+                          : '#34C759'
+                    }
+                  />
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      fontWeight: '700',
+                      color:
+                        badge === 'ambassador'
+                          ? '#FF9500'
+                          : badge === 'regular'
+                            ? '#007AFF'
+                            : '#34C759',
+                    }}>
+                    {badge.toUpperCase()}
+                  </Text>
+                </View>
               ) : null}
 
               <Pressable
