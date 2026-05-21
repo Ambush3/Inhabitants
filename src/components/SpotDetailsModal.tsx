@@ -121,6 +121,7 @@ type Props = {
   userLocation?: { latitude: number; longitude: number } | null;
   spotId: string | null;
   friendIds?: Set<string>;
+  onUpdateSpot: (spotId: string, name: string, description: string, tags: string[]) => Promise<string | null>;
 };
 
 export function SpotDetailsModal({
@@ -163,6 +164,7 @@ export function SpotDetailsModal({
   userLocation,
   spotId,
   friendIds,
+  onUpdateSpot,
 }: Props) {
   const { width } = Dimensions.get('window');
   const { theme } = useTheme();
@@ -184,6 +186,13 @@ export function SpotDetailsModal({
   const [flagReason, setFlagReason] = useState('');
   const [otherFlagText, setOtherFlagText] = useState('');
   const [flagging, setFlagging] = useState(false);
+
+  const [editOpen, setEditOpen] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editDesc, setEditDesc] = useState('');
+  const [editTags, setEditTags] = useState<string[]>([]);
+  const [editTagInput, setEditTagInput] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
 
   useEffect(() => {
     if (!spot || !visible) {
@@ -471,6 +480,18 @@ export function SpotDetailsModal({
                               marginTop: 4,
                             }}
                           />
+                        </Pressable>
+                      ) : null}
+                      {isOwner ? (
+                        <Pressable
+                          onPress={() => {
+                            setEditName(spot?.name ?? '');
+                            setEditDesc(spot?.description ?? '');
+                            setEditTags(spot?.tags ?? []);
+                            setEditOpen(true);
+                          }}
+                          style={{ marginLeft: 8, marginTop: 4 }}>
+                          <Ionicons name="pencil-outline" size={16} color={c.subtext} />
                         </Pressable>
                       ) : null}
                     </View>
@@ -1149,6 +1170,154 @@ export function SpotDetailsModal({
                 }}>
                 <Text style={{ color: 'white', fontWeight: '700', fontSize: 15 }}>
                   {flagging ? 'Submitting...' : 'Submit Flag'}
+                </Text>
+              </Pressable>
+            </Pressable>
+          </KeyboardAvoidingView>
+        </Pressable>
+      </Modal>
+      <Modal visible={editOpen} transparent animationType="slide" onRequestClose={() => setEditOpen(false)}>
+        <Pressable
+          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' }}
+          onPress={() => setEditOpen(false)}>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+            <Pressable
+              style={{
+                backgroundColor: c.surface,
+                borderTopLeftRadius: 20,
+                borderTopRightRadius: 20,
+                padding: 20,
+                gap: 12,
+              }}
+              onPress={() => { }}>
+              <Text style={{ fontWeight: '700', fontSize: 16, color: c.text }}>Edit Spot</Text>
+              <Text style={{ fontSize: 13, color: c.subtext }}>Name</Text>
+              <TextInput
+                value={editName}
+                onChangeText={setEditName}
+                autoCapitalize="sentences"
+                autoCorrect
+                style={{
+                  borderWidth: 1,
+                  borderColor: c.inputBorder,
+                  borderRadius: 8,
+                  padding: 10,
+                  fontSize: 14,
+                  color: c.text,
+                  backgroundColor: c.surface,
+                }}
+              />
+              <Text style={{ fontSize: 13, color: c.subtext }}>Description</Text>
+              <TextInput
+                value={editDesc}
+                onChangeText={(text) => {
+                  if (editDesc === '' && text.length === 1) {
+                    setEditDesc(text.toUpperCase());
+                    return;
+                  }
+                  if (text.length > editDesc.length) {
+                    const lastChar = text[text.length - 1];
+                    const prevChars = text.slice(0, -1).trimEnd();
+                    if (
+                      (lastChar !== ' ' && prevChars.endsWith('.')) ||
+                      prevChars.endsWith('!') ||
+                      prevChars.endsWith('?')
+                    ) {
+                      setEditDesc(text.slice(0, -1) + lastChar.toUpperCase());
+                      return;
+                    }
+                  }
+                  setEditDesc(text);
+                }}
+                autoCapitalize="sentences"
+                autoCorrect
+                multiline
+                style={{
+                  borderWidth: 1,
+                  borderColor: c.inputBorder,
+                  borderRadius: 8,
+                  padding: 10,
+                  fontSize: 14,
+                  color: c.text,
+                  backgroundColor: c.surface,
+                  height: 60,
+                }}
+              />
+              <Text style={{ fontSize: 13, color: c.subtext }}>Tags</Text>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <TextInput
+                  value={editTagInput}
+                  onChangeText={setEditTagInput}
+                  placeholder="Add a tag..."
+                  placeholderTextColor={c.placeholder}
+                  autoCapitalize="none"
+                  style={{
+                    flex: 1,
+                    borderWidth: 1,
+                    borderColor: c.inputBorder,
+                    borderRadius: 8,
+                    padding: 10,
+                    fontSize: 14,
+                    color: c.text,
+                    backgroundColor: c.surface,
+                  }}
+                />
+                <Pressable
+                  onPress={() => {
+                    const cleaned = editTagInput.trim().toLowerCase().replace(/\s+/g, '-');
+                    if (!cleaned) return;
+                    setEditTags((prev) => (prev.includes(cleaned) ? prev : [...prev, cleaned]));
+                    setEditTagInput('');
+                  }}
+                  style={{
+                    backgroundColor: c.buttonBg,
+                    borderRadius: 8,
+                    padding: 10,
+                    justifyContent: 'center',
+                  }}>
+                  <Text style={{ color: c.background, fontWeight: '600' }}>Add</Text>
+                </Pressable>
+              </View>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                {editTags.map((tag) => (
+                  <Pressable
+                    key={tag}
+                    onPress={() => setEditTags((prev) => prev.filter((t) => t !== tag))}
+                    style={{
+                      backgroundColor: c.tagBg,
+                      borderRadius: 20,
+                      paddingHorizontal: 12,
+                      paddingVertical: 6,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 6,
+                    }}>
+                    <Text style={{ fontSize: 13, color: c.text }}>#{tag}</Text>
+                    <Text style={{ fontSize: 13, opacity: 0.5, color: c.text }}>✕</Text>
+                  </Pressable>
+                ))}
+              </View>
+              <Pressable
+                onPress={async () => {
+                  setEditSaving(true);
+                  const err = await onUpdateSpot(spot!.id, editName, editDesc, editTags);
+                  setEditSaving(false);
+                  if (err) {
+                    Alert.alert('Error', err);
+                  } else {
+                    setEditOpen(false);
+                  }
+                }}
+                disabled={editSaving || !editName.trim()}
+                style={{
+                  backgroundColor: '#007AFF',
+                  borderRadius: 10,
+                  padding: 13,
+                  alignItems: 'center',
+                  opacity: editSaving || !editName.trim() ? 0.4 : 1,
+                }}>
+                <Text style={{ color: 'white', fontWeight: '700', fontSize: 15 }}>
+                  {editSaving ? 'Saving...' : 'Save Changes'}
                 </Text>
               </Pressable>
             </Pressable>

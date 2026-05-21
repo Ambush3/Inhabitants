@@ -341,7 +341,7 @@ export function PublicProfileModal({ visible, onClose, userId, onSelectSpot, all
                     color: c.subtext,
                     marginTop: 2,
                   }}>
-                  Reviews
+                  Ratings
                 </Text>
               </View>
               <View
@@ -461,7 +461,7 @@ export function PublicProfileModal({ visible, onClose, userId, onSelectSpot, all
                     textAlign: 'center',
                     marginTop: 24,
                   }}>
-                  No reviews yet.
+                  No ratings yet.
                 </Text>
               ) : (
                 publicReviews.map((r) => (

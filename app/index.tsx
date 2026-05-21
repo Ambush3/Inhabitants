@@ -379,6 +379,7 @@ export default function Index() {
     searchByTag,
     clearSearch,
     setSpotVisibility,
+    updateSpot,
   } = useSpots();
   const { deepLinkSpotId, deepLinkLat, deepLinkLng } = useLocalSearchParams<{
     deepLinkSpotId?: string;
@@ -1500,6 +1501,15 @@ export default function Index() {
             spotId={selectedSpot?.id ?? null}
             commentCount={commentCount}
             friendIds={friendIds}
+            onUpdateSpot={async (spotId, name, description, tags) => {
+              const err = await updateSpot(spotId, name, description, tags, true);
+              if (!err && selectedSpot) {
+                setTimeout(() => {
+                  setSelectedSpot((prev) => (prev ? { ...prev, name, description, tags } : prev));
+                }, 400);
+              }
+              return err;
+            }}
           />
           <SkateShopDetailsModal
             visible={placeDetailsOpen}

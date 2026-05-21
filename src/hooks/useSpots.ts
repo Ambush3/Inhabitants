@@ -212,20 +212,70 @@ export function useSpots() {
 
   async function searchByTag(tag: string) {
     setSearching(true);
-
     const trimmed = tag.trim().toLowerCase();
-
-    const results = spots.filter((s) => s.tags?.includes(trimmed) && !s.is_flagged && !s.is_private);
-
+    const normalized = trimmed.replace(/[\s-]+/g, '');
+    const results = spots.filter((s) => {
+      if (!s.tags || s.is_flagged || s.is_private) return false;
+      return s.tags.some((t) => {
+        const normalizedTag = t.replace(/[\s-]+/g, '');
+        return normalizedTag === normalized || t === trimmed;
+      });
+    });
     setSearchResults(results);
-
     setSearching(false);
   }
-
   function clearSearch() {
     setSearchResults([]);
   }
 
+  async function updateSpot(
+    spotId: string,
+    name: string,
+    description: string,
+    tags: string[],
+    skipStateUpdate = false
+  ): Promise<string | null> {
+    const trimmedName = name.trim();
+    if (!trimmedName) return 'Name is required';
+
+    const nameCheck = moderateText(trimmedName);
+    if (!nameCheck.allowed) return nameCheck.reason ?? 'Inappropriate content.';
+
+    if (description) {
+      const descCheck = moderateText(description.trim());
+      if (!descCheck.allowed) return descCheck.reason ?? 'Inappropriate content.';
+    }
+
+    for (const tag of tags) {
+      const tagCheck = moderateText(tag);
+      if (!tagCheck.allowed) return 'One or more tags contain inappropriate content.';
+    }
+
+    const { error } = await supabase
+      .from('spots')
+      .update({
+        name: trimmedName,
+        description: description.trim() || null,
+        tags,
+      })
+      .eq('id', spotId);
+
+    if (error) return error.message;
+
+    if (!skipStateUpdate) {
+      setSpots((prev) =>
+        prev.map((s) =>
+          s.id === spotId ? { ...s, name: trimmedName, description: description.trim() || null, tags } : s
+        )
+      );
+      setMySpots((prev) =>
+        prev.map((s) =>
+          s.id === spotId ? { ...s, name: trimmedName, description: description.trim() || null, tags } : s
+        )
+      );
+    }
+    return null;
+  }
   return {
     spots,
     mySpots,
@@ -242,5 +292,6 @@ export function useSpots() {
     searchByTag,
     clearSearch,
     setSpotVisibility,
+    updateSpot,
   };
 }
