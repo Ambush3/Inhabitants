@@ -108,7 +108,7 @@ export function CreateSpotModal({
   }, [visible]);
 
   function handleAddTag() {
-    const cleaned = tagInput.trim().toLowerCase().replace(/\s+/g, '_');
+    const cleaned = tagInput.trim().toLowerCase().replace(/\s+/g, '-');
     if (!cleaned) return;
     onAddTag(cleaned);
     setTagInput('');
@@ -376,7 +376,6 @@ export function CreateSpotModal({
                   color: c.text,
                   backgroundColor: c.surface,
                 }}
-                autoCapitalize="sentences"
               />
 
               <Text style={{ marginBottom: 6, color: c.text }}>Tags (optional)</Text>
