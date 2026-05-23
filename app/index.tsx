@@ -34,6 +34,7 @@ import { PublicProfileModal } from '@/src/components/profile/PublicProfileModal'
 import { MySpotMarker } from '@/src/components/SpotMarkers/MySpotMarker';
 import { OtherUsersSpotMarkers } from '@/src/components/SpotMarkers/OtherUsersSpotMarkers';
 import { CreateEventModal } from '@/src/components/CreateEventModal';
+import { EventDetailsModal } from '@/src/components/EventDetailsModal';
 
 import { useSpots } from '@/src/hooks/useSpots';
 import { useReviews } from '@/src/hooks/useReviews';
@@ -343,6 +344,9 @@ export default function Index() {
     createEvent,
     updateEvent,
     cancelEvent,
+    loadEventRsvps,
+    upsertRsvp,
+    deleteRsvp,
   } = useEvents();
 
   const [pendingImages, setPendingImages] = useState<string[]>([]);
@@ -451,6 +455,9 @@ export default function Index() {
   const [eventFilterOverride, setEventFilterOverride] = useState<
     'all' | 'public' | 'friends' | 'invited' | undefined
   >(undefined);
+
+  const [selectedEvent, setSelectedEvent] = useState<SkateEvent | null>(null);
+  const [eventDetailsOpen, setEventDetailsOpen] = useState(false);
 
   const visibleSpots = useMemo(() => {
     const base = searchResults.length > 0 ? searchResults : spots;
@@ -1332,6 +1339,8 @@ export default function Index() {
             }}
             onSelectEvent={(event) => {
               setPanelOpen(false);
+              setSelectedEvent(event);
+              setEventDetailsOpen(true);
               if (event.spot_id) {
                 const spot = spots.find((s) => s.id === event.spot_id);
                 if (spot) {
@@ -1341,7 +1350,6 @@ export default function Index() {
                     setHighlightSpotId(spot.id);
                     highlightSpotIdRef.current = spot.id;
                     animateToSpotWithModalOffset(spot.lat, spot.lng);
-                    openSpotDetails(spot);
                   }, 450);
                 }
               } else {
@@ -1793,6 +1801,35 @@ export default function Index() {
             pendingCoord={pendingEventCoord}
             spots={spots}
             editEvent={editingEvent}
+          />
+          <EventDetailsModal
+            visible={eventDetailsOpen}
+            event={selectedEvent}
+            currentUserId={session?.user.id ?? null}
+            onClose={() => {
+              setEventDetailsOpen(false);
+              setSelectedEvent(null);
+            }}
+            onCancelEvent={async (eventId) => {
+              await cancelEvent(eventId);
+            }}
+            onViewSpotDetails={() => {
+              if (!selectedEvent?.spot_id) return;
+              const spot = spots.find((s) => s.id === selectedEvent.spot_id);
+              if (spot) {
+                setEventDetailsOpen(false);
+                setTimeout(() => {
+                  openedFromPanelRef.current = true;
+                  setHighlightSpotId(spot.id);
+                  highlightSpotIdRef.current = spot.id;
+                  animateToSpotWithModalOffset(spot.lat, spot.lng);
+                  openSpotDetails(spot);
+                }, 350);
+              }
+            }}
+            onLoadRsvps={loadEventRsvps}
+            onUpsertRsvp={upsertRsvp}
+            onDeleteRsvp={deleteRsvp}
           />
         </View>
       )}

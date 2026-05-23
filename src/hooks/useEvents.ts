@@ -26,6 +26,15 @@ export type SkateEvent = {
   invite_count?: number;
 };
 
+export type RsvpStatus = 'going' | 'maybe' | 'not_going';
+
+export type EventRsvp = {
+  user_id: string;
+  status: RsvpStatus;
+  username: string | null;
+  avatar_url: string | null;
+};
+
 export function useEvents() {
   const [events, setEvents] = useState<SkateEvent[]>([]);
   const [myEvents, setMyEvents] = useState<SkateEvent[]>([]);
@@ -214,6 +223,48 @@ export function useEvents() {
     return null;
   }
 
+  async function loadEventRsvps(eventId: string): Promise<EventRsvp[]> {
+    const { data, error } = await supabase
+      .from('event_rsvps')
+      .select('user_id, status, profiles!event_rsvps_user_id_fkey(username, avatar_url)')
+      .eq('event_id', eventId);
+    console.log('loadEventRsvps data:', data, 'error:', error);
+    return (data ?? []).map((r: any) => ({
+      user_id: r.user_id,
+      status: r.status,
+      username: r.profiles?.username ?? null,
+      avatar_url: r.profiles?.avatar_url ?? null,
+    }));
+  }
+
+  async function upsertRsvp(eventId: string, status: RsvpStatus): Promise<string | null> {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return 'Not logged in';
+    const { error } = await supabase.from('event_rsvps').upsert(
+      {
+        event_id: eventId,
+        user_id: user.id,
+        status,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'event_id,user_id' }
+    );
+    if (error) return error.message;
+    return null;
+  }
+
+  async function deleteRsvp(eventId: string): Promise<string | null> {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return 'Not logged in';
+    const { error } = await supabase.from('event_rsvps').delete().eq('event_id', eventId).eq('user_id', user.id);
+    if (error) return error.message;
+    return null;
+  }
+
   return {
     events,
     myEvents,
@@ -230,5 +281,8 @@ export function useEvents() {
     removeInvite,
     clearUnreadInviteCount,
     unreadInviteCount,
+    loadEventRsvps,
+    upsertRsvp,
+    deleteRsvp,
   };
 }
