@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, Modal, ScrollView, Pressable, TextInput, Image } from 'react-native';
+import { View, Text, Modal, ScrollView, Pressable, TextInput, Image, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Place, Spot } from '@/src/types';
@@ -10,6 +10,7 @@ import Swipeable, { SwipeableMethods } from 'react-native-gesture-handler/Reanim
 import { TopRatedItem } from '@/src/hooks/useTopRated';
 import { AppNotification } from '@/src/hooks/useNotifications';
 import { FeedItem } from '@/src/hooks/useSocialFeed';
+import { SkateEvent } from '@/src/hooks/useEvents';
 
 import { supabase } from '@/src/libs/supabase';
 
@@ -55,9 +56,20 @@ type Props = {
   feedItems: FeedItem[];
   feedLoading: boolean;
   onSelectFeedSpot: (spot: Spot) => void;
+  events: SkateEvent[];
+  myEvents: SkateEvent[];
+  eventsLoading: boolean;
+  onCreateEvent: () => void;
+  onSelectEvent: (event: SkateEvent) => void;
+  onDeleteEvent: (eventId: string) => void;
+  onRefreshEvents: () => void;
+  invitedEventIds: Set<string>;
+  unreadInviteCount: number;
+  onClearUnreadInvites: () => void;
+  initialEventFilter?: 'all' | 'public' | 'friends' | 'invited';
 };
 
-type Tab = 'explore' | 'myspots' | 'favorites' | 'feed';
+type Tab = 'explore' | 'myspots' | 'favorites' | 'feed' | 'events';
 
 export function ExplorePanel({
   visible,
@@ -93,6 +105,17 @@ export function ExplorePanel({
   feedItems,
   feedLoading,
   onSelectFeedSpot,
+  events,
+  myEvents,
+  eventsLoading,
+  onCreateEvent,
+  onSelectEvent,
+  onDeleteEvent,
+  onRefreshEvents,
+  invitedEventIds,
+  unreadInviteCount,
+  onClearUnreadInvites,
+  initialEventFilter,
 }: Props) {
   function notificationLabel(n: AppNotification): string {
     const actor = n.actor_username ? `@${n.actor_username}` : 'Someone';
@@ -146,6 +169,10 @@ export function ExplorePanel({
   const [topRatedSearched, setTopRatedSearched] = useState(false);
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
 
+  const [eventFilter, setEventFilter] = useState<'all' | 'public' | 'friends' | 'invited'>(
+    initialEventFilter ?? 'all'
+  );
+
   const swipeableRefs = useRef<Map<string, SwipeableMethods>>(new Map());
   const openRowsRef = useRef<Set<string>>(new Set());
 
@@ -197,6 +224,20 @@ export function ExplorePanel({
     if (!visible) setTopRatedSearched(false);
   }, [visible]);
 
+  useEffect(() => {
+    if (activeTab === 'events' && visible) {
+      onRefreshEvents();
+      onClearUnreadInvites?.();
+    }
+  }, [activeTab, visible]);
+
+  useEffect(() => {
+    if (initialEventFilter) {
+      setEventFilter(initialEventFilter);
+      setActiveTab('events');
+    }
+  }, [initialEventFilter]);
+
   function handleSearch() {
     if (!searchQuery.trim()) return;
     onSearch(searchQuery.trim());
@@ -212,6 +253,7 @@ export function ExplorePanel({
     { key: 'myspots', label: 'Mine', icon: 'pin-outline' },
     { key: 'favorites', label: 'Saved', icon: 'bookmark-outline' },
     { key: 'feed', label: 'Feed', icon: 'people-outline' },
+    { key: 'events', label: 'Events', icon: 'calendar-outline' },
   ];
 
   const favParks = [...placeFavorites.filter((f) => f.place_type === 'skatepark')];
@@ -845,7 +887,6 @@ export function ExplorePanel({
                 ) : null}
               </View>
             ) : null}
-
             {activeTab === 'myspots' ? (
               <View>
                 <View
@@ -1205,7 +1246,6 @@ export function ExplorePanel({
                 ) : null}
               </View>
             ) : null}
-
             {/* FAVORITES TAB */}
             {activeTab === 'favorites' ? (
               <View>
@@ -1611,6 +1651,242 @@ export function ExplorePanel({
                       </View>
                     </Pressable>
                   ))
+                )}
+              </View>
+            ) : null}
+            {activeTab === 'events' ? (
+              <View>
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    marginBottom: 10,
+                  }}>
+                  <Text
+                    style={{
+                      fontSize: 11,
+                      fontWeight: '600',
+                      color: c.subtext,
+                      letterSpacing: 0.8,
+                    }}>
+                    UPCOMING EVENTS
+                  </Text>
+                  <Pressable
+                    onPress={onCreateEvent}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 4,
+                      backgroundColor: '#007AFF',
+                      borderRadius: 8,
+                      paddingHorizontal: 10,
+                      paddingVertical: 5,
+                    }}>
+                    <Ionicons name="add" size={14} color="white" />
+                    <Text style={{ fontSize: 12, color: 'white', fontWeight: '600' }}>
+                      New Event
+                    </Text>
+                  </Pressable>
+                </View>
+
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    gap: 6,
+                    marginBottom: 12,
+                  }}>
+                  {(['all', 'public', 'friends', 'invited'] as const).map((filter) => {
+                    const labels = {
+                      all: 'All',
+                      public: 'Public',
+                      friends: 'Friends',
+                      invited: 'Invited',
+                    };
+                    const isActive = eventFilter === filter;
+                    return (
+                      <Pressable
+                        key={filter}
+                        onPress={() => setEventFilter(filter)}
+                        style={{
+                          flex: 1,
+                          paddingVertical: 5,
+                          borderRadius: 6,
+                          borderWidth: 1,
+                          borderColor: isActive ? '#007AFF' : c.inputBorder,
+                          backgroundColor: isActive ? '#007AFF' : c.surface,
+                          alignItems: 'center',
+                        }}>
+                        <Text
+                          style={{
+                            fontSize: 10,
+                            fontWeight: '600',
+                            color: isActive ? 'white' : c.subtext,
+                          }}>
+                          {labels[filter]}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+
+                {eventsLoading ? (
+                  <Text style={{ color: c.subtext, fontSize: 13 }}>Loading...</Text>
+                ) : (
+                  (() => {
+                    const filtered = events.filter((event) => {
+                      const isOwn = myEvents.some((e) => e.id === event.id);
+                      if (eventFilter === 'public') return event.visibility === 'public';
+                      if (eventFilter === 'friends') return event.visibility === 'friends';
+                      if (eventFilter === 'invited')
+                        return (
+                          invitedEventIds.has(event.id) ||
+                          (isOwn && event.visibility === 'invite')
+                        );
+                      return true;
+                    });
+                    if (filtered.length === 0)
+                      return (
+                        <Text style={{ color: c.subtext, fontSize: 13, opacity: 0.6 }}>
+                          No events found.
+                        </Text>
+                      );
+                    return filtered.map((event) => {
+                      const isOwn = myEvents.some((e) => e.id === event.id);
+                      const eventDate = new Date(event.event_date);
+                      return (
+                        <Pressable
+                          key={event.id}
+                          onPress={() => onSelectEvent(event)}
+                          onLongPress={() => {
+                            if (!isOwn) return;
+                            Alert.alert('Delete Event', `Delete "${event.title}"?`, [
+                              { text: 'Cancel', style: 'cancel' },
+                              {
+                                text: 'Delete',
+                                style: 'destructive',
+                                onPress: () => onDeleteEvent(event.id),
+                              },
+                            ]);
+                          }}
+                          style={{
+                            paddingVertical: 12,
+                            borderBottomWidth: 1,
+                            borderColor: c.border,
+                            gap: 4,
+                          }}>
+                          <View
+                            style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                            <Text
+                              style={{
+                                flex: 1,
+                                fontWeight: '700',
+                                fontSize: 14,
+                                color: c.text,
+                              }}>
+                              {event.title}
+                            </Text>
+                            {isOwn ? (
+                              <View
+                                style={{
+                                  backgroundColor: 'rgba(0,122,255,0.12)',
+                                  borderRadius: 6,
+                                  paddingHorizontal: 6,
+                                  paddingVertical: 2,
+                                }}>
+                                <Text
+                                  style={{
+                                    fontSize: 9,
+                                    color: '#007AFF',
+                                    fontWeight: '700',
+                                  }}>
+                                  MINE
+                                </Text>
+                              </View>
+                            ) : null}
+                            {invitedEventIds.has(event.id) && !isOwn ? (
+                              <View
+                                style={{
+                                  backgroundColor: 'rgba(88,86,214,0.12)',
+                                  borderRadius: 6,
+                                  paddingHorizontal: 6,
+                                  paddingVertical: 2,
+                                }}>
+                                <Text
+                                  style={{
+                                    fontSize: 9,
+                                    color: '#5856D6',
+                                    fontWeight: '700',
+                                  }}>
+                                  INVITED
+                                </Text>
+                              </View>
+                            ) : null}
+                            {event.visibility === 'friends' ? (
+                              <View
+                                style={{
+                                  backgroundColor: 'rgba(52,199,89,0.12)',
+                                  borderRadius: 6,
+                                  paddingHorizontal: 6,
+                                  paddingVertical: 2,
+                                }}>
+                                <Text
+                                  style={{
+                                    fontSize: 9,
+                                    color: '#34C759',
+                                    fontWeight: '700',
+                                  }}>
+                                  FRIENDS
+                                </Text>
+                              </View>
+                            ) : null}
+                          </View>
+                          <View
+                            style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                            <Ionicons name="calendar-outline" size={11} color={c.subtext} />
+                            <Text style={{ fontSize: 12, color: c.subtext }}>
+                              {eventDate.toLocaleDateString([], {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric',
+                              })}
+                              {' · '}
+                              {eventDate.toLocaleTimeString([], {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
+                            </Text>
+                          </View>
+                          <View
+                            style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                            <Ionicons name="location-outline" size={11} color={c.subtext} />
+                            <Text
+                              style={{ fontSize: 12, color: c.subtext }}
+                              numberOfLines={1}>
+                              {event.location_name}
+                            </Text>
+                          </View>
+                          {event.creator?.username ? (
+                            <View
+                              style={{
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                gap: 4,
+                              }}>
+                              <Ionicons
+                                name="person-outline"
+                                size={11}
+                                color={c.subtext}
+                              />
+                              <Text style={{ fontSize: 12, color: c.subtext }}>
+                                @{event.creator.username}
+                              </Text>
+                            </View>
+                          ) : null}
+                        </Pressable>
+                      );
+                    });
+                  })()
                 )}
               </View>
             ) : null}
