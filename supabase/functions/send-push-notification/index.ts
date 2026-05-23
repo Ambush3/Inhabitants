@@ -25,7 +25,8 @@ async function isAllowed(userId: string, eventType: string): Promise<boolean> {
 
 Deno.serve(async (req) => {
     try {
-        const { spot_id, addressee_id, event_type, actor_username, actor_id, reason } = await req.json();
+        const { spot_id, addressee_id, event_type, actor_username, actor_id, reason, event_title, event_id } =
+            await req.json();
 
         if (event_type === 'friend_request' || event_type === 'friend_accepted') {
             if (!(await isAllowed(addressee_id, event_type))) {
@@ -74,6 +75,41 @@ Deno.serve(async (req) => {
                         url: isAccepted
                             ? `skatespotapp:///friend_accepted?actorId=${actor_id ?? ''}`
                             : 'skatespotapp:///friend_request',
+                    },
+                }),
+            });
+
+            const result = await response.json();
+            return new Response(JSON.stringify(result), { status: 200 });
+        }
+
+        if (event_type === 'event_invite') {
+            if (!(await isAllowed(addressee_id, event_type))) {
+                return new Response(JSON.stringify({ muted: true }), { status: 200 });
+            }
+
+            const { data: tokenRow } = await supabase
+                .from('push_tokens')
+                .select('token')
+                .eq('user_id', addressee_id)
+                .single();
+
+            if (!tokenRow) return new Response('No push token', { status: 200 });
+
+            const response = await fetch('https://exp.host/--/api/v2/push/send', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    'Accept-Encoding': 'gzip, deflate',
+                },
+                body: JSON.stringify({
+                    to: tokenRow.token,
+                    title: '📅 Event Invite',
+                    body: `${actor_username} invited you to "${event_title}"`,
+                    sound: 'default',
+                    data: {
+                        url: `skatespotapp:///events`,
                     },
                 }),
             });
