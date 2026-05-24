@@ -54,12 +54,3 @@ export async function sendEventInviteNotification(
   });
 }
 
-export function usePushNotifications(
-  userId: string | null,
-  session: any,
-  onSpotOpen?: (spotId: string, lat: number, lng: number) => void,
-  onOpenProfile?: () => void,
-  onOpenPublicProfile?: (userId: string) => void,
-  onMarkSpotNotificationRead?: (spotId: string) => void,
-  onOpenEvents?: () => void
-);

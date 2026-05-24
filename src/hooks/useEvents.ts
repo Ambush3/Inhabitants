@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { supabase } from '@/src/libs/supabase';
 import { sendEventInviteNotification } from '@/src/libs/sendPushNotification';
+import { moderateText } from '@/src/libs/moderator/textModerator';
 import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -41,8 +42,45 @@ export function useEvents() {
   const [loading, setLoading] = useState(false);
   const [invitedEventIds, setInvitedEventIds] = useState<Set<string>>(new Set());
   const [unreadInviteCount, setUnreadInviteCount] = useState(0);
+  const [unreadRsvpCount, setUnreadRsvpCount] = useState(0);
+  const [eventRsvpCounts, setEventRsvpCounts] = useState<Record<string, { going: number; maybe: number }>>({});
 
   const prevInvitedIdsRef = useRef<Set<string>>(new Set());
+
+  function clearUnreadRsvpCount() {
+    setUnreadRsvpCount(0);
+  }
+
+  function subscribeToRsvpChanges(userId: string, myEventIds: string[]) {
+    if (myEventIds.length === 0) return () => { };
+    const channel = supabase
+      .channel(`rsvp-changes-${userId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'event_rsvps',
+        },
+        (payload: any) => {
+          if (myEventIds.includes(payload.new.event_id) && payload.new.user_id !== userId) {
+            setUnreadRsvpCount((prev) => prev + 1);
+          }
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }
+
+  function clearUnreadInviteCount() {
+    setUnreadInviteCount(0);
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return;
+      AsyncStorage.setItem(`seenInvites:${user.id}`, JSON.stringify([...prevInvitedIdsRef.current]));
+    });
+  }
 
   async function loadInvitedEventIds() {
     const {
@@ -62,13 +100,6 @@ export function useEvents() {
     setInvitedEventIds(newIds);
   }
 
-  function clearUnreadInviteCount() {
-    setUnreadInviteCount(0);
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) return;
-      AsyncStorage.setItem(`seenInvites:${user.id}`, JSON.stringify([...prevInvitedIdsRef.current]));
-    });
-  }
   async function loadPublicEvents() {
     setLoading(true);
     try {
@@ -118,6 +149,17 @@ export function useEvents() {
     if (!user) return 'Not logged in';
     if (!title.trim()) return 'Title is required';
     if (!locationName.trim()) return 'Location is required';
+
+    const titleCheck = moderateText(title.trim());
+    if (!titleCheck.allowed) return titleCheck.reason ?? 'Inappropriate content in title.';
+
+    if (description.trim()) {
+      const descCheck = moderateText(description.trim());
+      if (!descCheck.allowed) return descCheck.reason ?? 'Inappropriate content in description.';
+    }
+
+    const locationCheck = moderateText(locationName.trim());
+    if (!locationCheck.allowed) return locationCheck.reason ?? 'Inappropriate content in location name.';
 
     const { error } = await supabase.from('events').insert({
       creator_id: user.id,
@@ -173,6 +215,16 @@ export function useEvents() {
     eventDate: Date,
     visibility: EventVisibility
   ): Promise<string | null> {
+    const titleCheck = moderateText(title.trim());
+    if (!titleCheck.allowed) return titleCheck.reason ?? 'Inappropriate content in title.';
+
+    if (description.trim()) {
+      const descCheck = moderateText(description.trim());
+      if (!descCheck.allowed) return descCheck.reason ?? 'Inappropriate content in description.';
+    }
+
+    const locationCheck = moderateText(locationName.trim());
+    if (!locationCheck.allowed) return locationCheck.reason ?? 'Inappropriate content in location name.';
     const { error } = await supabase
       .from('events')
       .update({
@@ -265,6 +317,22 @@ export function useEvents() {
     return null;
   }
 
+  async function loadRsvpCounts(eventIds: string[]) {
+    if (eventIds.length === 0) return;
+    const { data } = await supabase
+      .from('event_rsvps')
+      .select('event_id, status')
+      .in('event_id', eventIds)
+      .in('status', ['going', 'maybe']);
+    const counts: Record<string, { going: number; maybe: number }> = {};
+    (data ?? []).forEach((r: any) => {
+      if (!counts[r.event_id]) counts[r.event_id] = { going: 0, maybe: 0 };
+      if (r.status === 'going') counts[r.event_id].going++;
+      if (r.status === 'maybe') counts[r.event_id].maybe++;
+    });
+    setEventRsvpCounts(counts);
+  }
+
   return {
     events,
     myEvents,
@@ -280,9 +348,14 @@ export function useEvents() {
     addInvite,
     removeInvite,
     clearUnreadInviteCount,
+    clearUnreadRsvpCount,
+    unreadRsvpCount,
+    subscribeToRsvpChanges,
     unreadInviteCount,
     loadEventRsvps,
     upsertRsvp,
     deleteRsvp,
+    eventRsvpCounts,
+    loadRsvpCounts,
   };
 }

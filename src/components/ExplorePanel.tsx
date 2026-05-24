@@ -67,6 +67,9 @@ type Props = {
   unreadInviteCount: number;
   onClearUnreadInvites: () => void;
   initialEventFilter?: 'all' | 'public' | 'friends' | 'invited';
+  eventRsvpCounts: Record<string, { going: number; maybe: number }>;
+  unreadRsvpCount: number;
+  onClearUnreadRsvps: () => void;
 };
 
 type Tab = 'explore' | 'myspots' | 'favorites' | 'feed' | 'events';
@@ -116,6 +119,9 @@ export function ExplorePanel({
   unreadInviteCount,
   onClearUnreadInvites,
   initialEventFilter,
+  eventRsvpCounts,
+  unreadRsvpCount,
+  onClearUnreadRsvps,
 }: Props) {
   function notificationLabel(n: AppNotification): string {
     const actor = n.actor_username ? `@${n.actor_username}` : 'Someone';
@@ -228,6 +234,7 @@ export function ExplorePanel({
     if (activeTab === 'events' && visible) {
       onRefreshEvents();
       onClearUnreadInvites?.();
+      onClearUnreadRsvps?.();
     }
   }, [activeTab, visible]);
 
@@ -298,11 +305,32 @@ export function ExplorePanel({
                   borderBottomWidth: 2,
                   borderColor: activeTab === tab.key ? '#007AFF' : 'transparent',
                 }}>
-                <Ionicons
-                  name={tab.icon as any}
-                  size={18}
-                  color={activeTab === tab.key ? '#007AFF' : c.subtext}
-                />
+                <View style={{ position: 'relative' }}>
+                  <Ionicons
+                    name={tab.icon as any}
+                    size={18}
+                    color={activeTab === tab.key ? '#007AFF' : c.subtext}
+                  />
+                  {tab.key === 'events' && unreadInviteCount + unreadRsvpCount > 0 ? (
+                    <View
+                      style={{
+                        position: 'absolute',
+                        top: -4,
+                        right: -4,
+                        minWidth: 14,
+                        height: 14,
+                        borderRadius: 7,
+                        backgroundColor: c.danger,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        paddingHorizontal: 3,
+                      }}>
+                      <Text style={{ color: 'white', fontSize: 8, fontWeight: '700' }}>
+                        {unreadInviteCount + unreadRsvpCount}
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
                 <Text
                   style={{
                     fontSize: 10,
@@ -1866,6 +1894,37 @@ export function ExplorePanel({
                               {event.location_name}
                             </Text>
                           </View>
+                          {(eventRsvpCounts[event.id]?.going ?? 0) > 0 ||
+                            (eventRsvpCounts[event.id]?.maybe ?? 0) > 0 ? (
+                            <View
+                              style={{
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                gap: 8,
+                                marginTop: 2,
+                              }}>
+                              {(eventRsvpCounts[event.id]?.going ?? 0) > 0 ? (
+                                <Text
+                                  style={{
+                                    fontSize: 11,
+                                    color: '#34C759',
+                                    fontWeight: '600',
+                                  }}>
+                                  {eventRsvpCounts[event.id].going} going
+                                </Text>
+                              ) : null}
+                              {(eventRsvpCounts[event.id]?.maybe ?? 0) > 0 ? (
+                                <Text
+                                  style={{
+                                    fontSize: 11,
+                                    color: '#FF9500',
+                                    fontWeight: '600',
+                                  }}>
+                                  {eventRsvpCounts[event.id].maybe} maybe
+                                </Text>
+                              ) : null}
+                            </View>
+                          ) : null}
                           {event.creator?.username ? (
                             <View
                               style={{
