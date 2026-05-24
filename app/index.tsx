@@ -1849,6 +1849,13 @@ export default function Index() {
             onLoadRsvps={loadEventRsvps}
             onUpsertRsvp={upsertRsvp}
             onDeleteRsvp={deleteRsvp}
+            onEditEvent={() => {
+              setEventDetailsOpen(false);
+              setEditingEvent(selectedEvent);
+              setTimeout(() => {
+                setCreateEventOpen(true);
+              }, 350);
+            }}
           />
         </View>
       )}
