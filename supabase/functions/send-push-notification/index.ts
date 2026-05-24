@@ -13,6 +13,7 @@ const PREF_COLUMN_BY_TYPE: Record<string, string | null> = {
     condition: 'notify_condition',
     flag: 'notify_flag',
     image_removed: null,
+    event_invite: 'notify_event_invite',
 };
 
 async function isAllowed(userId: string, eventType: string): Promise<boolean> {
