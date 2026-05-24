@@ -336,17 +336,22 @@ export default function Index() {
     myEvents,
     invitedEventIds,
     unreadInviteCount,
+    unreadRsvpCount,
     loading: eventsLoading,
     loadPublicEvents,
     loadMyEvents,
     loadInvitedEventIds,
     clearUnreadInviteCount,
+    clearUnreadRsvpCount,
     createEvent,
     updateEvent,
     cancelEvent,
     loadEventRsvps,
     upsertRsvp,
     deleteRsvp,
+    eventRsvpCounts,
+    loadRsvpCounts,
+    subscribeToRsvpChanges,
   } = useEvents();
 
   const [pendingImages, setPendingImages] = useState<string[]>([]);
@@ -974,6 +979,15 @@ export default function Index() {
     }
   }, [pathname]);
 
+  useEffect(() => {
+    if (!session?.user.id || myEvents.length === 0) return;
+    const unsubscribe = subscribeToRsvpChanges(
+      session.user.id,
+      myEvents.map((e) => e.id)
+    );
+    return unsubscribe;
+  }, [session?.user.id, myEvents]);
+
   if (Platform.OS === 'web') {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: c.headerBg }}>
@@ -1047,7 +1061,7 @@ export default function Index() {
             }}>
             <Pressable onPress={() => setPanelOpen(true)} style={{ padding: 8 }}>
               <Ionicons name="menu" size={24} color={c.text} />
-              {pendingReceived.length + unreadActivityCount + unreadInviteCount > 0 ? (
+              {pendingReceived.length + unreadActivityCount + unreadInviteCount + unreadRsvpCount > 0 ? (
                 <View
                   style={{
                     position: 'absolute',
@@ -1067,7 +1081,7 @@ export default function Index() {
                       fontSize: 11,
                       fontWeight: '700',
                     }}>
-                    {pendingReceived.length + unreadActivityCount + unreadInviteCount}
+                    {pendingReceived.length + unreadInviteCount + unreadRsvpCount}
                   </Text>
                 </View>
               ) : null}
@@ -1369,13 +1383,18 @@ export default function Index() {
               await cancelEvent(eventId);
             }}
             onRefreshEvents={() => {
-              loadPublicEvents();
+              loadPublicEvents().then(() => {
+                loadRsvpCounts(events.map((e) => e.id));
+              });
               loadInvitedEventIds();
             }}
+            eventRsvpCounts={eventRsvpCounts}
             invitedEventIds={invitedEventIds}
             unreadInviteCount={unreadInviteCount}
             onClearUnreadInvites={clearUnreadInviteCount}
             initialEventFilter={eventFilterOverride}
+            unreadRsvpCount={unreadRsvpCount}
+            onClearUnreadRsvps={clearUnreadRsvpCount}
           />
           {locationReady ? (
             <SpotMap
