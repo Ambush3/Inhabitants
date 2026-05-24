@@ -16,6 +16,7 @@ type Props = {
   onLoadRsvps: (eventId: string) => Promise<EventRsvp[]>;
   onUpsertRsvp: (eventId: string, status: RsvpStatus) => Promise<string | null>;
   onDeleteRsvp: (eventId: string) => Promise<string | null>;
+  onEditEvent: () => void;
 };
 
 export function EventDetailsModal({
@@ -28,6 +29,7 @@ export function EventDetailsModal({
   onLoadRsvps,
   onUpsertRsvp,
   onDeleteRsvp,
+  onEditEvent,
 }: Props) {
   const { theme } = useTheme();
   const c = theme.colors;
@@ -159,7 +161,6 @@ export function EventDetailsModal({
               <Ionicons name="close" size={24} color={c.text} />
             </Pressable>
           </View>
-
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <Ionicons name="calendar-outline" size={16} color={c.subtext} />
             <Text style={{ fontSize: 14, color: c.text }}>
@@ -171,32 +172,26 @@ export function EventDetailsModal({
               })}
             </Text>
           </View>
-
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <Ionicons name="time-outline" size={16} color={c.subtext} />
             <Text style={{ fontSize: 14, color: c.text }}>
               {eventDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </Text>
           </View>
-
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <Ionicons name="location-outline" size={16} color={c.subtext} />
             <Text style={{ fontSize: 14, color: c.text }}>{event.location_name}</Text>
           </View>
-
           {event.creator?.username ? (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <Ionicons name="person-outline" size={16} color={c.subtext} />
               <Text style={{ fontSize: 14, color: '#007AFF' }}>@{event.creator.username}</Text>
             </View>
           ) : null}
-
           {event.description ? (
             <Text style={{ fontSize: 14, color: c.text, lineHeight: 20 }}>{event.description}</Text>
           ) : null}
-
-          <View style={{ height: 1, backgroundColor: c.border }} />
-
+          <View style={{ height: 1, backgroundColor: c.border, marginVertical: 8 }} />
           <View style={{ flexDirection: 'row', gap: 8, justifyContent: 'center' }}>
             <View style={{ alignItems: 'center', flex: 1 }}>
               <Text style={{ fontSize: 20, fontWeight: '700', color: '#34C759' }}>{goingCount}</Text>
@@ -211,7 +206,6 @@ export function EventDetailsModal({
               <Text style={{ fontSize: 11, color: c.subtext }}>Not Going</Text>
             </View>
           </View>
-
           {!isOwner ? (
             <View style={{ flexDirection: 'row', gap: 8 }}>
               {(['going', 'maybe', 'not_going'] as RsvpStatus[]).map((status) => {
@@ -247,7 +241,6 @@ export function EventDetailsModal({
               })}
             </View>
           ) : null}
-
           {isOwner && rsvps.length > 0 ? (
             <View>
               <Text style={{ fontSize: 13, fontWeight: '700', color: c.text, marginBottom: 8 }}>
@@ -319,7 +312,6 @@ export function EventDetailsModal({
               ))}
             </View>
           ) : null}
-
           {event.spot_id ? (
             <Pressable
               onPress={onViewSpotDetails}
@@ -336,6 +328,25 @@ export function EventDetailsModal({
               }}>
               <Ionicons name="location-outline" size={16} color={c.text} />
               <Text style={{ fontWeight: '600', color: c.text }}>View Spot Details</Text>
+            </Pressable>
+          ) : null}
+          {isOwner ? (
+            <Pressable
+              onPress={onEditEvent}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                padding: 12,
+                borderRadius: 10,
+                borderWidth: 1,
+                borderColor: '#007AFF',
+                marginTop: 8,
+                marginBottom: 8,
+              }}>
+              <Ionicons name="pencil-outline" size={16} color="#007AFF" />
+              <Text style={{ fontWeight: '600', color: '#007AFF' }}>Edit Event</Text>
             </Pressable>
           ) : null}
 
