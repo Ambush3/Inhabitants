@@ -1,70 +1,73 @@
 {
-    "expo": {
-        "name": "Inhabitants",
-        "slug": "SkateSpotApp",
-        "version": "1.0.0",
-        "orientation": "portrait",
-        "icon": "./assets/images/icon.png",
-        "scheme": "inhabitants",
-        "userInterfaceStyle": "automatic",
-        "newArchEnabled": true,
-        "ios": {
-            "supportsTablet": true,
-            "infoPlist": {
-                "NSLocationWhenInUseUsageDescription": "We use your location to center the map near you.",
-                "NSUserNotificationsUsageDescription": "We'll notify you when someone interacts with your spots.",
-                "LSApplicationQueriesSchemes": ["comgooglemaps"],
-                "ITSAppUsesNonExemptEncryption": false
-            },
-            "bundleIdentifier": "com.aaronbush.inhabitants"
-        },
-        "android": {
-            "adaptiveIcon": {
-                "backgroundColor": "#E6F4FE",
-                "foregroundImage": "./assets/images/android-icon-foreground.png",
-                "backgroundImage": "./assets/images/android-icon-background.png",
-                "monochromeImage": "./assets/images/android-icon-monochrome.png"
-            },
-            "edgeToEdgeEnabled": true,
-            "predictiveBackGestureEnabled": false
-        },
-        "web": {
-            "output": "static",
-            "favicon": "./assets/images/favicon.png"
-        },
-        "plugins": [
-            "expo-router",
-            [
-                "expo-notifications",
-                {
-                    "icon": "./assets/images/icon.png",
-                    "color": "#ffffff"
-                }
-            ],
-            [
-                "expo-splash-screen",
-                {
-                    "image": "./assets/images/splash-icon.png",
-                    "imageWidth": 200,
-                    "resizeMode": "contain",
-                    "backgroundColor": "#1a1a1a",
-                    "dark": {
-                        "backgroundColor": "#1a1a1a"
-                    }
-                }
-            ],
-            "expo-web-browser"
+  "expo": {
+    "name": "Inhabitants",
+    "slug": "SkateSpotApp",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "inhabitants",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "We use your location to center the map near you.",
+        "NSUserNotificationsUsageDescription": "We'll notify you when someone interacts with your spots.",
+        "LSApplicationQueriesSchemes": [
+          "comgooglemaps"
         ],
-        "experiments": {
-            "typedRoutes": true,
-            "reactCompiler": true
-        },
-        "extra": {
-            "router": {},
-            "eas": {
-                "projectId": "3766e044-8061-46dc-bf9e-ca194b4eb0b4"
-            }
-        },
-        "owner": "ambush3"
-    }
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "bundleIdentifier": "com.aaronbush.inhabitants"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "backgroundImage": "./assets/images/android-icon-background.png",
+        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+      },
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "output": "static",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#ffffff"
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#1a1a1a",
+          "dark": {
+            "backgroundColor": "#1a1a1a"
+          }
+        }
+      ],
+      "expo-web-browser",
+      "@react-native-community/datetimepicker"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "3766e044-8061-46dc-bf9e-ca194b4eb0b4"
+      }
+    },
+    "owner": "ambush3"
+  }
 }

@@ -33,6 +33,8 @@ import { ProfileModal } from '@/src/components/profile/ProfileModal';
 import { PublicProfileModal } from '@/src/components/profile/PublicProfileModal';
 import { MySpotMarker } from '@/src/components/SpotMarkers/MySpotMarker';
 import { OtherUsersSpotMarkers } from '@/src/components/SpotMarkers/OtherUsersSpotMarkers';
+import { CreateEventModal } from '@/src/components/CreateEventModal';
+import { EventDetailsModal } from '@/src/components/EventDetailsModal';
 
 import { useSpots } from '@/src/hooks/useSpots';
 import { useReviews } from '@/src/hooks/useReviews';
@@ -47,6 +49,7 @@ import { usePushNotifications } from '@/src/hooks/usePushNotifications';
 import { sendPushNotification } from '@/src/libs/sendPushNotification';
 import { useSpotFlags } from '@/src/hooks/flaggingSystem/useSpotFlags';
 import { useReviewFlags } from '@/src/hooks/flaggingSystem/useReviewFlags';
+import { useEvents, SkateEvent } from '@/src/hooks/useEvents';
 
 import { useTheme } from '@/src/context/ThemeContext';
 
@@ -95,6 +98,8 @@ const SpotMap = React.memo(
     setSelectedPlace,
     setPlaceDetailsOpen,
     spots,
+    events,
+    pendingEventCoord,
   }: any) => (
     <MapViewClustering
       ref={mapRef}
@@ -114,6 +119,25 @@ const SpotMap = React.memo(
           title="New spot"
           pinColor="red"
         />
+      ) : null}
+      {pendingEventCoord ? (
+        <Marker
+          key="pending-event"
+          coordinate={{ latitude: pendingEventCoord.lat, longitude: pendingEventCoord.lng }}
+          anchor={{ x: 0.5, y: 0.5 }}>
+          <View
+            style={{
+              backgroundColor: '#FF9500',
+              borderRadius: 20,
+              padding: 6,
+              borderWidth: 2,
+              borderColor: 'white',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+            <Ionicons name="calendar" size={14} color="white" />
+          </View>
+        </Marker>
       ) : null}
       {visibleSpots
         .filter((s: any) => s.spot_type === 'spot' || s.id === highlightSpotId)
@@ -222,7 +246,9 @@ const SpotMap = React.memo(
       prevProps.highlightSpotId === nextProps.highlightSpotId &&
       prevProps.selectedPlaceId === nextProps.selectedPlaceId &&
       prevProps.pendingCoord === nextProps.pendingCoord &&
-      prevProps.initialRegion === nextProps.initialRegion
+      prevProps.initialRegion === nextProps.initialRegion &&
+      prevProps.events === nextProps.events &&
+      prevProps.pendingEventCoord === nextProps.pendingEventCoord
     );
   }
 );
@@ -304,6 +330,29 @@ export default function Index() {
   const { flaggedReviewIds, loadReviewFlags, toggleReviewFlag, isReviewFlaggedByMe } = useReviewFlags(
     session?.user.id ?? null
   );
+
+  const {
+    events,
+    myEvents,
+    invitedEventIds,
+    unreadInviteCount,
+    unreadRsvpCount,
+    loading: eventsLoading,
+    loadPublicEvents,
+    loadMyEvents,
+    loadInvitedEventIds,
+    clearUnreadInviteCount,
+    clearUnreadRsvpCount,
+    createEvent,
+    updateEvent,
+    cancelEvent,
+    loadEventRsvps,
+    upsertRsvp,
+    deleteRsvp,
+    eventRsvpCounts,
+    loadRsvpCounts,
+    subscribeToRsvpChanges,
+  } = useEvents();
 
   const [pendingImages, setPendingImages] = useState<string[]>([]);
 
@@ -404,6 +453,16 @@ export default function Index() {
   const [commentCount, setCommentCount] = useState(0);
 
   const [spotCreatorBadge, setSpotCreatorBadge] = useState<'local' | 'regular' | 'ambassador' | null>(null);
+
+  const [createEventOpen, setCreateEventOpen] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<SkateEvent | null>(null);
+  const [pendingEventCoord, setPendingEventCoord] = useState<{ lat: number; lng: number } | null>(null);
+  const [eventFilterOverride, setEventFilterOverride] = useState<
+    'all' | 'public' | 'friends' | 'invited' | undefined
+  >(undefined);
+
+  const [selectedEvent, setSelectedEvent] = useState<SkateEvent | null>(null);
+  const [eventDetailsOpen, setEventDetailsOpen] = useState(false);
 
   const visibleSpots = useMemo(() => {
     const base = searchResults.length > 0 ? searchResults : spots;
@@ -552,13 +611,11 @@ export default function Index() {
 
   function onLongPress(e: LongPressEvent) {
     const { latitude, longitude } = e.nativeEvent.coordinate;
-
     setPendingCoord({ lat: latitude, lng: longitude });
     setSpotName('');
     setSpotDesc('');
     setCreateOpen(true);
     setSpotRating(0);
-    setCreateOpen(true);
   }
 
   usePushNotifications(
@@ -582,6 +639,10 @@ export default function Index() {
     (spotId) => {
       const notif = activityNotifications.find((n) => n.spot_id === spotId && !n.read);
       if (notif) markAsRead(notif.id);
+    },
+    () => {
+      setPanelOpen(true);
+      setEventFilterOverride('invited');
     }
   );
 
@@ -594,6 +655,9 @@ export default function Index() {
     loadFlags();
     loadReviewFlags();
     loadPendingRequests();
+    loadPublicEvents();
+    loadMyEvents();
+    loadInvitedEventIds();
   }, []);
 
   useFocusEffect(
@@ -873,6 +937,13 @@ export default function Index() {
       }, 1000);
     });
 
+    AsyncStorage.getItem('pendingNotificationEvents').then((val) => {
+      if (!val) return;
+      AsyncStorage.removeItem('pendingNotificationEvents');
+      setPanelOpen(true);
+      setEventFilterOverride('invited');
+    });
+
     AsyncStorage.getItem('pendingNotificationProfile').then((val) => {
       if (!val) return;
       setProfileOpen(true);
@@ -907,6 +978,15 @@ export default function Index() {
       setPanelOpen(false);
     }
   }, [pathname]);
+
+  useEffect(() => {
+    if (!session?.user.id || myEvents.length === 0) return;
+    const unsubscribe = subscribeToRsvpChanges(
+      session.user.id,
+      myEvents.map((e) => e.id)
+    );
+    return unsubscribe;
+  }, [session?.user.id, myEvents]);
 
   if (Platform.OS === 'web') {
     return (
@@ -981,7 +1061,7 @@ export default function Index() {
             }}>
             <Pressable onPress={() => setPanelOpen(true)} style={{ padding: 8 }}>
               <Ionicons name="menu" size={24} color={c.text} />
-              {pendingReceived.length + unreadActivityCount > 0 ? (
+              {pendingReceived.length + unreadActivityCount + unreadInviteCount + unreadRsvpCount > 0 ? (
                 <View
                   style={{
                     position: 'absolute',
@@ -1001,7 +1081,7 @@ export default function Index() {
                       fontSize: 11,
                       fontWeight: '700',
                     }}>
-                    {pendingReceived.length + unreadActivityCount}
+                    {pendingReceived.length + unreadInviteCount + unreadRsvpCount}
                   </Text>
                 </View>
               ) : null}
@@ -1090,6 +1170,7 @@ export default function Index() {
             }}
             onClose={() => {
               setPanelOpen(false);
+              setPendingEventCoord(null);
               reload();
               loadMySpots();
             }}
@@ -1263,6 +1344,57 @@ export default function Index() {
                 setPlaces((prev) => prev.filter((p) => p.id !== spot.id));
               });
             }}
+            events={events}
+            myEvents={myEvents}
+            eventsLoading={eventsLoading}
+            onCreateEvent={() => {
+              setPanelOpen(false);
+              setCreateEventOpen(true);
+            }}
+            onSelectEvent={(event) => {
+              setPanelOpen(false);
+              setSelectedEvent(event);
+              setEventDetailsOpen(true);
+              if (event.spot_id) {
+                const spot = spots.find((s) => s.id === event.spot_id);
+                if (spot) {
+                  setTimeout(() => {
+                    preModalRegionRef.current = mapRegionRef.current;
+                    openedFromPanelRef.current = true;
+                    setHighlightSpotId(spot.id);
+                    highlightSpotIdRef.current = spot.id;
+                    animateToSpotWithModalOffset(spot.lat, spot.lng);
+                  }, 450);
+                }
+              } else {
+                setPendingEventCoord({ lat: event.lat, lng: event.lng });
+                mapRef.current?.animateToRegion(
+                  {
+                    latitude: event.lat - 0.03 * 0.45,
+                    longitude: event.lng,
+                    latitudeDelta: 0.03,
+                    longitudeDelta: 0.03,
+                  },
+                  400
+                );
+              }
+            }}
+            onDeleteEvent={async (eventId) => {
+              await cancelEvent(eventId);
+            }}
+            onRefreshEvents={() => {
+              loadPublicEvents().then(() => {
+                loadRsvpCounts(events.map((e) => e.id));
+              });
+              loadInvitedEventIds();
+            }}
+            eventRsvpCounts={eventRsvpCounts}
+            invitedEventIds={invitedEventIds}
+            unreadInviteCount={unreadInviteCount}
+            onClearUnreadInvites={clearUnreadInviteCount}
+            initialEventFilter={eventFilterOverride}
+            unreadRsvpCount={unreadRsvpCount}
+            onClearUnreadRsvps={clearUnreadRsvpCount}
           />
           {locationReady ? (
             <SpotMap
@@ -1302,6 +1434,8 @@ export default function Index() {
               setSelectedPlace={setSelectedPlace}
               setPlaceDetailsOpen={setPlaceDetailsOpen}
               spots={spots}
+              events={events}
+              pendingEventCoord={pendingEventCoord}
             />
           ) : (
             <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
@@ -1641,6 +1775,86 @@ export default function Index() {
               highlightSpotIdRef.current = s.id;
               animateToSpotWithModalOffset(s.lat, s.lng);
               openSpotDetails(s);
+            }}
+          />
+          <CreateEventModal
+            visible={createEventOpen}
+            onClose={() => {
+              setCreateEventOpen(false);
+              setPendingEventCoord(null);
+              setEditingEvent(null);
+            }}
+            onSubmit={async (
+              title,
+              description,
+              locationName,
+              lat,
+              lng,
+              eventDate,
+              visibility,
+              spotId,
+              inviteUserIds
+            ) => {
+              if (editingEvent) {
+                return await updateEvent(
+                  editingEvent.id,
+                  title,
+                  description,
+                  locationName,
+                  eventDate,
+                  visibility
+                );
+              }
+              return await createEvent(
+                title,
+                description,
+                locationName,
+                lat,
+                lng,
+                eventDate,
+                visibility,
+                spotId,
+                inviteUserIds
+              );
+            }}
+            pendingCoord={pendingEventCoord}
+            spots={spots}
+            editEvent={editingEvent}
+          />
+          <EventDetailsModal
+            visible={eventDetailsOpen}
+            event={selectedEvent}
+            currentUserId={session?.user.id ?? null}
+            onClose={() => {
+              setEventDetailsOpen(false);
+              setSelectedEvent(null);
+            }}
+            onCancelEvent={async (eventId) => {
+              await cancelEvent(eventId);
+            }}
+            onViewSpotDetails={() => {
+              if (!selectedEvent?.spot_id) return;
+              const spot = spots.find((s) => s.id === selectedEvent.spot_id);
+              if (spot) {
+                setEventDetailsOpen(false);
+                setTimeout(() => {
+                  openedFromPanelRef.current = true;
+                  setHighlightSpotId(spot.id);
+                  highlightSpotIdRef.current = spot.id;
+                  animateToSpotWithModalOffset(spot.lat, spot.lng);
+                  openSpotDetails(spot);
+                }, 350);
+              }
+            }}
+            onLoadRsvps={loadEventRsvps}
+            onUpsertRsvp={upsertRsvp}
+            onDeleteRsvp={deleteRsvp}
+            onEditEvent={() => {
+              setEventDetailsOpen(false);
+              setEditingEvent(selectedEvent);
+              setTimeout(() => {
+                setCreateEventOpen(true);
+              }, 350);
             }}
           />
         </View>
