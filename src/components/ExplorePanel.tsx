@@ -739,6 +739,7 @@ export function ExplorePanel({
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: 8,
+                    height: 56,
                     opacity: shopsLoading ? 0.6 : 1,
                     marginBottom: 10,
                   }}>
