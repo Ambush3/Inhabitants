@@ -696,7 +696,7 @@ export function SpotDetailsModal({
                       fontWeight: '600',
                       color: isFavorite ? '#FF3B30' : c.text,
                     }}>
-                    Save
+                    Bookmark
                   </Text>
                 </Pressable>
                 <Pressable
