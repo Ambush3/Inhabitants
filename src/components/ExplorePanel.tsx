@@ -130,7 +130,7 @@ export function ExplorePanel({
       case 'review':
         return `${actor} rated "${spot}"`;
       case 'favorite':
-        return `${actor} saved "${spot}"`;
+        return `${actor} bookmarked "${spot}"`;
       case 'wishlist':
         return `${actor} wishlisted "${spot}"`;
       case 'condition':
@@ -500,7 +500,7 @@ export function ExplorePanel({
                     marginBottom: 8,
                     letterSpacing: 0.8,
                   }}>
-                  SEARCH BY TAG
+                  SEARCH SPOTS
                 </Text>
                 <View
                   style={{
@@ -524,7 +524,7 @@ export function ExplorePanel({
                           onClearSearch();
                         }
                       }}
-                      placeholder="e.g. stairs, rails..."
+                      placeholder="Search by name or tag..."
                       placeholderTextColor={c.placeholder}
                       autoCapitalize="none"
                       style={{
@@ -565,7 +565,7 @@ export function ExplorePanel({
                       opacity: 0.6,
                       marginBottom: 16,
                     }}>
-                    No spots found with that tag. Try a different one.
+                    No spots found. Try a different name or tag.
                   </Text>
                 ) : searchResults.length > 0 ? (
                   <View style={{ marginBottom: 16 }}>
