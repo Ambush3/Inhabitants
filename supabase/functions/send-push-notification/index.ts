@@ -163,8 +163,8 @@ Deno.serve(async (req) => {
                 body: `${actor_username} rated your spot "${spot.name}"`,
             },
             favorite: {
-                title: '🔖 New Save',
-                body: `${actor_username} saved your spot "${spot.name}"`,
+                title: '🔖 New Bookmark',
+                body: `${actor_username} bookmarked your spot "${spot.name}"`,
             },
             wishlist: {
                 title: '⭐ New Wishlist',
