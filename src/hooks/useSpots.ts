@@ -210,20 +210,23 @@ export function useSpots() {
     onDeleted?.();
   }
 
-  async function searchByTag(tag: string) {
+  async function searchByTag(query: string) {
     setSearching(true);
-    const trimmed = tag.trim().toLowerCase();
+    const trimmed = query.trim().toLowerCase();
     const normalized = trimmed.replace(/[\s-]+/g, '');
     const results = spots.filter((s) => {
       if (!s.tags || s.is_flagged || s.is_private) return false;
-      return s.tags.some((t) => {
+      const nameMatch = s.name.toLowerCase().includes(trimmed);
+      const tagMatch = s.tags.some((t) => {
         const normalizedTag = t.replace(/[\s-]+/g, '');
         return normalizedTag === normalized || t === trimmed;
       });
+      return nameMatch || tagMatch;
     });
     setSearchResults(results);
     setSearching(false);
   }
+
   function clearSearch() {
     setSearchResults([]);
   }
