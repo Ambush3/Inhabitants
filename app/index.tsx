@@ -60,6 +60,8 @@ import { useFriendships } from '@/src/hooks/social/useFriendships';
 import { useNotifications } from '@/src/hooks/useNotifications';
 import { useSocialFeed } from '@/src/hooks/useSocialFeed';
 import { SpotVisibility, spotVisibility } from '@/src/hooks/useSpots';
+import { useClosureReports } from '@/src/hooks/useClosureReports';
+
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 ExpoSplashScreen.preventAutoHideAsync();
@@ -328,6 +330,10 @@ export default function Index() {
 
   const { flaggedSpotIds, loadFlags, toggleFlag, isFlaggedByMe } = useSpotFlags(session?.user.id ?? null);
   const { flaggedReviewIds, loadReviewFlags, toggleReviewFlag, isReviewFlaggedByMe } = useReviewFlags(
+    session?.user.id ?? null
+  );
+
+  const { reportedSpotIds, loadMyReports, reportClosure, removeReport, isReportedByMe } = useClosureReports(
     session?.user.id ?? null
   );
 
@@ -658,6 +664,7 @@ export default function Index() {
     loadPublicEvents();
     loadMyEvents();
     loadInvitedEventIds();
+    loadMyReports();
   }, []);
 
   useFocusEffect(
@@ -668,6 +675,7 @@ export default function Index() {
       loadFlags();
       loadReviewFlags();
       loadPendingRequests();
+      loadMyReports();
     }, [])
   );
 
@@ -1649,6 +1657,35 @@ export default function Index() {
               return err;
             }}
             creatorBadge={spotCreatorBadge}
+            isReportedClosureByMe={selectedSpot ? isReportedByMe(selectedSpot.id) : false}
+            closureReportCount={selectedSpot?.closure_report_count ?? 0}
+            onReportClosure={async (reason) => {
+              if (!selectedSpot) return null;
+              const err = await reportClosure(selectedSpot.id, reason);
+              if (!err) {
+                setSelectedSpot((prev) =>
+                  prev
+                    ? { ...prev, closure_report_count: (prev.closure_report_count ?? 0) + 1 }
+                    : prev
+                );
+              }
+              return err;
+            }}
+            onRemoveClosureReport={async () => {
+              if (!selectedSpot) return null;
+              const err = await removeReport(selectedSpot.id);
+              if (!err) {
+                setSelectedSpot((prev) =>
+                  prev
+                    ? {
+                      ...prev,
+                      closure_report_count: Math.max(0, (prev.closure_report_count ?? 0) - 1),
+                    }
+                    : prev
+                );
+              }
+              return err;
+            }}
           />
           <SkateShopDetailsModal
             visible={placeDetailsOpen}

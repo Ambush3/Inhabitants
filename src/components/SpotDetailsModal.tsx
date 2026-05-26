@@ -24,7 +24,10 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { useTheme } from '@/src/context/ThemeContext';
+
 import { CONDITION_META, SpotCondition } from '@/src/hooks/useSpotConditions';
+import { ClosureReason } from '@/src/hooks/useClosureReports';
+
 import { SpotCommentsModal } from '@/src/components/SpotCommentsModal';
 import { CollectionsModal } from '@/src/components/CollectionsModal';
 
@@ -123,6 +126,10 @@ type Props = {
   friendIds?: Set<string>;
   onUpdateSpot: (spotId: string, name: string, description: string, tags: string[]) => Promise<string | null>;
   creatorBadge?: 'local' | 'regular' | 'ambassador' | null;
+  isReportedClosureByMe: boolean;
+  closureReportCount: number;
+  onReportClosure: (reason: ClosureReason) => Promise<string | null>;
+  onRemoveClosureReport: () => Promise<string | null>;
 };
 
 export function SpotDetailsModal({
@@ -167,6 +174,10 @@ export function SpotDetailsModal({
   friendIds,
   onUpdateSpot,
   creatorBadge,
+  isReportedClosureByMe,
+  closureReportCount,
+  onReportClosure,
+  onRemoveClosureReport,
 }: Props) {
   const { width } = Dimensions.get('window');
   const { theme } = useTheme();
@@ -195,6 +206,10 @@ export function SpotDetailsModal({
   const [editTags, setEditTags] = useState<string[]>([]);
   const [editTagInput, setEditTagInput] = useState('');
   const [editSaving, setEditSaving] = useState(false);
+
+  const [closureModalOpen, setClosureModalOpen] = useState(false);
+  const [closureReason, setClosureReason] = useState<ClosureReason | ''>('');
+  const [reportingClosure, setReportingClosure] = useState(false);
 
   useEffect(() => {
     if (!spot || !visible) {
@@ -430,6 +445,24 @@ export function SpotDetailsModal({
             scrollEnabled={scrollEnabled}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: 32 }}>
+            {spot && closureReportCount >= 3 ? (
+              <View
+                style={{
+                  backgroundColor: 'rgba(255,59,48,0.1)',
+                  borderRadius: 8,
+                  padding: 10,
+                  marginBottom: 8,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 8,
+                }}>
+                <Ionicons name="warning-outline" size={16} color={c.danger} />
+                <Text style={{ fontSize: 13, color: c.danger, fontWeight: '600', flex: 1 }}>
+                  This spot has been reported as no longer skateable
+                </Text>
+              </View>
+            ) : null}
+
             {/* Header */}
             <View style={{ marginBottom: 10 }}>
               <View
@@ -1013,24 +1046,56 @@ export function SpotDetailsModal({
                   <Ionicons name="trash-outline" size={15} color={c.danger} />
                   <Text style={[styles.deleteSpotText, { color: c.danger }]}>Delete</Text>
                 </Pressable>
-              ) : !isOwner ? (
-                <Pressable
-                  onPress={handleFlag}
-                  style={[styles.closeBtn, { borderColor: isFlaggedByMe ? '#FF3B30' : c.border }]}>
-                  <Ionicons
-                    name={isFlaggedByMe ? 'flag' : 'flag-outline'}
-                    size={15}
-                    color={isFlaggedByMe ? '#FF3B30' : c.text}
-                  />
-                  <Text
-                    style={{
-                      fontWeight: '600',
-                      fontSize: 15,
-                      color: isFlaggedByMe ? '#FF3B30' : c.text,
-                    }}>
-                    {isFlaggedByMe ? 'Flagged' : 'Flag'}
-                  </Text>
-                </Pressable>
+              ) : null}
+              {!isOwner ? (
+                <>
+                  <Pressable
+                    onPress={handleFlag}
+                    style={[
+                      styles.closeBtn,
+                      { borderColor: isFlaggedByMe ? '#FF3B30' : c.border },
+                    ]}>
+                    <Ionicons
+                      name={isFlaggedByMe ? 'flag' : 'flag-outline'}
+                      size={15}
+                      color={isFlaggedByMe ? '#FF3B30' : c.text}
+                    />
+                    <Text
+                      style={{
+                        fontWeight: '600',
+                        fontSize: 15,
+                        color: isFlaggedByMe ? '#FF3B30' : c.text,
+                      }}>
+                      {isFlaggedByMe ? 'Flagged' : 'Flag'}
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => {
+                      if (isReportedClosureByMe) {
+                        onRemoveClosureReport();
+                      } else {
+                        setClosureModalOpen(true);
+                      }
+                    }}
+                    style={[
+                      styles.closeBtn,
+                      { borderColor: isReportedClosureByMe ? c.danger : c.border },
+                    ]}>
+                    <Ionicons
+                      name={isReportedClosureByMe ? 'close-circle' : 'close-circle-outline'}
+                      size={15}
+                      color={isReportedClosureByMe ? c.danger : c.text}
+                    />
+                    <Text
+                      style={{
+                        fontWeight: '600',
+                        fontSize: 13,
+                        color: isReportedClosureByMe ? c.danger : c.text,
+                      }}>
+                      {isReportedClosureByMe ? 'Reported' : 'Closed?'}
+                    </Text>
+                  </Pressable>
+                </>
               ) : null}
               <Pressable onPress={onClose} style={[styles.closeBtn, { borderColor: c.border }]}>
                 <Text style={[styles.closeBtnText, { color: c.text }]}>Close</Text>
@@ -1360,6 +1425,77 @@ export function SpotDetailsModal({
               </Pressable>
             </Pressable>
           </KeyboardAvoidingView>
+        </Pressable>
+      </Modal>
+      <Modal
+        visible={closureModalOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setClosureModalOpen(false)}>
+        <Pressable
+          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' }}
+          onPress={() => setClosureModalOpen(false)}>
+          <Pressable
+            style={{
+              backgroundColor: c.surface,
+              borderTopLeftRadius: 20,
+              borderTopRightRadius: 20,
+              padding: 20,
+              gap: 10,
+            }}
+            onPress={() => { }}>
+            <Text style={{ fontWeight: '700', fontSize: 16, color: c.text, marginBottom: 4 }}>
+              Why is this spot no longer skateable?
+            </Text>
+            {(
+              [
+                ['demolished', 'Demolished / Built Over'],
+                ['closed', 'Closed / Fenced Off'],
+                ['security', 'Heavy Security'],
+              ] as [ClosureReason, string][]
+            ).map(([value, label]) => (
+              <Pressable
+                key={value}
+                onPress={() => setClosureReason(value)}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 10,
+                  paddingVertical: 10,
+                  borderBottomWidth: 1,
+                  borderColor: c.border,
+                }}>
+                <Ionicons
+                  name={closureReason === value ? 'radio-button-on' : 'radio-button-off'}
+                  size={18}
+                  color={closureReason === value ? '#007AFF' : c.subtext}
+                />
+                <Text style={{ fontSize: 14, color: c.text }}>{label}</Text>
+              </Pressable>
+            ))}
+            <Pressable
+              onPress={async () => {
+                if (!closureReason) return;
+                setReportingClosure(true);
+                await onReportClosure(closureReason);
+                setReportingClosure(false);
+                setClosureModalOpen(false);
+                setClosureReason('');
+              }}
+              disabled={reportingClosure || !closureReason}
+              style={{
+                backgroundColor: c.danger,
+                borderRadius: 10,
+                padding: 13,
+                alignItems: 'center',
+                marginTop: 8,
+                opacity: reportingClosure || !closureReason ? 0.4 : 1,
+              }}>
+              <Text style={{ color: 'white', fontWeight: '700', fontSize: 15 }}>
+                {reportingClosure ? 'Submitting...' : 'Submit Report'}
+              </Text>
+            </Pressable>
+          </Pressable>
         </Pressable>
       </Modal>
     </Modal>
