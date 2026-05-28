@@ -1783,6 +1783,11 @@ export default function Index() {
             onClose={() => {
               setCreateEventOpen(false);
               setPendingEventCoord(null);
+              if (editingEvent) {
+                setTimeout(() => {
+                  setEventDetailsOpen(true);
+                }, 350);
+              }
               setEditingEvent(null);
             }}
             onSubmit={async (
@@ -1797,7 +1802,7 @@ export default function Index() {
               inviteUserIds
             ) => {
               if (editingEvent) {
-                return await updateEvent(
+                const err = await updateEvent(
                   editingEvent.id,
                   title,
                   description,
@@ -1805,6 +1810,20 @@ export default function Index() {
                   eventDate,
                   visibility
                 );
+                if (!err) {
+                  setSelectedEvent((prev) =>
+                    prev
+                      ? {
+                        ...prev,
+                        title,
+                        description,
+                        location_name: locationName,
+                        event_date: eventDate.toISOString(),
+                      }
+                      : prev
+                  );
+                }
+                return err;
               }
               return await createEvent(
                 title,
@@ -1855,6 +1874,14 @@ export default function Index() {
               setEditingEvent(selectedEvent);
               setTimeout(() => {
                 setCreateEventOpen(true);
+              }, 350);
+            }}
+            onViewProfile={(userId) => {
+              setEventDetailsOpen(false);
+              setSelectedEvent(null);
+              setTimeout(() => {
+                setPublicProfileUserId(userId);
+                setPublicProfileOpen(true);
               }, 350);
             }}
           />
