@@ -2,7 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, Modal, Pressable, ScrollView, KeyboardAvoidingView, Platform, Image, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+
 import { useTheme } from '@/src/context/ThemeContext';
+
+import { EventCommentsModal } from '@/src/components/EventCommentsModal';
+
 import { SkateEvent, RsvpStatus, EventRsvp } from '@/src/hooks/useEvents';
 import * as Haptics from 'expo-haptics';
 
@@ -40,6 +44,9 @@ export function EventDetailsModal({
   const [rsvpLoading, setRsvpLoading] = useState(false);
   const [loadingRsvps, setLoadingRsvps] = useState(false);
 
+  const [commentsOpen, setCommentsOpen] = useState(false);
+  const [liveCommentCount, setLiveCommentCount] = useState(event?.comment_count ?? 0);
+
   const isOwner = event?.creator_id === currentUserId;
 
   const goingCount = rsvps.filter((r) => r.status === 'going').length;
@@ -54,6 +61,10 @@ export function EventDetailsModal({
     }
     loadRsvps();
   }, [visible, event?.id]);
+
+  useEffect(() => {
+    setLiveCommentCount(event?.comment_count ?? 0);
+  }, [event?.id]);
 
   async function loadRsvps() {
     if (!event) return;
@@ -206,6 +217,24 @@ export function EventDetailsModal({
               <Text style={{ fontSize: 11, color: c.subtext }}>Not Going</Text>
             </View>
           </View>
+          <Pressable
+            onPress={() => setCommentsOpen(true)}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              padding: 12,
+              borderRadius: 10,
+              backgroundColor: c.tagBg,
+              borderWidth: 1,
+              borderColor: c.border,
+            }}>
+            <Ionicons name="chatbubbles-outline" size={16} color={c.text} />
+            <Text style={{ fontWeight: '600', color: c.text }}>
+              Comments{liveCommentCount > 0 ? ` (${liveCommentCount})` : ''}
+            </Text>
+          </Pressable>
           {!isOwner ? (
             <View style={{ flexDirection: 'row', gap: 8 }}>
               {(['going', 'maybe', 'not_going'] as RsvpStatus[]).map((status) => {
@@ -381,6 +410,14 @@ export function EventDetailsModal({
           ) : null}
         </ScrollView>
       </View>
+      <EventCommentsModal
+        visible={commentsOpen}
+        onClose={() => setCommentsOpen(false)}
+        eventId={event?.id ?? null}
+        eventTitle={event?.title ?? null}
+        currentUserId={currentUserId}
+        onCommentCountChange={(count) => setLiveCommentCount(count)}
+      />
     </Modal>
   );
 }

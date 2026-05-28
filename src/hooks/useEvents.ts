@@ -25,6 +25,7 @@ export type SkateEvent = {
     avatar_url: string | null;
   };
   invite_count?: number;
+  comment_count?: number;
 };
 
 export type RsvpStatus = 'going' | 'maybe' | 'not_going';
