@@ -3,6 +3,8 @@ import { View, Text, Modal, Pressable, ScrollView, KeyboardAvoidingView, Platfor
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
+import { supabase } from '@/src/libs/supabase';
+
 import { useTheme } from '@/src/context/ThemeContext';
 
 import { EventCommentsModal } from '@/src/components/EventCommentsModal';
@@ -21,6 +23,7 @@ type Props = {
   onUpsertRsvp: (eventId: string, status: RsvpStatus) => Promise<string | null>;
   onDeleteRsvp: (eventId: string) => Promise<string | null>;
   onEditEvent: () => void;
+  onViewProfile?: (userId: string) => void;
 };
 
 export function EventDetailsModal({
@@ -34,6 +37,7 @@ export function EventDetailsModal({
   onUpsertRsvp,
   onDeleteRsvp,
   onEditEvent,
+  onViewProfile,
 }: Props) {
   const { theme } = useTheme();
   const c = theme.colors;
@@ -65,6 +69,15 @@ export function EventDetailsModal({
   useEffect(() => {
     setLiveCommentCount(event?.comment_count ?? 0);
   }, [event?.id]);
+
+  useEffect(() => {
+    if (!event?.id || !visible) return;
+    supabase
+      .from('event_comments')
+      .select('*', { count: 'exact', head: true })
+      .eq('event_id', event.id)
+      .then(({ count }) => setLiveCommentCount(count ?? 0));
+  }, [event?.id, visible]);
 
   async function loadRsvps() {
     if (!event) return;
@@ -130,8 +143,15 @@ export function EventDetailsModal({
 
         <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }} showsVerticalScrollIndicator={false}>
           <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 20, fontWeight: '700', color: c.text }}>{event.title}</Text>
+            <View style={{ flex: 1, paddingRight: 8 }}>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6 }}>
+                <Text style={{ fontSize: 20, fontWeight: '700', color: c.text }}>{event.title}</Text>
+                {isOwner ? (
+                  <Pressable onPress={onEditEvent} hitSlop={8}>
+                    <Ionicons name="pencil-outline" size={16} color={c.subtext} />
+                  </Pressable>
+                ) : null}
+              </View>
               {event.visibility === 'invite' ? (
                 <View
                   style={{
@@ -168,8 +188,29 @@ export function EventDetailsModal({
                 </View>
               ) : null}
             </View>
-            <Pressable onPress={onClose} style={{ padding: 4 }}>
-              <Ionicons name="close" size={24} color={c.text} />
+            <Pressable
+              onPress={() => setCommentsOpen(true)}
+              style={{ alignItems: 'center', justifyContent: 'center', padding: 4 }}>
+              <Ionicons name="chatbubbles-outline" size={24} color={c.text} />
+              {liveCommentCount > 0 ? (
+                <View
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    right: 0,
+                    minWidth: 16,
+                    height: 18,
+                    borderRadius: 9,
+                    backgroundColor: '#007AFF',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    paddingHorizontal: 4,
+                  }}>
+                  <Text style={{ color: 'white', fontSize: 9, fontWeight: '700' }}>
+                    {liveCommentCount > 99 ? '99+' : liveCommentCount}
+                  </Text>
+                </View>
+              ) : null}
             </Pressable>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -217,24 +258,6 @@ export function EventDetailsModal({
               <Text style={{ fontSize: 11, color: c.subtext }}>Not Going</Text>
             </View>
           </View>
-          <Pressable
-            onPress={() => setCommentsOpen(true)}
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
-              padding: 12,
-              borderRadius: 10,
-              backgroundColor: c.tagBg,
-              borderWidth: 1,
-              borderColor: c.border,
-            }}>
-            <Ionicons name="chatbubbles-outline" size={16} color={c.text} />
-            <Text style={{ fontWeight: '600', color: c.text }}>
-              Comments{liveCommentCount > 0 ? ` (${liveCommentCount})` : ''}
-            </Text>
-          </Pressable>
           {!isOwner ? (
             <View style={{ flexDirection: 'row', gap: 8 }}>
               {(['going', 'maybe', 'not_going'] as RsvpStatus[]).map((status) => {
@@ -359,26 +382,15 @@ export function EventDetailsModal({
               <Text style={{ fontWeight: '600', color: c.text }}>View Spot Details</Text>
             </Pressable>
           ) : null}
-          {isOwner ? (
-            <Pressable
-              onPress={onEditEvent}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 8,
-                padding: 12,
-                borderRadius: 10,
-                borderWidth: 1,
-                borderColor: '#007AFF',
-                marginTop: 8,
-                marginBottom: 8,
-              }}>
-              <Ionicons name="pencil-outline" size={16} color="#007AFF" />
-              <Text style={{ fontWeight: '600', color: '#007AFF' }}>Edit Event</Text>
-            </Pressable>
-          ) : null}
-
+        </ScrollView>
+        <View
+          style={{
+            flexDirection: 'row',
+            gap: 10,
+            padding: 16,
+            borderTopWidth: 1,
+            borderColor: c.border,
+          }}>
           {isOwner ? (
             <Pressable
               onPress={() => {
@@ -395,20 +407,36 @@ export function EventDetailsModal({
                 ]);
               }}
               style={{
+                flex: 1,
                 flexDirection: 'row',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: 8,
-                padding: 12,
-                borderRadius: 10,
+                gap: 6,
                 borderWidth: 1,
+                borderRadius: 10,
+                padding: 12,
                 borderColor: c.danger,
               }}>
-              <Ionicons name="close-circle-outline" size={16} color={c.danger} />
-              <Text style={{ fontWeight: '600', color: c.danger }}>Cancel Event</Text>
+              <Ionicons name="trash-outline" size={15} color={c.danger} />
+              <Text style={{ fontWeight: '600', fontSize: 15, color: c.danger }}>Cancel Event</Text>
             </Pressable>
           ) : null}
-        </ScrollView>
+          <Pressable
+            onPress={onClose}
+            style={{
+              flex: 1,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6,
+              borderWidth: 1,
+              borderRadius: 10,
+              padding: 12,
+              borderColor: c.border,
+            }}>
+            <Text style={{ fontWeight: '600', fontSize: 15, color: c.text }}>Close</Text>
+          </Pressable>
+        </View>
       </View>
       <EventCommentsModal
         visible={commentsOpen}
@@ -417,6 +445,15 @@ export function EventDetailsModal({
         eventTitle={event?.title ?? null}
         currentUserId={currentUserId}
         onCommentCountChange={(count) => setLiveCommentCount(count)}
+        onViewProfile={(userId) => {
+          setCommentsOpen(false);
+          setTimeout(() => {
+            onClose();
+            setTimeout(() => {
+              onViewProfile?.(userId);
+            }, 350);
+          }, 300);
+        }}
       />
     </Modal>
   );

@@ -22,6 +22,7 @@ type Props = {
   eventTitle: string | null;
   currentUserId: string | null;
   onCommentCountChange?: (count: number) => void;
+  onViewProfile?: (userId: string) => void;
 };
 
 export function EventCommentsModal({
@@ -31,6 +32,7 @@ export function EventCommentsModal({
   eventTitle,
   currentUserId,
   onCommentCountChange,
+  onViewProfile,
 }: Props) {
   const { theme } = useTheme();
   const c = theme.colors;
@@ -49,7 +51,9 @@ export function EventCommentsModal({
   }, [visible, eventId]);
 
   useEffect(() => {
-    onCommentCountChange?.(comments.length);
+    if (comments.length > 0) {
+      onCommentCountChange?.(comments.length);
+    }
   }, [comments.length]);
 
   function timeAgo(iso: string): string {
@@ -161,20 +165,30 @@ export function EventCommentsModal({
                     </View>
                   )}
                   <View style={{ flex: 1 }}>
-                    <View
+                    <Pressable
+                      onPress={() => {
+                        if (item.user_id !== currentUserId) {
+                          onViewProfile?.(item.user_id);
+                        }
+                      }}
                       style={{
                         flexDirection: 'row',
                         alignItems: 'center',
                         gap: 6,
                         marginBottom: 2,
                       }}>
-                      <Text style={{ fontSize: 13, fontWeight: '700', color: c.text }}>
+                      <Text
+                        style={{
+                          fontSize: 13,
+                          fontWeight: '700',
+                          color: item.user_id !== currentUserId ? '#007AFF' : c.text,
+                        }}>
                         @{item.profile?.username ?? 'unknown'}
                       </Text>
                       <Text style={{ fontSize: 11, color: c.subtext }}>
                         {timeAgo(item.created_at)}
                       </Text>
-                    </View>
+                    </Pressable>
                     <Text style={{ fontSize: 14, color: c.text, lineHeight: 20 }}>
                       {item.content}
                     </Text>

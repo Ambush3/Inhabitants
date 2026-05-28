@@ -117,6 +117,7 @@ export function useEvents() {
       setLoading(false);
     }
   }
+
   async function loadMyEvents() {
     const {
       data: { user },
