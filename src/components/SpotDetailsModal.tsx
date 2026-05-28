@@ -26,7 +26,6 @@ import * as Location from 'expo-location';
 import { useTheme } from '@/src/context/ThemeContext';
 
 import { CONDITION_META, SpotCondition } from '@/src/hooks/useSpotConditions';
-import { ClosureReason } from '@/src/hooks/useClosureReports';
 
 import { SpotCommentsModal } from '@/src/components/SpotCommentsModal';
 import { CollectionsModal } from '@/src/components/CollectionsModal';
@@ -126,10 +125,6 @@ type Props = {
   friendIds?: Set<string>;
   onUpdateSpot: (spotId: string, name: string, description: string, tags: string[]) => Promise<string | null>;
   creatorBadge?: 'local' | 'regular' | 'ambassador' | null;
-  isReportedClosureByMe: boolean;
-  closureReportCount: number;
-  onReportClosure: (reason: ClosureReason) => Promise<string | null>;
-  onRemoveClosureReport: () => Promise<string | null>;
 };
 
 export function SpotDetailsModal({
@@ -174,10 +169,6 @@ export function SpotDetailsModal({
   friendIds,
   onUpdateSpot,
   creatorBadge,
-  isReportedClosureByMe,
-  closureReportCount,
-  onReportClosure,
-  onRemoveClosureReport,
 }: Props) {
   const { width } = Dimensions.get('window');
   const { theme } = useTheme();
@@ -206,10 +197,6 @@ export function SpotDetailsModal({
   const [editTags, setEditTags] = useState<string[]>([]);
   const [editTagInput, setEditTagInput] = useState('');
   const [editSaving, setEditSaving] = useState(false);
-
-  const [closureModalOpen, setClosureModalOpen] = useState(false);
-  const [closureReason, setClosureReason] = useState<ClosureReason | ''>('');
-  const [reportingClosure, setReportingClosure] = useState(false);
 
   useEffect(() => {
     if (!spot || !visible) {
@@ -438,14 +425,13 @@ export function SpotDetailsModal({
           <View style={styles.dragHandleContainer}>
             <View style={[styles.dragHandle, { backgroundColor: c.border }]} />
           </View>
-
           <ScrollView
             ref={scrollRef}
             keyboardShouldPersistTaps="handled"
             scrollEnabled={scrollEnabled}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: 32 }}>
-            {spot && closureReportCount >= 3 ? (
+            {spot && flagCount >= 3 ? (
               <View
                 style={{
                   backgroundColor: 'rgba(255,59,48,0.1)',
@@ -1069,32 +1055,6 @@ export function SpotDetailsModal({
                       {isFlaggedByMe ? 'Flagged' : 'Flag'}
                     </Text>
                   </Pressable>
-                  <Pressable
-                    onPress={() => {
-                      if (isReportedClosureByMe) {
-                        onRemoveClosureReport();
-                      } else {
-                        setClosureModalOpen(true);
-                      }
-                    }}
-                    style={[
-                      styles.closeBtn,
-                      { borderColor: isReportedClosureByMe ? c.danger : c.border },
-                    ]}>
-                    <Ionicons
-                      name={isReportedClosureByMe ? 'close-circle' : 'close-circle-outline'}
-                      size={15}
-                      color={isReportedClosureByMe ? c.danger : c.text}
-                    />
-                    <Text
-                      style={{
-                        fontWeight: '600',
-                        fontSize: 13,
-                        color: isReportedClosureByMe ? c.danger : c.text,
-                      }}>
-                      {isReportedClosureByMe ? 'Reported' : 'Closed?'}
-                    </Text>
-                  </Pressable>
                 </>
               ) : null}
               <Pressable onPress={onClose} style={[styles.closeBtn, { borderColor: c.border }]}>
@@ -1204,28 +1164,34 @@ export function SpotDetailsModal({
               <Text style={{ fontWeight: '700', fontSize: 16, color: c.text, marginBottom: 4 }}>
                 Why are you flagging this spot?
               </Text>
-              {['Incorrect location', "Doesn't exist", 'Inappropriate name', 'Spam', 'Other'].map(
-                (reason) => (
-                  <Pressable
-                    key={reason}
-                    onPress={() => setFlagReason(reason)}
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: 10,
-                      paddingVertical: 10,
-                      borderBottomWidth: 1,
-                      borderColor: c.border,
-                    }}>
-                    <Ionicons
-                      name={flagReason === reason ? 'radio-button-on' : 'radio-button-off'}
-                      size={18}
-                      color={flagReason === reason ? '#007AFF' : c.subtext}
-                    />
-                    <Text style={{ fontSize: 14, color: c.text }}>{reason}</Text>
-                  </Pressable>
-                )
-              )}
+              {[
+                'Incorrect location',
+                "Doesn't exist",
+                'Inappropriate name',
+                'Spam',
+                'Demolished',
+                'Closed / Fenced Off',
+                'Other',
+              ].map((reason) => (
+                <Pressable
+                  key={reason}
+                  onPress={() => setFlagReason(reason)}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 10,
+                    paddingVertical: 10,
+                    borderBottomWidth: 1,
+                    borderColor: c.border,
+                  }}>
+                  <Ionicons
+                    name={flagReason === reason ? 'radio-button-on' : 'radio-button-off'}
+                    size={18}
+                    color={flagReason === reason ? '#007AFF' : c.subtext}
+                  />
+                  <Text style={{ fontSize: 14, color: c.text }}>{reason}</Text>
+                </Pressable>
+              ))}
               {flagReason === 'Other' ? (
                 <TextInput
                   value={otherFlagText}
@@ -1425,77 +1391,6 @@ export function SpotDetailsModal({
               </Pressable>
             </Pressable>
           </KeyboardAvoidingView>
-        </Pressable>
-      </Modal>
-      <Modal
-        visible={closureModalOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setClosureModalOpen(false)}>
-        <Pressable
-          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' }}
-          onPress={() => setClosureModalOpen(false)}>
-          <Pressable
-            style={{
-              backgroundColor: c.surface,
-              borderTopLeftRadius: 20,
-              borderTopRightRadius: 20,
-              padding: 20,
-              gap: 10,
-            }}
-            onPress={() => { }}>
-            <Text style={{ fontWeight: '700', fontSize: 16, color: c.text, marginBottom: 4 }}>
-              Why is this spot no longer skateable?
-            </Text>
-            {(
-              [
-                ['demolished', 'Demolished / Built Over'],
-                ['closed', 'Closed / Fenced Off'],
-                ['security', 'Heavy Security'],
-              ] as [ClosureReason, string][]
-            ).map(([value, label]) => (
-              <Pressable
-                key={value}
-                onPress={() => setClosureReason(value)}
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 10,
-                  paddingVertical: 10,
-                  borderBottomWidth: 1,
-                  borderColor: c.border,
-                }}>
-                <Ionicons
-                  name={closureReason === value ? 'radio-button-on' : 'radio-button-off'}
-                  size={18}
-                  color={closureReason === value ? '#007AFF' : c.subtext}
-                />
-                <Text style={{ fontSize: 14, color: c.text }}>{label}</Text>
-              </Pressable>
-            ))}
-            <Pressable
-              onPress={async () => {
-                if (!closureReason) return;
-                setReportingClosure(true);
-                await onReportClosure(closureReason);
-                setReportingClosure(false);
-                setClosureModalOpen(false);
-                setClosureReason('');
-              }}
-              disabled={reportingClosure || !closureReason}
-              style={{
-                backgroundColor: c.danger,
-                borderRadius: 10,
-                padding: 13,
-                alignItems: 'center',
-                marginTop: 8,
-                opacity: reportingClosure || !closureReason ? 0.4 : 1,
-              }}>
-              <Text style={{ color: 'white', fontWeight: '700', fontSize: 15 }}>
-                {reportingClosure ? 'Submitting...' : 'Submit Report'}
-              </Text>
-            </Pressable>
-          </Pressable>
         </Pressable>
       </Modal>
     </Modal>

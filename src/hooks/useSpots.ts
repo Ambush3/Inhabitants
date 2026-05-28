@@ -64,6 +64,7 @@ export function useSpots() {
       .from('spots')
       .select('*')
       .eq('is_flagged', false)
+      .lt('flag_count', 3)
       .order('created_at', { ascending: false })
       .limit(500);
 
