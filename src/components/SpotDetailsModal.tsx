@@ -53,34 +53,13 @@ function SkeletonBar({ width, height = 14, style }: { width: number | string; he
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
-        Animated.timing(opacity, {
-          toValue: 1,
-          duration: 600,
-          useNativeDriver: true,
-        }),
-        Animated.timing(opacity, {
-          toValue: 0.3,
-          duration: 600,
-          useNativeDriver: true,
-        }),
+        Animated.timing(opacity, { toValue: 1, duration: 600, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 0.3, duration: 600, useNativeDriver: true }),
       ])
     ).start();
   }, []);
 
-  return (
-    <Animated.View
-      style={[
-        {
-          width,
-          height,
-          borderRadius: 6,
-          backgroundColor: '#888',
-          opacity,
-        },
-        style,
-      ]}
-    />
-  );
+  return <Animated.View style={[{ width, height, borderRadius: 6, backgroundColor: '#888', opacity }, style]} />;
 }
 
 type Props = {
@@ -212,10 +191,7 @@ export function SpotDetailsModal({
     let cancelled = false;
     (async () => {
       try {
-        const results = await Location.reverseGeocodeAsync({
-          latitude: spot.lat,
-          longitude: spot.lng,
-        });
+        const results = await Location.reverseGeocodeAsync({ latitude: spot.lat, longitude: spot.lng });
         if (cancelled) return;
         const r = results[0];
         let label = '';
@@ -242,9 +218,6 @@ export function SpotDetailsModal({
   const distanceMiles =
     spot && userLocation ? haversineMiles(userLocation.latitude, userLocation.longitude, spot.lat, spot.lng) : null;
 
-  const reviewFormRef = useRef<View>(null);
-  const reviewFormY = useRef(0);
-
   const conditionsChangedRef = useRef(false);
 
   const viewabilityConfig = useRef({ viewAreaCoveragePercentThreshold: 50 });
@@ -255,25 +228,18 @@ export function SpotDetailsModal({
   const translateY = useRef(new Animated.Value(0)).current;
   const panResponder = useRef(
     PanResponder.create({
-      onMoveShouldSetPanResponder: (_, gestureState) => gestureState.dy > 10,
-      onPanResponderMove: (_, gestureState) => {
-        if (gestureState.dy > 0) translateY.setValue(gestureState.dy);
+      onMoveShouldSetPanResponder: (_, g) => g.dy > 10,
+      onPanResponderMove: (_, g) => {
+        if (g.dy > 0) translateY.setValue(g.dy);
       },
-      onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dy > 100) {
-          Animated.timing(translateY, {
-            toValue: 800,
-            duration: 200,
-            useNativeDriver: true,
-          }).start(() => {
+      onPanResponderRelease: (_, g) => {
+        if (g.dy > 100) {
+          Animated.timing(translateY, { toValue: 800, duration: 200, useNativeDriver: true }).start(() => {
             translateY.setValue(0);
             setSelectedImageIndex(null);
           });
         } else {
-          Animated.spring(translateY, {
-            toValue: 0,
-            useNativeDriver: true,
-          }).start();
+          Animated.spring(translateY, { toValue: 0, useNativeDriver: true }).start();
         }
       },
     })
@@ -282,10 +248,7 @@ export function SpotDetailsModal({
   function handleDirections() {
     if (!spot) return;
     ActionSheetIOS.showActionSheetWithOptions(
-      {
-        options: ['Cancel', 'Open in Apple Maps', 'Open in Google Maps'],
-        cancelButtonIndex: 0,
-      },
+      { options: ['Cancel', 'Open in Apple Maps', 'Open in Google Maps'], cancelButtonIndex: 0 },
       async (buttonIndex) => {
         if (buttonIndex === 1) {
           await Linking.openURL(`maps://app?daddr=${spot.lat},${spot.lng}`);
@@ -306,7 +269,6 @@ export function SpotDetailsModal({
 
   async function handleShare() {
     if (!spot) return;
-
     if (spot.spot_type === 'spot') {
       await Share.share({
         message: `Check out this skate spot: ${spot.name}\nhttps://maps.apple.com/?q=${spot.lat},${spot.lng}`,
@@ -336,6 +298,7 @@ export function SpotDetailsModal({
     }
     setFlagModalOpen(true);
   }
+
   async function handlePickImages() {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') return;
@@ -359,14 +322,24 @@ export function SpotDetailsModal({
 
   const isOwner = spot?.user_id === currentUserId;
 
+  const badgeColor = creatorBadge === 'ambassador' ? '#FF9500' : creatorBadge === 'regular' ? '#007AFF' : '#34C759';
+  const badgeBg =
+    creatorBadge === 'ambassador'
+      ? 'rgba(255,149,0,0.12)'
+      : creatorBadge === 'regular'
+        ? 'rgba(0,122,255,0.12)'
+        : 'rgba(52,199,89,0.12)';
+
   const renderImageItem = useCallback(
     ({ item }: { item: string }) => {
       if (item === 'add') {
         if (images.length + pendingImages.length >= 5) return null;
         return (
-          <Pressable onPress={handlePickImages} style={[styles.addImageBtn, { borderColor: c.inputBorder }]}>
-            <Ionicons name="camera-outline" size={22} color={c.subtext} />
-            <Text style={[styles.addImageText, { color: c.subtext }]}>Add</Text>
+          <Pressable
+            onPress={handlePickImages}
+            style={[styles.photoThumb, styles.photoAdd, { borderColor: c.inputBorder }]}>
+            <Ionicons name="camera-outline" size={20} color={c.subtext} />
+            <Text style={{ fontSize: 10, color: c.subtext, marginTop: 2 }}>Add photo</Text>
           </Pressable>
         );
       }
@@ -376,7 +349,7 @@ export function SpotDetailsModal({
           <Pressable onPress={() => !isPending && setSelectedImageIndex(images.indexOf(item))}>
             <Image
               source={{ uri: item }}
-              style={[styles.thumbnail, { opacity: isPending ? 0.5 : 1 }]}
+              style={[styles.photoThumb, { opacity: isPending ? 0.5 : 1 }]}
               resizeMode="cover"
             />
           </Pressable>
@@ -401,7 +374,7 @@ export function SpotDetailsModal({
   const renderViewImageItem = useCallback(
     ({ item: url }: { item: string }) => (
       <Pressable onPress={() => setSelectedImageIndex(images.indexOf(url))} style={{ marginRight: 8 }}>
-        <Image source={{ uri: url }} style={styles.thumbnail} resizeMode="cover" />
+        <Image source={{ uri: url }} style={styles.photoThumb} resizeMode="cover" />
       </Pressable>
     ),
     [images]
@@ -413,18 +386,15 @@ export function SpotDetailsModal({
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1, justifyContent: 'flex-end' }}>
         <Pressable
-          style={{
-            ...StyleSheet.absoluteFillObject,
-            backgroundColor: 'rgba(0,0,0,0.5)',
-          }}
+          style={{ ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' }}
           onPress={onClose}
         />
 
         <View style={[styles.sheet, { backgroundColor: c.surface }]}>
-          {/* Drag Handle */}
           <View style={styles.dragHandleContainer}>
             <View style={[styles.dragHandle, { backgroundColor: c.border }]} />
           </View>
+
           <ScrollView
             ref={scrollRef}
             keyboardShouldPersistTaps="handled"
@@ -432,16 +402,7 @@ export function SpotDetailsModal({
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: 32 }}>
             {spot && flagCount >= 3 ? (
-              <View
-                style={{
-                  backgroundColor: 'rgba(255,59,48,0.1)',
-                  borderRadius: 8,
-                  padding: 10,
-                  marginBottom: 8,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 8,
-                }}>
+              <View style={[styles.flagBanner, { backgroundColor: 'rgba(255,59,48,0.1)' }]}>
                 <Ionicons name="warning-outline" size={16} color={c.danger} />
                 <Text style={{ fontSize: 13, color: c.danger, fontWeight: '600', flex: 1 }}>
                   This spot has been reported as no longer skateable
@@ -449,127 +410,53 @@ export function SpotDetailsModal({
               </View>
             ) : null}
 
-            {/* Header */}
-            <View style={{ marginBottom: 10 }}>
-              <View
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'flex-start',
-                  marginBottom: 4,
-                }}>
-                <View style={{ flex: 1, minWidth: 0, overflow: 'visible' }}>
-                  <View
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'flex-start',
-                      justifyContent: 'space-between',
-                      overflow: 'visible',
-                    }}>
-                    <View
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        flex: 1,
-                        marginRight: 8,
-                      }}>
-                      <Text
-                        style={[
-                          styles.spotName,
-                          {
-                            color: c.text,
-                            flexShrink: 1,
-                          },
-                        ]}
-                        numberOfLines={2}
-                        ellipsizeMode="tail">
-                        {spot?.name ?? 'Spot'}
-                      </Text>
-                      {spot?.is_verified ? (
-                        <Pressable
-                          onPress={() =>
-                            Alert.alert(
-                              'Verified Spot',
-                              'This spot has been rated by 3 or more skaters.'
-                            )
-                          }>
-                          <Ionicons
-                            name="checkmark-circle"
-                            size={18}
-                            color="#007AFF"
-                            style={{
-                              marginLeft: 6,
-                              marginTop: 4,
-                            }}
-                          />
-                        </Pressable>
-                      ) : null}
-                      {isOwner ? (
-                        <Pressable
-                          onPress={() => {
-                            setEditName(spot?.name ?? '');
-                            setEditDesc(spot?.description ?? '');
-                            setEditTags(spot?.tags ?? []);
-                            setEditOpen(true);
-                          }}
-                          style={{ marginLeft: 8, marginTop: 4 }}>
-                          <Ionicons name="pencil-outline" size={16} color={c.subtext} />
-                        </Pressable>
-                      ) : null}
-                    </View>
-                    <Pressable
-                      onPress={() => setCommentsOpen(true)}
-                      style={{
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        paddingTop: 4,
-                        paddingRight: 8,
-                        overflow: 'visible',
-                      }}>
-                      <Ionicons name="chatbubbles-outline" size={24} color={c.text} />
-                      {liveCommentCount > 0 ? (
-                        <View
-                          style={{
-                            position: 'absolute',
-                            top: 0,
-                            right: 2,
-                            minWidth: 16,
-                            height: 18,
-                            borderRadius: 9,
-                            backgroundColor: '#007AFF',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            paddingHorizontal: 4,
-                          }}>
-                          <Text style={{ color: 'white', fontSize: 9, fontWeight: '700' }}>
-                            {liveCommentCount > 99 ? '99+' : liveCommentCount}
-                          </Text>
-                        </View>
-                      ) : null}
-                    </Pressable>
-                  </View>
-                  {spotAddress || distanceMiles !== null ? (
-                    <View
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        gap: 4,
-                        marginTop: 2,
-                        marginBottom: 5,
-                      }}>
-                      <Ionicons name="location-outline" size={12} color={c.subtext} />
-                      <Text
-                        style={{
-                          fontSize: 12,
-                          color: c.subtext,
-                          flexShrink: 1,
+            {/* ── Spot identity ── */}
+            <View style={{ marginBottom: 12 }}>
+              <View style={styles.spotHeaderRow}>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <View style={styles.spotNameRow}>
+                    <Text
+                      style={[styles.spotName, { color: c.text }]}
+                      numberOfLines={2}
+                      ellipsizeMode="tail">
+                      {spot?.name ?? 'Spot'}
+                    </Text>
+                    {spot?.is_verified ? (
+                      <Pressable
+                        onPress={() =>
+                          Alert.alert(
+                            'Verified Spot',
+                            'This spot has been rated by 3 or more skaters.'
+                          )
+                        }>
+                        <Ionicons
+                          name="checkmark-circle"
+                          size={18}
+                          color="#007AFF"
+                          style={{ marginLeft: 6, marginTop: 3 }}
+                        />
+                      </Pressable>
+                    ) : null}
+                    {isOwner ? (
+                      <Pressable
+                        onPress={() => {
+                          setEditName(spot?.name ?? '');
+                          setEditDesc(spot?.description ?? '');
+                          setEditTags(spot?.tags ?? []);
+                          setEditOpen(true);
                         }}
-                        numberOfLines={1}>
+                        style={{ marginLeft: 8, marginTop: 3 }}>
+                        <Ionicons name="pencil-outline" size={16} color={c.subtext} />
+                      </Pressable>
+                    ) : null}
+                  </View>
+
+                  {spotAddress || distanceMiles !== null ? (
+                    <View style={styles.metaRow}>
+                      <Ionicons name="location-outline" size={12} color={c.subtext} />
+                      <Text style={{ fontSize: 12, color: c.subtext }} numberOfLines={1}>
                         {spotAddress ? (
-                          <Text
-                            style={{
-                              color: c.text,
-                              fontWeight: '600',
-                            }}>
+                          <Text style={{ color: c.text, fontWeight: '600' }}>
                             {spotAddress}
                           </Text>
                         ) : null}
@@ -578,351 +465,247 @@ export function SpotDetailsModal({
                       </Text>
                     </View>
                   ) : null}
+
                   {creatorUsername ? (
                     <Pressable
                       onPress={() => {
-                        if (onViewProfile && spot?.user_id && spot.user_id !== currentUserId) {
+                        if (onViewProfile && spot?.user_id && spot.user_id !== currentUserId)
                           onViewProfile(spot.user_id);
-                        }
                       }}
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        gap: 6,
-                        marginTop: 3,
-                        alignSelf: 'flex-start',
-                      }}>
+                      style={styles.creatorRow}>
                       {creatorAvatarUrl ? (
-                        <Image
-                          source={{ uri: creatorAvatarUrl }}
-                          style={{ width: 20, height: 20, borderRadius: 10 }}
-                        />
+                        <Image source={{ uri: creatorAvatarUrl }} style={styles.avatar} />
                       ) : (
-                        <View
-                          style={{
-                            width: 20,
-                            height: 20,
-                            borderRadius: 10,
-                            backgroundColor: c.tagBg,
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                          }}>
+                        <View style={[styles.avatar, { backgroundColor: c.tagBg }]}>
                           <Ionicons name="person-outline" size={11} color={c.subtext} />
                         </View>
                       )}
-                      <Text style={[styles.creatorText, { color: '#007AFF' }]}>
-                        @{creatorUsername}
-                      </Text>
+                      <Text style={styles.creatorName}>@{creatorUsername}</Text>
                       {creatorBadge ? (
-                        <View
-                          style={{
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            gap: 3,
-                            paddingHorizontal: 6,
-                            paddingVertical: 2,
-                            borderRadius: 6,
-                            backgroundColor:
-                              creatorBadge === 'ambassador'
-                                ? 'rgba(255,149,0,0.12)'
-                                : creatorBadge === 'regular'
-                                  ? 'rgba(0,122,255,0.12)'
-                                  : 'rgba(52,199,89,0.12)',
-                          }}>
-                          <Ionicons
-                            name="shield-checkmark"
-                            size={10}
-                            color={
-                              creatorBadge === 'ambassador'
-                                ? '#FF9500'
-                                : creatorBadge === 'regular'
-                                  ? '#007AFF'
-                                  : '#34C759'
-                            }
-                          />
-                          <Text
-                            style={{
-                              fontSize: 9,
-                              fontWeight: '700',
-                              color:
-                                creatorBadge === 'ambassador'
-                                  ? '#FF9500'
-                                  : creatorBadge === 'regular'
-                                    ? '#007AFF'
-                                    : '#34C759',
-                            }}>
+                        <View style={[styles.badge, { backgroundColor: badgeBg }]}>
+                          <Ionicons name="shield-checkmark" size={10} color={badgeColor} />
+                          <Text style={[styles.badgeText, { color: badgeColor }]}>
                             {creatorBadge.toUpperCase()}
                           </Text>
                         </View>
                       ) : null}
                     </Pressable>
                   ) : null}
+
                   {spot?.tags && spot.tags.length > 0 ? (
-                    <View
-                      style={[
-                        styles.tagsRow,
-                        {
-                          marginTop: 10,
-                          marginBottom: 0,
-                        },
-                      ]}>
+                    <View style={[styles.tagsRow, { marginTop: 10 }]}>
                       {spot.tags.map((tag) => (
-                        <View
-                          key={tag}
-                          style={[
-                            styles.tag,
-                            {
-                              backgroundColor: c.tagBg,
-                            },
-                          ]}>
-                          <Text
-                            style={[
-                              styles.tagText,
-                              {
-                                color: c.subtext,
-                              },
-                            ]}>
-                            #{tag}
-                          </Text>
+                        <View key={tag} style={[styles.tag, { backgroundColor: c.tagBg }]}>
+                          <Text style={[styles.tagText, { color: c.subtext }]}>#{tag}</Text>
                         </View>
                       ))}
                     </View>
                   ) : null}
                 </View>
-              </View>
-              {/* Row 1 - Save, Wishlist */}
-              <View style={{ flexDirection: 'row', gap: 8, marginTop: 12, marginBottom: 8 }}>
-                <Pressable
-                  onPress={onToggleFavorite}
-                  style={{
-                    flex: 1,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 6,
-                    backgroundColor: isFavorite ? 'rgba(255,59,48,0.12)' : c.tagBg,
-                    borderRadius: 20,
-                    paddingVertical: 10,
-                  }}>
-                  <Ionicons
-                    name={isFavorite ? 'bookmark' : 'bookmark-outline'}
-                    size={16}
-                    color={isFavorite ? '#FF3B30' : c.text}
-                  />
-                  <Text
-                    style={{
-                      fontSize: 10,
-                      fontWeight: '600',
-                      color: isFavorite ? '#FF3B30' : c.text,
-                    }}>
-                    Bookmark
-                  </Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => setCollectionsOpen(true)}
-                  style={{
-                    flex: 1,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 6,
-                    backgroundColor: c.tagBg,
-                    borderRadius: 20,
-                    paddingVertical: 10,
-                  }}>
-                  <Ionicons name="folder-outline" size={16} color={c.text} />
-                  <Text style={{ fontSize: 10, fontWeight: '600', color: c.text }}>Collections</Text>
-                </Pressable>
-              </View>
-              {/* Row 2 - Share, Directions */}
-              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 4 }}>
-                <Pressable
-                  onPress={handleShare}
-                  style={{
-                    flex: 1,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 6,
-                    backgroundColor: c.tagBg,
-                    borderRadius: 20,
-                    paddingVertical: 10,
-                  }}>
-                  <Ionicons name="share-outline" size={16} color={c.text} />
-                  <Text style={{ fontSize: 10, fontWeight: '600', color: c.text }}>Share</Text>
-                </Pressable>
-                <Pressable
-                  onPress={handleDirections}
-                  style={{
-                    flex: 1,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 6,
-                    backgroundColor: 'rgba(0,122,255,0.12)',
-                    borderRadius: 20,
-                    paddingVertical: 10,
-                  }}>
-                  <Ionicons name="navigate-outline" size={16} color="#007AFF" />
-                  <Text style={{ fontSize: 10, fontWeight: '600', color: '#007AFF' }}>
-                    Directions
-                  </Text>
+
+                {/* Comment button lives top-right of header */}
+                <Pressable onPress={() => setCommentsOpen(true)} style={styles.commentBtn}>
+                  <Ionicons name="chatbubbles-outline" size={24} color={c.text} />
+                  {liveCommentCount > 0 ? (
+                    <View style={styles.commentBadge}>
+                      <Text style={styles.commentBadgeText}>
+                        {liveCommentCount > 99 ? '99+' : liveCommentCount}
+                      </Text>
+                    </View>
+                  ) : null}
                 </Pressable>
               </View>
             </View>
-            {/* Rating Summary Bar */}
+
+            {/* ── Unified rating card ── */}
             {detailsLoading ? (
-              <View style={[styles.ratingBar, { backgroundColor: c.tagBg }]}>
+              <View style={[styles.ratingCard, { backgroundColor: c.tagBg }]}>
                 <SkeletonBar width={30} height={16} />
                 <SkeletonBar width={80} height={14} />
                 <SkeletonBar width={60} height={12} style={{ marginLeft: 'auto' }} />
               </View>
-            ) : reviews.length > 0 ? (
-              <View style={[styles.ratingBar, { backgroundColor: c.tagBg }]}>
-                <Text style={[styles.ratingScore, { color: c.text }]}>{avgRating.toFixed(1)}</Text>
-                <Text
-                  style={{
-                    fontSize: 16,
-                    color: '#F5A623',
-                    letterSpacing: 2,
-                  }}>
-                  {'★'.repeat(Math.round(avgRating))}
-                  {'☆'.repeat(5 - Math.round(avgRating))}
-                </Text>
-                <Text style={[styles.ratingCount, { color: c.subtext }]}>
-                  {reviews.length} rating
-                  {reviews.length !== 1 ? 's' : ''}
-                </Text>
+            ) : (
+              <View style={[styles.ratingCard, { backgroundColor: c.tagBg }]}>
+                {/* Left: aggregate */}
+                <View style={{ flex: 1 }}>
+                  {reviews.length > 0 ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Text style={[styles.ratingScore, { color: c.text }]}>
+                        {avgRating.toFixed(1)}
+                      </Text>
+                      <Text style={{ fontSize: 14, color: '#F5A623', letterSpacing: 1 }}>
+                        {'★'.repeat(Math.round(avgRating))}
+                        {'☆'.repeat(5 - Math.round(avgRating))}
+                      </Text>
+                      <Text style={{ fontSize: 11, color: c.subtext }}>
+                        {reviews.length} rating{reviews.length !== 1 ? 's' : ''}
+                      </Text>
+                    </View>
+                  ) : (
+                    <Text style={{ fontSize: 13, color: c.subtext }}>No ratings yet</Text>
+                  )}
+                </View>
+
+                {/* Right: your rating (spot type only) */}
+                {spot?.spot_type === 'spot' ? (
+                  <View style={{ alignItems: 'flex-end', gap: 2 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Text
+                        style={{
+                          fontSize: 10,
+                          color: c.subtext,
+                          textTransform: 'uppercase',
+                          letterSpacing: 0.5,
+                        }}>
+                        {existingReviewId ? 'Your rating' : 'Rate'}
+                      </Text>
+                      {existingReviewId ? (
+                        <Pressable onPress={() => onDeleteReview(existingReviewId)}>
+                          <Text style={{ fontSize: 11, color: c.danger }}>Remove</Text>
+                        </Pressable>
+                      ) : null}
+                    </View>
+                    <View style={{ flexDirection: 'row', gap: 4 }}>
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <Pressable
+                          key={star}
+                          onPress={() => {
+                            onChangeRating(star);
+                            onSubmitReview(star);
+                          }}>
+                          <Ionicons
+                            name={star <= newRating ? 'star' : 'star-outline'}
+                            size={22}
+                            color={star <= newRating ? '#F5A623' : c.subtext}
+                          />
+                        </Pressable>
+                      ))}
+                    </View>
+                  </View>
+                ) : null}
               </View>
-            ) : null}
-            {/* Rate this spot */}
-            {spot?.spot_type === 'spot' ? (
-              <View style={{ marginBottom: 16 }}>
+            )}
+
+            {/* ── Action toolbar ── */}
+            <View style={styles.actionsToolbar}>
+              <Pressable
+                onPress={onToggleFavorite}
+                style={[
+                  styles.actionBtn,
+                  { backgroundColor: isFavorite ? 'rgba(255,59,48,0.12)' : c.tagBg },
+                ]}>
+                <Ionicons
+                  name={isFavorite ? 'bookmark' : 'bookmark-outline'}
+                  size={20}
+                  color={isFavorite ? '#FF3B30' : c.text}
+                />
+                <Text style={[styles.actionLabel, { color: isFavorite ? '#FF3B30' : c.subtext }]}>
+                  Save
+                </Text>
+              </Pressable>
+
+              <Pressable
+                onPress={() => setCollectionsOpen(true)}
+                style={[styles.actionBtn, { backgroundColor: c.tagBg }]}>
+                <Ionicons name="folder-outline" size={20} color={c.text} />
+                <Text style={[styles.actionLabel, { color: c.subtext }]}>Collections</Text>
+              </Pressable>
+
+              <Pressable onPress={handleShare} style={[styles.actionBtn, { backgroundColor: c.tagBg }]}>
+                <Ionicons name="share-outline" size={20} color={c.text} />
+                <Text style={[styles.actionLabel, { color: c.subtext }]}>Share</Text>
+              </Pressable>
+
+              <Pressable
+                onPress={handleDirections}
+                style={[styles.actionBtn, { backgroundColor: 'rgba(0,122,255,0.12)' }]}>
+                <Ionicons name="navigate-outline" size={20} color="#007AFF" />
+                <Text style={[styles.actionLabel, { color: '#007AFF' }]}>Directions</Text>
+              </Pressable>
+            </View>
+
+            {/* ── Photos ── */}
+            {visible ? (
+              <View style={{ marginBottom: 14 }}>
                 <View style={[styles.divider, { backgroundColor: c.border }]} />
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                  }}>
-                  <Text style={{ fontSize: 13, fontWeight: '700', color: c.text }}>
-                    {existingReviewId ? 'Your Rating' : 'Rate this spot'}
-                  </Text>
-                  {existingReviewId ? (
-                    <Pressable onPress={() => onDeleteReview(existingReviewId)}>
-                      <Text style={{ fontSize: 12, color: c.danger }}>Remove</Text>
+                <View style={styles.sectionHeader}>
+                  <Text style={[styles.sectionTitle, { color: c.text }]}>Photos</Text>
+                  {isOwner && images.length + pendingImages.length < 5 ? (
+                    <Pressable onPress={handlePickImages}>
+                      <Text style={{ fontSize: 13, color: '#007AFF', fontWeight: '500' }}>
+                        + Add
+                      </Text>
                     </Pressable>
                   ) : null}
                 </View>
-                <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <Pressable
-                      key={star}
-                      onPress={() => {
-                        onChangeRating(star);
-                        onSubmitReview(star);
-                      }}>
-                      <Ionicons
-                        name={star <= newRating ? 'star' : 'star-outline'}
-                        size={28}
-                        color={star <= newRating ? '#F5A623' : c.subtext}
-                      />
-                    </Pressable>
-                  ))}
-                </View>
+
+                {detailsLoading ? (
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    <SkeletonBar width={88} height={66} style={{ borderRadius: 10 }} />
+                    <SkeletonBar width={88} height={66} style={{ borderRadius: 10 }} />
+                  </View>
+                ) : isOwner ? (
+                  <FlatList
+                    data={[...images, ...pendingImages, 'add']}
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    keyExtractor={(item) => item}
+                    renderItem={renderImageItem}
+                  />
+                ) : images.length > 0 ? (
+                  <FlatList
+                    data={images}
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    keyExtractor={(url) => url}
+                    renderItem={renderViewImageItem}
+                  />
+                ) : (
+                  <Text style={{ fontSize: 12, color: c.subtext }}>No photos yet.</Text>
+                )}
+
+                {pendingImages.length > 0 && isOwner ? (
+                  <Pressable
+                    onPress={handleUploadPending}
+                    style={[styles.uploadBtn, { backgroundColor: c.buttonBg }]}>
+                    <Ionicons name="cloud-upload-outline" size={16} color={c.background} />
+                    <Text style={[styles.uploadBtnText, { color: c.background }]}>
+                      Upload {pendingImages.length} photo{pendingImages.length > 1 ? 's' : ''}
+                    </Text>
+                  </Pressable>
+                ) : null}
               </View>
             ) : null}
-            {/* Images */}
-            {visible && detailsLoading ? (
-              <View
-                style={{
-                  flexDirection: 'row',
-                  gap: 8,
-                  marginVertical: 10,
-                }}>
-                <SkeletonBar width={110} height={82} style={{ borderRadius: 10 }} />
-                <SkeletonBar width={110} height={82} style={{ borderRadius: 10 }} />
-              </View>
-            ) : visible && isOwner ? (
-              <FlatList
-                data={[...images, ...pendingImages, 'add']}
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                keyExtractor={(item) => item}
-                style={styles.imageList}
-                renderItem={renderImageItem}
-              />
-            ) : visible && images.length > 0 ? (
-              <FlatList
-                data={images}
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                keyExtractor={(url) => url}
-                style={styles.imageList}
-                renderItem={renderViewImageItem}
-              />
-            ) : null}
-            {pendingImages.length > 0 && isOwner ? (
-              <Pressable
-                onPress={handleUploadPending}
-                style={[styles.uploadBtn, { backgroundColor: c.buttonBg }]}>
-                <Ionicons name="cloud-upload-outline" size={16} color={c.background} />
-                <Text style={[styles.uploadBtnText, { color: c.background }]}>
-                  Upload {pendingImages.length} photo
-                  {pendingImages.length > 1 ? 's' : ''}
-                </Text>
-              </Pressable>
-            ) : null}
+
+            {/* ── Conditions ── */}
             {spot?.spot_type === 'spot' ? (
-              <View style={{ marginTop: 8, marginBottom: 4 }}>
-                <View style={[styles.divider, { backgroundColor: c.border }]} />
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    marginBottom: 8,
-                  }}>
-                  <Text
-                    style={{
-                      fontSize: 13,
-                      fontWeight: '700',
-                      color: c.text,
-                    }}>
-                    Current Conditions
-                  </Text>
+              <View
+                style={[
+                  styles.conditionsCard,
+                  { backgroundColor: 'rgba(52,199,89,0.06)', borderColor: 'rgba(52,199,89,0.12)' },
+                ]}>
+                <View style={styles.sectionHeader}>
+                  <Text style={[styles.sectionTitle, { color: c.text }]}>Current Conditions</Text>
                   <Pressable
                     onPress={async () => {
                       if (showConditionPicker) {
-                        if (conditionsChangedRef.current) {
-                          onConditionDone?.();
-                        }
+                        if (conditionsChangedRef.current) onConditionDone?.();
                         conditionsChangedRef.current = false;
                         setShowConditionPicker(false);
                       } else {
                         setShowConditionPicker(true);
                       }
                     }}
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: 4,
-                      paddingHorizontal: 10,
-                      paddingVertical: 5,
-                      borderRadius: 12,
-                      backgroundColor: showConditionPicker ? c.border : c.tagBg,
-                    }}>
+                    style={[
+                      styles.conditionToggleBtn,
+                      { backgroundColor: showConditionPicker ? c.border : c.tagBg },
+                    ]}>
                     <Ionicons
                       name={showConditionPicker ? 'close' : 'add'}
                       size={14}
                       color={c.subtext}
                     />
-                    <Text
-                      style={{
-                        fontSize: 12,
-                        color: c.subtext,
-                        fontWeight: '500',
-                      }}>
+                    <Text style={{ fontSize: 12, color: c.subtext, fontWeight: '500' }}>
                       {showConditionPicker
                         ? 'Done'
                         : myConditions.length > 0
@@ -933,46 +716,30 @@ export function SpotDetailsModal({
                 </View>
 
                 {activeConditions.length === 0 && !showConditionPicker ? (
-                  <Text
-                    style={{
-                      fontSize: 12,
-                      color: c.subtext,
-                    }}>
+                  <Text style={{ fontSize: 12, color: c.subtext, marginTop: 4 }}>
                     No conditions reported yet.
                   </Text>
                 ) : null}
 
                 {activeConditions.length > 0 && !showConditionPicker ? (
-                  <View
-                    style={{
-                      flexDirection: 'row',
-                      flexWrap: 'wrap',
-                      gap: 6,
-                    }}>
+                  <View style={styles.chipsRow}>
                     {activeConditions.map((condition) => {
                       const meta = CONDITION_META[condition];
                       const isMine = myConditions.includes(condition);
                       return (
                         <View
                           key={condition}
-                          style={{
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            gap: 4,
-                            paddingHorizontal: 10,
-                            paddingVertical: 6,
-                            borderRadius: 20,
-                            backgroundColor: meta.bg,
-                            borderWidth: isMine ? 1.5 : 0,
-                            borderColor: isMine ? meta.color : 'transparent',
-                          }}>
+                          style={[
+                            styles.chip,
+                            {
+                              backgroundColor: meta.bg,
+                              borderWidth: isMine ? 1.5 : 0,
+                              borderColor: isMine ? meta.color : 'transparent',
+                            },
+                          ]}>
                           <Text style={{ fontSize: 12 }}>{meta.icon}</Text>
                           <Text
-                            style={{
-                              fontSize: 12,
-                              color: meta.color,
-                              fontWeight: '700',
-                            }}>
+                            style={{ fontSize: 12, color: meta.color, fontWeight: '700' }}>
                             {meta.label}
                           </Text>
                         </View>
@@ -982,12 +749,7 @@ export function SpotDetailsModal({
                 ) : null}
 
                 {showConditionPicker ? (
-                  <View
-                    style={{
-                      flexDirection: 'row',
-                      flexWrap: 'wrap',
-                      gap: 6,
-                    }}>
+                  <View style={styles.chipsRow}>
                     {(Object.keys(CONDITION_META) as SpotCondition[]).map((condition) => {
                       const meta = CONDITION_META[condition];
                       const isActive = activeConditions.includes(condition);
@@ -995,18 +757,18 @@ export function SpotDetailsModal({
                       return (
                         <Pressable
                           key={condition}
-                          onPress={() => onToggleCondition(condition)}
-                          style={{
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            gap: 4,
-                            paddingHorizontal: 10,
-                            paddingVertical: 6,
-                            borderRadius: 20,
-                            backgroundColor: isActive ? meta.bg : c.tagBg,
-                            borderWidth: 1,
-                            borderColor: isMine ? meta.color : 'transparent',
-                          }}>
+                          onPress={() => {
+                            conditionsChangedRef.current = true;
+                            onToggleCondition(condition);
+                          }}
+                          style={[
+                            styles.chip,
+                            {
+                              backgroundColor: isActive ? meta.bg : c.tagBg,
+                              borderWidth: 1,
+                              borderColor: isMine ? meta.color : 'transparent',
+                            },
+                          ]}>
                           <Text style={{ fontSize: 12 }}>{meta.icon}</Text>
                           <Text
                             style={{
@@ -1023,59 +785,55 @@ export function SpotDetailsModal({
                 ) : null}
               </View>
             ) : null}
-            {/* Footer Actions */}
+
+            {/* ── Footer actions ── */}
             <View style={[styles.footerActions, { borderTopColor: c.border }]}>
               {spot && isOwner ? (
                 <Pressable
                   onPress={() => onDelete(spot)}
-                  style={[styles.deleteSpotBtn, { borderColor: c.danger }]}>
+                  style={[
+                    styles.footerBtn,
+                    { borderColor: c.danger, backgroundColor: 'rgba(255,59,48,0.06)' },
+                  ]}>
                   <Ionicons name="trash-outline" size={15} color={c.danger} />
-                  <Text style={[styles.deleteSpotText, { color: c.danger }]}>Delete</Text>
+                  <Text style={{ fontWeight: '600', fontSize: 15, color: c.danger }}>Delete</Text>
                 </Pressable>
               ) : null}
               {!isOwner ? (
-                <>
-                  <Pressable
-                    onPress={handleFlag}
-                    style={[
-                      styles.closeBtn,
-                      { borderColor: isFlaggedByMe ? '#FF3B30' : c.border },
-                    ]}>
-                    <Ionicons
-                      name={isFlaggedByMe ? 'flag' : 'flag-outline'}
-                      size={15}
-                      color={isFlaggedByMe ? '#FF3B30' : c.text}
-                    />
-                    <Text
-                      style={{
-                        fontWeight: '600',
-                        fontSize: 15,
-                        color: isFlaggedByMe ? '#FF3B30' : c.text,
-                      }}>
-                      {isFlaggedByMe ? 'Flagged' : 'Flag'}
-                    </Text>
-                  </Pressable>
-                </>
+                <Pressable
+                  onPress={handleFlag}
+                  style={[styles.footerBtn, { borderColor: isFlaggedByMe ? '#FF3B30' : c.border }]}>
+                  <Ionicons
+                    name={isFlaggedByMe ? 'flag' : 'flag-outline'}
+                    size={15}
+                    color={isFlaggedByMe ? '#FF3B30' : c.text}
+                  />
+                  <Text
+                    style={{
+                      fontWeight: '600',
+                      fontSize: 15,
+                      color: isFlaggedByMe ? '#FF3B30' : c.text,
+                    }}>
+                    {isFlaggedByMe ? 'Flagged' : 'Flag'}
+                  </Text>
+                </Pressable>
               ) : null}
-              <Pressable onPress={onClose} style={[styles.closeBtn, { borderColor: c.border }]}>
-                <Text style={[styles.closeBtnText, { color: c.text }]}>Close</Text>
+              <Pressable onPress={onClose} style={[styles.footerBtn, { borderColor: c.border }]}>
+                <Text style={{ fontWeight: '600', fontSize: 15, color: c.text }}>Close</Text>
               </Pressable>
             </View>
           </ScrollView>
         </View>
       </KeyboardAvoidingView>
-      {/* Fullscreen Image Viewer */}
+
+      {/* ── Fullscreen image viewer ── */}
       <Modal
         visible={selectedImageIndex !== null}
         transparent
         animationType="fade"
         onRequestClose={() => setSelectedImageIndex(null)}>
         <Animated.View
-          style={{
-            flex: 1,
-            backgroundColor: 'rgba(0,0,0,0.95)',
-            transform: [{ translateY }],
-          }}
+          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.95)', transform: [{ translateY }] }}
           {...panResponder.panHandlers}>
           <FlatList
             data={images}
@@ -1083,19 +841,10 @@ export function SpotDetailsModal({
             pagingEnabled
             showsHorizontalScrollIndicator={false}
             initialScrollIndex={selectedImageIndex ?? 0}
-            getItemLayout={(_, index) => ({
-              length: width,
-              offset: width * index,
-              index,
-            })}
+            getItemLayout={(_, index) => ({ length: width, offset: width * index, index })}
             keyExtractor={(url) => url}
             renderItem={({ item: url }) => (
-              <View
-                style={{
-                  width,
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                }}>
+              <View style={{ width, justifyContent: 'center', alignItems: 'center' }}>
                 <Image source={{ uri: url }} style={{ width, height: '80%' }} resizeMode="contain" />
               </View>
             )}
@@ -1114,9 +863,7 @@ export function SpotDetailsModal({
                   key={i}
                   style={[
                     styles.dot,
-                    {
-                      backgroundColor: i === currentIndex ? 'white' : 'rgba(255,255,255,0.35)',
-                    },
+                    { backgroundColor: i === currentIndex ? 'white' : 'rgba(255,255,255,0.35)' },
                   ]}
                 />
               ))}
@@ -1124,7 +871,9 @@ export function SpotDetailsModal({
           ) : null}
         </Animated.View>
       </Modal>
+
       <CollectionsModal visible={collectionsOpen} onClose={() => setCollectionsOpen(false)} spotId={spotId} />
+
       <SpotCommentsModal
         visible={commentsOpen}
         onClose={() => setCommentsOpen(false)}
@@ -1138,9 +887,11 @@ export function SpotDetailsModal({
           setTimeout(() => {
             onClose();
             onViewProfile?.(userId);
-          }, 350);
+          }, 400);
         }}
       />
+
+      {/* ── Flag modal ── */}
       <Modal
         visible={flagModalOpen}
         transparent
@@ -1243,6 +994,8 @@ export function SpotDetailsModal({
           </KeyboardAvoidingView>
         </Pressable>
       </Modal>
+
+      {/* ── Edit modal ── */}
       <Modal visible={editOpen} transparent animationType="slide" onRequestClose={() => setEditOpen(false)}>
         <Pressable
           style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' }}
@@ -1369,11 +1122,8 @@ export function SpotDetailsModal({
                   setEditSaving(true);
                   const err = await onUpdateSpot(spot!.id, editName, editDesc, editTags);
                   setEditSaving(false);
-                  if (err) {
-                    Alert.alert('Error', err);
-                  } else {
-                    setEditOpen(false);
-                  }
+                  if (err) Alert.alert('Error', err);
+                  else setEditOpen(false);
                 }}
                 disabled={editSaving || !editName.trim()}
                 style={{
@@ -1417,71 +1167,163 @@ const styles = StyleSheet.create({
     height: 4,
     borderRadius: 2,
   },
-  header: {
+  flagBanner: {
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  spotHeaderRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 10,
     gap: 8,
+  },
+  spotNameRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    flexWrap: 'wrap',
+    marginBottom: 2,
   },
   spotName: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '700',
-    lineHeight: 26,
+    lineHeight: 28,
+    letterSpacing: -0.3,
+    flexShrink: 1,
   },
-  creatorText: {
-    fontSize: 12,
-    marginTop: 3,
-  },
-  headerActions: {
+  metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    paddingTop: 2,
-    flexShrink: 0,
+    marginTop: 2,
+    marginBottom: 4,
   },
-  iconBtn: {
-    padding: 8,
-    borderRadius: 20,
-  },
-  ratingBar: {
+  creatorRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
+    marginTop: 3,
+    alignSelf: 'flex-start',
+  },
+  avatar: {
+    width: 20,
+    height: 20,
     borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  creatorName: {
+    fontSize: 12,
+    color: '#007AFF',
+    fontWeight: '500',
+  },
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  badgeText: {
+    fontSize: 9,
+    fontWeight: '700',
+  },
+  tagsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  tag: {
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  tagText: {
+    fontSize: 12,
+  },
+  commentBtn: {
+    position: 'relative',
+    padding: 4,
+    paddingTop: 4,
+    paddingRight: 8,
+  },
+  commentBadge: {
+    position: 'absolute',
+    top: 0,
+    right: 2,
+    minWidth: 16,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#007AFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  commentBadgeText: {
+    color: 'white',
+    fontSize: 9,
+    fontWeight: '700',
+  },
+  ratingCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     marginBottom: 12,
+    gap: 8,
   },
   ratingScore: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '700',
   },
-  ratingCount: {
-    fontSize: 12,
-    marginLeft: 'auto',
+  actionsToolbar: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 4,
   },
-  imageList: {
-    marginVertical: 10,
+  actionBtn: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    paddingVertical: 10,
+    borderRadius: 14,
   },
-  thumbnail: {
-    width: 110,
-    height: 82,
+  actionLabel: {
+    fontSize: 10,
+    fontWeight: '500',
+  },
+  divider: {
+    height: 1,
+    marginVertical: 14,
+    opacity: 0.6,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  photoThumb: {
+    width: 88,
+    height: 66,
     borderRadius: 10,
+    marginRight: 8,
   },
-  addImageBtn: {
-    width: 110,
-    height: 82,
-    borderRadius: 10,
+  photoAdd: {
     borderWidth: 1.5,
     borderStyle: 'dashed',
-    justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 8,
-    gap: 4,
-  },
-  addImageText: {
-    fontSize: 11,
-    fontWeight: '500',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
   },
   deleteImageBtn: {
     position: 'absolute',
@@ -1511,119 +1353,50 @@ const styles = StyleSheet.create({
     gap: 6,
     borderRadius: 10,
     padding: 11,
-    marginTop: 4,
-    marginBottom: 8,
+    marginTop: 8,
   },
   uploadBtnText: {
     fontWeight: '600',
     fontSize: 14,
   },
-  description: {
-    fontSize: 14,
-    lineHeight: 20,
-    marginTop: 4,
-    marginBottom: 8,
-    opacity: 0.85,
+  conditionsCard: {
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 14,
+    borderWidth: 1,
   },
-  tagsRow: {
+  conditionToggleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+  },
+  chipsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 6,
-    marginTop: 6,
-    marginBottom: 4,
+    marginTop: 8,
   },
-  tag: {
-    borderRadius: 20,
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  tagText: {
-    fontSize: 12,
-  },
-  divider: {
-    height: 1,
-    marginVertical: 16,
-    opacity: 0.6,
-  },
-  section: {
-    marginBottom: 4,
-  },
-  sectionTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    marginBottom: 12,
-    letterSpacing: 0.3,
-  },
-  reviewInput: {
-    borderWidth: 1,
-    borderRadius: 10,
-    padding: 12,
-    height: 80,
-    marginTop: 10,
-    fontSize: 14,
-    textAlignVertical: 'top',
-  },
-  submitBtn: {
-    borderRadius: 10,
-    padding: 13,
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  submitBtnText: {
-    fontWeight: '700',
-    fontSize: 15,
-  },
-  reviewCard: {
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 8,
-  },
-  reviewHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  reviewDate: {
-    fontSize: 11,
-  },
-  reviewComment: {
-    fontSize: 14,
-    lineHeight: 19,
-    marginBottom: 6,
-  },
-  reviewFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 2,
-  },
-  reviewUsername: {
-    fontSize: 12,
-  },
-  reviewActions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  editText: {
-    fontSize: 12,
-    color: '#007AFF',
-    fontWeight: '500',
-  },
-  deleteText: {
-    fontSize: 12,
-    fontWeight: '500',
+    paddingVertical: 6,
+    borderRadius: 20,
   },
   footerActions: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 20,
+    marginTop: 6,
     paddingTop: 16,
     borderTopWidth: 1,
     gap: 10,
   },
-  closeBtn: {
+  footerBtn: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
@@ -1632,24 +1405,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 10,
     padding: 12,
-  },
-  closeBtnText: {
-    fontWeight: '600',
-    fontSize: 15,
-  },
-  deleteSpotBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    borderWidth: 1,
-    borderRadius: 10,
-    padding: 12,
-  },
-  deleteSpotText: {
-    fontWeight: '600',
-    fontSize: 15,
   },
   dotRow: {
     position: 'absolute',
