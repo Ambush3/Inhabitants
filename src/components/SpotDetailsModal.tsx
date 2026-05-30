@@ -1137,10 +1137,8 @@ export function SpotDetailsModal({
           setCommentsOpen(false);
           setTimeout(() => {
             onClose();
-            setTimeout(() => {
-              onViewProfile?.(userId);
-            }, 350);
-          }, 300);
+            onViewProfile?.(userId);
+          }, 350);
         }}
       />
       <Modal
