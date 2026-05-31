@@ -1627,24 +1627,16 @@ export function ExplorePanel({
                         </View>
                       )}
                       <View style={{ flex: 1 }}>
-                        <Text
-                          style={{
-                            fontSize: 13,
-                            color: c.text,
-                          }}>
-                          <Text
-                            style={{
-                              fontWeight: '700',
-                            }}>
+                        <Text style={{ fontSize: 13, color: c.text }}>
+                          <Text style={{ fontWeight: '700' }}>
                             @{item.actor.username ?? 'someone'}
                           </Text>{' '}
-                          {item.kind === 'spot_created' ? 'created' : 'rated'}{' '}
-                          <Text
-                            style={{
-                              fontWeight: '600',
-                            }}>
-                            {`"${item.spot.name}"`}
-                          </Text>
+                          {item.kind === 'spot_created'
+                            ? 'created'
+                            : item.kind === 'check_in'
+                              ? 'checked in at'
+                              : 'rated'}{' '}
+                          <Text style={{ fontWeight: '600' }}>{`"${item.spot.name}"`}</Text>
                         </Text>
                         {item.kind === 'review_left' ? (
                           <Text
@@ -1660,14 +1652,29 @@ export function ExplorePanel({
                         ) : null}
                         {item.kind === 'review_left' && item.comment ? (
                           <Text
-                            style={{
-                              fontSize: 12,
-                              color: c.subtext,
-                              marginTop: 2,
-                            }}
+                            style={{ fontSize: 12, color: c.subtext, marginTop: 2 }}
                             numberOfLines={2}>
                             {item.comment}
                           </Text>
+                        ) : null}
+                        {item.kind === 'check_in' ? (
+                          <View
+                            style={{
+                              flexDirection: 'row',
+                              alignItems: 'center',
+                              gap: 4,
+                              marginTop: 3,
+                            }}>
+                            <Ionicons name="location-outline" size={11} color="#34C759" />
+                            <Text
+                              style={{
+                                fontSize: 11,
+                                color: '#34C759',
+                                fontWeight: '600',
+                              }}>
+                              Checked in
+                            </Text>
+                          </View>
                         ) : null}
                         <Text
                           style={{
