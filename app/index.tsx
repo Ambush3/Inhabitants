@@ -60,6 +60,7 @@ import { useFriendships } from '@/src/hooks/social/useFriendships';
 import { useNotifications } from '@/src/hooks/useNotifications';
 import { useSocialFeed } from '@/src/hooks/useSocialFeed';
 import { SpotVisibility, spotVisibility } from '@/src/hooks/useSpots';
+import { useOfflineCache } from '@/src/hooks/offlineCache/useOfflineCache';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -294,6 +295,18 @@ export default function Index() {
     myReviews,
   } = useReviews();
 
+  const {
+    isOnline,
+    isStale,
+    cacheLoaded,
+    cachedMapSpots,
+    cachedFavorites,
+    showOfflineBanner,
+    bannerMessage,
+    cacheMapSpots,
+    cacheFavorites,
+  } = useOfflineCache();
+
   const { signOut, session } = useAuth();
   const { favorites, loading: favLoading, loadFavorites, toggleFavorite, isFavorite } = useFavorites();
   const { wishlist, wishlistLoading, loadWishlist, toggleWishlist, isWishlisted } = useWishlist();
@@ -466,9 +479,11 @@ export default function Index() {
   const [eventDetailsOpen, setEventDetailsOpen] = useState(false);
 
   const visibleSpots = useMemo(() => {
-    const base = searchResults.length > 0 ? searchResults : spots;
+    const sourceSpots = isOnline ? spots : cachedMapSpots;
+    const base = searchResults.length > 0 ? searchResults : sourceSpots;
     return base.filter((s) => s.lat && s.lng);
-  }, [searchResults, spots]);
+  }, [searchResults, spots, cachedMapSpots, isOnline]);
+
   const displayError = error ?? nearbyError ?? topRatedError;
   const openedFromPanelRef = useRef(false);
 
@@ -989,6 +1004,14 @@ export default function Index() {
     return unsubscribe;
   }, [session?.user.id, myEvents]);
 
+  useEffect(() => {
+    if (spots.length > 0) cacheMapSpots(spots);
+  }, [spots]);
+
+  useEffect(() => {
+    if (favorites.length > 0) cacheFavorites(favorites);
+  }, [favorites]);
+
   if (Platform.OS === 'web') {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: c.headerBg }}>
@@ -1093,7 +1116,7 @@ export default function Index() {
                 fontWeight: '600',
                 color: c.text,
               }}>
-              Spots
+              Inhabitants
             </Text>
             <View
               style={{
@@ -1120,6 +1143,32 @@ export default function Index() {
               </Pressable>
             </View>
           </View>
+          {showOfflineBanner ? (
+            <View
+              style={{
+                backgroundColor: isOnline ? 'rgba(255,149,0,0.12)' : 'rgba(255,59,48,0.12)',
+                paddingHorizontal: 16,
+                paddingVertical: 8,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 8,
+              }}>
+              <Ionicons
+                name={isOnline ? 'time-outline' : 'cloud-offline-outline'}
+                size={14}
+                color={isOnline ? '#FF9500' : '#FF3B30'}
+              />
+              <Text
+                style={{
+                  fontSize: 12,
+                  color: isOnline ? '#FF9500' : '#FF3B30',
+                  fontWeight: '500',
+                  flex: 1,
+                }}>
+                {bannerMessage}
+              </Text>
+            </View>
+          ) : null}
           <ExplorePanel
             visible={panelOpen}
             pendingFriendRequestsCount={pendingReceived.length}
