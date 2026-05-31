@@ -35,6 +35,7 @@ import { MySpotMarker } from '@/src/components/SpotMarkers/MySpotMarker';
 import { OtherUsersSpotMarkers } from '@/src/components/SpotMarkers/OtherUsersSpotMarkers';
 import { CreateEventModal } from '@/src/components/CreateEventModal';
 import { EventDetailsModal } from '@/src/components/EventDetailsModal';
+import { WhatsNewModal } from '@/src/components/WhatsNewModal';
 
 import { useSpots } from '@/src/hooks/useSpots';
 import { useReviews } from '@/src/hooks/useReviews';
@@ -50,6 +51,7 @@ import { sendPushNotification } from '@/src/libs/sendPushNotification';
 import { useSpotFlags } from '@/src/hooks/flaggingSystem/useSpotFlags';
 import { useReviewFlags } from '@/src/hooks/flaggingSystem/useReviewFlags';
 import { useEvents, SkateEvent } from '@/src/hooks/useEvents';
+import { useWhatsNew } from '@/src/hooks/useWhatsNew';
 
 import { useTheme } from '@/src/context/ThemeContext';
 
@@ -444,6 +446,9 @@ export default function Index() {
     setSpotVisibility,
     updateSpot,
   } = useSpots();
+
+  const { showWhatsNew, dismissWhatsNew } = useWhatsNew(!!session);
+
   const { deepLinkSpotId, deepLinkLat, deepLinkLng } = useLocalSearchParams<{
     deepLinkSpotId?: string;
     deepLinkLat?: string;
@@ -1934,6 +1939,7 @@ export default function Index() {
               }, 350);
             }}
           />
+          <WhatsNewModal visible={showWhatsNew} onClose={dismissWhatsNew} />
         </View>
       )}
     </>
