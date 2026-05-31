@@ -821,7 +821,6 @@ export default function Index() {
           setIsVetted(data?.is_vetted ?? false);
         });
     } else {
-      resetTheme();
       setMyAvatarUrl(null);
     }
   }, [session?.user.id]);
