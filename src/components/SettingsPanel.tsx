@@ -18,6 +18,23 @@ type Props = {
   onShowOnboarding: () => void;
 };
 
+function SectionLabel({ label }: { label: string }) {
+  const { theme } = useTheme();
+  return (
+    <Text
+      style={{
+        fontSize: 11,
+        fontWeight: '600',
+        color: theme.colors.subtext,
+        letterSpacing: 0.8,
+        marginTop: 20,
+        marginBottom: 4,
+      }}>
+      {label}
+    </Text>
+  );
+}
+
 export function SettingsPanel({ visible, onClose, onSignOut, onShowOnboarding }: Props) {
   const insets = useSafeAreaInsets();
   const [resetSent, setResetSent] = useState(false);
@@ -31,7 +48,6 @@ export function SettingsPanel({ visible, onClose, onSignOut, onShowOnboarding }:
 
   const { prefs, loadPrefs, updatePref } = useNotificationPreferences();
   const [notifSectionOpen, setNotifSectionOpen] = useState(false);
-
   const [publicCheckIns, setPublicCheckIns] = useState(true);
 
   useEffect(() => {
@@ -44,15 +60,14 @@ export function SettingsPanel({ visible, onClose, onSignOut, onShowOnboarding }:
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) return;
-      const { data } = await supabase.from('profiles').select('avatar_url, username').eq('id', user.id).single();
-      const { data: prefData } = await supabase
+      const { data } = await supabase
         .from('profiles')
-        .select('public_check_ins')
+        .select('avatar_url, username, public_check_ins')
         .eq('id', user.id)
         .single();
-      setPublicCheckIns(prefData?.public_check_ins ?? true);
       setAvatarUrl(data?.avatar_url ?? null);
       setUsername(data?.username ?? null);
+      setPublicCheckIns(data?.public_check_ins ?? true);
     }
     if (visible) loadAvatar();
   }, [visible]);
@@ -62,7 +77,6 @@ export function SettingsPanel({ visible, onClose, onSignOut, onShowOnboarding }:
       data: { user },
     } = await supabase.auth.getUser();
     if (!user?.email) return;
-
     const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
       redirectTo: 'skatespotapp:///reset-password',
     });
@@ -118,7 +132,6 @@ export function SettingsPanel({ visible, onClose, onSignOut, onShowOnboarding }:
       });
 
     if (uploadError) {
-      console.log('upload error:', uploadError);
       setAvatarLoading(false);
       return;
     }
@@ -127,11 +140,7 @@ export function SettingsPanel({ visible, onClose, onSignOut, onShowOnboarding }:
     const freshUrl = `${urlData.publicUrl}?t=${Date.now()}`;
 
     const { data: moderationResult } = await supabase.functions.invoke('moderate-image', {
-      body: {
-        image_url: freshUrl,
-        spot_id: null,
-        user_id: user.id,
-      },
+      body: { image_url: freshUrl, spot_id: null, user_id: user.id },
     });
 
     if (moderationResult?.safe === false) {
@@ -173,6 +182,21 @@ export function SettingsPanel({ visible, onClose, onSignOut, onShowOnboarding }:
     );
   }
 
+  const rowStyle = {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'space-between' as const,
+    paddingVertical: 13,
+    borderBottomWidth: 1,
+    borderColor: c.border,
+  };
+
+  const rowLeftStyle = {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 10,
+  };
+
   return (
     <>
       <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -189,34 +213,19 @@ export function SettingsPanel({ visible, onClose, onSignOut, onShowOnboarding }:
               flexDirection: 'column',
             }}
             onPress={() => { }}>
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                marginBottom: 24,
-              }}>
+            {/* Header */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
               <Ionicons name="settings-outline" size={20} color={c.text} style={{ marginRight: 8 }} />
-              <Text
-                style={{
-                  fontSize: 18,
-                  fontWeight: '600',
-                  color: c.text,
-                }}>
-                Settings
-              </Text>
+              <Text style={{ fontSize: 18, fontWeight: '600', color: c.text }}>Settings</Text>
             </View>
 
-            <View style={{ alignItems: 'center', marginBottom: 24 }}>
+            {/* Avatar */}
+            <View style={{ alignItems: 'center', marginBottom: 8 }}>
               <Pressable onPress={handleAvatarUpload}>
                 {avatarUrl ? (
                   <Image
                     source={{ uri: avatarUrl }}
-                    style={{
-                      width: 72,
-                      height: 72,
-                      borderRadius: 36,
-                      marginBottom: 8,
-                    }}
+                    style={{ width: 72, height: 72, borderRadius: 36, marginBottom: 8 }}
                   />
                 ) : (
                   <View
@@ -234,13 +243,7 @@ export function SettingsPanel({ visible, onClose, onSignOut, onShowOnboarding }:
                 )}
               </Pressable>
               {username ? (
-                <Text
-                  style={{
-                    fontSize: 14,
-                    fontWeight: '600',
-                    color: c.text,
-                    marginBottom: 4,
-                  }}>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: c.text, marginBottom: 4 }}>
                   @{username}
                 </Text>
               ) : null}
@@ -251,193 +254,136 @@ export function SettingsPanel({ visible, onClose, onSignOut, onShowOnboarding }:
               </Pressable>
             </View>
 
-            <View
-              style={{
-                flexDirection: 'row',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                paddingVertical: 14,
-                borderBottomWidth: 1,
-                borderColor: c.border,
-              }}>
-              <View
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 10,
-                }}>
-                <Ionicons name="moon-outline" size={20} color={c.text} />
-                <Text style={{ fontSize: 15, color: c.text }}>Dark Mode</Text>
+            <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
+              {/* ── APPEARANCE ── */}
+              <SectionLabel label="APPEARANCE" />
+              <View style={rowStyle}>
+                <View style={rowLeftStyle}>
+                  <Ionicons name="moon-outline" size={20} color={c.text} />
+                  <Text style={{ fontSize: 15, color: c.text }}>Dark Mode</Text>
+                </View>
+                <Switch value={darkMode} onValueChange={toggleDarkMode} />
               </View>
-              <Switch value={darkMode} onValueChange={toggleDarkMode} />
-            </View>
 
-            <View
-              style={{
-                flexDirection: 'row',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                paddingVertical: 14,
-                borderBottomWidth: 1,
-                borderColor: c.border,
-              }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                <Ionicons name="location-outline" size={20} color={c.text} />
-                <Text style={{ fontSize: 15, color: c.text }}>Public Check-ins</Text>
+              {/* ── PRIVACY & ACCOUNT ── */}
+              <SectionLabel label="PRIVACY & ACCOUNT" />
+              <View style={rowStyle}>
+                <View style={rowLeftStyle}>
+                  <Ionicons name="location-outline" size={20} color={c.text} />
+                  <Text style={{ fontSize: 15, color: c.text }}>Public Check-ins</Text>
+                </View>
+                <Switch
+                  value={publicCheckIns}
+                  onValueChange={async (v) => {
+                    setPublicCheckIns(v);
+                    const {
+                      data: { user },
+                    } = await supabase.auth.getUser();
+                    if (user)
+                      await supabase
+                        .from('profiles')
+                        .update({ public_check_ins: v })
+                        .eq('id', user.id);
+                  }}
+                />
               </View>
-              <Switch
-                value={publicCheckIns}
-                onValueChange={async (v) => {
-                  setPublicCheckIns(v);
-                  const {
-                    data: { user },
-                  } = await supabase.auth.getUser();
-                  if (user) {
-                    await supabase
-                      .from('profiles')
-                      .update({ public_check_ins: v })
-                      .eq('id', user.id);
-                  }
-                }}
-              />
-            </View>
-            <Pressable
-              onPress={handleResetPassword}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 10,
-                paddingVertical: 14,
-                borderBottomWidth: 1,
-                borderColor: c.border,
-              }}>
-              <Ionicons name="lock-closed-outline" size={20} color={c.text} />
-              <Text style={{ fontSize: 15, color: c.text }}>Reset Password</Text>
-            </Pressable>
+              <Pressable onPress={handleResetPassword} style={rowStyle}>
+                <View style={rowLeftStyle}>
+                  <Ionicons name="lock-closed-outline" size={20} color={c.text} />
+                  <Text style={{ fontSize: 15, color: c.text }}>Reset Password</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color={c.subtext} />
+              </Pressable>
+              <Pressable onPress={handleDeleteAccount} style={{ ...rowStyle, borderBottomWidth: 0 }}>
+                <View style={rowLeftStyle}>
+                  <Ionicons name="trash-outline" size={20} color={c.danger} />
+                  <Text style={{ fontSize: 15, color: c.danger }}>Delete Account</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color={c.danger} />
+              </Pressable>
 
-            <Pressable
-              onPress={() => setNotifSectionOpen((p) => !p)}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 10,
-                paddingVertical: 14,
-                borderBottomWidth: notifSectionOpen ? 0 : 1,
-                borderColor: c.border,
-              }}>
-              <Ionicons name="notifications-outline" size={20} color={c.text} />
-              <Text
-                style={{
-                  flex: 1,
-                  fontSize: 15,
-                  color: c.text,
-                }}>
-                Notifications
-              </Text>
-              <Ionicons
-                name={notifSectionOpen ? 'chevron-up' : 'chevron-down'}
-                size={16}
-                color={c.subtext}
-              />
-            </Pressable>
-            {notifSectionOpen ? (
-              <View
-                style={{
-                  paddingLeft: 30,
-                  paddingBottom: 8,
-                  borderBottomWidth: 1,
-                  borderColor: c.border,
-                }}>
-                {(
-                  [
-                    ['notify_review', 'Reviews'],
-                    ['notify_favorite', 'Saves'],
-                    ['notify_wishlist', 'Wishlists'],
-                    ['notify_condition', 'Conditions'],
-                    ['notify_friend_request', 'Friend Requests'],
-                    ['notify_friend_accepted', 'Friend Accepted'],
-                    ['notify_event_invite', 'Event Invites'],
-                    ['notify_event_reminder', 'Event Reminders'],
-                  ] as [keyof NotificationPrefs, string][]
-                ).map(([key, label]) => (
-                  <View
-                    key={key}
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      paddingVertical: 8,
-                    }}>
-                    <Text
+              {/* ── INFO ── */}
+              <SectionLabel label="INFO" />
+              <Pressable
+                onPress={() => setNotifSectionOpen((p) => !p)}
+                style={{ ...rowStyle, borderBottomWidth: notifSectionOpen ? 0 : 1 }}>
+                <View style={rowLeftStyle}>
+                  <Ionicons name="notifications-outline" size={20} color={c.text} />
+                  <Text style={{ flex: 1, fontSize: 15, color: c.text }}>Notifications</Text>
+                </View>
+                <Ionicons
+                  name={notifSectionOpen ? 'chevron-up' : 'chevron-down'}
+                  size={16}
+                  color={c.subtext}
+                />
+              </Pressable>
+              {notifSectionOpen ? (
+                <View
+                  style={{
+                    paddingLeft: 30,
+                    paddingBottom: 8,
+                    borderBottomWidth: 1,
+                    borderColor: c.border,
+                  }}>
+                  {(
+                    [
+                      ['notify_review', 'Reviews'],
+                      ['notify_favorite', 'Saves'],
+                      ['notify_wishlist', 'Wishlists'],
+                      ['notify_condition', 'Conditions'],
+                      ['notify_friend_request', 'Friend Requests'],
+                      ['notify_friend_accepted', 'Friend Accepted'],
+                      ['notify_event_invite', 'Event Invites'],
+                      ['notify_event_reminder', 'Event Reminders'],
+                    ] as [keyof NotificationPrefs, string][]
+                  ).map(([key, label]) => (
+                    <View
+                      key={key}
                       style={{
-                        fontSize: 14,
-                        color: c.text,
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        paddingVertical: 8,
                       }}>
-                      {label}
-                    </Text>
-                    <Switch value={prefs[key]} onValueChange={(v) => updatePref(key, v)} />
-                  </View>
-                ))}
-              </View>
-            ) : null}
+                      <Text style={{ fontSize: 14, color: c.text }}>{label}</Text>
+                      <Switch value={prefs[key]} onValueChange={(v) => updatePref(key, v)} />
+                    </View>
+                  ))}
+                </View>
+              ) : null}
+              <Pressable
+                onPress={() => {
+                  onClose();
+                  onShowOnboarding();
+                }}
+                style={rowStyle}>
+                <View style={rowLeftStyle}>
+                  <Ionicons name="information-circle-outline" size={20} color={c.text} />
+                  <Text style={{ fontSize: 15, color: c.text }}>How to Use</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color={c.subtext} />
+              </Pressable>
+              <Pressable
+                onPress={() => setChangelogOpen(true)}
+                style={{ ...rowStyle, borderBottomWidth: 0 }}>
+                <View style={rowLeftStyle}>
+                  <Ionicons name="sparkles-outline" size={20} color={c.text} />
+                  <Text style={{ fontSize: 15, color: c.text }}>{"What's New"}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color={c.subtext} />
+              </Pressable>
 
-            <Pressable
-              onPress={() => {
-                onClose();
-                onShowOnboarding();
-              }}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 10,
-                paddingVertical: 14,
-                borderBottomWidth: 1,
-                borderColor: c.border,
-              }}>
-              <Ionicons name="information-circle-outline" size={20} color={c.text} />
-              <Text style={{ fontSize: 15, color: c.text }}>How to Use</Text>
-            </Pressable>
+              <View style={{ height: 32 }} />
+            </ScrollView>
 
-            <Pressable
-              onPress={() => setChangelogOpen(true)}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 10,
-                paddingVertical: 14,
-                borderBottomWidth: 1,
-                borderColor: c.border,
-              }}>
-              <Ionicons name="sparkles-outline" size={20} color={c.text} />
-              <Text style={{ fontSize: 15, color: c.text }}>{"What's New"}</Text>
-            </Pressable>
-
-            <View style={{ flex: 1 }} />
-
-            <Pressable
-              onPress={handleDeleteAccount}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 10,
-                paddingVertical: 14,
-                borderTopWidth: 1,
-                borderColor: c.border,
-              }}>
-              <Ionicons name="trash-outline" size={20} color={c.danger} />
-              <Text style={{ fontSize: 15, color: c.danger }}>Delete Account</Text>
-            </Pressable>
-
+            {/* Changelog modal */}
             <Modal
               visible={changelogOpen}
               transparent
               animationType="slide"
               onRequestClose={() => setChangelogOpen(false)}>
               <Pressable
-                style={{
-                  flex: 1,
-                  backgroundColor: 'rgba(0,0,0,0.3)',
-                }}
+                style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)' }}
                 onPress={() => setChangelogOpen(false)}
               />
               <View
@@ -448,13 +394,7 @@ export function SettingsPanel({ visible, onClose, onSignOut, onShowOnboarding }:
                   padding: 20,
                   maxHeight: '70%',
                 }}>
-                <Text
-                  style={{
-                    fontSize: 18,
-                    fontWeight: '700',
-                    color: c.text,
-                    marginBottom: 4,
-                  }}>
+                <Text style={{ fontSize: 18, fontWeight: '700', color: c.text, marginBottom: 4 }}>
                   {"What's New"}
                 </Text>
                 <ScrollView showsVerticalScrollIndicator={false} style={{ marginTop: 12 }}>
@@ -467,43 +407,15 @@ export function SettingsPanel({ visible, onClose, onSignOut, onShowOnboarding }:
                           alignItems: 'center',
                           marginBottom: 8,
                         }}>
-                        <Text
-                          style={{
-                            fontSize: 15,
-                            fontWeight: '700',
-                            color: c.text,
-                          }}>
+                        <Text style={{ fontSize: 15, fontWeight: '700', color: c.text }}>
                           Version {release.version}
                         </Text>
-                        <Text
-                          style={{
-                            fontSize: 12,
-                            color: c.subtext,
-                          }}>
-                          {release.date}
-                        </Text>
+                        <Text style={{ fontSize: 12, color: c.subtext }}>{release.date}</Text>
                       </View>
                       {release.changes.map((change, i) => (
-                        <View
-                          key={i}
-                          style={{
-                            flexDirection: 'row',
-                            gap: 8,
-                            marginBottom: 6,
-                          }}>
-                          <Text
-                            style={{
-                              color: '#007AFF',
-                              fontSize: 13,
-                            }}>
-                            •
-                          </Text>
-                          <Text
-                            style={{
-                              color: c.text,
-                              fontSize: 13,
-                              flex: 1,
-                            }}>
+                        <View key={i} style={{ flexDirection: 'row', gap: 8, marginBottom: 6 }}>
+                          <Text style={{ color: '#007AFF', fontSize: 13 }}>•</Text>
+                          <Text style={{ color: c.text, fontSize: 13, flex: 1 }}>
                             {change}
                           </Text>
                         </View>
@@ -521,13 +433,7 @@ export function SettingsPanel({ visible, onClose, onSignOut, onShowOnboarding }:
                     borderColor: c.border,
                     alignItems: 'center',
                   }}>
-                  <Text
-                    style={{
-                      color: c.text,
-                      fontWeight: '600',
-                    }}>
-                    Close
-                  </Text>
+                  <Text style={{ color: c.text, fontWeight: '600' }}>Close</Text>
                 </Pressable>
               </View>
             </Modal>
