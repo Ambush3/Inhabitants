@@ -1,5 +1,17 @@
 export const changelog = [
   {
+    version: '1.5',
+    date: 'May 2026',
+    changes: [
+      'Spot Passport — check in at spots and track every visit on your profile',
+      'Check-ins appear in your friends feed with a 24hr same-spot cooldown',
+      'Public Check-ins toggle in Settings to control your privacy',
+      'Offline mode — spots load from cache when you lose signal',
+      'Redesigned spot details with unified rating card and labeled action toolbar',
+      "What's New popup shown once after each update",
+    ],
+  },
+  {
     version: '1.4',
     date: 'May 2026',
     changes: [
