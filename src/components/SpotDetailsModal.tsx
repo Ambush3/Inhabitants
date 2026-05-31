@@ -22,10 +22,12 @@ import {
 import { Spot, Review } from '@/src/types';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import * as Haptics from 'expo-haptics';
 import * as Location from 'expo-location';
 import { useTheme } from '@/src/context/ThemeContext';
 
 import { CONDITION_META, SpotCondition } from '@/src/hooks/useSpotConditions';
+import { useCheckIns } from '@/src/hooks/useCheckIns';
 
 import { SpotCommentsModal } from '@/src/components/SpotCommentsModal';
 import { CollectionsModal } from '@/src/components/CollectionsModal';
@@ -291,6 +293,12 @@ export function SpotDetailsModal({
     }
   }, [visible]);
 
+  useEffect(() => {
+    if (!spot || !visible) return;
+    getVisitorCount(spot.id).then(setVisitorCount);
+    hasCheckedInWithinCooldown(spot.id).then(setAlreadyCheckedInToday);
+  }, [spot?.id, visible]);
+
   function handleFlag() {
     if (isFlaggedByMe) {
       onToggleFlag(undefined);
@@ -319,6 +327,10 @@ export function SpotDetailsModal({
     await onUploadImages(pendingImages);
     setPendingImages([]);
   }
+
+  const { checkIn, checkingIn, getVisitorCount, hasCheckedInWithinCooldown } = useCheckIns();
+  const [visitorCount, setVisitorCount] = useState<number | null>(null);
+  const [alreadyCheckedInToday, setAlreadyCheckedInToday] = useState(false);
 
   const isOwner = spot?.user_id === currentUserId;
 
@@ -526,7 +538,7 @@ export function SpotDetailsModal({
               </View>
             ) : (
               <View style={[styles.ratingCard, { backgroundColor: c.tagBg }]}>
-                {/* Left: aggregate */}
+                {/* Left: aggregate + visitor count + check-in pill */}
                 <View style={{ flex: 1 }}>
                   {reviews.length > 0 ? (
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -544,11 +556,85 @@ export function SpotDetailsModal({
                   ) : (
                     <Text style={{ fontSize: 13, color: c.subtext }}>No ratings yet</Text>
                   )}
+                  <Text style={{ fontSize: 12, color: c.subtext, marginTop: 4 }}>
+                    {visitorCount !== null && visitorCount > 0
+                      ? `${visitorCount} ${visitorCount === 1 ? 'skater has' : 'skaters have'} visited this spot`
+                      : 'No check-ins yet'}
+                  </Text>
+                  <Pressable
+                    onPress={async () => {
+                      if (!spot) return;
+                      if (alreadyCheckedInToday) {
+                        Alert.alert(
+                          'Check in again?',
+                          "You already checked in here today. This will add another visit to your passport but won't post to your feed.",
+                          [
+                            { text: 'Cancel', style: 'cancel' },
+                            {
+                              text: 'Check In Again',
+                              onPress: async () => {
+                                const result = await checkIn(spot.id);
+                                if (result.success) {
+                                  await Haptics.notificationAsync(
+                                    Haptics.NotificationFeedbackType.Success
+                                  );
+                                }
+                              },
+                            },
+                          ]
+                        );
+                        return;
+                      }
+                      const result = await checkIn(spot.id);
+                      if (result.success) {
+                        await Haptics.notificationAsync(
+                          Haptics.NotificationFeedbackType.Success
+                        );
+                        setAlreadyCheckedInToday(true);
+                        setVisitorCount((prev) => (prev === null ? 1 : prev + 1));
+                        Alert.alert(
+                          'Checked in!',
+                          'Added to your passport and shared to your feed.'
+                        );
+                      }
+                    }}
+                    disabled={checkingIn}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 4,
+                      paddingHorizontal: 10,
+                      paddingVertical: 5,
+                      borderRadius: 20,
+                      marginTop: 6,
+                      alignSelf: 'flex-start',
+                      backgroundColor: alreadyCheckedInToday
+                        ? 'rgba(52,199,89,0.12)'
+                        : 'transparent',
+                      borderWidth: 1,
+                      borderColor: alreadyCheckedInToday ? '#34C759' : c.border,
+                    }}>
+                    <Ionicons
+                      name={
+                        alreadyCheckedInToday ? 'checkmark-circle-outline' : 'location-outline'
+                      }
+                      size={13}
+                      color={alreadyCheckedInToday ? '#34C759' : c.subtext}
+                    />
+                    <Text
+                      style={{
+                        fontSize: 12,
+                        fontWeight: '600',
+                        color: alreadyCheckedInToday ? '#34C759' : c.subtext,
+                      }}>
+                      {alreadyCheckedInToday ? 'Checked In' : 'Check In'}
+                    </Text>
+                  </Pressable>
                 </View>
 
                 {/* Right: your rating (spot type only) */}
                 {spot?.spot_type === 'spot' ? (
-                  <View style={{ alignItems: 'flex-end', gap: 2 }}>
+                  <View style={{ alignItems: 'flex-end', gap: 2, alignSelf: 'flex-start' }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                       <Text
                         style={{
@@ -886,8 +972,10 @@ export function SpotDetailsModal({
           setCommentsOpen(false);
           setTimeout(() => {
             onClose();
-            onViewProfile?.(userId);
-          }, 400);
+            setTimeout(() => {
+              onViewProfile?.(userId);
+            }, 350);
+          }, 350);
         }}
       />
 

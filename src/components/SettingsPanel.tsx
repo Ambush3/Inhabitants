@@ -32,6 +32,8 @@ export function SettingsPanel({ visible, onClose, onSignOut, onShowOnboarding }:
   const { prefs, loadPrefs, updatePref } = useNotificationPreferences();
   const [notifSectionOpen, setNotifSectionOpen] = useState(false);
 
+  const [publicCheckIns, setPublicCheckIns] = useState(true);
+
   useEffect(() => {
     if (visible) loadPrefs();
   }, [visible]);
@@ -43,6 +45,12 @@ export function SettingsPanel({ visible, onClose, onSignOut, onShowOnboarding }:
       } = await supabase.auth.getUser();
       if (!user) return;
       const { data } = await supabase.from('profiles').select('avatar_url, username').eq('id', user.id).single();
+      const { data: prefData } = await supabase
+        .from('profiles')
+        .select('public_check_ins')
+        .eq('id', user.id)
+        .single();
+      setPublicCheckIns(prefData?.public_check_ins ?? true);
       setAvatarUrl(data?.avatar_url ?? null);
       setUsername(data?.username ?? null);
     }
@@ -264,6 +272,35 @@ export function SettingsPanel({ visible, onClose, onSignOut, onShowOnboarding }:
               <Switch value={darkMode} onValueChange={toggleDarkMode} />
             </View>
 
+            <View
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                paddingVertical: 14,
+                borderBottomWidth: 1,
+                borderColor: c.border,
+              }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <Ionicons name="location-outline" size={20} color={c.text} />
+                <Text style={{ fontSize: 15, color: c.text }}>Public Check-ins</Text>
+              </View>
+              <Switch
+                value={publicCheckIns}
+                onValueChange={async (v) => {
+                  setPublicCheckIns(v);
+                  const {
+                    data: { user },
+                  } = await supabase.auth.getUser();
+                  if (user) {
+                    await supabase
+                      .from('profiles')
+                      .update({ public_check_ins: v })
+                      .eq('id', user.id);
+                  }
+                }}
+              />
+            </View>
             <Pressable
               onPress={handleResetPassword}
               style={{

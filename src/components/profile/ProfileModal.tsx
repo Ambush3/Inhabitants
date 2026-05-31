@@ -18,6 +18,7 @@ import { useTheme } from '@/src/context/ThemeContext';
 import { Spot } from '@/src/types';
 import { useFriendships, Friend } from '@/src/hooks/social/useFriendships';
 import { useCollections, Collection } from '@/src/hooks/useCollections';
+import { useCheckIns, PassportEntry } from '@/src/hooks/useCheckIns';
 import { sendFriendAcceptedNotification } from '@/src/libs/sendPushNotification';
 import { moderateText } from '@/src/libs/moderator/textModerator';
 
@@ -42,7 +43,7 @@ type Props = {
   onViewProfile?: (userId: string) => void;
 };
 
-type Tab = 'spots' | 'reviews' | 'friends' | 'collections';
+type Tab = 'spots' | 'reviews' | 'friends' | 'collections' | 'passport';
 
 export function ProfileModal({
   visible,
@@ -96,6 +97,9 @@ export function ProfileModal({
 
   const { loadPendingRequests, acceptFriendRequest, removeFriend, pendingReceived, loadFriends, friends } =
     useFriendships();
+
+  const { loadPassport, passportEntries, passportLoading, togglePrivacy, deleteCheckIn } = useCheckIns();
+  const [expandedPassportSpot, setExpandedPassportSpot] = useState<string | null>(null);
 
   function toggleFriendSelected(id: string) {
     setSelectedFriendIds((prev) => {
@@ -175,16 +179,17 @@ export function ProfileModal({
     onLoadMyReviews();
     loadPendingRequests();
     loadFriends();
+    loadPassport();
   }, [visible]);
 
   const myActualSpots = mySpots.filter((s) => s.spot_type === 'spot');
-
   const avgRatingGiven =
     myReviews.length === 0 ? null : myReviews.reduce((sum, r) => sum + r.rating, 0) / myReviews.length;
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
       <SafeAreaView style={{ flex: 1, backgroundColor: c.surface }}>
+        {/* ── Header ── */}
         <View
           style={{
             flexDirection: 'row',
@@ -197,14 +202,7 @@ export function ProfileModal({
           <Pressable onPress={onClose} style={{ padding: 4 }}>
             <Ionicons name="close" size={24} color={c.text} />
           </Pressable>
-          <Text
-            style={{
-              flex: 1,
-              textAlign: 'center',
-              fontSize: 16,
-              fontWeight: '700',
-              color: c.text,
-            }}>
+          <Text style={{ flex: 1, textAlign: 'center', fontSize: 16, fontWeight: '700', color: c.text }}>
             Profile
           </Text>
           <Pressable
@@ -215,28 +213,17 @@ export function ProfileModal({
               setEditOpen(true);
             }}
             style={{ padding: 4 }}>
-            <Text
-              style={{
-                fontSize: 14,
-                color: '#007AFF',
-                fontWeight: '600',
-              }}>
-              Edit
-            </Text>
+            <Text style={{ fontSize: 14, color: '#007AFF', fontWeight: '600' }}>Edit</Text>
           </Pressable>
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false}>
+          {/* ── Avatar + name ── */}
           <View style={{ alignItems: 'center', paddingVertical: 28 }}>
             {avatarUrl ? (
               <Image
                 source={{ uri: avatarUrl }}
-                style={{
-                  width: 90,
-                  height: 90,
-                  borderRadius: 45,
-                  marginBottom: 12,
-                }}
+                style={{ width: 90, height: 90, borderRadius: 45, marginBottom: 12 }}
               />
             ) : (
               <View
@@ -253,13 +240,7 @@ export function ProfileModal({
               </View>
             )}
             {firstName || lastName ? (
-              <Text
-                style={{
-                  fontSize: 22,
-                  fontWeight: '700',
-                  color: c.text,
-                  marginBottom: 2,
-                }}>
+              <Text style={{ fontSize: 22, fontWeight: '700', color: c.text, marginBottom: 2 }}>
                 {[firstName, lastName].filter(Boolean).join(' ')}
               </Text>
             ) : null}
@@ -276,11 +257,7 @@ export function ProfileModal({
             ) : null}
             {joinDate ? (
               <Text style={{ fontSize: 13, color: c.subtext }}>
-                Joined
-                {new Date(joinDate).toLocaleDateString([], {
-                  month: 'long',
-                  year: 'numeric',
-                })}
+                Joined {new Date(joinDate).toLocaleDateString([], { month: 'long', year: 'numeric' })}
               </Text>
             ) : null}
             {badge ? (
@@ -324,6 +301,7 @@ export function ProfileModal({
             ) : null}
           </View>
 
+          {/* ── Pending friend requests ── */}
           {pendingReceived.length > 0 ? (
             <View
               style={{
@@ -333,13 +311,7 @@ export function ProfileModal({
                 backgroundColor: c.tagBg,
                 padding: 12,
               }}>
-              <Text
-                style={{
-                  fontSize: 13,
-                  fontWeight: '700',
-                  color: c.text,
-                  marginBottom: 10,
-                }}>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: c.text, marginBottom: 10 }}>
                 Friend Requests ({pendingReceived.length})
               </Text>
               {pendingReceived.map((f) => (
@@ -356,11 +328,7 @@ export function ProfileModal({
                   {f.avatar_url ? (
                     <Image
                       source={{ uri: f.avatar_url }}
-                      style={{
-                        width: 36,
-                        height: 36,
-                        borderRadius: 18,
-                      }}
+                      style={{ width: 36, height: 36, borderRadius: 18 }}
                     />
                   ) : (
                     <View
@@ -375,14 +343,7 @@ export function ProfileModal({
                       <Ionicons name="person-outline" size={18} color={c.subtext} />
                     </View>
                   )}
-                  <Text
-                    style={{
-                      flex: 1,
-                      fontWeight: '600',
-                      color: c.text,
-                    }}>
-                    @{f.username}
-                  </Text>
+                  <Text style={{ flex: 1, fontWeight: '600', color: c.text }}>@{f.username}</Text>
                   <Pressable
                     onPress={async () => {
                       await acceptFriendRequest(f.id);
@@ -391,9 +352,8 @@ export function ProfileModal({
                       const {
                         data: { user },
                       } = await supabase.auth.getUser();
-                      if (username && user) {
+                      if (username && user)
                         sendFriendAcceptedNotification(f.id, username, user.id);
-                      }
                     }}
                     style={{
                       backgroundColor: '#007AFF',
@@ -401,14 +361,7 @@ export function ProfileModal({
                       paddingHorizontal: 12,
                       paddingVertical: 6,
                     }}>
-                    <Text
-                      style={{
-                        color: 'white',
-                        fontWeight: '600',
-                        fontSize: 13,
-                      }}>
-                      Accept
-                    </Text>
+                    <Text style={{ color: 'white', fontWeight: '600', fontSize: 13 }}>Accept</Text>
                   </Pressable>
                   <Pressable
                     onPress={async () => {
@@ -422,12 +375,7 @@ export function ProfileModal({
                       paddingHorizontal: 12,
                       paddingVertical: 6,
                     }}>
-                    <Text
-                      style={{
-                        color: c.subtext,
-                        fontWeight: '600',
-                        fontSize: 13,
-                      }}>
+                    <Text style={{ color: c.subtext, fontWeight: '600', fontSize: 13 }}>
                       Decline
                     </Text>
                   </Pressable>
@@ -436,6 +384,7 @@ export function ProfileModal({
             </View>
           ) : null}
 
+          {/* ── Stats row ── */}
           <View
             style={{
               flexDirection: 'row',
@@ -453,22 +402,10 @@ export function ProfileModal({
                 borderRightWidth: 1,
                 borderColor: c.border,
               }}>
-              <Text
-                style={{
-                  fontSize: 22,
-                  fontWeight: '700',
-                  color: c.text,
-                }}>
+              <Text style={{ fontSize: 22, fontWeight: '700', color: c.text }}>
                 {myActualSpots.length}
               </Text>
-              <Text
-                style={{
-                  fontSize: 12,
-                  color: c.subtext,
-                  marginTop: 2,
-                }}>
-                Spots
-              </Text>
+              <Text style={{ fontSize: 12, color: c.subtext, marginTop: 2 }}>Spots</Text>
             </View>
             <View
               style={{
@@ -478,48 +415,31 @@ export function ProfileModal({
                 borderRightWidth: 1,
                 borderColor: c.border,
               }}>
-              <Text
-                style={{
-                  fontSize: 22,
-                  fontWeight: '700',
-                  color: c.text,
-                }}>
-                {myReviews.length}
-              </Text>
-              <Text
-                style={{
-                  fontSize: 12,
-                  color: c.subtext,
-                  marginTop: 2,
-                }}>
-                Reviews
-              </Text>
+              <Text style={{ fontSize: 22, fontWeight: '700', color: c.text }}>{myReviews.length}</Text>
+              <Text style={{ fontSize: 12, color: c.subtext, marginTop: 2 }}>Reviews</Text>
             </View>
             <View
               style={{
                 flex: 1,
                 alignItems: 'center',
                 paddingVertical: 16,
+                borderRightWidth: 1,
+                borderColor: c.border,
               }}>
-              <Text
-                style={{
-                  fontSize: 22,
-                  fontWeight: '700',
-                  color: c.text,
-                }}>
+              <Text style={{ fontSize: 22, fontWeight: '700', color: c.text }}>
+                {passportEntries.length}
+              </Text>
+              <Text style={{ fontSize: 12, color: c.subtext, marginTop: 2 }}>Visited</Text>
+            </View>
+            <View style={{ flex: 1, alignItems: 'center', paddingVertical: 16 }}>
+              <Text style={{ fontSize: 22, fontWeight: '700', color: c.text }}>
                 {avgRatingGiven ? avgRatingGiven.toFixed(1) : '—'}
               </Text>
-              <Text
-                style={{
-                  fontSize: 12,
-                  color: c.subtext,
-                  marginTop: 2,
-                }}>
-                Avg Rating
-              </Text>
+              <Text style={{ fontSize: 12, color: c.subtext, marginTop: 2 }}>Avg Rating</Text>
             </View>
           </View>
 
+          {/* ── Tab row ── */}
           <View
             style={{
               flexDirection: 'row',
@@ -529,7 +449,7 @@ export function ProfileModal({
               backgroundColor: c.tagBg,
               padding: 4,
             }}>
-            {(['spots', 'reviews', 'collections', 'friends'] as Tab[]).map((tab) => (
+            {(['spots', 'reviews', 'collections', 'friends', 'passport'] as Tab[]).map((tab) => (
               <Pressable
                 key={tab}
                 onPress={() => {
@@ -545,7 +465,7 @@ export function ProfileModal({
                 }}>
                 <Text
                   style={{
-                    fontSize: 11,
+                    fontSize: 10,
                     fontWeight: '600',
                     color: activeTab === tab ? c.text : c.subtext,
                   }}>
@@ -555,21 +475,20 @@ export function ProfileModal({
                       ? 'Reviews'
                       : tab === 'friends'
                         ? `Friends (${friends.length})`
-                        : 'Collections'}
+                        : tab === 'collections'
+                          ? 'Lists'
+                          : 'Passport'}
                 </Text>
               </Pressable>
             ))}
           </View>
+
+          {/* ── Tab content ── */}
           <View style={{ paddingHorizontal: 16, paddingBottom: 32 }}>
+            {/* Spots */}
             {activeTab === 'spots' ? (
               myActualSpots.length === 0 ? (
-                <Text
-                  style={{
-                    color: c.subtext,
-                    fontSize: 14,
-                    textAlign: 'center',
-                    marginTop: 24,
-                  }}>
+                <Text style={{ color: c.subtext, fontSize: 14, textAlign: 'center', marginTop: 24 }}>
                   {"You haven't created any spots yet."}
                 </Text>
               ) : (
@@ -590,20 +509,9 @@ export function ProfileModal({
                     }}>
                     <Ionicons name="location-outline" size={16} color={c.subtext} />
                     <View style={{ flex: 1 }}>
-                      <Text
-                        style={{
-                          fontWeight: '600',
-                          color: c.text,
-                        }}>
-                        {s.name}
-                      </Text>
+                      <Text style={{ fontWeight: '600', color: c.text }}>{s.name}</Text>
                       {s.tags?.length > 0 ? (
-                        <Text
-                          style={{
-                            fontSize: 12,
-                            color: c.subtext,
-                            marginTop: 2,
-                          }}>
+                        <Text style={{ fontSize: 12, color: c.subtext, marginTop: 2 }}>
                           {s.tags.map((t) => `#${t}`).join(' ')}
                         </Text>
                       ) : null}
@@ -615,462 +523,544 @@ export function ProfileModal({
                   </Pressable>
                 ))
               )
-            ) : activeTab === 'reviews' ? (
-              myReviews.length === 0 ? (
-                <Text
-                  style={{
-                    color: c.subtext,
-                    fontSize: 14,
-                    textAlign: 'center',
-                    marginTop: 24,
-                  }}>
-                  {"You haven't left any reviews yet."}
-                </Text>
-              ) : (
-                myReviews.map((r) => (
-                  <Pressable
-                    key={r.id}
-                    onPress={() => {
-                      const spot = allSpots.find((s) => s.id === r.spot_id);
-                      if (spot) {
-                        onSelectSpot(spot);
-                        onClose();
-                      }
-                    }}
-                    style={{
-                      paddingVertical: 14,
-                      borderBottomWidth: 1,
-                      borderColor: c.border,
-                    }}>
-                    <Text
-                      style={{
-                        fontWeight: '700',
-                        color: c.text,
-                        marginBottom: 4,
-                      }}>
-                      {r.spot_name}
-                    </Text>
-                    <Text
-                      style={{
-                        fontSize: 14,
-                        color: '#F5A623',
-                        letterSpacing: 1,
-                        marginBottom: 4,
-                      }}>
-                      {'★'.repeat(r.rating)}
-                      {'☆'.repeat(5 - r.rating)}
-                    </Text>
-                    {r.comment ? (
+            ) : /* Reviews */
+              activeTab === 'reviews' ? (
+                myReviews.length === 0 ? (
+                  <Text style={{ color: c.subtext, fontSize: 14, textAlign: 'center', marginTop: 24 }}>
+                    {"You haven't left any reviews yet."}
+                  </Text>
+                ) : (
+                  myReviews.map((r) => (
+                    <Pressable
+                      key={r.id}
+                      onPress={() => {
+                        const spot = allSpots.find((s) => s.id === r.spot_id);
+                        if (spot) {
+                          onSelectSpot(spot);
+                          onClose();
+                        }
+                      }}
+                      style={{ paddingVertical: 14, borderBottomWidth: 1, borderColor: c.border }}>
+                      <Text style={{ fontWeight: '700', color: c.text, marginBottom: 4 }}>
+                        {r.spot_name}
+                      </Text>
                       <Text
                         style={{
                           fontSize: 14,
-                          color: c.text,
-                          lineHeight: 20,
+                          color: '#F5A623',
+                          letterSpacing: 1,
                           marginBottom: 4,
                         }}>
-                        {r.comment}
+                        {'★'.repeat(r.rating)}
+                        {'☆'.repeat(5 - r.rating)}
                       </Text>
-                    ) : null}
-                    <Text
-                      style={{
-                        fontSize: 11,
-                        color: c.subtext,
-                      }}>
-                      {new Date(r.created_at).toLocaleDateString([], {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
-                      })}
-                    </Text>
-                  </Pressable>
-                ))
-              )
-            ) : activeTab === 'friends' ? (
-              <>
-                <View style={{ marginBottom: 16 }}>
-                  <TextInput
-                    value={userSearchQuery}
-                    onChangeText={(text) => {
-                      setUserSearchQuery(text);
-                      searchUsers(text);
-                    }}
-                    placeholder="Search users by username..."
-                    placeholderTextColor={c.placeholder}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    style={{
-                      borderWidth: 1,
-                      borderColor: c.inputBorder,
-                      borderRadius: 10,
-                      padding: 12,
-                      fontSize: 14,
-                      color: c.text,
-                      backgroundColor: c.surface,
-                      marginBottom: 8,
-                    }}
-                  />
-                  {userSearchLoading ? (
-                    <Text
-                      style={{
-                        color: c.subtext,
-                        fontSize: 13,
-                      }}>
-                      Searching...
-                    </Text>
-                  ) : userSearchResults.length > 0 ? (
-                    userSearchResults.map((u) => (
-                      <Pressable
-                        key={u.id}
-                        onPress={() => {
-                          setUserSearchQuery('');
-                          setUserSearchResults([]);
-                          onViewProfile?.(u.id);
-                        }}
-                        style={{
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          paddingVertical: 10,
-                          borderBottomWidth: 1,
-                          borderColor: c.border,
-                          gap: 10,
-                        }}>
-                        {u.avatar_url ? (
-                          <Image
-                            source={{
-                              uri: u.avatar_url,
-                            }}
-                            style={{
-                              width: 36,
-                              height: 36,
-                              borderRadius: 18,
-                            }}
-                          />
-                        ) : (
-                          <View
-                            style={{
-                              width: 36,
-                              height: 36,
-                              borderRadius: 18,
-                              backgroundColor: c.tagBg,
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                            }}>
-                            <Ionicons name="person-outline" size={18} color={c.subtext} />
-                          </View>
-                        )}
+                      {r.comment ? (
                         <Text
                           style={{
-                            flex: 1,
-                            fontWeight: '600',
+                            fontSize: 14,
                             color: c.text,
+                            lineHeight: 20,
+                            marginBottom: 4,
                           }}>
-                          @{u.username}
+                          {r.comment}
                         </Text>
-                        {friends.some((f) => f.id === u.id) ? (
+                      ) : null}
+                      <Text style={{ fontSize: 11, color: c.subtext }}>
+                        {new Date(r.created_at).toLocaleDateString([], {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                        })}
+                      </Text>
+                    </Pressable>
+                  ))
+                )
+              ) : /* Friends */
+                activeTab === 'friends' ? (
+                  <>
+                    <View style={{ marginBottom: 16 }}>
+                      <TextInput
+                        value={userSearchQuery}
+                        onChangeText={(text) => {
+                          setUserSearchQuery(text);
+                          searchUsers(text);
+                        }}
+                        placeholder="Search users by username..."
+                        placeholderTextColor={c.placeholder}
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        style={{
+                          borderWidth: 1,
+                          borderColor: c.inputBorder,
+                          borderRadius: 10,
+                          padding: 12,
+                          fontSize: 14,
+                          color: c.text,
+                          backgroundColor: c.surface,
+                          marginBottom: 8,
+                        }}
+                      />
+                      {userSearchLoading ? (
+                        <Text style={{ color: c.subtext, fontSize: 13 }}>Searching...</Text>
+                      ) : userSearchResults.length > 0 ? (
+                        userSearchResults.map((u) => (
+                          <Pressable
+                            key={u.id}
+                            onPress={() => {
+                              setUserSearchQuery('');
+                              setUserSearchResults([]);
+                              onViewProfile?.(u.id);
+                            }}
+                            style={{
+                              flexDirection: 'row',
+                              alignItems: 'center',
+                              paddingVertical: 10,
+                              borderBottomWidth: 1,
+                              borderColor: c.border,
+                              gap: 10,
+                            }}>
+                            {u.avatar_url ? (
+                              <Image
+                                source={{ uri: u.avatar_url }}
+                                style={{ width: 36, height: 36, borderRadius: 18 }}
+                              />
+                            ) : (
+                              <View
+                                style={{
+                                  width: 36,
+                                  height: 36,
+                                  borderRadius: 18,
+                                  backgroundColor: c.tagBg,
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                }}>
+                                <Ionicons name="person-outline" size={18} color={c.subtext} />
+                              </View>
+                            )}
+                            <Text style={{ flex: 1, fontWeight: '600', color: c.text }}>
+                              @{u.username}
+                            </Text>
+                            {friends.some((f) => f.id === u.id) ? (
+                              <View
+                                style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                                <Ionicons name="checkmark-circle" size={16} color="#34C759" />
+                                <Text
+                                  style={{
+                                    fontSize: 12,
+                                    color: '#34C759',
+                                    fontWeight: '600',
+                                  }}>
+                                  Friends
+                                </Text>
+                              </View>
+                            ) : (
+                              <Ionicons name="chevron-forward" size={16} color={c.subtext} />
+                            )}
+                          </Pressable>
+                        ))
+                      ) : null}
+                    </View>
+                    {friends.length === 0 ? (
+                      <Text
+                        style={{ color: c.subtext, fontSize: 14, textAlign: 'center', marginTop: 24 }}>
+                        No friends yet. Find skaters and add them!
+                      </Text>
+                    ) : (
+                      <>
+                        {selectionMode ? (
                           <View
                             style={{
                               flexDirection: 'row',
                               alignItems: 'center',
-                              gap: 4,
+                              justifyContent: 'space-between',
+                              paddingVertical: 8,
+                              paddingHorizontal: 4,
+                              marginBottom: 4,
+                              borderBottomWidth: 1,
+                              borderColor: c.border,
                             }}>
-                            <Ionicons name="checkmark-circle" size={16} color="#34C759" />
-                            <Text
-                              style={{
-                                fontSize: 12,
-                                color: '#34C759',
-                                fontWeight: '600',
-                              }}>
-                              Friends
+                            <Pressable onPress={exitSelection} disabled={bulkRemoving}>
+                              <Text style={{ color: '#007AFF', fontWeight: '600', fontSize: 14 }}>
+                                Cancel
+                              </Text>
+                            </Pressable>
+                            <Text style={{ color: c.text, fontWeight: '600', fontSize: 14 }}>
+                              {selectedFriendIds.size} selected
                             </Text>
+                            <Pressable
+                              disabled={selectedFriendIds.size === 0 || bulkRemoving}
+                              onPress={() =>
+                                Alert.alert(
+                                  `Remove ${selectedFriendIds.size} friend${selectedFriendIds.size === 1 ? '' : 's'}?`,
+                                  undefined,
+                                  [
+                                    { text: 'Cancel', style: 'cancel' },
+                                    {
+                                      text: 'Remove',
+                                      style: 'destructive',
+                                      onPress: bulkRemoveSelected,
+                                    },
+                                  ]
+                                )
+                              }>
+                              <Ionicons
+                                name="trash-outline"
+                                size={22}
+                                color={
+                                  selectedFriendIds.size === 0 || bulkRemoving
+                                    ? c.subtext
+                                    : c.danger
+                                }
+                              />
+                            </Pressable>
                           </View>
-                        ) : (
-                          <Ionicons name="chevron-forward" size={16} color={c.subtext} />
-                        )}
-                      </Pressable>
-                    ))
-                  ) : null}
-                </View>
-                {friends.length === 0 ? (
-                  <Text
-                    style={{
-                      color: c.subtext,
-                      fontSize: 14,
-                      textAlign: 'center',
-                      marginTop: 24,
-                    }}>
-                    No friends yet. Find skaters and add them!
-                  </Text>
-                ) : (
-                  <>
-                    {selectionMode ? (
-                      <View
-                        style={{
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          paddingVertical: 8,
-                          paddingHorizontal: 4,
-                          marginBottom: 4,
-                          borderBottomWidth: 1,
-                          borderColor: c.border,
-                        }}>
-                        <Pressable onPress={exitSelection} disabled={bulkRemoving}>
+                        ) : null}
+                        {friends.map((f) => {
+                          const selected = selectedFriendIds.has(f.id);
+                          return (
+                            <Pressable
+                              key={f.id}
+                              onLongPress={() => {
+                                if (!selectionMode) setSelectionMode(true);
+                                toggleFriendSelected(f.id);
+                              }}
+                              onPress={() => {
+                                if (selectionMode) toggleFriendSelected(f.id);
+                                else onViewProfile?.(f.id);
+                              }}
+                              style={{
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                paddingVertical: 12,
+                                borderBottomWidth: 1,
+                                borderColor: c.border,
+                                gap: 10,
+                                backgroundColor: selected ? c.tagBg : 'transparent',
+                              }}>
+                              {f.avatar_url ? (
+                                <Image
+                                  source={{ uri: f.avatar_url }}
+                                  style={{ width: 40, height: 40, borderRadius: 20 }}
+                                />
+                              ) : (
+                                <View
+                                  style={{
+                                    width: 40,
+                                    height: 40,
+                                    borderRadius: 20,
+                                    backgroundColor: c.tagBg,
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                  }}>
+                                  <Ionicons
+                                    name="person-outline"
+                                    size={20}
+                                    color={c.subtext}
+                                  />
+                                </View>
+                              )}
+                              <Text style={{ flex: 1, fontWeight: '600', color: c.text }}>
+                                @{f.username}
+                              </Text>
+                              {selectionMode ? (
+                                <Ionicons
+                                  name={selected ? 'checkbox' : 'square-outline'}
+                                  size={22}
+                                  color={selected ? '#007AFF' : c.subtext}
+                                />
+                              ) : (
+                                <Ionicons name="chevron-forward" size={16} color={c.subtext} />
+                              )}
+                            </Pressable>
+                          );
+                        })}
+                      </>
+                    )}
+                  </>
+                ) : /* Collections */
+                  activeTab === 'collections' ? (
+                    <>
+                      {selectedCollection ? (
+                        <>
+                          <Pressable
+                            onPress={() => {
+                              setSelectedCollection(null);
+                              setCollectionSpots([]);
+                            }}
+                            style={{
+                              flexDirection: 'row',
+                              alignItems: 'center',
+                              gap: 6,
+                              marginBottom: 16,
+                            }}>
+                            <Ionicons name="chevron-back" size={18} color="#007AFF" />
+                            <Text style={{ color: '#007AFF', fontWeight: '600', fontSize: 14 }}>
+                              Collections
+                            </Text>
+                          </Pressable>
                           <Text
                             style={{
-                              color: '#007AFF',
-                              fontWeight: '600',
-                              fontSize: 14,
+                              fontWeight: '700',
+                              fontSize: 16,
+                              color: c.text,
+                              marginBottom: 16,
                             }}>
-                            Cancel
+                            {selectedCollection.name}
                           </Text>
-                        </Pressable>
-                        <Text
-                          style={{
-                            color: c.text,
-                            fontWeight: '600',
-                            fontSize: 14,
-                          }}>
-                          {selectedFriendIds.size} selected
-                        </Text>
-                        <Pressable
-                          disabled={selectedFriendIds.size === 0 || bulkRemoving}
-                          onPress={() => {
-                            Alert.alert(
-                              `Remove ${selectedFriendIds.size} friend${selectedFriendIds.size === 1 ? '' : 's'}?`,
-                              undefined,
-                              [
-                                {
-                                  text: 'Cancel',
-                                  style: 'cancel',
-                                },
-                                {
-                                  text: 'Remove',
-                                  style: 'destructive',
-                                  onPress: bulkRemoveSelected,
-                                },
-                              ]
-                            );
-                          }}>
-                          <Ionicons
-                            name="trash-outline"
-                            size={22}
-                            color={
-                              selectedFriendIds.size === 0 || bulkRemoving
-                                ? c.subtext
-                                : c.danger
-                            }
-                          />
-                        </Pressable>
-                      </View>
-                    ) : null}
-                    {friends.map((f) => {
-                      const selected = selectedFriendIds.has(f.id);
-                      return (
-                        <Pressable
-                          key={f.id}
-                          onLongPress={() => {
-                            if (!selectionMode) {
-                              setSelectionMode(true);
-                            }
-                            toggleFriendSelected(f.id);
-                          }}
-                          onPress={() => {
-                            if (selectionMode) {
-                              toggleFriendSelected(f.id);
-                            } else {
-                              onViewProfile?.(f.id);
-                            }
-                          }}
-                          style={{
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            paddingVertical: 12,
-                            borderBottomWidth: 1,
-                            borderColor: c.border,
-                            gap: 10,
-                            backgroundColor: selected ? c.tagBg : 'transparent',
-                          }}>
-                          {f.avatar_url ? (
-                            <Image
-                              source={{
-                                uri: f.avatar_url,
-                              }}
+                          {collectionSpotsLoading ? (
+                            <Text style={{ color: c.subtext, textAlign: 'center', marginTop: 24 }}>
+                              Loading...
+                            </Text>
+                          ) : collectionSpots.length === 0 ? (
+                            <Text
                               style={{
-                                width: 40,
-                                height: 40,
-                                borderRadius: 20,
-                              }}
-                            />
+                                color: c.subtext,
+                                fontSize: 14,
+                                textAlign: 'center',
+                                marginTop: 24,
+                              }}>
+                              No spots in this collection yet.
+                            </Text>
                           ) : (
+                            collectionSpots.map((s) => (
+                              <Pressable
+                                key={s.id}
+                                onPress={() => {
+                                  onSelectSpot(s);
+                                  onClose();
+                                }}
+                                style={{
+                                  flexDirection: 'row',
+                                  alignItems: 'center',
+                                  paddingVertical: 12,
+                                  borderBottomWidth: 1,
+                                  borderColor: c.border,
+                                  gap: 10,
+                                }}>
+                                <Ionicons name="location-outline" size={16} color={c.subtext} />
+                                <Text style={{ flex: 1, fontWeight: '600', color: c.text }}>
+                                  {s.name}
+                                </Text>
+                                <Ionicons name="chevron-forward" size={16} color={c.subtext} />
+                              </Pressable>
+                            ))
+                          )}
+                        </>
+                      ) : collectionsLoading ? (
+                        <Text style={{ color: c.subtext, textAlign: 'center', marginTop: 24 }}>
+                          Loading...
+                        </Text>
+                      ) : collections.length === 0 ? (
+                        <Text
+                          style={{ color: c.subtext, fontSize: 14, textAlign: 'center', marginTop: 24 }}>
+                          No collections yet. Add spots to collections from the spot details page.
+                        </Text>
+                      ) : (
+                        collections.map((col) => (
+                          <Pressable
+                            key={col.id}
+                            onPress={async () => {
+                              setSelectedCollection(col);
+                              setCollectionSpotsLoading(true);
+                              const spots = await loadCollectionSpots(col.id);
+                              setCollectionSpots(spots);
+                              setCollectionSpotsLoading(false);
+                            }}
+                            style={{
+                              flexDirection: 'row',
+                              alignItems: 'center',
+                              paddingVertical: 14,
+                              borderBottomWidth: 1,
+                              borderColor: c.border,
+                              gap: 12,
+                            }}>
                             <View
                               style={{
                                 width: 40,
                                 height: 40,
-                                borderRadius: 20,
+                                borderRadius: 10,
                                 backgroundColor: c.tagBg,
                                 alignItems: 'center',
                                 justifyContent: 'center',
                               }}>
                               <Ionicons
-                                name="person-outline"
+                                name={col.name === 'Wishlist' ? 'star' : 'folder'}
                                 size={20}
                                 color={c.subtext}
                               />
                             </View>
-                          )}
-                          <Text
+                            <View style={{ flex: 1 }}>
+                              <Text style={{ fontWeight: '600', fontSize: 14, color: c.text }}>
+                                {col.name}
+                              </Text>
+                              <Text style={{ fontSize: 12, color: c.subtext }}>
+                                {col.spot_count} {col.spot_count === 1 ? 'spot' : 'spots'}
+                              </Text>
+                            </View>
+                            <Ionicons name="chevron-forward" size={16} color={c.subtext} />
+                          </Pressable>
+                        ))
+                      )}
+                    </>
+                  ) : /* Passport */
+                    activeTab === 'passport' ? (
+                      <>
+                        <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
+                          <View
                             style={{
                               flex: 1,
-                              fontWeight: '600',
-                              color: c.text,
+                              backgroundColor: c.tagBg,
+                              borderRadius: 10,
+                              padding: 12,
+                              alignItems: 'center',
                             }}>
-                            @{f.username}
-                          </Text>
-                          {selectionMode ? (
-                            <Ionicons
-                              name={selected ? 'checkbox' : 'square-outline'}
-                              size={22}
-                              color={selected ? '#007AFF' : c.subtext}
-                            />
-                          ) : (
-                            <Ionicons name="chevron-forward" size={16} color={c.subtext} />
-                          )}
-                        </Pressable>
-                      );
-                    })}
-                  </>
-                )}
-              </>
-            ) : activeTab === 'collections' ? (
-              <>
-                {selectedCollection ? (
-                  <>
-                    <Pressable
-                      onPress={() => {
-                        setSelectedCollection(null);
-                        setCollectionSpots([]);
-                      }}
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        gap: 6,
-                        marginBottom: 16,
-                      }}>
-                      <Ionicons name="chevron-back" size={18} color="#007AFF" />
-                      <Text style={{ color: '#007AFF', fontWeight: '600', fontSize: 14 }}>
-                        Collections
-                      </Text>
-                    </Pressable>
-                    <Text
-                      style={{
-                        fontWeight: '700',
-                        fontSize: 16,
-                        color: c.text,
-                        marginBottom: 16,
-                      }}>
-                      {selectedCollection.name}
-                    </Text>
-                    {collectionSpotsLoading ? (
-                      <Text style={{ color: c.subtext, textAlign: 'center', marginTop: 24 }}>
-                        Loading...
-                      </Text>
-                    ) : collectionSpots.length === 0 ? (
-                      <Text
-                        style={{
-                          color: c.subtext,
-                          fontSize: 14,
-                          textAlign: 'center',
-                          marginTop: 24,
-                        }}>
-                        No spots in this collection yet.
-                      </Text>
-                    ) : (
-                      collectionSpots.map((s) => (
-                        <Pressable
-                          key={s.id}
-                          onPress={() => {
-                            onSelectSpot(s);
-                            onClose();
-                          }}
-                          style={{
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            paddingVertical: 12,
-                            borderBottomWidth: 1,
-                            borderColor: c.border,
-                            gap: 10,
-                          }}>
-                          <Ionicons name="location-outline" size={16} color={c.subtext} />
-                          <Text style={{ flex: 1, fontWeight: '600', color: c.text }}>
-                            {s.name}
-                          </Text>
-                          <Ionicons name="chevron-forward" size={16} color={c.subtext} />
-                        </Pressable>
-                      ))
-                    )}
-                  </>
-                ) : collectionsLoading ? (
-                  <Text style={{ color: c.subtext, textAlign: 'center', marginTop: 24 }}>
-                    Loading...
-                  </Text>
-                ) : collections.length === 0 ? (
-                  <Text
-                    style={{ color: c.subtext, fontSize: 14, textAlign: 'center', marginTop: 24 }}>
-                    No collections yet. Add spots to collections from the spot details page.
-                  </Text>
-                ) : (
-                  collections.map((col) => (
-                    <Pressable
-                      key={col.id}
-                      onPress={async () => {
-                        setSelectedCollection(col);
-                        setCollectionSpotsLoading(true);
-                        const spots = await loadCollectionSpots(col.id);
-                        setCollectionSpots(spots);
-                        setCollectionSpotsLoading(false);
-                      }}
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        paddingVertical: 14,
-                        borderBottomWidth: 1,
-                        borderColor: c.border,
-                        gap: 12,
-                      }}>
-                      <View
-                        style={{
-                          width: 40,
-                          height: 40,
-                          borderRadius: 10,
-                          backgroundColor: c.tagBg,
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}>
-                        <Ionicons
-                          name={col.name === 'Wishlist' ? 'star' : 'folder'}
-                          size={20}
-                          color={c.subtext}
-                        />
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={{ fontWeight: '600', fontSize: 14, color: c.text }}>
-                          {col.name}
-                        </Text>
-                        <Text style={{ fontSize: 12, color: c.subtext }}>
-                          {col.spot_count} {col.spot_count === 1 ? 'spot' : 'spots'}
-                        </Text>
-                      </View>
-                      <Ionicons name="chevron-forward" size={16} color={c.subtext} />
-                    </Pressable>
-                  ))
-                )}
-              </>
-            ) : null}
+                            <Text style={{ fontSize: 22, fontWeight: '700', color: c.text }}>
+                              {passportEntries.length}
+                            </Text>
+                            <Text style={{ fontSize: 12, color: c.subtext, marginTop: 2 }}>
+                              Spots Visited
+                            </Text>
+                          </View>
+                          <View
+                            style={{
+                              flex: 1,
+                              backgroundColor: c.tagBg,
+                              borderRadius: 10,
+                              padding: 12,
+                              alignItems: 'center',
+                            }}>
+                            <Text style={{ fontSize: 22, fontWeight: '700', color: c.text }}>
+                              {passportEntries.reduce((sum, e) => sum + e.visit_count, 0)}
+                            </Text>
+                            <Text style={{ fontSize: 12, color: c.subtext, marginTop: 2 }}>
+                              Total Check-ins
+                            </Text>
+                          </View>
+                        </View>
 
+                        {passportLoading ? (
+                          <Text style={{ color: c.subtext, textAlign: 'center', marginTop: 24 }}>
+                            Loading...
+                          </Text>
+                        ) : passportEntries.length === 0 ? (
+                          <Text
+                            style={{ color: c.subtext, fontSize: 14, textAlign: 'center', marginTop: 24 }}>
+                            No check-ins yet. Hit a spot and check in!
+                          </Text>
+                        ) : (
+                          passportEntries.map((entry) => {
+                            const expanded = expandedPassportSpot === entry.spot_id;
+                            return (
+                              <Pressable
+                                key={entry.spot_id}
+                                onPress={() => setExpandedPassportSpot(expanded ? null : entry.spot_id)}
+                                style={{
+                                  borderBottomWidth: 1,
+                                  borderColor: c.border,
+                                  paddingVertical: 14,
+                                }}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                                  <View
+                                    style={{
+                                      width: 40,
+                                      height: 40,
+                                      borderRadius: 10,
+                                      backgroundColor: 'rgba(52,199,89,0.12)',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                    }}>
+                                    <Ionicons name="location-outline" size={18} color="#34C759" />
+                                  </View>
+                                  <View style={{ flex: 1 }}>
+                                    <Text
+                                      style={{ fontWeight: '700', color: c.text, fontSize: 14 }}>
+                                      {entry.spot_name}
+                                    </Text>
+                                    <Text style={{ fontSize: 12, color: c.subtext, marginTop: 2 }}>
+                                      {entry.visit_count}{' '}
+                                      {entry.visit_count === 1 ? 'visit' : 'visits'} · Last{' '}
+                                      {new Date(entry.last_visited_at).toLocaleDateString([], {
+                                        month: 'short',
+                                        day: 'numeric',
+                                        year: 'numeric',
+                                      })}
+                                    </Text>
+                                  </View>
+                                  <Ionicons
+                                    name={expanded ? 'chevron-up' : 'chevron-down'}
+                                    size={16}
+                                    color={c.subtext}
+                                  />
+                                </View>
+
+                                {expanded ? (
+                                  <View style={{ marginTop: 12, gap: 8 }}>
+                                    {entry.visits.map((v) => (
+                                      <View
+                                        key={v.id}
+                                        style={{
+                                          flexDirection: 'row',
+                                          alignItems: 'center',
+                                          paddingLeft: 50,
+                                          gap: 8,
+                                        }}>
+                                        <Ionicons
+                                          name={
+                                            v.is_private
+                                              ? 'lock-closed-outline'
+                                              : 'earth-outline'
+                                          }
+                                          size={13}
+                                          color={c.subtext}
+                                        />
+                                        <Text
+                                          style={{ fontSize: 13, color: c.subtext, flex: 1 }}>
+                                          {new Date(v.checked_in_at).toLocaleDateString([], {
+                                            month: 'short',
+                                            day: 'numeric',
+                                            year: 'numeric',
+                                            hour: '2-digit',
+                                            minute: '2-digit',
+                                          })}
+                                        </Text>
+                                        <Pressable
+                                          onPress={() => togglePrivacy(v.id, !v.is_private)}>
+                                          <Text style={{ fontSize: 12, color: '#007AFF' }}>
+                                            {v.is_private ? 'Make public' : 'Make private'}
+                                          </Text>
+                                        </Pressable>
+                                        <Pressable
+                                          onPress={() =>
+                                            Alert.alert('Delete check-in?', undefined, [
+                                              { text: 'Cancel', style: 'cancel' },
+                                              {
+                                                text: 'Delete',
+                                                style: 'destructive',
+                                                onPress: () => deleteCheckIn(v.id),
+                                              },
+                                            ])
+                                          }>
+                                          <Ionicons
+                                            name="trash-outline"
+                                            size={14}
+                                            color={c.danger}
+                                          />
+                                        </Pressable>
+                                      </View>
+                                    ))}
+                                  </View>
+                                ) : null}
+                              </Pressable>
+                            );
+                          })
+                        )}
+                      </>
+                    ) : null}
+
+            {/* ── Sign out ── always visible regardless of tab ── */}
             <Pressable
               onPress={onSignOut}
               style={{
-                marginHorizontal: 16,
                 marginTop: 24,
                 padding: 13,
                 borderRadius: 10,
@@ -1078,19 +1068,13 @@ export function ProfileModal({
                 borderColor: c.danger,
                 alignItems: 'center',
               }}>
-              <Text
-                style={{
-                  color: c.danger,
-                  fontWeight: '600',
-                  fontSize: 15,
-                }}>
-                Sign Out
-              </Text>
+              <Text style={{ color: c.danger, fontWeight: '600', fontSize: 15 }}>Sign Out</Text>
             </Pressable>
           </View>
         </ScrollView>
       </SafeAreaView>
 
+      {/* ── Edit profile modal ── */}
       <Modal visible={editOpen} animationType="slide" transparent onRequestClose={() => setEditOpen(false)}>
         <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' }} onPress={() => setEditOpen(false)} />
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'position' : 'height'}>
@@ -1101,24 +1085,11 @@ export function ProfileModal({
               borderTopRightRadius: 20,
               padding: 24,
             }}>
-            <Text
-              style={{
-                fontSize: 17,
-                fontWeight: '700',
-                color: c.text,
-                marginBottom: 20,
-              }}>
+            <Text style={{ fontSize: 17, fontWeight: '700', color: c.text, marginBottom: 20 }}>
               Edit Profile
             </Text>
 
-            <Text
-              style={{
-                fontSize: 13,
-                color: c.subtext,
-                marginBottom: 6,
-              }}>
-              Username
-            </Text>
+            <Text style={{ fontSize: 13, color: c.subtext, marginBottom: 6 }}>Username</Text>
             <TextInput
               value={editUsername}
               onChangeText={setEditUsername}
@@ -1138,12 +1109,7 @@ export function ProfileModal({
               }}
             />
 
-            <Text
-              style={{
-                fontSize: 13,
-                color: c.subtext,
-                marginBottom: 6,
-              }}>
+            <Text style={{ fontSize: 13, color: c.subtext, marginBottom: 6 }}>
               First Name <Text style={{ opacity: 0.5 }}>(optional)</Text>
             </Text>
             <TextInput
@@ -1164,12 +1130,7 @@ export function ProfileModal({
               }}
             />
 
-            <Text
-              style={{
-                fontSize: 13,
-                color: c.subtext,
-                marginBottom: 6,
-              }}>
+            <Text style={{ fontSize: 13, color: c.subtext, marginBottom: 6 }}>
               Last Name <Text style={{ opacity: 0.5 }}>(optional)</Text>
             </Text>
             <TextInput
@@ -1196,7 +1157,6 @@ export function ProfileModal({
                 const trimmedFirst = editFirstName.trim();
                 const trimmedLast = editLastName.trim();
                 if (!trimmedUsername) return;
-
                 const usernameCheck = moderateText(trimmedUsername);
                 if (!usernameCheck.allowed) {
                   Alert.alert('Username not allowed', usernameCheck.reason);
@@ -1216,7 +1176,6 @@ export function ProfileModal({
                     return;
                   }
                 }
-
                 setEditLoading(true);
                 const {
                   data: { user },
@@ -1254,12 +1213,7 @@ export function ProfileModal({
                 alignItems: 'center',
                 marginBottom: 12,
               }}>
-              <Text
-                style={{
-                  color: 'white',
-                  fontWeight: '700',
-                  fontSize: 15,
-                }}>
+              <Text style={{ color: 'white', fontWeight: '700', fontSize: 15 }}>
                 {editLoading ? 'Saving...' : 'Save'}
               </Text>
             </Pressable>
@@ -1273,14 +1227,7 @@ export function ProfileModal({
                 padding: 13,
                 alignItems: 'center',
               }}>
-              <Text
-                style={{
-                  color: c.text,
-                  fontWeight: '600',
-                  fontSize: 15,
-                }}>
-                Cancel
-              </Text>
+              <Text style={{ color: c.text, fontWeight: '600', fontSize: 15 }}>Cancel</Text>
             </Pressable>
           </View>
         </KeyboardAvoidingView>
