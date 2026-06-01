@@ -13,6 +13,7 @@
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "We use your location to center the map near you.",
         "NSUserNotificationsUsageDescription": "We'll notify you when someone interacts with your spots.",
+        "NSContactsUsageDescription": "Inhabitants uses your contacts to let you invite friends to the app.",
         "LSApplicationQueriesSchemes": [
           "comgooglemaps"
         ],
@@ -28,7 +29,14 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.READ_CONTACTS",
+        "android.permission.WRITE_CONTACTS",
+        "android.permission.READ_CONTACTS",
+        "android.permission.WRITE_CONTACTS"
+      ],
+      "package": "com.aaronbush.inhabitants"
     },
     "web": {
       "output": "static",
@@ -36,6 +44,7 @@
     },
     "plugins": [
       "expo-router",
+      "expo-contacts",
       [
         "expo-notifications",
         {

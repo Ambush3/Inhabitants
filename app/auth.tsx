@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@/src/hooks/useAuth';
+import { useInvite } from '@/src/hooks/useInvite';
 import { router } from 'expo-router';
 import { useTheme } from '@/src/context/ThemeContext';
 import LottieView from 'lottie-react-native';
@@ -31,6 +32,8 @@ export default function AuthScreen() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
+
+  const { inviterId, clearReferral } = useInvite();
 
   async function handleSubmit() {
     Keyboard.dismiss();
@@ -59,7 +62,8 @@ export default function AuthScreen() {
         trimmedPassword,
         username.trim().toLowerCase(),
         firstName.trim() || undefined,
-        lastName.trim() || undefined
+        lastName.trim() || undefined,
+        inviterId
       );
 
     setLoading(false);
@@ -70,10 +74,10 @@ export default function AuthScreen() {
     }
 
     if (!isLogin) {
+      if (inviterId) await clearReferral();
       setSuccess('Account created! Please check your email to confirm your account.');
       return;
     }
-
     router.replace('/');
   }
 
