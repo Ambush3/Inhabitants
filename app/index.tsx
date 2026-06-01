@@ -11,6 +11,7 @@ import {
   Animated,
   Easing,
   ActionSheetIOS,
+  Linking,
 } from 'react-native';
 import MapView, { Marker, Region, LongPressEvent, MapMarker } from 'react-native-maps';
 import MapViewClustering from 'react-native-map-clustering';
@@ -1015,6 +1016,28 @@ export default function Index() {
   useEffect(() => {
     if (favorites.length > 0) cacheFavorites(favorites);
   }, [favorites]);
+
+  useEffect(() => {
+    if (!deepLinkSpotId && typeof window !== 'undefined') return;
+    const url = Linking.getInitialURL();
+    url?.then((initialUrl) => {
+      if (!initialUrl) return;
+      const match = initialUrl.match(/join\?ref=([a-f0-9-]+)/);
+      if (match?.[1]) {
+        AsyncStorage.setItem('pending_referral_id', match[1]);
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    const sub = Linking.addEventListener('url', ({ url }) => {
+      const match = url.match(/join\?ref=([a-f0-9-]+)/);
+      if (match?.[1]) {
+        AsyncStorage.setItem('pending_referral_id', match[1]);
+      }
+    });
+    return () => sub.remove();
+  }, []);
 
   if (Platform.OS === 'web') {
     return (
