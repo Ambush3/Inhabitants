@@ -20,6 +20,7 @@ import { useFriendships, Friend } from '@/src/hooks/social/useFriendships';
 import { useCollections, Collection } from '@/src/hooks/useCollections';
 import { useCheckIns, PassportEntry } from '@/src/hooks/useCheckIns';
 import { sendFriendAcceptedNotification } from '@/src/libs/sendPushNotification';
+import { useInvite } from '@/src/hooks/useInvite';
 import { moderateText } from '@/src/libs/moderator/textModerator';
 
 type MyReview = {
@@ -100,6 +101,12 @@ export function ProfileModal({
 
   const { loadPassport, passportEntries, passportLoading, togglePrivacy, deleteCheckIn } = useCheckIns();
   const [expandedPassportSpot, setExpandedPassportSpot] = useState<string | null>(null);
+
+  const [contactsOpen, setContactsOpen] = useState(false);
+  const [contacts, setContacts] = useState<any[]>([]);
+  const [selectedPhones, setSelectedPhones] = useState<string[]>([]);
+  const [contactsLoading, setContactsLoading] = useState(false);
+  const { shareInviteLink, inviteViaContacts, sendSMSInvite } = useInvite();
 
   function toggleFriendSelected(id: string) {
     setSelectedFriendIds((prev) => {
@@ -578,6 +585,53 @@ export function ProfileModal({
               ) : /* Friends */
                 activeTab === 'friends' ? (
                   <>
+                    <View style={{ marginBottom: 16 }}>
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: c.text, marginBottom: 10 }}>
+                        Invite Friends
+                      </Text>
+                      <View style={{ flexDirection: 'row', gap: 10 }}>
+                        <Pressable
+                          onPress={shareInviteLink}
+                          style={{
+                            flex: 1,
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 8,
+                            backgroundColor: c.tagBg,
+                            borderRadius: 10,
+                            padding: 11,
+                          }}>
+                          <Ionicons name="share-outline" size={16} color={c.text} />
+                          <Text style={{ fontSize: 13, fontWeight: '600', color: c.text }}>
+                            Share Link
+                          </Text>
+                        </Pressable>
+                        <Pressable
+                          onPress={async () => {
+                            setContactsLoading(true);
+                            const result = await inviteViaContacts();
+                            setContacts(result ?? []);
+                            setContactsLoading(false);
+                            setContactsOpen(true);
+                          }}
+                          style={{
+                            flex: 1,
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 8,
+                            backgroundColor: 'rgba(0,122,255,0.12)',
+                            borderRadius: 10,
+                            padding: 11,
+                          }}>
+                          <Ionicons name="people-outline" size={16} color="#007AFF" />
+                          <Text style={{ fontSize: 13, fontWeight: '600', color: '#007AFF' }}>
+                            {contactsLoading ? 'Loading...' : 'Invite Contacts'}
+                          </Text>
+                        </Pressable>
+                      </View>
+                    </View>
                     <View style={{ marginBottom: 16 }}>
                       <TextInput
                         value={userSearchQuery}
@@ -1231,6 +1285,131 @@ export function ProfileModal({
             </Pressable>
           </View>
         </KeyboardAvoidingView>
+      </Modal>
+      <Modal
+        visible={contactsOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setContactsOpen(false)}>
+        <Pressable
+          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' }}
+          onPress={() => setContactsOpen(false)}>
+          <Pressable
+            style={{
+              backgroundColor: c.surface,
+              borderTopLeftRadius: 20,
+              borderTopRightRadius: 20,
+              padding: 20,
+              maxHeight: '75%',
+            }}
+            onPress={() => { }}>
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: 16,
+              }}>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: c.text }}>Invite Contacts</Text>
+              <Pressable
+                onPress={() => {
+                  setContactsOpen(false);
+                  setSelectedPhones([]);
+                }}>
+                <Ionicons name="close" size={22} color={c.subtext} />
+              </Pressable>
+            </View>
+
+            {contacts.length === 0 ? (
+              <Text style={{ color: c.subtext, textAlign: 'center', marginTop: 24 }}>
+                No contacts found.
+              </Text>
+            ) : (
+              <ScrollView showsVerticalScrollIndicator={false}>
+                {contacts.map((contact) => {
+                  const phone = contact.phoneNumbers?.[0]?.number ?? '';
+                  const selected = selectedPhones.includes(phone);
+                  return (
+                    <Pressable
+                      key={contact.id}
+                      onPress={() =>
+                        setSelectedPhones((prev) =>
+                          prev.includes(phone)
+                            ? prev.filter((p) => p !== phone)
+                            : [...prev, phone]
+                        )
+                      }
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        paddingVertical: 12,
+                        borderBottomWidth: 1,
+                        borderColor: c.border,
+                        gap: 12,
+                      }}>
+                      <View
+                        style={{
+                          width: 38,
+                          height: 38,
+                          borderRadius: 19,
+                          backgroundColor: c.tagBg,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}>
+                        <Text style={{ fontSize: 15, fontWeight: '600', color: c.text }}>
+                          {(contact.name ?? '?')[0].toUpperCase()}
+                        </Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontWeight: '600', color: c.text, fontSize: 14 }}>
+                          {contact.name ?? 'Unknown'}
+                        </Text>
+                        <Text style={{ fontSize: 12, color: c.subtext, marginTop: 2 }}>
+                          {phone}
+                        </Text>
+                      </View>
+                      <Ionicons
+                        name={selected ? 'checkbox' : 'square-outline'}
+                        size={22}
+                        color={selected ? '#007AFF' : c.subtext}
+                      />
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            )}
+
+            <Pressable
+              onPress={async () => {
+                if (selectedPhones.length === 0) return;
+                const {
+                  data: { user },
+                } = await supabase.auth.getUser();
+                if (!user) return;
+                await sendSMSInvite(selectedPhones, user.id);
+                setContactsOpen(false);
+                setSelectedPhones([]);
+              }}
+              disabled={selectedPhones.length === 0}
+              style={{
+                backgroundColor: '#007AFF',
+                borderRadius: 10,
+                padding: 13,
+                alignItems: 'center',
+                marginTop: 16,
+                opacity: selectedPhones.length === 0 ? 0.4 : 1,
+              }}>
+              <Text style={{ color: 'white', fontWeight: '700', fontSize: 15 }}>
+                Send Invite
+                {selectedPhones.length > 1
+                  ? `s (${selectedPhones.length})`
+                  : selectedPhones.length === 1
+                    ? ' (1)'
+                    : ''}
+              </Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
       </Modal>
     </Modal>
   );
