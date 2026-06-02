@@ -239,6 +239,7 @@ export function SpotDetailsModal({
           Animated.timing(translateY, { toValue: 800, duration: 200, useNativeDriver: true }).start(() => {
             translateY.setValue(0);
             setSelectedImageIndex(null);
+            setImageViewerOpen(false);
           });
         } else {
           Animated.spring(translateY, { toValue: 0, useNativeDriver: true }).start();
@@ -332,6 +333,8 @@ export function SpotDetailsModal({
   const [visitorCount, setVisitorCount] = useState<number | null>(null);
   const [alreadyCheckedInToday, setAlreadyCheckedInToday] = useState(false);
 
+  const [imageViewerOpen, setImageViewerOpen] = useState(false);
+
   const isOwner = spot?.user_id === currentUserId;
 
   const badgeColor = creatorBadge === 'ambassador' ? '#FF9500' : creatorBadge === 'regular' ? '#007AFF' : '#34C759';
@@ -393,13 +396,23 @@ export function SpotDetailsModal({
   );
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={() => {
+        if (imageViewerOpen) return;
+        onClose();
+      }}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1, justifyContent: 'flex-end' }}>
         <Pressable
           style={{ ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' }}
-          onPress={onClose}
+          onPress={() => {
+            if (imageViewerOpen) return;
+            onClose();
+          }}
         />
 
         <View style={[styles.sheet, { backgroundColor: c.surface }]}>
@@ -407,6 +420,22 @@ export function SpotDetailsModal({
             <View style={[styles.dragHandle, { backgroundColor: c.border }]} />
           </View>
 
+          {images.length > 0 && !detailsLoading ? (
+            <Pressable
+              onPress={() => {
+                setSelectedImageIndex(0);
+                setImageViewerOpen(true);
+              }}
+              style={styles.heroContainer}>
+              <Image source={{ uri: images[0] }} style={styles.heroImage} resizeMode="cover" />
+              {images.length > 1 ? (
+                <View style={styles.photoBadge}>
+                  <Ionicons name="images-outline" size={12} color="white" />
+                  <Text style={styles.photoBadgeText}>{images.length}</Text>
+                </View>
+              ) : null}
+            </Pressable>
+          ) : null}
           <ScrollView
             ref={scrollRef}
             keyboardShouldPersistTaps="handled"
@@ -738,18 +767,17 @@ export function SpotDetailsModal({
                     keyExtractor={(item) => item}
                     renderItem={renderImageItem}
                   />
-                ) : images.length > 0 ? (
+                ) : images.length > 1 ? (
                   <FlatList
-                    data={images}
+                    data={images.slice(1)}
                     horizontal
                     showsHorizontalScrollIndicator={false}
                     keyExtractor={(url) => url}
                     renderItem={renderViewImageItem}
                   />
-                ) : (
+                ) : images.length === 1 ? null : (
                   <Text style={{ fontSize: 12, color: c.subtext }}>No photos yet.</Text>
                 )}
-
                 {pendingImages.length > 0 && isOwner ? (
                   <Pressable
                     onPress={handleUploadPending}
@@ -911,13 +939,15 @@ export function SpotDetailsModal({
           </ScrollView>
         </View>
       </KeyboardAvoidingView>
-
       {/* ── Fullscreen image viewer ── */}
       <Modal
         visible={selectedImageIndex !== null}
         transparent
         animationType="fade"
-        onRequestClose={() => setSelectedImageIndex(null)}>
+        onRequestClose={() => {
+          setSelectedImageIndex(null);
+          setImageViewerOpen(false);
+        }}>
         <Animated.View
           style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.95)', transform: [{ translateY }] }}
           {...panResponder.panHandlers}>
@@ -938,7 +968,10 @@ export function SpotDetailsModal({
             viewabilityConfig={viewabilityConfig.current}
           />
           <Pressable
-            onPress={() => setSelectedImageIndex(null)}
+            onPress={() => {
+              setSelectedImageIndex(null);
+              setImageViewerOpen(false);
+            }}
             style={{ position: 'absolute', top: 60, right: 20 }}>
             <Ionicons name="close-circle" size={36} color="white" />
           </Pressable>
@@ -957,9 +990,7 @@ export function SpotDetailsModal({
           ) : null}
         </Animated.View>
       </Modal>
-
       <CollectionsModal visible={collectionsOpen} onClose={() => setCollectionsOpen(false)} spotId={spotId} />
-
       <SpotCommentsModal
         visible={commentsOpen}
         onClose={() => setCommentsOpen(false)}
@@ -978,7 +1009,6 @@ export function SpotDetailsModal({
           }, 350);
         }}
       />
-
       {/* ── Flag modal ── */}
       <Modal
         visible={flagModalOpen}
@@ -1082,7 +1112,6 @@ export function SpotDetailsModal({
           </KeyboardAvoidingView>
         </Pressable>
       </Modal>
-
       {/* ── Edit modal ── */}
       <Modal visible={editOpen} transparent animationType="slide" onRequestClose={() => setEditOpen(false)}>
         <Pressable
@@ -1254,6 +1283,35 @@ const styles = StyleSheet.create({
     width: 36,
     height: 4,
     borderRadius: 2,
+  },
+  heroContainer: {
+    height: 120,
+    marginBottom: 14,
+    borderRadius: 14,
+    overflow: 'hidden',
+    marginLeft: -16,
+    marginRight: -16,
+  },
+  heroImage: {
+    width: '100%',
+    height: '100%',
+  },
+  photoBadge: {
+    position: 'absolute',
+    bottom: 10,
+    right: 10,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  photoBadgeText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '600',
   },
   flagBanner: {
     borderRadius: 8,
