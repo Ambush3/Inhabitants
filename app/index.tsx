@@ -145,7 +145,15 @@ const SpotMap = React.memo(
         </Marker>
       ) : null}
       {visibleSpots
-        .filter((s: any) => s.spot_type === 'spot' || s.id === highlightSpotId)
+        .filter(
+          (s: any) =>
+            s.lat != null &&
+            s.lng != null &&
+            (s.spot_type === 'spot' ||
+              s.spot_type === 'skatepark' ||
+              s.spot_type === 'skateshop' ||
+              s.id === highlightSpotId)
+        )
         .map((s: any) =>
           s.spot_type === 'spot' ? (
             s.user_id === session?.user.id ? (
