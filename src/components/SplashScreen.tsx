@@ -1,67 +1,71 @@
 import * as ExpoSplashScreen from 'expo-splash-screen';
 import { useEffect, useRef } from 'react';
-import { Animated, StyleSheet, Text, View } from 'react-native';
+import { Animated, StyleSheet, Text } from 'react-native';
 import LottieView from 'lottie-react-native';
 
 interface SplashScreenProps {
-    onFinish: () => void;
+  onFinish: () => void;
 }
 
 export default function SplashScreen({ onFinish }: SplashScreenProps) {
-    const opacity = useRef(new Animated.Value(1)).current;
+  const opacity = useRef(new Animated.Value(1)).current;
 
-    useEffect(() => {
-        ExpoSplashScreen.hideAsync();
+  useEffect(() => {
+    ExpoSplashScreen.hideAsync().catch(() => { });
+  }, []);
 
-        const timer = setTimeout(() => {
-            Animated.timing(opacity, {
-                toValue: 0,
-                duration: 400,
-                useNativeDriver: true,
-            }).start(onFinish);
-        }, 2000);
+  const HOLD_AFTER_ANIMATION_MS = 1500;
+  const FADE_DURATION_MS = 1000;
 
-        return () => clearTimeout(timer);
-    }, []);
+  const handleAnimationFinish = () => {
+    setTimeout(() => {
+      Animated.timing(opacity, {
+        toValue: 0,
+        duration: FADE_DURATION_MS,
+        useNativeDriver: true,
+      }).start(onFinish);
+    }, HOLD_AFTER_ANIMATION_MS);
+  };
 
-    return (
-        <Animated.View style={[styles.container, { opacity }]}>
-            <LottieView
-                source={require('../../assets/animations/wheel.json')}
-                autoPlay
-                loop={false}
-                style={styles.animation}
-            />
-            <Text style={styles.title}>Inhabitants</Text>
-            <Text style={styles.subtitle}>find your spot.</Text>
-        </Animated.View>
-    );
+  return (
+    <Animated.View style={[styles.container, { opacity }]}>
+      <LottieView
+        source={require('../../assets/animations/wheel.json')}
+        autoPlay={true}
+        loop={false}
+        onAnimationFinish={handleAnimationFinish}
+        style={styles.animation}
+      />
+      <Text style={styles.title}>Inhabitants</Text>
+      <Text style={styles.subtitle}>find your spot.</Text>
+    </Animated.View>
+  );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#1a1a1a',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    animation: {
-        width: 280,
-        height: 280,
-    },
-    title: {
-        fontSize: 36,
-        fontWeight: '800',
-        color: '#f5f0e8',
-        letterSpacing: 2,
-        marginTop: 12,
-        fontFamily: 'monospace',
-    },
-    subtitle: {
-        fontSize: 14,
-        color: '#a89880',
-        letterSpacing: 4,
-        marginTop: 6,
-        fontFamily: 'monospace',
-    },
+  container: {
+    flex: 1,
+    backgroundColor: '#1a1a1a',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  animation: {
+    width: 280,
+    height: 280,
+  },
+  title: {
+    fontSize: 36,
+    fontWeight: '800',
+    color: '#f5f0e8',
+    letterSpacing: 2,
+    marginTop: 12,
+    fontFamily: 'monospace',
+  },
+  subtitle: {
+    fontSize: 14,
+    color: '#a89880',
+    letterSpacing: 4,
+    marginTop: 6,
+    fontFamily: 'monospace',
+  },
 });

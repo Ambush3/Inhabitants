@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Share } from 'react-native';
-import * as Contacts from 'expo-contacts';
-import * as SMS from 'expo-sms';
+import { Platform, Share } from 'react-native';
 import { supabase } from '@/src/libs/supabase';
 
 const PENDING_REFERRAL_KEY = 'pending_referral_id';
@@ -43,8 +41,16 @@ export function useInvite() {
     } = await supabase.auth.getUser();
     if (!user) return;
 
-    const { status } = await Contacts.requestPermissionsAsync();
-    if (status !== 'granted') return;
+    const Contacts = await import('expo-contacts');
+
+    const perm = await Contacts.requestPermissionsAsync();
+    if (perm.status !== 'granted') return;
+
+    if (Platform.OS === 'ios' && perm.accessPrivileges === 'limited') {
+      try {
+        await Contacts.presentAccessPickerAsync();
+      } catch {}
+    }
 
     const { data } = await Contacts.getContactsAsync({
       fields: [Contacts.Fields.PhoneNumbers, Contacts.Fields.Name],
@@ -56,6 +62,7 @@ export function useInvite() {
   }
 
   async function sendSMSInvite(phoneNumbers: string[], userId: string) {
+    const SMS = await import('expo-sms');
     const isAvailable = await SMS.isAvailableAsync();
     if (!isAvailable) return;
 

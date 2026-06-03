@@ -17,9 +17,7 @@ import MapView, { Marker, Region, LongPressEvent, MapMarker } from 'react-native
 import MapViewClustering from 'react-native-map-clustering';
 import * as Location from 'expo-location';
 import * as Haptics from 'expo-haptics';
-import * as ExpoSplashScreen from 'expo-splash-screen';
 import { useLocalSearchParams, useFocusEffect, usePathname, router } from 'expo-router';
-import SplashScreen from '../src/components/SplashScreen';
 
 import { supabase } from '@/src/libs/supabase';
 
@@ -66,8 +64,6 @@ import { SpotVisibility, spotVisibility } from '@/src/hooks/useSpots';
 import { useOfflineCache } from '@/src/hooks/offlineCache/useOfflineCache';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
-ExpoSplashScreen.preventAutoHideAsync();
 
 const DEFAULT_REGION: Region = {
   latitude: 0,
@@ -475,8 +471,6 @@ export default function Index() {
       : null;
 
   const [initialRegion, setInitialRegion] = useState<Region>(deepLinkRegion ?? DEFAULT_REGION);
-
-  const [showSplash, setShowSplash] = useState(!deepLinkSpotId);
 
   const [commentCount, setCommentCount] = useState(0);
 
@@ -1086,11 +1080,7 @@ export default function Index() {
   }
 
   return (
-    <>
-      {showSplash ? (
-        <SplashScreen onFinish={() => setShowSplash(false)} />
-      ) : (
-        <View style={{ flex: 1, backgroundColor: c.headerBg }}>
+    <View style={{ flex: 1, backgroundColor: c.headerBg }}>
           <View
             style={{
               height: insets.top,
@@ -1971,7 +1961,5 @@ export default function Index() {
           />
           <WhatsNewModal visible={showWhatsNew} onClose={dismissWhatsNew} />
         </View>
-      )}
-    </>
   );
 }
