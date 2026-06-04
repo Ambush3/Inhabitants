@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import NetInfo from '@react-native-community/netinfo';
+import * as Network from 'expo-network';
 import { Spot } from '@/src/types';
 
 const CACHE_KEY_MAP_SPOTS = 'offline_cache_map_spots';
@@ -21,13 +21,13 @@ export function useOfflineCache() {
   const [cacheLoaded, setCacheLoaded] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = NetInfo.addEventListener((state) => {
+    const sub = Network.addNetworkStateListener((state) => {
       setIsOnline(!!state.isConnected && !!state.isInternetReachable);
     });
-    NetInfo.fetch().then((state) => {
+    Network.getNetworkStateAsync().then((state) => {
       setIsOnline(!!state.isConnected && !!state.isInternetReachable);
     });
-    return unsubscribe;
+    return () => sub.remove();
   }, []);
 
   useEffect(() => {
