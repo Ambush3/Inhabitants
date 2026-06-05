@@ -12,6 +12,7 @@ import {
   Easing,
   ActionSheetIOS,
   Linking,
+  Image,
 } from 'react-native';
 import MapView, { Marker, Region, LongPressEvent, MapMarker } from 'react-native-maps';
 import MapViewClustering from 'react-native-map-clustering';
@@ -35,6 +36,10 @@ import { OtherUsersSpotMarkers } from '@/src/components/SpotMarkers/OtherUsersSp
 import { CreateEventModal } from '@/src/components/CreateEventModal';
 import { EventDetailsModal } from '@/src/components/EventDetailsModal';
 import { WhatsNewModal } from '@/src/components/WhatsNewModal';
+import { CreateCrewModal } from '@/src/components/crews/CreateCrewModal';
+import { CrewDetailModal } from '@/src/components/crews/CrewDetailModal';
+import { CrewsModal } from '@/src/components/crews/CrewsModal';
+import { useCrews, Crew } from '@/src/hooks/useCrews';
 
 import { useSpots } from '@/src/hooks/useSpots';
 import { useReviews } from '@/src/hooks/useReviews';
@@ -95,6 +100,7 @@ const SpotMap = React.memo(
     highlightSpotIdRef,
     animateToSpotWithModalOffset,
     openSpotDetails,
+    openSpotPreview,
     setSelectedPlaceId,
     setSelectedPlace,
     setPlaceDetailsOpen,
@@ -165,8 +171,8 @@ const SpotMap = React.memo(
                   suppressMapPressRef.current = true;
                   setHighlightSpotId(s.id);
                   highlightSpotIdRef.current = s.id;
-                  animateToSpotWithModalOffset(s.lat, s.lng);
-                  openSpotDetails(s);
+                  animateToSpotWithModalOffset(s.lat, s.lng, 'small');
+                  openSpotPreview(s);
                 }}>
                 <MySpotMarker selected={s.id === highlightSpotId} />
               </Marker>
@@ -183,8 +189,8 @@ const SpotMap = React.memo(
                   suppressMapPressRef.current = true;
                   setHighlightSpotId(s.id);
                   highlightSpotIdRef.current = s.id;
-                  animateToSpotWithModalOffset(s.lat, s.lng);
-                  openSpotDetails(s);
+                  animateToSpotWithModalOffset(s.lat, s.lng, 'small');
+                  openSpotPreview(s);
                 }}>
                 <OtherUsersSpotMarkers
                   selected={s.id === highlightSpotId}
@@ -208,8 +214,8 @@ const SpotMap = React.memo(
                 suppressMapPressRef.current = true;
                 setHighlightSpotId(s.id);
                 highlightSpotIdRef.current = s.id;
-                animateToSpotWithModalOffset(s.lat, s.lng);
-                openSpotDetails(s);
+                animateToSpotWithModalOffset(s.lat, s.lng, 'small');
+                openSpotPreview(s);
               }}
             />
           ) : null
@@ -285,6 +291,7 @@ export default function Index() {
   const actionSheetOpenRef = useRef(false);
 
   const openedPublicProfileFromProfileRef = useRef(false);
+  const reopenSpotDetailsOnProfileCloseRef = useRef(false);
 
   const {
     reviews: spotReviews,
@@ -394,6 +401,17 @@ export default function Index() {
 
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [selectedSpot, setSelectedSpot] = useState<Spot | null>(null);
+  const [previewSpot, setPreviewSpot] = useState<Spot | null>(null);
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
+
+  const [crewsOpen, setCrewsOpen] = useState(false);
+  const [crewDetailOpen, setCrewDetailOpen] = useState(false);
+  const [selectedCrewId, setSelectedCrewId] = useState<string | null>(null);
+  const [createCrewOpen, setCreateCrewOpen] = useState(false);
+  const [editingCrew, setEditingCrew] = useState<Crew | null>(null);
+  const [crewReopenAfterCreate, setCrewReopenAfterCreate] = useState<'crews' | 'detail' | null>(null);
+  const [crewsInitialTab, setCrewsInitialTab] = useState<'mine' | 'discover' | 'invites'>('mine');
+  const { createCrew, updateCrew, uploadCrewAvatar } = useCrews();
 
   const [createOpen, setCreateOpen] = useState(false);
   const [pendingCoord, setPendingCoord] = useState<{
@@ -517,18 +535,14 @@ export default function Index() {
     setSpotCreatorAvatarUrl(null);
     setSpotCreatorBadge(null);
 
-    if (openedFromPanelRef.current || openedFromDeepLinkRef.current) {
-      mapRef.current?.animateToRegion(preModalRegionRef.current, 400);
-    } else {
-      mapRef.current?.animateToRegion(
-        {
-          ...mapRegionRef.current,
-          latitudeDelta: 0.08,
-          longitudeDelta: 0.08,
-        },
-        400
-      );
-    }
+    mapRef.current?.animateToRegion(
+      {
+        ...mapRegionRef.current,
+        latitudeDelta: 0.08,
+        longitudeDelta: 0.08,
+      },
+      400
+    );
 
     openedFromPanelRef.current = false;
     resetConditions();
@@ -577,7 +591,21 @@ export default function Index() {
     []
   );
 
+  const openSpotPreview = useCallback(async (spot: Spot) => {
+    setPreviewSpot(spot);
+    setPreviewImageUrl(null);
+    const { data } = await supabase
+      .from('spot_images')
+      .select('url')
+      .eq('spot_id', spot.id)
+      .order('created_at', { ascending: true })
+      .limit(1);
+    setPreviewImageUrl(data?.[0]?.url ?? null);
+  }, []);
+
   const openSpotDetails = useCallback(async (spot: Spot) => {
+    setPreviewSpot(null);
+    setPreviewImageUrl(null);
     setSelectedSpot(spot);
     setDetailsOpen(true);
     setDetailsLoading(true);
@@ -780,6 +808,7 @@ export default function Index() {
   useEffect(() => {
     if (panelOpen) {
       loadFeed(friends.map((f) => f.id));
+      loadNotifications();
     }
   }, [panelOpen]);
 
@@ -1130,7 +1159,7 @@ export default function Index() {
                       fontSize: 11,
                       fontWeight: '700',
                     }}>
-                    {pendingReceived.length + unreadInviteCount + unreadRsvpCount}
+                    {pendingReceived.length + unreadActivityCount + unreadInviteCount + unreadRsvpCount}
                   </Text>
                 </View>
               ) : null}
@@ -1233,6 +1262,18 @@ export default function Index() {
             onMarkAllNotificationsRead={markAllAsRead}
             onSelectNotification={(n) => {
               markAsRead(n.id);
+              if (n.type === 'crew_invite') {
+                setPanelOpen(false);
+                setCrewsInitialTab('invites');
+                setCrewsOpen(true);
+                return;
+              }
+              if (n.type === 'crew_join' && n.crew_id) {
+                setPanelOpen(false);
+                setSelectedCrewId(n.crew_id);
+                setCrewDetailOpen(true);
+                return;
+              }
               openedFromPanelRef.current = true;
               const spot = n.spot_id ? spots.find((s) => s.id === n.spot_id) : null;
               if (spot) {
@@ -1254,6 +1295,10 @@ export default function Index() {
               reload();
               loadMySpots();
               setSettingsOpen(true);
+            }}
+            onOpenCrews={() => {
+              setPanelOpen(false);
+              setCrewsOpen(true);
             }}
             parksLoading={parksLoading}
             shopsLoading={shopsLoading}
@@ -1489,6 +1534,8 @@ export default function Index() {
                 }
                 setHighlightSpotId(null);
                 setSelectedPlaceId(null);
+                setPreviewSpot(null);
+                setPreviewImageUrl(null);
                 markerRefs.current[highlightSpotId ?? '']?.hideCallout?.();
                 markerRefs.current[selectedPlaceId ?? '']?.hideCallout?.();
               }}
@@ -1505,6 +1552,7 @@ export default function Index() {
               highlightSpotIdRef={highlightSpotIdRef}
               animateToSpotWithModalOffset={animateToSpotWithModalOffset}
               openSpotDetails={openSpotDetails}
+              openSpotPreview={openSpotPreview}
               setSelectedPlaceId={setSelectedPlaceId}
               setSelectedPlace={setSelectedPlace}
               setPlaceDetailsOpen={setPlaceDetailsOpen}
@@ -1517,6 +1565,82 @@ export default function Index() {
               <Text style={{ color: c.text }}>Finding your location...</Text>
             </View>
           )}
+          {previewSpot && !detailsOpen ? (
+            <Pressable
+              onPress={() => {
+                const s = previewSpot;
+                setPreviewSpot(null);
+                setPreviewImageUrl(null);
+                animateToSpotWithModalOffset(s.lat, s.lng);
+                openSpotDetails(s);
+              }}
+              style={{
+                position: 'absolute',
+                bottom: 110,
+                left: 16,
+                right: 16,
+                backgroundColor: c.surface,
+                borderRadius: 12,
+                padding: 12,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 12,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.2,
+                shadowRadius: 8,
+                elevation: 5,
+              }}>
+              {previewImageUrl ? (
+                <Image
+                  source={{ uri: previewImageUrl }}
+                  style={{ width: 64, height: 64, borderRadius: 8 }}
+                />
+              ) : (
+                <View
+                  style={{
+                    width: 64,
+                    height: 64,
+                    borderRadius: 8,
+                    backgroundColor: c.border,
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                  }}>
+                  <Ionicons name="image-outline" size={24} color={c.subtext} />
+                </View>
+              )}
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontWeight: '700', color: c.text, fontSize: 15 }} numberOfLines={1}>
+                  {previewSpot.name}
+                </Text>
+                {previewSpot.tags && previewSpot.tags.length > 0 ? (
+                  <Text
+                    style={{ fontSize: 12, color: c.subtext, marginTop: 2 }}
+                    numberOfLines={1}>
+                    {previewSpot.tags.map((t) => `#${t}`).join(' ')}
+                  </Text>
+                ) : null}
+                <Text
+                  style={{
+                    fontSize: 12,
+                    color: c.buttonBg,
+                    marginTop: 4,
+                    fontWeight: '600',
+                  }}>
+                  Tap to view details →
+                </Text>
+              </View>
+              <Pressable
+                onPress={() => {
+                  setPreviewSpot(null);
+                  setPreviewImageUrl(null);
+                }}
+                hitSlop={10}
+                style={{ padding: 4 }}>
+                <Ionicons name="close" size={22} color={c.subtext} />
+              </Pressable>
+            </Pressable>
+          ) : null}
           <Pressable
             onPress={() => {
               autoCenterRef.current = true;
@@ -1691,7 +1815,8 @@ export default function Index() {
             }}
             onViewProfile={(userId) => {
               if (publicProfileOpen) return;
-              closeDetailsModal();
+              reopenSpotDetailsOnProfileCloseRef.current = true;
+              setDetailsOpen(false);
               setTimeout(() => {
                 setPublicProfileUserId(userId);
                 setPublicProfileOpen(true);
@@ -1838,6 +1963,9 @@ export default function Index() {
               if (openedPublicProfileFromProfileRef.current) {
                 openedPublicProfileFromProfileRef.current = false;
                 setTimeout(() => setProfileOpen(true), 350);
+              } else if (reopenSpotDetailsOnProfileCloseRef.current) {
+                reopenSpotDetailsOnProfileCloseRef.current = false;
+                setTimeout(() => setDetailsOpen(true), 350);
               }
             }}
             userId={publicProfileUserId}
@@ -1846,6 +1974,7 @@ export default function Index() {
               setPublicProfileOpen(false);
               setPublicProfileUserId(null);
               openedPublicProfileFromProfileRef.current = false;
+              reopenSpotDetailsOnProfileCloseRef.current = false;
               setHighlightSpotId(s.id);
               highlightSpotIdRef.current = s.id;
               animateToSpotWithModalOffset(s.lat, s.lng);
@@ -1960,6 +2089,82 @@ export default function Index() {
             }}
           />
           <WhatsNewModal visible={showWhatsNew} onClose={dismissWhatsNew} />
+          <CrewsModal
+            visible={crewsOpen}
+            initialTab={crewsInitialTab}
+            onClose={() => setCrewsOpen(false)}
+            onSelectCrew={(id) => {
+              setSelectedCrewId(id);
+              setCrewsOpen(false);
+              setTimeout(() => setCrewDetailOpen(true), 350);
+            }}
+            onCreatePress={() => {
+              setEditingCrew(null);
+              setCrewsOpen(false);
+              setCrewReopenAfterCreate('crews');
+              setTimeout(() => setCreateCrewOpen(true), 350);
+            }}
+          />
+          <CrewDetailModal
+            visible={crewDetailOpen}
+            onClose={() => {
+              setCrewDetailOpen(false);
+              setSelectedCrewId(null);
+              setTimeout(() => setCrewsOpen(true), 350);
+            }}
+            crewId={selectedCrewId}
+            onEdit={(crew) => {
+              setEditingCrew(crew);
+              setCrewDetailOpen(false);
+              setCrewReopenAfterCreate('detail');
+              setTimeout(() => setCreateCrewOpen(true), 350);
+            }}
+            onSelectSpot={(spot) => {
+              setCrewDetailOpen(false);
+              setCrewsOpen(false);
+              setSelectedCrewId(null);
+              animateToSpotWithModalOffset(spot.lat, spot.lng);
+              openSpotDetails(spot);
+            }}
+          />
+          <CreateCrewModal
+            visible={createCrewOpen}
+            onClose={() => {
+              setCreateCrewOpen(false);
+              const reopen = crewReopenAfterCreate;
+              setCrewReopenAfterCreate(null);
+              if (reopen === 'crews') {
+                setTimeout(() => setCrewsOpen(true), 350);
+              } else if (reopen === 'detail') {
+                setTimeout(() => setCrewDetailOpen(true), 350);
+              }
+            }}
+            editCrew={editingCrew}
+            onSubmit={async ({ name, description, isPublic, imageUri }) => {
+              if (editingCrew) {
+                let avatarUrl = editingCrew.avatar_url;
+                if (imageUri) {
+                  const up = await uploadCrewAvatar(editingCrew.id, imageUri);
+                  if (up.error) return up.error;
+                  avatarUrl = up.url;
+                }
+                return updateCrew(editingCrew.id, {
+                  name,
+                  description: description ?? null,
+                  is_public: isPublic,
+                  avatar_url: avatarUrl,
+                });
+              }
+              const res = await createCrew({ name, description, isPublic });
+              if (res.error || !res.id) return res.error;
+              if (imageUri) {
+                const up = await uploadCrewAvatar(res.id, imageUri);
+                if (up.error) return up.error;
+                await updateCrew(res.id, { avatar_url: up.url });
+              }
+              return null;
+            }}
+          />
         </View>
   );
 }
