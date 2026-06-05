@@ -45,6 +45,7 @@ type Props = {
   placeFavLoading: boolean;
   onSelectPlace: (place: Place) => void;
   onOpenSettings: () => void;
+  onOpenCrews?: () => void;
   mySpots: Spot[];
   mySpotsLoading: boolean;
   onCycleSpotVisibility: (spot: Spot) => void;
@@ -97,6 +98,7 @@ export function ExplorePanel({
   onSelectPlace,
   onDeleteSpot,
   onOpenSettings,
+  onOpenCrews,
   mySpots,
   mySpotsLoading,
   onCycleSpotVisibility,
@@ -126,6 +128,7 @@ export function ExplorePanel({
   function notificationLabel(n: AppNotification): string {
     const actor = n.actor_username ? `@${n.actor_username}` : 'Someone';
     const spot = n.spot_name ?? 'your spot';
+    const crew = n.crew_name ?? 'your crew';
     switch (n.type) {
       case 'review':
         return `${actor} rated "${spot}"`;
@@ -139,6 +142,12 @@ export function ExplorePanel({
         return `"${spot}" was flagged`;
       case 'image_removed':
         return `An image on "${spot}" was removed`;
+      case 'crew_invite':
+        return `${actor} invited you to "${crew}"`;
+      case 'crew_join':
+        return `${actor} joined "${crew}"`;
+      case 'crew_spot_added':
+        return `${actor} added "${spot}" to "${crew}"`;
       default:
         return `Activity on "${spot}"`;
     }
@@ -159,15 +168,18 @@ export function ExplorePanel({
   }
 
   const insets = useSafeAreaInsets();
-  const { theme } = useTheme();
+  const { theme, darkMode } = useTheme();
   const c = theme.colors;
+
+  const MINE_FILTER_THRESHOLD = 6;
+  const [mySpotsSearch, setMySpotsSearch] = useState('');
+  const [mySpotsVisibility, setMySpotsVisibility] = useState<'all' | 'public' | 'friends' | 'private'>('all');
 
   const [activeTab, setActiveTab] = useState<Tab>('explore');
   const [searchQuery, setSearchQuery] = useState('');
   const [favoritesOpen, setFavoritesOpen] = useState(false);
   const [parkFavoritesOpen, setParkFavoritesOpen] = useState(false);
   const [shopFavoritesOpen, setShopFavoritesOpen] = useState(false);
-  const [topRatedTab, setTopRatedTab] = useState<'spot' | 'skatepark' | 'skateshop'>('spot');
 
   const [myAvatarUrl, setMyAvatarUrl] = useState<string | null>(null);
   const [myUsername, setMyUsername] = useState<string | null>(null);
@@ -270,8 +282,19 @@ export function ExplorePanel({
   const favShopSpots = favorites.filter((s) => s.spot_type === 'skateshop');
 
   const myActualSpots = mySpots.filter((s) => s.spot_type === 'spot');
-  const myCreatedParks = mySpots.filter((s) => s.spot_type === 'skatepark');
-  const myCreatedShops = mySpots.filter((s) => s.spot_type === 'skateshop');
+
+  const displayMySpots = myActualSpots.filter((s) => {
+    if (mySpotsVisibility === 'public' && (s.is_private || s.friends_only)) return false;
+    if (mySpotsVisibility === 'friends' && !s.friends_only) return false;
+    if (mySpotsVisibility === 'private' && !s.is_private) return false;
+    if (mySpotsSearch.trim()) {
+      const q = mySpotsSearch.trim().toLowerCase();
+      const nameMatch = s.name?.toLowerCase().includes(q);
+      const tagMatch = s.tags?.some((t) => t.toLowerCase().includes(q));
+      if (!nameMatch && !tagMatch) return false;
+    }
+    return true;
+  });
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -814,63 +837,18 @@ export function ExplorePanel({
 
                 {topRated.length > 0 ? (
                   <View style={{ marginBottom: 16 }}>
-                    <View
-                      style={{
-                        flexDirection: 'row',
-                        gap: 6,
-                        marginBottom: 12,
-                      }}>
-                      {(['spot', 'skatepark', 'skateshop'] as const).map((type) => {
-                        const labels = {
-                          spot: 'Spots',
-                          skatepark: 'Parks',
-                          skateshop: 'Shops',
-                        };
-                        const isActive = topRatedTab === type;
-                        return (
-                          <Pressable
-                            key={type}
-                            onPress={() => setTopRatedTab(type)}
-                            style={{
-                              flex: 1,
-                              paddingVertical: 6,
-                              borderRadius: 6,
-                              borderWidth: 1,
-                              borderColor: isActive ? '#007AFF' : c.inputBorder,
-                              backgroundColor: isActive ? '#007AFF' : c.surface,
-                              alignItems: 'center',
-                            }}>
-                            <Text
-                              style={{
-                                fontSize: 11,
-                                fontWeight: '600',
-                                color: isActive ? 'white' : c.subtext,
-                              }}>
-                              {labels[type]}
-                            </Text>
-                          </Pressable>
-                        );
-                      })}
-                    </View>
-
-                    {topRated.filter((s) => s.spot_type === topRatedTab).length === 0 ? (
+                    {topRated.filter((s) => s.spot_type === 'spot').length === 0 ? (
                       <Text
                         style={{
                           color: c.subtext,
                           fontSize: 13,
                           opacity: 0.6,
                         }}>
-                        No top rated{' '}
-                        {topRatedTab === 'spot'
-                          ? 'spots'
-                          : topRatedTab === 'skatepark'
-                            ? 'parks'
-                            : 'shops'}{' '}
-                        nearby.
+                        No top rated spots nearby.
                       </Text>
                     ) : (
                       topRated
-                        .filter((s) => s.spot_type === topRatedTab)
+                        .filter((s) => s.spot_type === 'spot')
                         .map((s, index) => (
                           <AnimatedSpotCard key={s.id} index={index}>
                             <Pressable
@@ -918,6 +896,25 @@ export function ExplorePanel({
             ) : null}
             {activeTab === 'myspots' ? (
               <View>
+                {onOpenCrews ? (
+                  <Pressable
+                    onPress={onOpenCrews}
+                    style={{
+                      backgroundColor: c.tagBg,
+                      borderRadius: 8,
+                      padding: 12,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 10,
+                      marginBottom: 16,
+                    }}>
+                    <Ionicons name="people" size={20} color={c.text} />
+                    <Text style={{ flex: 1, color: c.text, fontWeight: '600', fontSize: 13 }}>
+                      My Crews
+                    </Text>
+                    <Ionicons name="chevron-forward" size={18} color={c.subtext} />
+                  </Pressable>
+                ) : null}
                 <View
                   style={{
                     flexDirection: 'row',
@@ -933,9 +930,57 @@ export function ExplorePanel({
                       color: c.subtext,
                       letterSpacing: 0.8,
                     }}>
-                    MY SPOTS
+                    MY SPOTS ({myActualSpots.length})
                   </Text>
                 </View>
+                {myActualSpots.length > MINE_FILTER_THRESHOLD ? (
+                  <View style={{ marginTop: 8, marginBottom: 8, gap: 8 }}>
+                    <TextInput
+                      value={mySpotsSearch}
+                      onChangeText={setMySpotsSearch}
+                      placeholder="Search spots or tags"
+                      placeholderTextColor={c.subtext}
+                      style={{
+                        borderWidth: 1,
+                        borderColor: c.inputBorder,
+                        borderRadius: 8,
+                        paddingHorizontal: 10,
+                        paddingVertical: 6,
+                        fontSize: 13,
+                        color: c.text,
+                        backgroundColor: c.surface,
+                      }}
+                    />
+                    <View style={{ flexDirection: 'row', gap: 6 }}>
+                      {(['all', 'public', 'friends', 'private'] as const).map((v) => {
+                        const isActive = mySpotsVisibility === v;
+                        return (
+                          <Pressable
+                            key={v}
+                            onPress={() => setMySpotsVisibility(v)}
+                            style={{
+                              paddingHorizontal: 10,
+                              paddingVertical: 4,
+                              borderRadius: 999,
+                              borderWidth: 1,
+                              borderColor: isActive ? c.buttonBg : c.inputBorder,
+                              backgroundColor: isActive ? c.buttonBg : c.surface,
+                            }}>
+                            <Text
+                              style={{
+                                fontSize: 11,
+                                fontWeight: '600',
+                                color: isActive ? c.background : c.subtext,
+                                textTransform: 'capitalize',
+                              }}>
+                              {v}
+                            </Text>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                  </View>
+                ) : null}
                 {mySpotsLoading ? (
                   <Text
                     style={{
@@ -953,14 +998,27 @@ export function ExplorePanel({
                     }}>
                     You haven&apos;t created any spots yet.
                   </Text>
+                ) : displayMySpots.length === 0 ? (
+                  <Text
+                    style={{
+                      color: c.subtext,
+                      fontSize: 13,
+                      opacity: 0.6,
+                    }}>
+                    No spots match your filters.
+                  </Text>
                 ) : (
-                  myActualSpots.map((s, index) => (
+                  displayMySpots.map((s, index) => (
                     <AnimatedSpotCard key={s.id} index={index}>
                       <Swipeable
                         ref={setSwipeableRef(s.id) as any}
                         renderLeftActions={() => (
                           <Pressable
-                            onPress={() => onDeleteSpot(s)}
+                            onPress={() => {
+                              const ref = swipeableRefs.current.get(s.id);
+                              ref?.close();
+                              setTimeout(() => onDeleteSpot(s), 500);
+                            }}
                             style={{
                               justifyContent: 'center',
                               alignItems: 'center',
@@ -985,7 +1043,6 @@ export function ExplorePanel({
                         )}
                         onSwipeableOpen={(direction) => {
                           openRowsRef.current.add(s.id);
-                          if (direction === 'right') onDeleteSpot(s);
                         }}
                         onSwipeableClose={() => {
                           openRowsRef.current.delete(s.id);
@@ -1089,190 +1146,6 @@ export function ExplorePanel({
                     </AnimatedSpotCard>
                   ))
                 )}
-
-                {myCreatedParks.length > 0 ? (
-                  <View style={{ marginTop: 20 }}>
-                    <View
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        gap: 6,
-                        marginBottom: 2,
-                      }}>
-                      <Image
-                        source={require('@/assets/pin-images/skatepark-ramp.png')}
-                        style={{
-                          width: 18,
-                          height: 18,
-                        }}
-                      />
-                      <Text
-                        style={{
-                          fontSize: 11,
-                          fontWeight: '600',
-                          color: c.subtext,
-                          letterSpacing: 0.8,
-                        }}>
-                        MY PARKS
-                      </Text>
-                    </View>
-                    {myCreatedParks.map((s, index) => (
-                      <AnimatedSpotCard key={s.id} index={index}>
-                        <Swipeable
-                          ref={setSwipeableRef(s.id) as any}
-                          renderLeftActions={() => (
-                            <Pressable
-                              onPress={() => {
-                                onClose();
-                                onDeleteSpot(s);
-                              }}
-                              style={{
-                                justifyContent: 'center',
-                                alignItems: 'center',
-                                width: 75,
-                                backgroundColor: c.danger,
-                                borderTopLeftRadius: 8,
-                                borderBottomLeftRadius: 8,
-                                marginVertical: 2,
-                                gap: 4,
-                              }}>
-                              <Ionicons name="trash-outline" size={18} color="white" />
-                              <Text
-                                style={{
-                                  color: 'white',
-                                  fontSize: 11,
-                                  fontWeight: '700',
-                                  letterSpacing: 0.3,
-                                }}>
-                                Delete
-                              </Text>
-                            </Pressable>
-                          )}
-                          onSwipeableOpen={(direction) => {
-                            openRowsRef.current.add(s.id);
-                            if (direction === 'right') onDeleteSpot(s);
-                          }}
-                          onSwipeableClose={() => {
-                            openRowsRef.current.delete(s.id);
-                          }}>
-                          <Pressable
-                            onPress={() => handleRowPress(s.id, () => onSelectSpot(s))}
-                            style={{
-                              flexDirection: 'row',
-                              alignItems: 'center',
-                              paddingVertical: 12,
-                              borderBottomWidth: 1,
-                              borderColor: c.border,
-                              gap: 10,
-                              backgroundColor: c.panelBg,
-                            }}>
-                            <View style={{ flex: 1 }}>
-                              <Text
-                                style={{
-                                  fontWeight: '600',
-                                  color: c.text,
-                                }}>
-                                {s.name}
-                              </Text>
-                            </View>
-                          </Pressable>
-                        </Swipeable>
-                      </AnimatedSpotCard>
-                    ))}
-                  </View>
-                ) : null}
-
-                {myCreatedShops.length > 0 ? (
-                  <View style={{ marginTop: 20 }}>
-                    <View
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        gap: 6,
-                        marginBottom: 2,
-                      }}>
-                      <Image
-                        source={require('@/assets/pin-images/skate-shop.png')}
-                        style={{
-                          width: 18,
-                          height: 18,
-                        }}
-                      />
-                      <Text
-                        style={{
-                          fontSize: 11,
-                          fontWeight: '600',
-                          color: c.subtext,
-                          letterSpacing: 0.8,
-                        }}>
-                        MY SHOPS
-                      </Text>
-                    </View>
-                    {myCreatedShops.map((s, index) => (
-                      <AnimatedSpotCard key={s.id} index={index}>
-                        <Swipeable
-                          ref={setSwipeableRef(s.id) as any}
-                          renderLeftActions={() => (
-                            <Pressable
-                              onPress={() => {
-                                onClose();
-                                onDeleteSpot(s);
-                              }}
-                              style={{
-                                justifyContent: 'center',
-                                alignItems: 'center',
-                                width: 75,
-                                backgroundColor: c.danger,
-                                borderTopLeftRadius: 8,
-                                borderBottomLeftRadius: 8,
-                                marginVertical: 2,
-                                gap: 4,
-                              }}>
-                              <Ionicons name="trash-outline" size={18} color="white" />
-                              <Text
-                                style={{
-                                  color: 'white',
-                                  fontSize: 11,
-                                  fontWeight: '700',
-                                  letterSpacing: 0.3,
-                                }}>
-                                Delete
-                              </Text>
-                            </Pressable>
-                          )}
-                          onSwipeableOpen={(direction) => {
-                            openRowsRef.current.add(s.id);
-                            if (direction === 'right') onDeleteSpot(s);
-                          }}
-                          onSwipeableClose={() => {
-                            openRowsRef.current.delete(s.id);
-                          }}>
-                          <Pressable
-                            onPress={() => handleRowPress(s.id, () => onSelectSpot(s))}
-                            style={{
-                              flexDirection: 'row',
-                              alignItems: 'center',
-                              paddingVertical: 12,
-                              borderBottomWidth: 1,
-                              borderColor: c.border,
-                              gap: 10,
-                              backgroundColor: c.panelBg,
-                            }}>
-                            <View style={{ flex: 1 }}>
-                              <Text
-                                style={{
-                                  fontWeight: '600',
-                                  color: c.text,
-                                }}>
-                                {s.name}
-                              </Text>
-                            </View>
-                          </Pressable>
-                        </Swipeable>
-                      </AnimatedSpotCard>
-                    ))}
-                  </View>
-                ) : null}
               </View>
             ) : null}
             {/* FAVORITES TAB */}
@@ -1635,8 +1508,16 @@ export function ExplorePanel({
                             ? 'created'
                             : item.kind === 'check_in'
                               ? 'checked in at'
-                              : 'rated'}{' '}
+                              : item.kind === 'crew_spot_added'
+                                ? 'added'
+                                : 'rated'}{' '}
                           <Text style={{ fontWeight: '600' }}>{`"${item.spot.name}"`}</Text>
+                          {item.kind === 'crew_spot_added' ? (
+                            <Text>
+                              {' '}to{' '}
+                              <Text style={{ fontWeight: '600' }}>{item.crew_name}</Text>
+                            </Text>
+                          ) : null}
                         </Text>
                         {item.kind === 'review_left' ? (
                           <Text

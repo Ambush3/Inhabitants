@@ -31,6 +31,7 @@ import { useCheckIns } from '@/src/hooks/useCheckIns';
 
 import { SpotCommentsModal } from '@/src/components/SpotCommentsModal';
 import { CollectionsModal } from '@/src/components/CollectionsModal';
+import { AddSpotToCrewModal } from '@/src/components/crews/AddSpotToCrewModal';
 
 const geocodeCache = new Map<string, string>();
 
@@ -166,6 +167,7 @@ export function SpotDetailsModal({
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [liveCommentCount, setLiveCommentCount] = useState(commentCount);
   const [collectionsOpen, setCollectionsOpen] = useState(false);
+  const [addToCrewOpen, setAddToCrewOpen] = useState(false);
 
   const [flagModalOpen, setFlagModalOpen] = useState(false);
   const [flagReason, setFlagReason] = useState('');
@@ -726,6 +728,13 @@ export function SpotDetailsModal({
                 <Text style={[styles.actionLabel, { color: c.subtext }]}>Collections</Text>
               </Pressable>
 
+              <Pressable
+                onPress={() => setAddToCrewOpen(true)}
+                style={[styles.actionBtn, { backgroundColor: c.tagBg }]}>
+                <Ionicons name="people-outline" size={20} color={c.text} />
+                <Text style={[styles.actionLabel, { color: c.subtext }]}>Crews</Text>
+              </Pressable>
+
               <Pressable onPress={handleShare} style={[styles.actionBtn, { backgroundColor: c.tagBg }]}>
                 <Ionicons name="share-outline" size={20} color={c.text} />
                 <Text style={[styles.actionLabel, { color: c.subtext }]}>Share</Text>
@@ -991,6 +1000,7 @@ export function SpotDetailsModal({
         </Animated.View>
       </Modal>
       <CollectionsModal visible={collectionsOpen} onClose={() => setCollectionsOpen(false)} spotId={spotId} />
+      <AddSpotToCrewModal visible={addToCrewOpen} onClose={() => setAddToCrewOpen(false)} spotId={spotId} />
       <SpotCommentsModal
         visible={commentsOpen}
         onClose={() => setCommentsOpen(false)}
@@ -1002,10 +1012,7 @@ export function SpotDetailsModal({
         onViewProfile={(userId) => {
           setCommentsOpen(false);
           setTimeout(() => {
-            onClose();
-            setTimeout(() => {
-              onViewProfile?.(userId);
-            }, 350);
+            onViewProfile?.(userId);
           }, 350);
         }}
       />

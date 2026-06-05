@@ -1,6 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Network from 'expo-network';
 import { Spot } from '@/src/types';
 
 const CACHE_KEY_MAP_SPOTS = 'offline_cache_map_spots';
@@ -21,13 +20,26 @@ export function useOfflineCache() {
   const [cacheLoaded, setCacheLoaded] = useState(false);
 
   useEffect(() => {
-    const sub = Network.addNetworkStateListener((state) => {
-      setIsOnline(!!state.isConnected && !!state.isInternetReachable);
-    });
-    Network.getNetworkStateAsync().then((state) => {
-      setIsOnline(!!state.isConnected && !!state.isInternetReachable);
-    });
-    return () => sub.remove();
+    let sub: { remove: () => void } | null = null;
+    let cancelled = false;
+    (async () => {
+      try {
+        const Network = await import('expo-network');
+        if (cancelled) return;
+        sub = Network.addNetworkStateListener((state) => {
+          setIsOnline(!!state.isConnected && !!state.isInternetReachable);
+        });
+        const state = await Network.getNetworkStateAsync();
+        if (cancelled) return;
+        setIsOnline(!!state.isConnected && !!state.isInternetReachable);
+      } catch {
+        setIsOnline(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+      sub?.remove();
+    };
   }, []);
 
   useEffect(() => {
