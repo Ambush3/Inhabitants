@@ -8,6 +8,8 @@ export type AppNotification = {
     actor_username: string | null;
     spot_id: string | null;
     spot_name: string | null;
+    crew_id?: string | null;
+    crew_name?: string | null;
     read: boolean;
     created_at: string;
 };

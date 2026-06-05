@@ -14,6 +14,9 @@ const PREF_COLUMN_BY_TYPE: Record<string, string | null> = {
     flag: 'notify_flag',
     image_removed: null,
     event_invite: 'notify_event_invite',
+    crew_invite: null,
+    crew_join: null,
+    crew_spot_added: null,
 };
 
 async function isAllowed(userId: string, eventType: string): Promise<boolean> {
@@ -26,8 +29,20 @@ async function isAllowed(userId: string, eventType: string): Promise<boolean> {
 
 Deno.serve(async (req) => {
     try {
-        const { spot_id, addressee_id, event_type, actor_username, actor_id, reason, event_title, event_id } =
-            await req.json();
+        const {
+            spot_id,
+            addressee_id,
+            addressee_ids,
+            event_type,
+            actor_username,
+            actor_id,
+            reason,
+            event_title,
+            event_id,
+            crew_id,
+            crew_name,
+            spot_name,
+        } = await req.json();
 
         if (event_type === 'friend_request' || event_type === 'friend_accepted') {
             if (!(await isAllowed(addressee_id, event_type))) {
@@ -80,6 +95,89 @@ Deno.serve(async (req) => {
                 }),
             });
 
+            const result = await response.json();
+            return new Response(JSON.stringify(result), { status: 200 });
+        }
+
+        if (event_type === 'crew_invite') {
+            await supabase.from('notifications').insert({
+                user_id: addressee_id,
+                type: 'crew_invite',
+                actor_id: actor_id ?? null,
+                actor_username: actor_username ?? null,
+                crew_id: crew_id ?? null,
+                crew_name: crew_name ?? null,
+            });
+            const { data: tokenRow } = await supabase
+                .from('push_tokens')
+                .select('token')
+                .eq('user_id', addressee_id)
+                .maybeSingle();
+            if (!tokenRow) return new Response(JSON.stringify({ inserted: true }), { status: 200 });
+            const response = await fetch('https://exp.host/--/api/v2/push/send', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    'Accept-Encoding': 'gzip, deflate',
+                },
+                body: JSON.stringify({
+                    to: tokenRow.token,
+                    title: '👥 Crew Invite',
+                    body: `${actor_username} invited you to "${crew_name}"`,
+                    sound: 'default',
+                    data: { url: 'skatespotapp:///?openCrewInvites=1' },
+                }),
+            });
+            const result = await response.json();
+            return new Response(JSON.stringify(result), { status: 200 });
+        }
+
+        if (event_type === 'crew_join' || event_type === 'crew_spot_added') {
+            const recipients: string[] = Array.isArray(addressee_ids) ? addressee_ids : [];
+            if (recipients.length === 0)
+                return new Response(JSON.stringify({ noop: true }), { status: 200 });
+            const rows = recipients.map((rid) => ({
+                user_id: rid,
+                type: event_type,
+                actor_id: actor_id ?? null,
+                actor_username: actor_username ?? null,
+                crew_id: crew_id ?? null,
+                crew_name: crew_name ?? null,
+                spot_id: event_type === 'crew_spot_added' ? spot_id ?? null : null,
+                spot_name: event_type === 'crew_spot_added' ? spot_name ?? null : null,
+            }));
+            await supabase.from('notifications').insert(rows);
+
+            const { data: tokenRows } = await supabase
+                .from('push_tokens')
+                .select('user_id, token')
+                .in('user_id', recipients);
+            const tokens = (tokenRows ?? []).map((r: any) => r.token).filter(Boolean);
+            if (tokens.length === 0)
+                return new Response(JSON.stringify({ inserted: true }), { status: 200 });
+            const title =
+                event_type === 'crew_join' ? '👥 New Crew Member' : '📍 New Crew Spot';
+            const body =
+                event_type === 'crew_join'
+                    ? `${actor_username} joined "${crew_name}"`
+                    : `${actor_username} added "${spot_name}" to "${crew_name}"`;
+            const messages = tokens.map((t: string) => ({
+                to: t,
+                title,
+                body,
+                sound: 'default',
+                data: { url: 'skatespotapp:///' },
+            }));
+            const response = await fetch('https://exp.host/--/api/v2/push/send', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    'Accept-Encoding': 'gzip, deflate',
+                },
+                body: JSON.stringify(messages),
+            });
             const result = await response.json();
             return new Response(JSON.stringify(result), { status: 200 });
         }

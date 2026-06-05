@@ -37,6 +37,69 @@ export async function sendFriendAcceptedNotification(addresseeId: string, actorU
   });
 }
 
+export async function sendCrewInviteNotification(
+  inviteeId: string,
+  actorUsername: string,
+  actorId: string,
+  crewId: string,
+  crewName: string
+) {
+  await supabase.functions.invoke('send-push-notification', {
+    body: {
+      addressee_id: inviteeId,
+      event_type: 'crew_invite',
+      actor_username: actorUsername,
+      actor_id: actorId,
+      crew_id: crewId,
+      crew_name: crewName,
+    },
+  });
+}
+
+export async function sendCrewJoinNotification(
+  addresseeIds: string[],
+  actorUsername: string,
+  actorId: string,
+  crewId: string,
+  crewName: string
+) {
+  if (addresseeIds.length === 0) return;
+  await supabase.functions.invoke('send-push-notification', {
+    body: {
+      addressee_ids: addresseeIds,
+      event_type: 'crew_join',
+      actor_username: actorUsername,
+      actor_id: actorId,
+      crew_id: crewId,
+      crew_name: crewName,
+    },
+  });
+}
+
+export async function sendCrewSpotAddedNotification(
+  addresseeIds: string[],
+  actorUsername: string,
+  actorId: string,
+  crewId: string,
+  crewName: string,
+  spotId: string,
+  spotName: string
+) {
+  if (addresseeIds.length === 0) return;
+  await supabase.functions.invoke('send-push-notification', {
+    body: {
+      addressee_ids: addresseeIds,
+      event_type: 'crew_spot_added',
+      actor_username: actorUsername,
+      actor_id: actorId,
+      crew_id: crewId,
+      crew_name: crewName,
+      spot_id: spotId,
+      spot_name: spotName,
+    },
+  });
+}
+
 export async function sendEventInviteNotification(
   inviteeId: string,
   actorUsername: string,
