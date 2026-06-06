@@ -29,7 +29,7 @@ export function useInvite() {
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) return;
-    const link = `skatespotapp:///join?ref=${user.id}`;
+    const link = `inhabitants://join?ref=${user.id}`;
     await Share.share({
       message: `Join me on Inhabitants — the skate spot finder. Download the app and sign up here: ${link}`,
     });
@@ -66,7 +66,7 @@ export function useInvite() {
     const isAvailable = await SMS.isAvailableAsync();
     if (!isAvailable) return;
 
-    const link = `skatespotapp:///join?ref=${userId}`;
+    const link = `inhabitants://join?ref=${userId}`;
     await SMS.sendSMSAsync(phoneNumbers, `Join me on Inhabitants — the skate spot finder! Sign up here: ${link}`);
   }
 

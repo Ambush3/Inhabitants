@@ -89,8 +89,8 @@ Deno.serve(async (req) => {
                     sound: 'default',
                     data: {
                         url: isAccepted
-                            ? `skatespotapp:///friend_accepted?actorId=${actor_id ?? ''}`
-                            : 'skatespotapp:///friend_request',
+                            ? `inhabitants://friend_accepted?actorId=${actor_id ?? ''}`
+                            : 'inhabitants://friend_request',
                     },
                 }),
             });
@@ -126,7 +126,7 @@ Deno.serve(async (req) => {
                     title: '👥 Crew Invite',
                     body: `${actor_username} invited you to "${crew_name}"`,
                     sound: 'default',
-                    data: { url: 'skatespotapp:///?openCrewInvites=1' },
+                    data: { url: 'inhabitants://?openCrewInvites=1' },
                 }),
             });
             const result = await response.json();
@@ -167,7 +167,7 @@ Deno.serve(async (req) => {
                 title,
                 body,
                 sound: 'default',
-                data: { url: 'skatespotapp:///' },
+                data: { url: 'inhabitants://' },
             }));
             const response = await fetch('https://exp.host/--/api/v2/push/send', {
                 method: 'POST',
@@ -208,7 +208,7 @@ Deno.serve(async (req) => {
                     body: `${actor_username} invited you to "${event_title}"`,
                     sound: 'default',
                     data: {
-                        url: `skatespotapp:///events`,
+                        url: `inhabitants://events`,
                     },
                 }),
             });
@@ -307,7 +307,7 @@ Deno.serve(async (req) => {
                 body: message.body,
                 sound: 'default',
                 data: {
-                    url: `skatespotapp:///?deepLinkSpotId=${spot_id}&deepLinkLat=${spot.lat}&deepLinkLng=${spot.lng}`,
+                    url: `inhabitants://?deepLinkSpotId=${spot_id}&deepLinkLat=${spot.lat}&deepLinkLng=${spot.lng}`,
                 },
             }),
         });

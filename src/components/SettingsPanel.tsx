@@ -78,7 +78,7 @@ export function SettingsPanel({ visible, onClose, onSignOut, onShowOnboarding }:
     } = await supabase.auth.getUser();
     if (!user?.email) return;
     const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
-      redirectTo: 'skatespotapp:///reset-password',
+      redirectTo: 'inhabitants://reset-password',
     });
     if (error) {
       Alert.alert('Error', error.message);
