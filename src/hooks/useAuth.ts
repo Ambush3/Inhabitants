@@ -96,7 +96,7 @@ export function useAuth() {
 
   async function resetPassword(email: string): Promise<string | null> {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: 'skatespotapp://reset-password',
+      redirectTo: 'inhabitants://reset-password',
     });
     return error?.message ?? null;
   }

@@ -79,7 +79,7 @@ Deno.serve(async () => {
             body: `"${event.title}" is ${timeLabel} at ${timeStr} — ${event.location_name}`,
             sound: 'default',
             data: {
-              url: 'skatespotapp:///events',
+              url: 'inhabitants://events',
             },
           }),
         });
