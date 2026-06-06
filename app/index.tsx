@@ -13,6 +13,7 @@ import {
   ActionSheetIOS,
   Linking,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 import MapView, { Marker, Region, LongPressEvent, MapMarker } from 'react-native-maps';
 import MapViewClustering from 'react-native-map-clustering';
@@ -392,7 +393,8 @@ export default function Index() {
   const [highlightSpotId, setHighlightSpotId] = useState<string | null>(null);
 
   const [useDeviceLocation, setUseDeviceLocation] = useState(true);
-  const [locationReady, setLocationReady] = useState(false);
+  const [locating, setLocating] = useState(true);
+  const regionWriteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null);
 
@@ -739,7 +741,7 @@ export default function Index() {
       if (status !== 'granted') {
         setError('Location permission denied.');
         setUseDeviceLocation(false);
-        setLocationReady(true);
+        setLocating(false);
         return;
       }
 
@@ -757,13 +759,14 @@ export default function Index() {
         if (!pos) {
           setError('Could not determine your location. Showing default view.');
           setUseDeviceLocation(false);
-          setLocationReady(true);
+          setLocating(false);
           return;
         }
       }
 
       if (!autoCenterRef.current) {
         setUseDeviceLocation(false);
+        setLocating(false);
         return;
       }
 
@@ -780,10 +783,30 @@ export default function Index() {
         setInitialRegion(nextRegion);
         mapRef.current?.animateToRegion(nextRegion, 600);
       }
-      setLocationReady(true);
+      setLocating(false);
       setUseDeviceLocation(false);
     })();
   }, [useDeviceLocation]);
+
+  useEffect(() => {
+    if (deepLinkRegion) return;
+    AsyncStorage.getItem('cached_last_map_region').then((raw) => {
+      if (!raw) return;
+      try {
+        const cached = JSON.parse(raw) as Region;
+        if (
+          typeof cached?.latitude === 'number' &&
+          typeof cached?.longitude === 'number' &&
+          typeof cached?.latitudeDelta === 'number' &&
+          typeof cached?.longitudeDelta === 'number'
+        ) {
+          mapRegionRef.current = cached;
+          setInitialRegion(cached);
+          mapRef.current?.animateToRegion(cached, 0);
+        }
+      } catch {}
+    });
+  }, []);
 
   useEffect(() => {
     if (refreshing) {
@@ -926,7 +949,7 @@ export default function Index() {
 
   useEffect(() => {
     if (hasOpenedDeepLinkRef.current) return;
-    if (!pendingDeepLinkRef.current || !spots.length || !locationReady) return;
+    if (!pendingDeepLinkRef.current || !spots.length || locating) return;
     const spot = spots.find((s) => s.id === pendingDeepLinkRef.current);
     if (!spot) return;
     hasOpenedDeepLinkRef.current = true;
@@ -966,7 +989,7 @@ export default function Index() {
       mapRef.current?.animateToRegion(spotRegion, 400);
       openSpotDetails(spot);
     }, 1500);
-  }, [spots, locationReady]);
+  }, [spots, locating]);
 
   useEffect(() => {
     if (!session) return;
@@ -1516,8 +1539,7 @@ export default function Index() {
             unreadRsvpCount={unreadRsvpCount}
             onClearUnreadRsvps={clearUnreadRsvpCount}
           />
-          {locationReady ? (
-            <SpotMap
+          <SpotMap
               mapRef={mapRef}
               visibleSpots={visibleSpots}
               places={places}
@@ -1544,6 +1566,10 @@ export default function Index() {
               }}
               onRegionChangeComplete={(r: Region) => {
                 mapRegionRef.current = r;
+                if (regionWriteTimerRef.current) clearTimeout(regionWriteTimerRef.current);
+                regionWriteTimerRef.current = setTimeout(() => {
+                  AsyncStorage.setItem('cached_last_map_region', JSON.stringify(r)).catch(() => {});
+                }, 1000);
               }}
               onLongPress={onLongPress}
               markerRefs={markerRefs}
@@ -1560,11 +1586,25 @@ export default function Index() {
               events={events}
               pendingEventCoord={pendingEventCoord}
             />
-          ) : (
-            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-              <Text style={{ color: c.text }}>Finding your location...</Text>
+          {locating ? (
+            <View
+              pointerEvents="none"
+              style={{
+                position: 'absolute',
+                top: insets.top + 56,
+                alignSelf: 'center',
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 8,
+                backgroundColor: 'rgba(0,0,0,0.7)',
+                paddingHorizontal: 12,
+                paddingVertical: 6,
+                borderRadius: 16,
+              }}>
+              <ActivityIndicator size="small" color="#ffffff" />
+              <Text style={{ color: '#ffffff', fontSize: 13, fontWeight: '600' }}>Locating you…</Text>
             </View>
-          )}
+          ) : null}
           {previewSpot && !detailsOpen ? (
             <Pressable
               onPress={() => {
