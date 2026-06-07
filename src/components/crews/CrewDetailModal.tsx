@@ -22,6 +22,7 @@ type Props = {
   crewId: string | null;
   onEdit?: (crew: Crew) => void;
   onSelectSpot?: (spot: Spot) => void;
+  onSelectMember?: (userId: string) => void;
 };
 
 type UserSearchResult = {
@@ -30,7 +31,7 @@ type UserSearchResult = {
   avatar_url: string | null;
 };
 
-export function CrewDetailModal({ visible, onClose, crewId, onEdit, onSelectSpot }: Props) {
+export function CrewDetailModal({ visible, onClose, crewId, onEdit, onSelectSpot, onSelectMember }: Props) {
   const { theme } = useTheme();
   const c = theme.colors;
   const insets = useSafeAreaInsets();
@@ -366,29 +367,34 @@ export function CrewDetailModal({ visible, onClose, crewId, onEdit, onSelectSpot
                     borderBottomWidth: 1,
                     borderColor: c.border,
                   }}>
-                  {m.avatar_url ? (
-                    <Image
-                      source={{ uri: m.avatar_url }}
-                      style={{ width: 36, height: 36, borderRadius: 18 }}
-                    />
-                  ) : (
-                    <View
-                      style={{
-                        width: 36,
-                        height: 36,
-                        borderRadius: 18,
-                        backgroundColor: c.border,
-                      }}
-                    />
-                  )}
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ color: c.text, fontWeight: '600' }}>
-                      {m.username ?? 'Unknown'}
-                    </Text>
-                    <Text style={{ color: c.subtext, fontSize: 12, textTransform: 'capitalize' }}>
-                      {m.role}
-                    </Text>
-                  </View>
+                  <Pressable
+                    onPress={() => onSelectMember?.(m.user_id)}
+                    disabled={!onSelectMember}
+                    style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    {m.avatar_url ? (
+                      <Image
+                        source={{ uri: m.avatar_url }}
+                        style={{ width: 36, height: 36, borderRadius: 18 }}
+                      />
+                    ) : (
+                      <View
+                        style={{
+                          width: 36,
+                          height: 36,
+                          borderRadius: 18,
+                          backgroundColor: c.border,
+                        }}
+                      />
+                    )}
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: c.text, fontWeight: '600' }}>
+                        {m.username ?? 'Unknown'}
+                      </Text>
+                      <Text style={{ color: c.subtext, fontSize: 12, textTransform: 'capitalize' }}>
+                        {m.role}
+                      </Text>
+                    </View>
+                  </Pressable>
                   {isOwner && m.role !== 'owner' ? (
                     <View style={{ flexDirection: 'row', gap: 8 }}>
                       <Pressable

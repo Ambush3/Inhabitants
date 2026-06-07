@@ -293,6 +293,7 @@ export default function Index() {
 
   const openedPublicProfileFromProfileRef = useRef(false);
   const reopenSpotDetailsOnProfileCloseRef = useRef(false);
+  const reopenCrewDetailOnProfileCloseRef = useRef(false);
 
   const {
     reviews: spotReviews,
@@ -1992,6 +1993,10 @@ export default function Index() {
               setProfileOpen(false);
               AsyncStorage.removeItem('pendingNotificationProfile');
               loadPendingRequests();
+              if (reopenCrewDetailOnProfileCloseRef.current) {
+                reopenCrewDetailOnProfileCloseRef.current = false;
+                setTimeout(() => setCrewDetailOpen(true), 350);
+              }
             }}
             mySpots={mySpots}
             myReviews={myReviews}
@@ -1999,6 +2004,7 @@ export default function Index() {
             allSpots={spots}
             onSelectSpot={(s) => {
               setProfileOpen(false);
+              reopenCrewDetailOnProfileCloseRef.current = false;
               setHighlightSpotId(s.id);
               highlightSpotIdRef.current = s.id;
               if (s.spot_type === 'skatepark' || s.spot_type === 'skateshop') {
@@ -2029,6 +2035,7 @@ export default function Index() {
             onSignOut={async () => {
               await signOut();
               setProfileOpen(false);
+              reopenCrewDetailOnProfileCloseRef.current = false;
             }}
             onViewProfile={(userId) => {
               setProfileOpen(false);
@@ -2051,6 +2058,9 @@ export default function Index() {
               } else if (reopenSpotDetailsOnProfileCloseRef.current) {
                 reopenSpotDetailsOnProfileCloseRef.current = false;
                 setTimeout(() => setDetailsOpen(true), 350);
+              } else if (reopenCrewDetailOnProfileCloseRef.current) {
+                reopenCrewDetailOnProfileCloseRef.current = false;
+                setTimeout(() => setCrewDetailOpen(true), 350);
               }
             }}
             userId={publicProfileUserId}
@@ -2060,6 +2070,7 @@ export default function Index() {
               setPublicProfileUserId(null);
               openedPublicProfileFromProfileRef.current = false;
               reopenSpotDetailsOnProfileCloseRef.current = false;
+              reopenCrewDetailOnProfileCloseRef.current = false;
               setHighlightSpotId(s.id);
               highlightSpotIdRef.current = s.id;
               animateToSpotWithModalOffset(s.lat, s.lng);
@@ -2210,6 +2221,19 @@ export default function Index() {
               setSelectedCrewId(null);
               animateToSpotWithModalOffset(spot.lat, spot.lng);
               openSpotDetails(spot);
+            }}
+            onSelectMember={(userId) => {
+              if (publicProfileOpen || profileOpen) return;
+              reopenCrewDetailOnProfileCloseRef.current = true;
+              setCrewDetailOpen(false);
+              if (userId === session?.user.id) {
+                setTimeout(() => setProfileOpen(true), 350);
+              } else {
+                setTimeout(() => {
+                  setPublicProfileUserId(userId);
+                  setPublicProfileOpen(true);
+                }, 350);
+              }
             }}
           />
           <CreateCrewModal
