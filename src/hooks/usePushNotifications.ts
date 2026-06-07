@@ -22,7 +22,8 @@ export function usePushNotifications(
   onOpenProfile?: () => void,
   onOpenPublicProfile?: (userId: string) => void,
   onMarkSpotNotificationRead?: (spotId: string) => void,
-  onOpenEvents?: () => void
+  onOpenEvents?: () => void,
+  onOpenCrewInvites?: () => void
 ) {
   const sessionRef = useRef(session);
   const onSpotOpenRef = useRef(onSpotOpen);
@@ -31,6 +32,7 @@ export function usePushNotifications(
 
   const onMarkSpotNotificationReadRef = useRef(onMarkSpotNotificationRead);
   const onOpenEventsRef = useRef(onOpenEvents);
+  const onOpenCrewInvitesRef = useRef(onOpenCrewInvites);
 
   useEffect(() => {
     onMarkSpotNotificationReadRef.current = onMarkSpotNotificationRead;
@@ -51,6 +53,9 @@ export function usePushNotifications(
   useEffect(() => {
     onOpenEventsRef.current = onOpenEvents;
   }, [onOpenEvents]);
+  useEffect(() => {
+    onOpenCrewInvitesRef.current = onOpenCrewInvites;
+  }, [onOpenCrewInvites]);
 
   useEffect(() => {
     (async () => {
@@ -69,6 +74,8 @@ export function usePushNotifications(
           await AsyncStorage.setItem('pendingNotificationProfile', 'true');
         } else if (url?.includes('events')) {
           await AsyncStorage.setItem('pendingNotificationEvents', 'true');
+        } else if (url?.includes('openCrewInvites')) {
+          await AsyncStorage.setItem('pendingNotificationCrewInvites', 'true');
         } else if (url) {
           const params = new URLSearchParams(url.split('?')[1]);
           const spot_id = params.get('deepLinkSpotId');
@@ -118,6 +125,15 @@ export function usePushNotifications(
           onOpenEventsRef.current?.();
         } else {
           await AsyncStorage.setItem('pendingNotificationEvents', 'true');
+        }
+        return;
+      }
+
+      if (url.includes('openCrewInvites')) {
+        if (sessionRef.current) {
+          onOpenCrewInvitesRef.current?.();
+        } else {
+          await AsyncStorage.setItem('pendingNotificationCrewInvites', 'true');
         }
         return;
       }
