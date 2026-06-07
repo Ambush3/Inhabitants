@@ -37,6 +37,7 @@ A community-driven skateboarding spot finder built with React Native and Expo. S
 ### Social
 
 - Friend requests with send, accept, decline, and cancel
+- Ability to create crews and share spots privately inside those specific crews
 - Bulk remove friends via long press selection
 - Social feed showing spots created and reviews left by friends
 - Friends-only spot visibility
@@ -69,7 +70,7 @@ A community-driven skateboarding spot finder built with React Native and Expo. S
 ### Notifications
 
 - Push notifications via Expo Notifications
-- Deep links from notifications directly into spot details, profile, or events
+- Deep links from notifications directly into spot details, profile, crews, and events
 - Per-type notification preferences in Settings
 - In-app activity feed for spot-level events
 
