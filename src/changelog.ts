@@ -1,5 +1,18 @@
 export const changelog = [
   {
+    version: '1.6',
+    date: 'June 2026',
+    changes: [
+      'Crews — create or join a crew to skate with your group',
+      'Invite friends to crews and manage invites from the Crews menu',
+      'Share spots directly to a crew',
+      'Tap any crew member to open their profile',
+      'Crew invite, join, and new-spot push notifications now open the right screen',
+      'Tapping a notification clears its unread activity badge',
+      'Rebranded deep links to inhabitants:// for invites and password reset',
+    ],
+  },
+  {
     version: '1.5',
     date: 'May 2026',
     changes: [
