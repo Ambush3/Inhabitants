@@ -697,6 +697,11 @@ export default function Index() {
     () => {
       setPanelOpen(true);
       setEventFilterOverride('invited');
+    },
+    () => {
+      setPanelOpen(false);
+      setCrewsInitialTab('invites');
+      setCrewsOpen(true);
     }
   );
 
@@ -1017,6 +1022,14 @@ export default function Index() {
       AsyncStorage.removeItem('pendingNotificationEvents');
       setPanelOpen(true);
       setEventFilterOverride('invited');
+    });
+
+    AsyncStorage.getItem('pendingNotificationCrewInvites').then((val) => {
+      if (!val) return;
+      AsyncStorage.removeItem('pendingNotificationCrewInvites');
+      setPanelOpen(false);
+      setCrewsInitialTab('invites');
+      setCrewsOpen(true);
     });
 
     AsyncStorage.getItem('pendingNotificationProfile').then((val) => {
