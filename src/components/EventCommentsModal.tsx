@@ -135,9 +135,11 @@ export function EventCommentsModal({
           {loading ? (
             <Text style={{ color: c.subtext, fontSize: 13, padding: 16 }}>Loading...</Text>
           ) : comments.length === 0 ? (
-            <Text style={{ color: c.subtext, fontSize: 13, opacity: 0.6, padding: 16 }}>
-              No comments yet. Be the first!
-            </Text>
+            <View style={{ height: 200, justifyContent: 'center', alignItems: 'center', padding: 16 }}>
+              <Text style={{ color: c.subtext, fontSize: 13, opacity: 0.6, textAlign: 'center' }}>
+                No comments yet. Be the first!
+              </Text>
+            </View>
           ) : (
             <FlatList
               ref={listRef}

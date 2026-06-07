@@ -430,14 +430,16 @@ export function SpotCommentsModal({
                 data={comments}
                 keyExtractor={(item) => item.id}
                 renderItem={renderComment}
-                contentContainerStyle={{ padding: 16, paddingBottom: 8 }}
+                contentContainerStyle={[
+                  { padding: 16, paddingBottom: 8 },
+                  comments.length === 0 && { flexGrow: 1, justifyContent: 'center' },
+                ]}
                 ListEmptyComponent={
-                  <Text
-                    style={{ color: c.subtext, fontSize: 14, textAlign: 'center', marginTop: 24 }}>
+                  <Text style={{ color: c.subtext, fontSize: 14, textAlign: 'center' }}>
                     No comments yet. Be the first!
                   </Text>
                 }
-                style={{ maxHeight: 300 }}
+                style={comments.length === 0 ? { height: 200 } : { maxHeight: 300 }}
               />
             )}
 

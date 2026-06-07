@@ -48,7 +48,7 @@ type Props = {
 };
 
 export function CreateEventModal({ visible, onClose, onSubmit, pendingCoord, spots, editEvent }: Props) {
-  const { theme } = useTheme();
+  const { theme, darkMode } = useTheme();
   const c = theme.colors;
   const insets = useSafeAreaInsets();
 
@@ -478,6 +478,7 @@ export function CreateEventModal({ visible, onClose, onSubmit, pendingCoord, spo
                       value={eventDate}
                       mode="date"
                       display="inline"
+                      themeVariant={darkMode ? 'dark' : 'light'}
                       minimumDate={new Date()}
                       style={{ height: 350, width: 288 }}
                       onChange={(_, selected) => {
@@ -528,6 +529,7 @@ export function CreateEventModal({ visible, onClose, onSubmit, pendingCoord, spo
                       value={eventDate}
                       mode="time"
                       display="spinner"
+                      themeVariant={darkMode ? 'dark' : 'light'}
                       style={{ height: 150, width: 288 }}
                       onChange={(_, selected) => {
                         if (selected) {
