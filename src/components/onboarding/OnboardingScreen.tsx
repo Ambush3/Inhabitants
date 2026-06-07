@@ -75,6 +75,13 @@ const slides = [
     subtitle:
       'The Feed tab in the menu shows what your friends are doing — new spots they created and reviews they left. Tap any item to open the spot.',
   },
+  {
+    id: '11',
+    emoji: '🤘',
+    title: 'Crews',
+    subtitle:
+      'Create or join crews to skate with your group. Invite friends, share spots to the crew, and tap any member to open their profile. Manage invites from the Crews menu.',
+  },
 ];
 
 type Props = {
