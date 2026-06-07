@@ -702,6 +702,11 @@ export default function Index() {
       setPanelOpen(false);
       setCrewsInitialTab('invites');
       setCrewsOpen(true);
+    },
+    (crewId) => {
+      setPanelOpen(false);
+      setSelectedCrewId(crewId);
+      setCrewDetailOpen(true);
     }
   );
 
@@ -1032,6 +1037,14 @@ export default function Index() {
       setCrewsOpen(true);
     });
 
+    AsyncStorage.getItem('pendingNotificationCrewDetail').then((crewId) => {
+      if (!crewId) return;
+      AsyncStorage.removeItem('pendingNotificationCrewDetail');
+      setPanelOpen(false);
+      setSelectedCrewId(crewId);
+      setCrewDetailOpen(true);
+    });
+
     AsyncStorage.getItem('pendingNotificationProfile').then((val) => {
       if (!val) return;
       setProfileOpen(true);
@@ -1043,6 +1056,25 @@ export default function Index() {
       setPublicProfileOpen(true);
     });
   }, [session]);
+
+  useEffect(() => {
+    if (!crewsOpen || crewsInitialTab !== 'invites') return;
+    activityNotifications
+      .filter((n) => !n.read && n.type === 'crew_invite')
+      .forEach((n) => markAsRead(n.id));
+  }, [crewsOpen, crewsInitialTab, activityNotifications]);
+
+  useEffect(() => {
+    if (!crewDetailOpen || !selectedCrewId) return;
+    activityNotifications
+      .filter(
+        (n) =>
+          !n.read &&
+          n.crew_id === selectedCrewId &&
+          (n.type === 'crew_join' || n.type === 'crew_spot_added')
+      )
+      .forEach((n) => markAsRead(n.id));
+  }, [crewDetailOpen, selectedCrewId, activityNotifications]);
 
   useEffect(() => {
     if (!profileOpen) return;
