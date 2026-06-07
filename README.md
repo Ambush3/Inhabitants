@@ -170,6 +170,11 @@ src/
     EventDetailsModal.tsx      # Event details with RSVP
     SplashScreen.tsx           # Animated splash
     AnimatedSpotCard.tsx       # Animated list item wrapper
+    crews/
+      AddSpotToCrewModal.tsx
+      CreateCrewModal.tsx
+      CrewDetailModal.tsx
+      CrewsModal.tsx
     onboarding/
       OnboardingScreen.tsx
     profile/
