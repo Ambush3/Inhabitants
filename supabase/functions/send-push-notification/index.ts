@@ -167,7 +167,7 @@ Deno.serve(async (req) => {
                 title,
                 body,
                 sound: 'default',
-                data: { url: 'inhabitants://' },
+                data: { url: `inhabitants://?openCrewId=${crew_id ?? ''}` },
             }));
             const response = await fetch('https://exp.host/--/api/v2/push/send', {
                 method: 'POST',

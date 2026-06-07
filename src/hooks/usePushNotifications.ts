@@ -23,7 +23,8 @@ export function usePushNotifications(
   onOpenPublicProfile?: (userId: string) => void,
   onMarkSpotNotificationRead?: (spotId: string) => void,
   onOpenEvents?: () => void,
-  onOpenCrewInvites?: () => void
+  onOpenCrewInvites?: () => void,
+  onOpenCrewDetail?: (crewId: string) => void
 ) {
   const sessionRef = useRef(session);
   const onSpotOpenRef = useRef(onSpotOpen);
@@ -33,6 +34,7 @@ export function usePushNotifications(
   const onMarkSpotNotificationReadRef = useRef(onMarkSpotNotificationRead);
   const onOpenEventsRef = useRef(onOpenEvents);
   const onOpenCrewInvitesRef = useRef(onOpenCrewInvites);
+  const onOpenCrewDetailRef = useRef(onOpenCrewDetail);
 
   useEffect(() => {
     onMarkSpotNotificationReadRef.current = onMarkSpotNotificationRead;
@@ -56,6 +58,9 @@ export function usePushNotifications(
   useEffect(() => {
     onOpenCrewInvitesRef.current = onOpenCrewInvites;
   }, [onOpenCrewInvites]);
+  useEffect(() => {
+    onOpenCrewDetailRef.current = onOpenCrewDetail;
+  }, [onOpenCrewDetail]);
 
   useEffect(() => {
     (async () => {
@@ -76,6 +81,10 @@ export function usePushNotifications(
           await AsyncStorage.setItem('pendingNotificationEvents', 'true');
         } else if (url?.includes('openCrewInvites')) {
           await AsyncStorage.setItem('pendingNotificationCrewInvites', 'true');
+        } else if (url?.includes('openCrewId')) {
+          const params = new URLSearchParams(url.split('?')[1]);
+          const crewId = params.get('openCrewId');
+          if (crewId) await AsyncStorage.setItem('pendingNotificationCrewDetail', crewId);
         } else if (url) {
           const params = new URLSearchParams(url.split('?')[1]);
           const spot_id = params.get('deepLinkSpotId');
@@ -134,6 +143,18 @@ export function usePushNotifications(
           onOpenCrewInvitesRef.current?.();
         } else {
           await AsyncStorage.setItem('pendingNotificationCrewInvites', 'true');
+        }
+        return;
+      }
+
+      if (url.includes('openCrewId')) {
+        const crewParams = new URLSearchParams(url.split('?')[1]);
+        const crewId = crewParams.get('openCrewId');
+        if (!crewId) return;
+        if (sessionRef.current) {
+          onOpenCrewDetailRef.current?.(crewId);
+        } else {
+          await AsyncStorage.setItem('pendingNotificationCrewDetail', crewId);
         }
         return;
       }
