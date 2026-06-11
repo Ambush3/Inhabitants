@@ -6,6 +6,7 @@ import { supabase } from '@/src/libs/supabase';
 import { useTheme } from '@/src/context/ThemeContext';
 import { changelog } from '@/src/changelog';
 import { useNotificationPreferences, NotificationPrefs } from '@/src/hooks/useNotificationPreferences';
+import { FeedbackBoardModal } from '@/src/components/feedback/FeedbackBoardModal';
 
 import * as ImagePicker from 'expo-image-picker';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
@@ -39,6 +40,7 @@ export function SettingsPanel({ visible, onClose, onSignOut, onShowOnboarding }:
   const insets = useSafeAreaInsets();
   const [resetSent, setResetSent] = useState(false);
   const [changelogOpen, setChangelogOpen] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   const { theme, darkMode, toggleDarkMode } = useTheme();
   const c = theme.colors;
 
@@ -363,6 +365,13 @@ export function SettingsPanel({ visible, onClose, onSignOut, onShowOnboarding }:
                 </View>
                 <Ionicons name="chevron-forward" size={16} color={c.subtext} />
               </Pressable>
+              <Pressable onPress={() => setFeedbackOpen(true)} style={rowStyle}>
+                <View style={rowLeftStyle}>
+                  <Ionicons name="chatbubbles-outline" size={20} color={c.text} />
+                  <Text style={{ fontSize: 15, color: c.text }}>Feedback</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color={c.subtext} />
+              </Pressable>
               <Pressable
                 onPress={() => setChangelogOpen(true)}
                 style={{ ...rowStyle, borderBottomWidth: 0 }}>
@@ -437,6 +446,7 @@ export function SettingsPanel({ visible, onClose, onSignOut, onShowOnboarding }:
                 </Pressable>
               </View>
             </Modal>
+            <FeedbackBoardModal visible={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
           </Pressable>
         </Pressable>
       </Modal>
