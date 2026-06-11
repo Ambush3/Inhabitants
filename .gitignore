@@ -53,7 +53,6 @@ build/
 # Supabase
 supabase/.temp/
 supabase/config.toml
-supabase/functions
 supabase/migrations
 
 .vscode
