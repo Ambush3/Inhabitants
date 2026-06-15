@@ -29,7 +29,7 @@ export function useInvite() {
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) return;
-    const link = `inhabitants://join?ref=${user.id}`;
+    const link = `https://inhabitants.chottu.link/join?ref=${user.id}`;
     await Share.share({
       message: `Join me on Inhabitants — the skate spot finder. Download the app and sign up here: ${link}`,
     });
@@ -49,7 +49,7 @@ export function useInvite() {
     if (Platform.OS === 'ios' && perm.accessPrivileges === 'limited') {
       try {
         await Contacts.presentAccessPickerAsync();
-      } catch {}
+      } catch { }
     }
 
     const { data } = await Contacts.getContactsAsync({
@@ -65,8 +65,7 @@ export function useInvite() {
     const SMS = await import('expo-sms');
     const isAvailable = await SMS.isAvailableAsync();
     if (!isAvailable) return;
-
-    const link = `inhabitants://join?ref=${userId}`;
+    const link = `https://inhabitants.chottu.link/join?ref=${userId}`;
     await SMS.sendSMSAsync(phoneNumbers, `Join me on Inhabitants — the skate spot finder! Sign up here: ${link}`);
   }
 

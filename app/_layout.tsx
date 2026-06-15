@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
-import { Linking, StyleSheet, View } from 'react-native';
+import { Linking, StyleSheet, View, NativeEventEmitter, NativeModules } from 'react-native';
 import { Stack, router, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as ExpoSplashScreen from 'expo-splash-screen';
@@ -9,14 +9,43 @@ import { ThemeProvider, useTheme } from '@/src/context/ThemeContext';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { supabase } from '@/src/libs/supabase';
 import SplashScreen from '@/src/components/SplashScreen';
+import { initializeChottuLink } from 'react-native-chottulink-sdk';
 
 ExpoSplashScreen.preventAutoHideAsync();
 
+const CHOTTULINK_KEY = process.env.EXPO_PUBLIC_CHOTTULINK_KEY ?? '';
+
 function RootLayoutInner() {
   const { session, loading } = useAuth();
-  const { darkMode, theme } = useTheme();
+  const { darkMode } = useTheme();
   const pathname = usePathname();
   const [splashDone, setSplashDone] = useState(false);
+
+  useEffect(() => {
+    initializeChottuLink(CHOTTULINK_KEY);
+
+    const { ChottuLinkEventEmitter } = NativeModules;
+    if (!ChottuLinkEventEmitter) return;
+
+    const eventEmitter = new NativeEventEmitter(ChottuLinkEventEmitter);
+
+    const deepLinkSubscription = eventEmitter.addListener('ChottuLinkDeepLinkResolved', (data) => {
+      if (!data?.url) return;
+      const match = data.url.match(/join\?ref=([a-f0-9-]+)/);
+      if (match?.[1]) {
+        AsyncStorage.setItem('pending_referral_id', match[1]);
+      }
+    });
+
+    const deepLinkErrorSubscription = eventEmitter.addListener('ChottuLinkDeepLinkError', (data) => {
+      console.log('ChottuLink error:', data?.error);
+    });
+
+    return () => {
+      deepLinkSubscription.remove();
+      deepLinkErrorSubscription.remove();
+    };
+  }, []);
 
   useEffect(() => {
     if (loading) return;
@@ -68,12 +97,15 @@ function RootLayoutInner() {
         }
       }
     }
+
     Linking.getInitialURL().then((url) => {
       if (url) handleDeepLink(url);
     });
+
     const sub = Linking.addEventListener('url', ({ url }) => {
       handleDeepLink(url);
     });
+
     return () => sub.remove();
   }, []);
 
