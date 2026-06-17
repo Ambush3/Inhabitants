@@ -34,6 +34,8 @@ type Props = {
   onSignOut: () => void;
   onSearch: (tag: string) => void;
   onClearSearch: () => void;
+  difficultyFilter: Set<'beginner' | 'intermediate' | 'advanced'>;
+  onToggleDifficultyFilter: (level: 'beginner' | 'intermediate' | 'advanced') => void;
   hasSearchResults: boolean;
   searchResults: Spot[];
   favorites: Spot[];
@@ -89,6 +91,8 @@ export function ExplorePanel({
   onSignOut,
   onSearch,
   onClearSearch,
+  difficultyFilter,
+  onToggleDifficultyFilter,
   hasSearchResults,
   searchResults,
   favorites,
@@ -578,6 +582,40 @@ export function ExplorePanel({
                       </Pressable>
                     ) : null}
                   </View>
+                </View>
+
+                <View style={{ flexDirection: 'row', gap: 6, marginBottom: 16 }}>
+                  {(['beginner', 'intermediate', 'advanced'] as const).map((level) => {
+                    const isActive = difficultyFilter.has(level);
+                    const labels = {
+                      beginner: 'Beginner',
+                      intermediate: 'Intermediate',
+                      advanced: 'Advanced',
+                    };
+                    return (
+                      <Pressable
+                        key={level}
+                        onPress={() => onToggleDifficultyFilter(level)}
+                        style={{
+                          flex: 1,
+                          paddingVertical: 5,
+                          borderRadius: 6,
+                          borderWidth: 1,
+                          borderColor: isActive ? '#FF3B30' : c.inputBorder,
+                          backgroundColor: isActive ? '#FF3B30' : c.surface,
+                          alignItems: 'center',
+                        }}>
+                        <Text
+                          style={{
+                            fontSize: 10,
+                            fontWeight: '600',
+                            color: isActive ? 'white' : c.subtext,
+                          }}>
+                          {labels[level]}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
                 </View>
 
                 {searchQuery.trim().length > 0 && searchResults.length === 0 ? (
@@ -1514,7 +1552,8 @@ export function ExplorePanel({
                           <Text style={{ fontWeight: '600' }}>{`"${item.spot.name}"`}</Text>
                           {item.kind === 'crew_spot_added' ? (
                             <Text>
-                              {' '}to{' '}
+                              {' '}
+                              to{' '}
                               <Text style={{ fontWeight: '600' }}>{item.crew_name}</Text>
                             </Text>
                           ) : null}
