@@ -215,14 +215,27 @@ export function CreateSpotModal({
               </View>
 
               {pendingCoord ? (
-                <Text
-                  style={{
-                    marginBottom: 12,
-                    color: c.subtext,
-                  }}>
+                <Text style={{ marginBottom: 12, color: c.subtext }}>
                   {pendingCoord.lat.toFixed(5)}, {pendingCoord.lng.toFixed(5)}
                 </Text>
-              ) : null}
+              ) : (
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 6,
+                    backgroundColor: 'rgba(255,149,0,0.12)',
+                    borderRadius: 8,
+                    padding: 10,
+                    marginBottom: 12,
+                  }}>
+                  <Ionicons name="warning-outline" size={16} color="#FF9500" />
+                  <Text style={{ fontSize: 12, color: '#FF9500', flex: 1 }}>
+                    No location detected from this photo. Close this and long-press the map to set a
+                    location, then try Quick Add again.
+                  </Text>
+                </View>
+              )}
 
               <Text style={{ marginBottom: 6, color: c.text }}>Name</Text>
               <TextInput
@@ -440,7 +453,7 @@ export function CreateSpotModal({
                   marginTop: 12,
                 }}>
                 <Button title="Cancel" onPress={onCancel} />
-                <Button title="Create" onPress={onCreate} />
+                <Button title="Create" onPress={onCreate} disabled={!pendingCoord} />
               </View>
             </ScrollView>
           </Pressable>
