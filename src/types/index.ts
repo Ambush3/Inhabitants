@@ -14,6 +14,8 @@ export type Spot = {
   is_verified: boolean;
   is_flagged: boolean;
   closure_report_count?: number;
+  avg_difficulty: number | null;
+  difficulty_vote_count: number;
 };
 
 export type Review = {
