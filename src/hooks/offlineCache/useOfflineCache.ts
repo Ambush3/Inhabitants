@@ -106,9 +106,7 @@ export function useOfflineCache() {
 
   const showOfflineBanner =
     !isOnline || (isOnline && isStale && (cachedMapSpots.length > 0 || cachedFavorites.length > 0));
-  const bannerMessage = !isOnline
-    ? "You're offline — showing cached data"
-    : 'Showing data from over 24 hours ago — pull to refresh';
+  const bannerMessage = !isOnline ? "You're offline — showing cached data" : '';
 
   return {
     isOnline,
