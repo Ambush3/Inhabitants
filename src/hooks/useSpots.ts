@@ -231,6 +231,10 @@ export function useSpots() {
     setSearchResults([]);
   }
 
+  function removeFromSearchResults(id: string) {
+    setSearchResults((prev) => prev.filter((s) => s.id !== id));
+  }
+
   async function updateSpot(
     spotId: string,
     name: string,
@@ -296,5 +300,6 @@ export function useSpots() {
     clearSearch,
     setSpotVisibility,
     updateSpot,
+    removeFromSearchResults,
   };
 }
