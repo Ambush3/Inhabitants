@@ -50,6 +50,14 @@ function formatDistance(miles: number): string {
   return `${Math.round(miles).toLocaleString('en-US')} mi`;
 }
 
+export function difficultyLabel(avg: number): string {
+  if (avg <= 1.5) return 'Beginner';
+  if (avg <= 2.5) return 'Easy';
+  if (avg <= 3.5) return 'Intermediate';
+  if (avg <= 4.5) return 'Advanced';
+  return 'Expert';
+}
+
 function SkeletonBar({ width, height = 14, style }: { width: number | string; height?: number; style?: any }) {
   const opacity = useRef(new Animated.Value(0.3)).current;
 
@@ -72,6 +80,10 @@ type Props = {
   flagCount: number;
   onToggleFlag: (reason?: string) => void;
   reviews: Review[];
+  newDifficulty: number;
+  existingDifficultyVoteId: string | null;
+  onChangeDifficulty: (v: number) => void;
+  onSubmitDifficulty: (overrideDifficulty?: number) => void;
   avgRating: number;
   newRating: number;
   newComment: string;
@@ -116,6 +128,10 @@ export function SpotDetailsModal({
   flagCount,
   onToggleFlag,
   reviews,
+  newDifficulty,
+  existingDifficultyVoteId,
+  onChangeDifficulty,
+  onSubmitDifficulty,
   avgRating,
   newRating,
   newComment,
@@ -702,6 +718,58 @@ export function SpotDetailsModal({
                 ) : null}
               </View>
             )}
+
+            {/* ── Difficulty card ── */}
+            {!detailsLoading && spot?.spot_type === 'spot' ? (
+              <View style={[styles.ratingCard, { backgroundColor: c.tagBg }]}>
+                <View style={{ flex: 1 }}>
+                  {spot.difficulty_vote_count > 0 && spot.avg_difficulty !== null ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Text style={[styles.ratingScore, { color: c.text }]}>
+                        {spot.avg_difficulty.toFixed(1)}
+                      </Text>
+                      <Text style={{ fontSize: 12, color: c.subtext }}>
+                        {difficultyLabel(spot.avg_difficulty)}
+                      </Text>
+                      <Text style={{ fontSize: 11, color: c.subtext }}>
+                        · {spot.difficulty_vote_count} vote
+                        {spot.difficulty_vote_count !== 1 ? 's' : ''}
+                      </Text>
+                    </View>
+                  ) : (
+                    <Text style={{ fontSize: 13, color: c.subtext }}>No difficulty votes yet</Text>
+                  )}
+                </View>
+
+                <View style={{ alignItems: 'flex-end', gap: 2, alignSelf: 'flex-start' }}>
+                  <Text
+                    style={{
+                      fontSize: 10,
+                      color: c.subtext,
+                      textTransform: 'uppercase',
+                      letterSpacing: 0.5,
+                    }}>
+                    {existingDifficultyVoteId ? 'Your vote' : 'Rate difficulty'}
+                  </Text>
+                  <View style={{ flexDirection: 'row', gap: 4 }}>
+                    {[1, 2, 3, 4, 5].map((level) => (
+                      <Pressable
+                        key={level}
+                        onPress={() => {
+                          onChangeDifficulty(level);
+                          onSubmitDifficulty(level);
+                        }}>
+                        <Ionicons
+                          name={level <= newDifficulty ? 'skull' : 'skull-outline'}
+                          size={20}
+                          color={level <= newDifficulty ? '#FF3B30' : c.subtext}
+                        />
+                      </Pressable>
+                    ))}
+                  </View>
+                </View>
+              </View>
+            ) : null}
 
             {/* ── Action toolbar ── */}
             <View style={styles.actionsToolbar}>

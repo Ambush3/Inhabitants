@@ -25,7 +25,7 @@ import { supabase } from '@/src/libs/supabase';
 
 import { SkateMarker } from '@/src/components/SkateMarker';
 import { CreateSpotModal } from '@/src/components/CreateSpotModal';
-import { SpotDetailsModal } from '@/src/components/SpotDetailsModal';
+import { SpotDetailsModal, difficultyLabel } from '@/src/components/SpotDetailsModal';
 import { SkateShopDetailsModal } from '@/src/components/SkateShopDetailsModal';
 import { ExplorePanel } from '@/src/components/ExplorePanel';
 import { SettingsPanel } from '@/src/components/SettingsPanel';
@@ -44,6 +44,7 @@ import { useCrews, Crew } from '@/src/hooks/useCrews';
 
 import { useSpots } from '@/src/hooks/useSpots';
 import { useReviews } from '@/src/hooks/useReviews';
+import { useDifficulty } from '@/src/hooks/useDifficulty';
 import { useSpotImages } from '@/src/hooks/useSpotImages';
 import { useSpotConditions } from '@/src/hooks/useSpotConditions';
 import { useNearbyPlaces } from '@/src/hooks/useNearbyPlaces';
@@ -312,6 +313,15 @@ export default function Index() {
   } = useReviews();
 
   const {
+    newDifficulty,
+    setNewDifficulty,
+    loadMyDifficultyVote,
+    submitDifficulty,
+    resetDifficulty,
+    existingVoteId: existingDifficultyVoteId,
+  } = useDifficulty();
+
+  const {
     isOnline,
     isStale,
     cacheLoaded,
@@ -507,11 +517,29 @@ export default function Index() {
   const [selectedEvent, setSelectedEvent] = useState<SkateEvent | null>(null);
   const [eventDetailsOpen, setEventDetailsOpen] = useState(false);
 
+  const [difficultyFilter, setDifficultyFilter] = useState<Set<'beginner' | 'intermediate' | 'advanced'>>(new Set());
+
+  function matchesDifficultyFilter(spot: Spot): boolean {
+    if (difficultyFilter.size === 0) return true;
+    if (spot.avg_difficulty === null) return false;
+    const label = difficultyLabel(spot.avg_difficulty).toLowerCase();
+    if (difficultyFilter.has('beginner') && (label === 'beginner' || label === 'easy')) return true;
+    if (difficultyFilter.has('intermediate') && label === 'intermediate') return true;
+    if (difficultyFilter.has('advanced') && (label === 'advanced' || label === 'expert')) return true;
+    return false;
+  }
+
+  const filteredSearchResults = useMemo(
+    () => searchResults.filter(matchesDifficultyFilter),
+    [searchResults, difficultyFilter]
+  );
+
   const visibleSpots = useMemo(() => {
     const sourceSpots = isOnline ? spots : cachedMapSpots;
-    const base = searchResults.length > 0 ? searchResults : sourceSpots;
+    const base =
+      filteredSearchResults.length > 0 ? filteredSearchResults : sourceSpots.filter(matchesDifficultyFilter);
     return base.filter((s) => s.lat && s.lng);
-  }, [searchResults, spots, cachedMapSpots, isOnline]);
+  }, [filteredSearchResults, spots, cachedMapSpots, isOnline, difficultyFilter]);
 
   const displayError = error ?? nearbyError ?? topRatedError;
   const openedFromPanelRef = useRef(false);
@@ -549,6 +577,7 @@ export default function Index() {
 
     openedFromPanelRef.current = false;
     resetConditions();
+    resetDifficulty();
 
     if (idToHide) {
       setTimeout(() => {
@@ -622,6 +651,10 @@ export default function Index() {
       loadConditions(spot.id),
       supabase.from('spot_comments').select('*', { count: 'exact', head: true }).eq('spot_id', spot.id),
     ]);
+
+    if (spot.spot_type === 'spot') {
+      await loadMyDifficultyVote(spot.id);
+    }
 
     setSpotCreatorUsername(profileResult.data?.username ?? null);
     setSpotCreatorAvatarUrl(profileResult.data?.avatar_url ?? null);
@@ -815,7 +848,7 @@ export default function Index() {
           setInitialRegion(cached);
           mapRef.current?.animateToRegion(cached, 0);
         }
-      } catch {}
+      } catch { }
     });
   }, []);
 
@@ -1060,9 +1093,7 @@ export default function Index() {
 
   useEffect(() => {
     if (!crewsOpen || crewsInitialTab !== 'invites') return;
-    activityNotifications
-      .filter((n) => !n.read && n.type === 'crew_invite')
-      .forEach((n) => markAsRead(n.id));
+    activityNotifications.filter((n) => !n.read && n.type === 'crew_invite').forEach((n) => markAsRead(n.id));
   }, [crewsOpen, crewsInitialTab, activityNotifications]);
 
   useEffect(() => {
@@ -1070,9 +1101,7 @@ export default function Index() {
     activityNotifications
       .filter(
         (n) =>
-          !n.read &&
-          n.crew_id === selectedCrewId &&
-          (n.type === 'crew_join' || n.type === 'crew_spot_added')
+          !n.read && n.crew_id === selectedCrewId && (n.type === 'crew_join' || n.type === 'crew_spot_added')
       )
       .forEach((n) => markAsRead(n.id));
   }, [crewDetailOpen, selectedCrewId, activityNotifications]);
@@ -1179,1101 +1208,1144 @@ export default function Index() {
 
   return (
     <View style={{ flex: 1, backgroundColor: c.headerBg }}>
-          <View
-            style={{
-              height: insets.top,
-              backgroundColor: c.headerBg,
-            }}
-          />
-          {displayError ? (
-            <Text
-              style={{
-                color: 'red',
-                paddingHorizontal: 12,
-                paddingTop: 8,
-              }}>
-              {displayError}
-            </Text>
-          ) : null}
-          <View
-            style={{
-              paddingHorizontal: 12,
-              paddingVertical: 10,
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              borderBottomWidth: 1,
-              borderColor: c.border,
-              backgroundColor: c.headerBg,
-            }}>
-            <Pressable onPress={() => setPanelOpen(true)} style={{ padding: 8 }}>
-              <Ionicons name="menu" size={24} color={c.text} />
-              {pendingReceived.length + unreadActivityCount + unreadInviteCount + unreadRsvpCount > 0 ? (
-                <View
-                  style={{
-                    position: 'absolute',
-                    top: 2,
-                    right: 2,
-                    minWidth: 18,
-                    height: 18,
-                    borderRadius: 9,
-                    backgroundColor: c.danger,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    paddingHorizontal: 4,
-                  }}>
-                  <Text
-                    style={{
-                      color: 'white',
-                      fontSize: 11,
-                      fontWeight: '700',
-                    }}>
-                    {pendingReceived.length + unreadActivityCount + unreadInviteCount + unreadRsvpCount}
-                  </Text>
-                </View>
-              ) : null}
-            </Pressable>
-            <Text
-              style={{
-                fontSize: 16,
-                fontWeight: '600',
-                color: c.text,
-              }}>
-              Inhabitants
-            </Text>
+      <View
+        style={{
+          height: insets.top,
+          backgroundColor: c.headerBg,
+        }}
+      />
+      {displayError ? (
+        <Text
+          style={{
+            color: 'red',
+            paddingHorizontal: 12,
+            paddingTop: 8,
+          }}>
+          {displayError}
+        </Text>
+      ) : null}
+      <View
+        style={{
+          paddingHorizontal: 12,
+          paddingVertical: 10,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          borderBottomWidth: 1,
+          borderColor: c.border,
+          backgroundColor: c.headerBg,
+        }}>
+        <Pressable onPress={() => setPanelOpen(true)} style={{ padding: 8 }}>
+          <Ionicons name="menu" size={24} color={c.text} />
+          {pendingReceived.length + unreadActivityCount + unreadInviteCount + unreadRsvpCount > 0 ? (
             <View
               style={{
-                flexDirection: 'row',
+                position: 'absolute',
+                top: 2,
+                right: 2,
+                minWidth: 18,
+                height: 18,
+                borderRadius: 9,
+                backgroundColor: c.danger,
                 alignItems: 'center',
+                justifyContent: 'center',
+                paddingHorizontal: 4,
               }}>
-              <Pressable onPress={onRefresh} style={{ padding: 8 }} disabled={refreshing}>
-                <Animated.View
-                  style={{
-                    transform: [
-                      {
-                        rotate: spinAnim.interpolate({
-                          inputRange: [0, 1],
-                          outputRange: ['0deg', '360deg'],
-                        }),
-                      },
-                    ],
-                  }}>
-                  <Ionicons name="refresh" size={20} color={refreshing ? '#007AFF' : c.text} />
-                </Animated.View>
-              </Pressable>
-              <Pressable onPress={() => setSettingsOpen(true)} style={{ padding: 8 }}>
-                <Ionicons name="settings-outline" size={24} color={c.text} />
-              </Pressable>
-            </View>
-          </View>
-          {showOfflineBanner ? (
-            <View
-              style={{
-                backgroundColor: isOnline ? 'rgba(255,149,0,0.12)' : 'rgba(255,59,48,0.12)',
-                paddingHorizontal: 16,
-                paddingVertical: 8,
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 8,
-              }}>
-              <Ionicons
-                name={isOnline ? 'time-outline' : 'cloud-offline-outline'}
-                size={14}
-                color={isOnline ? '#FF9500' : '#FF3B30'}
-              />
               <Text
                 style={{
-                  fontSize: 12,
-                  color: isOnline ? '#FF9500' : '#FF3B30',
-                  fontWeight: '500',
-                  flex: 1,
+                  color: 'white',
+                  fontSize: 11,
+                  fontWeight: '700',
                 }}>
-                {bannerMessage}
+                {pendingReceived.length + unreadActivityCount + unreadInviteCount + unreadRsvpCount}
               </Text>
             </View>
           ) : null}
-          <ExplorePanel
-            visible={panelOpen}
-            pendingFriendRequestsCount={pendingReceived.length}
-            feedItems={feedItems}
-            feedLoading={feedLoading}
-            onSelectFeedSpot={(s) => {
-              setPanelOpen(false);
-              openedFromPanelRef.current = true;
-              setHighlightSpotId(s.id);
-              highlightSpotIdRef.current = s.id;
-              if (s.spot_type === 'skatepark' || s.spot_type === 'skateshop') {
-                setPlacesWithAutoClear((prev) =>
-                  prev.some((p) => p.id === s.id)
-                    ? prev
-                    : [
-                      ...prev,
-                      {
-                        id: s.id,
-                        name: s.name,
-                        type: s.spot_type as 'skatepark' | 'skateshop',
-                        lat: s.lat,
-                        lng: s.lng,
-                        tags: {},
-                      },
-                    ]
-                );
-                setTimeout(() => {
-                  animateToSpotWithModalOffset(s.lat, s.lng);
-                  openSpotDetails(s);
-                }, 400);
-              } else {
-                animateToSpotWithModalOffset(s.lat, s.lng);
-                openSpotDetails(s);
-              }
-            }}
-            activityNotifications={activityNotifications}
-            onMarkAllNotificationsRead={markAllAsRead}
-            onSelectNotification={(n) => {
-              markAsRead(n.id);
-              if (n.type === 'crew_invite') {
-                setPanelOpen(false);
-                setCrewsInitialTab('invites');
-                setCrewsOpen(true);
-                return;
-              }
-              if (n.type === 'crew_join' && n.crew_id) {
-                setPanelOpen(false);
-                setSelectedCrewId(n.crew_id);
-                setCrewDetailOpen(true);
-                return;
-              }
-              openedFromPanelRef.current = true;
-              const spot = n.spot_id ? spots.find((s) => s.id === n.spot_id) : null;
-              if (spot) {
-                setPanelOpen(false);
+        </Pressable>
+        <Text
+          style={{
+            fontSize: 16,
+            fontWeight: '600',
+            color: c.text,
+          }}>
+          Inhabitants
+        </Text>
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+          }}>
+          <Pressable onPress={onRefresh} style={{ padding: 8 }} disabled={refreshing}>
+            <Animated.View
+              style={{
+                transform: [
+                  {
+                    rotate: spinAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: ['0deg', '360deg'],
+                    }),
+                  },
+                ],
+              }}>
+              <Ionicons name="refresh" size={20} color={refreshing ? '#007AFF' : c.text} />
+            </Animated.View>
+          </Pressable>
+          <Pressable onPress={() => setSettingsOpen(true)} style={{ padding: 8 }}>
+            <Ionicons name="settings-outline" size={24} color={c.text} />
+          </Pressable>
+        </View>
+      </View>
+      {showOfflineBanner ? (
+        <View
+          style={{
+            backgroundColor: isOnline ? 'rgba(255,149,0,0.12)' : 'rgba(255,59,48,0.12)',
+            paddingHorizontal: 16,
+            paddingVertical: 8,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 8,
+          }}>
+          <Ionicons
+            name={isOnline ? 'time-outline' : 'cloud-offline-outline'}
+            size={14}
+            color={isOnline ? '#FF9500' : '#FF3B30'}
+          />
+          <Text
+            style={{
+              fontSize: 12,
+              color: isOnline ? '#FF9500' : '#FF3B30',
+              fontWeight: '500',
+              flex: 1,
+            }}>
+            {bannerMessage}
+          </Text>
+        </View>
+      ) : null}
+      <ExplorePanel
+        visible={panelOpen}
+        pendingFriendRequestsCount={pendingReceived.length}
+        feedItems={feedItems}
+        feedLoading={feedLoading}
+        onSelectFeedSpot={(s) => {
+          setPanelOpen(false);
+          openedFromPanelRef.current = true;
+          setHighlightSpotId(s.id);
+          highlightSpotIdRef.current = s.id;
+          if (s.spot_type === 'skatepark' || s.spot_type === 'skateshop') {
+            setPlacesWithAutoClear((prev) =>
+              prev.some((p) => p.id === s.id)
+                ? prev
+                : [
+                  ...prev,
+                  {
+                    id: s.id,
+                    name: s.name,
+                    type: s.spot_type as 'skatepark' | 'skateshop',
+                    lat: s.lat,
+                    lng: s.lng,
+                    tags: {},
+                  },
+                ]
+            );
+            setTimeout(() => {
+              animateToSpotWithModalOffset(s.lat, s.lng);
+              openSpotDetails(s);
+            }, 400);
+          } else {
+            animateToSpotWithModalOffset(s.lat, s.lng);
+            openSpotDetails(s);
+          }
+        }}
+        activityNotifications={activityNotifications}
+        onMarkAllNotificationsRead={markAllAsRead}
+        onSelectNotification={(n) => {
+          markAsRead(n.id);
+          if (n.type === 'crew_invite') {
+            setPanelOpen(false);
+            setCrewsInitialTab('invites');
+            setCrewsOpen(true);
+            return;
+          }
+          if (n.type === 'crew_join' && n.crew_id) {
+            setPanelOpen(false);
+            setSelectedCrewId(n.crew_id);
+            setCrewDetailOpen(true);
+            return;
+          }
+          openedFromPanelRef.current = true;
+          const spot = n.spot_id ? spots.find((s) => s.id === n.spot_id) : null;
+          if (spot) {
+            setPanelOpen(false);
+            setHighlightSpotId(spot.id);
+            highlightSpotIdRef.current = spot.id;
+            animateToSpotWithModalOffset(spot.lat, spot.lng);
+            openSpotDetails(spot);
+          }
+        }}
+        onClose={() => {
+          setPanelOpen(false);
+          setPendingEventCoord(null);
+          reload();
+          loadMySpots();
+        }}
+        onOpenSettings={() => {
+          setPanelOpen(false);
+          reload();
+          loadMySpots();
+          setSettingsOpen(true);
+        }}
+        onOpenCrews={() => {
+          setPanelOpen(false);
+          setCrewsOpen(true);
+        }}
+        parksLoading={parksLoading}
+        shopsLoading={shopsLoading}
+        topLoading={topLoading}
+        topRated={topRated}
+        mySpots={mySpots}
+        mySpotsLoading={mySpotsLoading}
+        onLoadSkateparks={() => {
+          setPanelOpen(false);
+          const communityParks = spots
+            .filter((s) => s.spot_type === 'skatepark')
+            .map((s) => ({
+              id: s.id,
+              name: s.name,
+              type: 'skatepark' as const,
+              lat: s.lat,
+              lng: s.lng,
+              tags: {},
+            }));
+          loadNearbySkateParks(
+            mapRegionRef.current.latitude,
+            mapRegionRef.current.longitude,
+            20000,
+            undefined,
+            (googleParks) => {
+              setPlacesWithAutoClear(() => [...communityParks, ...googleParks]);
+            }
+          );
+        }}
+        onOpenProfile={() => {
+          setPanelOpen(false);
+          setProfileOpen(true);
+        }}
+        onLoadSkateShops={() => {
+          setPanelOpen(false);
+          const communityShops = spots
+            .filter((s) => s.spot_type === 'skateshop')
+            .map((s) => ({
+              id: s.id,
+              name: s.name,
+              type: 'skateshop' as const,
+              lat: s.lat,
+              lng: s.lng,
+              tags: {},
+            }));
+          loadNearbySkateShops(
+            mapRegionRef.current.latitude,
+            mapRegionRef.current.longitude,
+            20000,
+            undefined,
+            (googleShops) => {
+              setPlacesWithAutoClear(() => [...communityShops, ...googleShops]);
+            }
+          );
+        }}
+        onLoadTopRated={async () => {
+          const topSpot = await loadTopRatedSpotsInArea(mapRegionRef.current, 10);
+          if (topSpot) {
+            mapRef.current?.animateToRegion(
+              {
+                latitude: topSpot.lat,
+                longitude: topSpot.lng,
+                latitudeDelta: 0.05,
+                longitudeDelta: 0.05,
+              },
+              1200
+            );
+          }
+          setTimeout(() => {
+            clearTopRated();
+          }, 60000);
+        }}
+        onSelectSpot={(s) => {
+          if (actionSheetOpenRef.current) return;
+          setPanelOpen(false);
+          openedFromPanelRef.current = true;
+          if (s.spot_type === 'skatepark' || s.spot_type === 'skateshop') {
+            setHighlightSpotId(s.id);
+            highlightSpotIdRef.current = s.id;
+            setPlacesWithAutoClear((prev) =>
+              prev.some((p) => p.id === s.id)
+                ? prev
+                : [
+                  ...prev,
+                  {
+                    id: s.id,
+                    name: s.name,
+                    type: s.spot_type as 'skatepark' | 'skateshop',
+                    lat: s.lat,
+                    lng: s.lng,
+                    tags: {},
+                  },
+                ]
+            );
+            setTimeout(() => {
+              animateToSpotWithModalOffset(s.lat, s.lng);
+              openSpotDetails(s);
+            }, 400);
+          } else {
+            setHighlightSpotId(s.id);
+            highlightSpotIdRef.current = s.id;
+            setTimeout(() => {
+              animateToSpotWithModalOffset(s.lat, s.lng);
+              openSpotDetails(s);
+            }, 350);
+          }
+        }}
+        onSignOut={async () => {
+          await signOut();
+          setPanelOpen(false);
+        }}
+        onSearch={(tag) => searchByTag(tag)}
+        onClearSearch={clearSearch}
+        difficultyFilter={difficultyFilter}
+        onToggleDifficultyFilter={(level) => {
+          setDifficultyFilter((prev) => {
+            const next = new Set(prev);
+            if (next.has(level)) next.delete(level);
+            else next.add(level);
+            return next;
+          });
+        }}
+        searchResults={filteredSearchResults}
+        hasSearchResults={filteredSearchResults.length > 0}
+        favorites={favorites}
+        favLoading={favLoading}
+        placeFavorites={placeFavorites}
+        placeFavLoading={placeFavLoading}
+        onSelectPlace={async (p) => {
+          setPanelOpen(false);
+          openedFromFavoritesRef.current = true;
+          setSelectedPlaceId(p.id);
+          animateToSpotWithModalOffset(p.lat, p.lng, 'small');
+          const full = await fetchPlaceById(p.id);
+          const resolved = full ?? p;
+          setSelectedPlace(resolved);
+          setPlaceDetailsOpen(true);
+          setPlacesWithAutoClear((prev) =>
+            prev.some((x) => x.id === resolved.id) ? prev : [...prev, resolved]
+          );
+          setTimeout(() => {
+            markerRefs.current[p.id]?.showCallout();
+          }, 650);
+        }}
+        onCycleSpotVisibility={async (spot) => {
+          if (actionSheetOpenRef.current) return;
+          actionSheetOpenRef.current = true;
+          await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          const current = spotVisibility(spot);
+          const options: SpotVisibility[] = ['public', 'friends', 'private'];
+          const labels = ['Public', 'Friends', 'Private', 'Cancel'];
+          ActionSheetIOS.showActionSheetWithOptions(
+            {
+              title: 'Visibility',
+              options: labels,
+              cancelButtonIndex: 3,
+            },
+            async (idx) => {
+              actionSheetOpenRef.current = false;
+              if (idx === 3) return;
+              const picked = options[idx];
+              if (picked === current) return;
+              await setSpotVisibility(spot, picked);
+              await loadMySpots();
+            }
+          );
+        }}
+        onDeleteSpot={async (spot) => {
+          await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+          deleteSpotById(spot.id, async () => {
+            await loadMySpots();
+            setPlaces((prev) => prev.filter((p) => p.id !== spot.id));
+          });
+        }}
+        events={events}
+        myEvents={myEvents}
+        eventsLoading={eventsLoading}
+        onCreateEvent={() => {
+          setPanelOpen(false);
+          setCreateEventOpen(true);
+        }}
+        onSelectEvent={(event) => {
+          setPanelOpen(false);
+          setSelectedEvent(event);
+          setEventDetailsOpen(true);
+          if (event.spot_id) {
+            const spot = spots.find((s) => s.id === event.spot_id);
+            if (spot) {
+              setTimeout(() => {
+                preModalRegionRef.current = mapRegionRef.current;
+                openedFromPanelRef.current = true;
                 setHighlightSpotId(spot.id);
                 highlightSpotIdRef.current = spot.id;
                 animateToSpotWithModalOffset(spot.lat, spot.lng);
-                openSpotDetails(spot);
-              }
-            }}
-            onClose={() => {
-              setPanelOpen(false);
-              setPendingEventCoord(null);
-              reload();
-              loadMySpots();
-            }}
-            onOpenSettings={() => {
-              setPanelOpen(false);
-              reload();
-              loadMySpots();
-              setSettingsOpen(true);
-            }}
-            onOpenCrews={() => {
-              setPanelOpen(false);
-              setCrewsOpen(true);
-            }}
-            parksLoading={parksLoading}
-            shopsLoading={shopsLoading}
-            topLoading={topLoading}
-            topRated={topRated}
-            mySpots={mySpots}
-            mySpotsLoading={mySpotsLoading}
-            onLoadSkateparks={() => {
-              setPanelOpen(false);
-              const communityParks = spots
-                .filter((s) => s.spot_type === 'skatepark')
-                .map((s) => ({
-                  id: s.id,
-                  name: s.name,
-                  type: 'skatepark' as const,
-                  lat: s.lat,
-                  lng: s.lng,
-                  tags: {},
-                }));
-              loadNearbySkateParks(
-                mapRegionRef.current.latitude,
-                mapRegionRef.current.longitude,
-                20000,
-                undefined,
-                (googleParks) => {
-                  setPlacesWithAutoClear(() => [...communityParks, ...googleParks]);
-                }
-              );
-            }}
-            onOpenProfile={() => {
-              setPanelOpen(false);
-              setProfileOpen(true);
-            }}
-            onLoadSkateShops={() => {
-              setPanelOpen(false);
-              const communityShops = spots
-                .filter((s) => s.spot_type === 'skateshop')
-                .map((s) => ({
-                  id: s.id,
-                  name: s.name,
-                  type: 'skateshop' as const,
-                  lat: s.lat,
-                  lng: s.lng,
-                  tags: {},
-                }));
-              loadNearbySkateShops(
-                mapRegionRef.current.latitude,
-                mapRegionRef.current.longitude,
-                20000,
-                undefined,
-                (googleShops) => {
-                  setPlacesWithAutoClear(() => [...communityShops, ...googleShops]);
-                }
-              );
-            }}
-            onLoadTopRated={async () => {
-              const topSpot = await loadTopRatedSpotsInArea(mapRegionRef.current, 10);
-              if (topSpot) {
-                mapRef.current?.animateToRegion(
-                  {
-                    latitude: topSpot.lat,
-                    longitude: topSpot.lng,
-                    latitudeDelta: 0.05,
-                    longitudeDelta: 0.05,
-                  },
-                  1200
-                );
-              }
-              setTimeout(() => {
-                clearTopRated();
-              }, 60000);
-            }}
-            onSelectSpot={(s) => {
-              if (actionSheetOpenRef.current) return;
-              setPanelOpen(false);
-              openedFromPanelRef.current = true;
-              if (s.spot_type === 'skatepark' || s.spot_type === 'skateshop') {
-                setHighlightSpotId(s.id);
-                highlightSpotIdRef.current = s.id;
-                setPlacesWithAutoClear((prev) =>
-                  prev.some((p) => p.id === s.id)
-                    ? prev
-                    : [
-                      ...prev,
-                      {
-                        id: s.id,
-                        name: s.name,
-                        type: s.spot_type as 'skatepark' | 'skateshop',
-                        lat: s.lat,
-                        lng: s.lng,
-                        tags: {},
-                      },
-                    ]
-                );
-                setTimeout(() => {
-                  animateToSpotWithModalOffset(s.lat, s.lng);
-                  openSpotDetails(s);
-                }, 400);
-              } else {
-                setHighlightSpotId(s.id);
-                highlightSpotIdRef.current = s.id;
-                setTimeout(() => {
-                  animateToSpotWithModalOffset(s.lat, s.lng);
-                  openSpotDetails(s);
-                }, 350);
-              }
-            }}
-            onSignOut={async () => {
-              await signOut();
-              setPanelOpen(false);
-            }}
-            searchResults={searchResults}
-            onSearch={(tag) => searchByTag(tag)}
-            onClearSearch={clearSearch}
-            hasSearchResults={searchResults.length > 0}
-            favorites={favorites}
-            favLoading={favLoading}
-            placeFavorites={placeFavorites}
-            placeFavLoading={placeFavLoading}
-            onSelectPlace={async (p) => {
-              setPanelOpen(false);
-              openedFromFavoritesRef.current = true;
-              setSelectedPlaceId(p.id);
-              animateToSpotWithModalOffset(p.lat, p.lng, 'small');
-              const full = await fetchPlaceById(p.id);
-              const resolved = full ?? p;
-              setSelectedPlace(resolved);
-              setPlaceDetailsOpen(true);
-              setPlacesWithAutoClear((prev) =>
-                prev.some((x) => x.id === resolved.id) ? prev : [...prev, resolved]
-              );
-              setTimeout(() => {
-                markerRefs.current[p.id]?.showCallout();
-              }, 650);
-            }}
-            onCycleSpotVisibility={async (spot) => {
-              if (actionSheetOpenRef.current) return;
-              actionSheetOpenRef.current = true;
-              await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              const current = spotVisibility(spot);
-              const options: SpotVisibility[] = ['public', 'friends', 'private'];
-              const labels = ['Public', 'Friends', 'Private', 'Cancel'];
-              ActionSheetIOS.showActionSheetWithOptions(
-                {
-                  title: 'Visibility',
-                  options: labels,
-                  cancelButtonIndex: 3,
-                },
-                async (idx) => {
-                  actionSheetOpenRef.current = false;
-                  if (idx === 3) return;
-                  const picked = options[idx];
-                  if (picked === current) return;
-                  await setSpotVisibility(spot, picked);
-                  await loadMySpots();
-                }
-              );
-            }}
-            onDeleteSpot={async (spot) => {
-              await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-              deleteSpotById(spot.id, async () => {
-                await loadMySpots();
-                setPlaces((prev) => prev.filter((p) => p.id !== spot.id));
-              });
-            }}
-            events={events}
-            myEvents={myEvents}
-            eventsLoading={eventsLoading}
-            onCreateEvent={() => {
-              setPanelOpen(false);
-              setCreateEventOpen(true);
-            }}
-            onSelectEvent={(event) => {
-              setPanelOpen(false);
-              setSelectedEvent(event);
-              setEventDetailsOpen(true);
-              if (event.spot_id) {
-                const spot = spots.find((s) => s.id === event.spot_id);
-                if (spot) {
-                  setTimeout(() => {
-                    preModalRegionRef.current = mapRegionRef.current;
-                    openedFromPanelRef.current = true;
-                    setHighlightSpotId(spot.id);
-                    highlightSpotIdRef.current = spot.id;
-                    animateToSpotWithModalOffset(spot.lat, spot.lng);
-                  }, 450);
-                }
-              } else {
-                setPendingEventCoord({ lat: event.lat, lng: event.lng });
-                mapRef.current?.animateToRegion(
-                  {
-                    latitude: event.lat - 0.03 * 0.45,
-                    longitude: event.lng,
-                    latitudeDelta: 0.03,
-                    longitudeDelta: 0.03,
-                  },
-                  400
-                );
-              }
-            }}
-            onDeleteEvent={async (eventId) => {
-              await cancelEvent(eventId);
-            }}
-            onRefreshEvents={() => {
-              loadPublicEvents().then(() => {
-                loadRsvpCounts(events.map((e) => e.id));
-              });
-              loadInvitedEventIds();
-            }}
-            eventRsvpCounts={eventRsvpCounts}
-            invitedEventIds={invitedEventIds}
-            unreadInviteCount={unreadInviteCount}
-            onClearUnreadInvites={clearUnreadInviteCount}
-            initialEventFilter={eventFilterOverride}
-            unreadRsvpCount={unreadRsvpCount}
-            onClearUnreadRsvps={clearUnreadRsvpCount}
-          />
-          <SpotMap
-              mapRef={mapRef}
-              visibleSpots={visibleSpots}
-              places={places}
-              highlightSpotId={highlightSpotId}
-              selectedPlaceId={selectedPlaceId}
-              session={session}
-              friendIds={friendIds}
-              pendingCoord={pendingCoord}
-              initialRegion={initialRegion}
-              onPress={() => {
-                if (suppressMapPressRef.current) {
-                  suppressMapPressRef.current = false;
-                  return;
-                }
-                setHighlightSpotId(null);
-                setSelectedPlaceId(null);
-                setPreviewSpot(null);
-                setPreviewImageUrl(null);
-                markerRefs.current[highlightSpotId ?? '']?.hideCallout?.();
-                markerRefs.current[selectedPlaceId ?? '']?.hideCallout?.();
-              }}
-              onPanDrag={() => {
-                autoCenterRef.current = false;
-              }}
-              onRegionChangeComplete={(r: Region) => {
-                mapRegionRef.current = r;
-                if (regionWriteTimerRef.current) clearTimeout(regionWriteTimerRef.current);
-                regionWriteTimerRef.current = setTimeout(() => {
-                  AsyncStorage.setItem('cached_last_map_region', JSON.stringify(r)).catch(() => {});
-                }, 1000);
-              }}
-              onLongPress={onLongPress}
-              markerRefs={markerRefs}
-              suppressMapPressRef={suppressMapPressRef}
-              setHighlightSpotId={setHighlightSpotId}
-              highlightSpotIdRef={highlightSpotIdRef}
-              animateToSpotWithModalOffset={animateToSpotWithModalOffset}
-              openSpotDetails={openSpotDetails}
-              openSpotPreview={openSpotPreview}
-              setSelectedPlaceId={setSelectedPlaceId}
-              setSelectedPlace={setSelectedPlace}
-              setPlaceDetailsOpen={setPlaceDetailsOpen}
-              spots={spots}
-              events={events}
-              pendingEventCoord={pendingEventCoord}
-            />
-          {locating ? (
+              }, 450);
+            }
+          } else {
+            setPendingEventCoord({ lat: event.lat, lng: event.lng });
+            mapRef.current?.animateToRegion(
+              {
+                latitude: event.lat - 0.03 * 0.45,
+                longitude: event.lng,
+                latitudeDelta: 0.03,
+                longitudeDelta: 0.03,
+              },
+              400
+            );
+          }
+        }}
+        onDeleteEvent={async (eventId) => {
+          await cancelEvent(eventId);
+        }}
+        onRefreshEvents={() => {
+          loadPublicEvents().then(() => {
+            loadRsvpCounts(events.map((e) => e.id));
+          });
+          loadInvitedEventIds();
+        }}
+        eventRsvpCounts={eventRsvpCounts}
+        invitedEventIds={invitedEventIds}
+        unreadInviteCount={unreadInviteCount}
+        onClearUnreadInvites={clearUnreadInviteCount}
+        initialEventFilter={eventFilterOverride}
+        unreadRsvpCount={unreadRsvpCount}
+        onClearUnreadRsvps={clearUnreadRsvpCount}
+      />
+      <SpotMap
+        mapRef={mapRef}
+        visibleSpots={visibleSpots}
+        places={places}
+        highlightSpotId={highlightSpotId}
+        selectedPlaceId={selectedPlaceId}
+        session={session}
+        friendIds={friendIds}
+        pendingCoord={pendingCoord}
+        initialRegion={initialRegion}
+        onPress={() => {
+          if (suppressMapPressRef.current) {
+            suppressMapPressRef.current = false;
+            return;
+          }
+          setHighlightSpotId(null);
+          setSelectedPlaceId(null);
+          setPreviewSpot(null);
+          setPreviewImageUrl(null);
+          markerRefs.current[highlightSpotId ?? '']?.hideCallout?.();
+          markerRefs.current[selectedPlaceId ?? '']?.hideCallout?.();
+        }}
+        onPanDrag={() => {
+          autoCenterRef.current = false;
+        }}
+        onRegionChangeComplete={(r: Region) => {
+          mapRegionRef.current = r;
+          if (regionWriteTimerRef.current) clearTimeout(regionWriteTimerRef.current);
+          regionWriteTimerRef.current = setTimeout(() => {
+            AsyncStorage.setItem('cached_last_map_region', JSON.stringify(r)).catch(() => { });
+          }, 1000);
+        }}
+        onLongPress={onLongPress}
+        markerRefs={markerRefs}
+        suppressMapPressRef={suppressMapPressRef}
+        setHighlightSpotId={setHighlightSpotId}
+        highlightSpotIdRef={highlightSpotIdRef}
+        animateToSpotWithModalOffset={animateToSpotWithModalOffset}
+        openSpotDetails={openSpotDetails}
+        openSpotPreview={openSpotPreview}
+        setSelectedPlaceId={setSelectedPlaceId}
+        setSelectedPlace={setSelectedPlace}
+        setPlaceDetailsOpen={setPlaceDetailsOpen}
+        spots={spots}
+        events={events}
+        pendingEventCoord={pendingEventCoord}
+      />
+      {locating ? (
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            top: insets.top + 56,
+            alignSelf: 'center',
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 8,
+            backgroundColor: 'rgba(0,0,0,0.7)',
+            paddingHorizontal: 12,
+            paddingVertical: 6,
+            borderRadius: 16,
+          }}>
+          <ActivityIndicator size="small" color="#ffffff" />
+          <Text style={{ color: '#ffffff', fontSize: 13, fontWeight: '600' }}>Locating you…</Text>
+        </View>
+      ) : null}
+      {previewSpot && !detailsOpen ? (
+        <Pressable
+          onPress={() => {
+            const s = previewSpot;
+            setPreviewSpot(null);
+            setPreviewImageUrl(null);
+            animateToSpotWithModalOffset(s.lat, s.lng);
+            openSpotDetails(s);
+          }}
+          style={{
+            position: 'absolute',
+            bottom: 110,
+            left: 16,
+            right: 16,
+            backgroundColor: c.surface,
+            borderRadius: 12,
+            padding: 12,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 12,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.2,
+            shadowRadius: 8,
+            elevation: 5,
+          }}>
+          {previewImageUrl ? (
+            <Image source={{ uri: previewImageUrl }} style={{ width: 64, height: 64, borderRadius: 8 }} />
+          ) : (
             <View
-              pointerEvents="none"
               style={{
-                position: 'absolute',
-                top: insets.top + 56,
-                alignSelf: 'center',
-                flexDirection: 'row',
+                width: 64,
+                height: 64,
+                borderRadius: 8,
+                backgroundColor: c.border,
+                justifyContent: 'center',
                 alignItems: 'center',
-                gap: 8,
-                backgroundColor: 'rgba(0,0,0,0.7)',
-                paddingHorizontal: 12,
-                paddingVertical: 6,
-                borderRadius: 16,
               }}>
-              <ActivityIndicator size="small" color="#ffffff" />
-              <Text style={{ color: '#ffffff', fontSize: 13, fontWeight: '600' }}>Locating you…</Text>
+              <Ionicons name="image-outline" size={24} color={c.subtext} />
             </View>
-          ) : null}
-          {previewSpot && !detailsOpen ? (
-            <Pressable
-              onPress={() => {
-                const s = previewSpot;
-                setPreviewSpot(null);
-                setPreviewImageUrl(null);
-                animateToSpotWithModalOffset(s.lat, s.lng);
-                openSpotDetails(s);
-              }}
-              style={{
-                position: 'absolute',
-                bottom: 110,
-                left: 16,
-                right: 16,
-                backgroundColor: c.surface,
-                borderRadius: 12,
-                padding: 12,
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 12,
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.2,
-                shadowRadius: 8,
-                elevation: 5,
-              }}>
-              {previewImageUrl ? (
-                <Image
-                  source={{ uri: previewImageUrl }}
-                  style={{ width: 64, height: 64, borderRadius: 8 }}
-                />
-              ) : (
-                <View
-                  style={{
-                    width: 64,
-                    height: 64,
-                    borderRadius: 8,
-                    backgroundColor: c.border,
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                  }}>
-                  <Ionicons name="image-outline" size={24} color={c.subtext} />
-                </View>
-              )}
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontWeight: '700', color: c.text, fontSize: 15 }} numberOfLines={1}>
-                  {previewSpot.name}
-                </Text>
-                {previewSpot.tags && previewSpot.tags.length > 0 ? (
-                  <Text
-                    style={{ fontSize: 12, color: c.subtext, marginTop: 2 }}
-                    numberOfLines={1}>
-                    {previewSpot.tags.map((t) => `#${t}`).join(' ')}
-                  </Text>
-                ) : null}
-                <Text
-                  style={{
-                    fontSize: 12,
-                    color: c.buttonBg,
-                    marginTop: 4,
-                    fontWeight: '600',
-                  }}>
-                  Tap to view details →
+          )}
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontWeight: '700', color: c.text, fontSize: 15 }} numberOfLines={1}>
+              {previewSpot.name}
+            </Text>
+            {previewSpot.tags && previewSpot.tags.length > 0 ? (
+              <Text style={{ fontSize: 12, color: c.subtext, marginTop: 2 }} numberOfLines={1}>
+                {previewSpot.tags.map((t) => `#${t}`).join(' ')}
+              </Text>
+            ) : null}
+            {previewSpot.spot_type === 'spot' &&
+              previewSpot.difficulty_vote_count > 0 &&
+              previewSpot.avg_difficulty !== null ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                <Ionicons name="skull" size={12} color="#FF3B30" />
+                <Text style={{ fontSize: 11, color: c.subtext, fontWeight: '600' }}>
+                  {previewSpot.avg_difficulty.toFixed(1)} ·{' '}
+                  {difficultyLabel(previewSpot.avg_difficulty)}
                 </Text>
               </View>
-              <Pressable
-                onPress={() => {
-                  setPreviewSpot(null);
-                  setPreviewImageUrl(null);
-                }}
-                hitSlop={10}
-                style={{ padding: 4 }}>
-                <Ionicons name="close" size={22} color={c.subtext} />
-              </Pressable>
-            </Pressable>
-          ) : null}
+            ) : null}
+            <Text
+              style={{
+                fontSize: 12,
+                color: c.buttonBg,
+                marginTop: 4,
+                fontWeight: '600',
+              }}>
+              Tap to view details →
+            </Text>
+          </View>
           <Pressable
             onPress={() => {
-              autoCenterRef.current = true;
-              if (userLocationRef.current) {
-                mapRef.current?.animateToRegion(userLocationRef.current, 600);
-              } else {
-                setUseDeviceLocation(true);
-              }
+              setPreviewSpot(null);
+              setPreviewImageUrl(null);
             }}
-            style={{
-              position: 'absolute',
-              bottom: 50,
-              right: 16,
-              backgroundColor: c.surface,
-              borderRadius: 30,
-              padding: 12,
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.2,
-              shadowRadius: 4,
-              elevation: 4,
-            }}>
-            <Ionicons name="navigate" size={22} color="#007AFF" />
+            hitSlop={10}
+            style={{ padding: 4 }}>
+            <Ionicons name="close" size={22} color={c.subtext} />
           </Pressable>
-          {/* Create A Spot Modal */}
-          <CreateSpotModal
-            visible={createOpen}
-            pendingCoord={pendingCoord}
-            spotName={spotName}
-            spotDesc={spotDesc}
-            spotRating={spotRating}
-            spotComment={spotComment}
-            onChangeComment={setSpotComment}
-            onChangeName={setSpotName}
-            onChangeDesc={setSpotDesc}
-            onChangeRating={setSpotRating}
-            spotTags={spotTags}
-            onAddTag={(tag) => setSpotTags((prev) => (prev.includes(tag) ? prev : [...prev, tag]))}
-            onRemoveTag={(tag) => setSpotTags((prev) => prev.filter((t) => t !== tag))}
-            onCancel={closeCreateModal}
-            visibility={createSpotVisibility}
-            onChangeVisibility={setCreateSpotVisibility}
-            onCreate={async () => {
-              if (!pendingCoord) return;
-              const newSpot = await createSpotAt(
-                pendingCoord.lat,
-                pendingCoord.lng,
-                spotName,
-                spotDesc,
-                spotRating,
-                spotTags,
-                createSpotVisibility,
-                spotType
-              );
-              if (newSpot) {
-                await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                if (pendingImages.length > 0) {
-                  await uploadImages(newSpot.id, pendingImages);
-                }
-                if (spotRating > 0) {
-                  await submitReview(newSpot.id, spotRating, spotComment);
-                }
-                await loadMySpots();
+        </Pressable>
+      ) : null}
+      <Pressable
+        onPress={() => {
+          autoCenterRef.current = true;
+          if (userLocationRef.current) {
+            mapRef.current?.animateToRegion(userLocationRef.current, 600);
+          } else {
+            setUseDeviceLocation(true);
+          }
+        }}
+        style={{
+          position: 'absolute',
+          bottom: 50,
+          right: 16,
+          backgroundColor: c.surface,
+          borderRadius: 30,
+          padding: 12,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.2,
+          shadowRadius: 4,
+          elevation: 4,
+        }}>
+        <Ionicons name="navigate" size={22} color="#007AFF" />
+      </Pressable>
+      {/* Create A Spot Modal */}
+      <CreateSpotModal
+        visible={createOpen}
+        pendingCoord={pendingCoord}
+        spotName={spotName}
+        spotDesc={spotDesc}
+        spotRating={spotRating}
+        spotComment={spotComment}
+        onChangeComment={setSpotComment}
+        onChangeName={setSpotName}
+        onChangeDesc={setSpotDesc}
+        onChangeRating={setSpotRating}
+        spotTags={spotTags}
+        onAddTag={(tag) => setSpotTags((prev) => (prev.includes(tag) ? prev : [...prev, tag]))}
+        onRemoveTag={(tag) => setSpotTags((prev) => prev.filter((t) => t !== tag))}
+        onCancel={closeCreateModal}
+        visibility={createSpotVisibility}
+        onChangeVisibility={setCreateSpotVisibility}
+        onCreate={async () => {
+          if (!pendingCoord) return;
+          const newSpot = await createSpotAt(
+            pendingCoord.lat,
+            pendingCoord.lng,
+            spotName,
+            spotDesc,
+            spotRating,
+            spotTags,
+            createSpotVisibility,
+            spotType
+          );
+          if (newSpot) {
+            await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            if (pendingImages.length > 0) {
+              await uploadImages(newSpot.id, pendingImages);
+            }
+            if (spotRating > 0) {
+              await submitReview(newSpot.id, spotRating, spotComment);
+            }
+            await loadMySpots();
 
-                if (newSpot.spot_type === 'skatepark' || newSpot.spot_type === 'skateshop') {
-                  setPlacesWithAutoClear((prev) => [
-                    ...prev,
-                    {
-                      id: newSpot.id,
-                      name: newSpot.name,
-                      type: newSpot.spot_type as 'skatepark' | 'skateshop',
-                      lat: newSpot.lat,
-                      lng: newSpot.lng,
-                      tags: {},
-                    },
-                  ]);
-                  setTimeout(() => {
-                    setPlacesWithAutoClear((prev) => prev.filter((p) => p.id !== newSpot.id));
-                  }, 4000);
-                }
-              }
-              closeCreateModal();
-            }}
-            isVetted={isVetted}
-            pendingImages={pendingImages}
-            onAddImage={(uri) => setPendingImages((prev) => (prev.includes(uri) ? prev : [...prev, uri]))}
-            onRemoveImage={(uri) => setPendingImages((prev) => prev.filter((u) => u !== uri))}
-            spotType={spotType}
-            onChangeSpotType={(v) => {
-              setSpotType(v);
-              if (v !== 'spot') setCreateSpotVisibility('public');
-            }}
-          />
-          {/* Details Modal */}
-          <SpotDetailsModal
-            visible={detailsOpen}
-            spot={selectedSpot}
-            isFlaggedByMe={selectedSpot ? isFlaggedByMe(selectedSpot.id) : false}
-            flagCount={selectedSpot?.flag_count ?? 0}
-            onToggleFlag={async (reason?: string) => {
-              if (!selectedSpot) return;
-              await toggleFlag(selectedSpot.id, reason);
-            }}
-            reviews={spotReviews}
-            existingReviewId={existingReviewId}
-            avgRating={avgRating}
-            newRating={newReviewRating}
-            newComment={newReviewComment}
-            onChangeRating={setNewReviewRating}
-            onChangeComment={setNewReviewComment}
-            onSubmitReview={async (overrideRating?: number) => {
-              if (!selectedSpot) return;
-              await submitReview(selectedSpot.id, overrideRating);
-            }}
-            onClose={closeDetailsModal}
-            currentUserId={session?.user.id ?? null}
-            onDelete={confirmDelete}
-            isFavorite={selectedSpot ? isFavorite(selectedSpot.id) : false}
-            onToggleFavorite={async () => {
-              if (!selectedSpot) return;
-              await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              const wasAlreadyFavorited = isFavorite(selectedSpot.id);
-              await toggleFavorite(selectedSpot.id);
-              if (selectedSpot.user_id !== session?.user.id && !wasAlreadyFavorited) {
-                const username = await getMyUsername();
-                await sendPushNotification(selectedSpot.id, 'favorite', username, session?.user.id);
-              }
-            }}
-            onDeleteReview={async (reviewId) => {
-              if (!selectedSpot) return;
-              const err = await deleteReview(reviewId, selectedSpot.id);
-              if (err) setError(err);
-            }}
-            images={images}
-            imagesLoading={imagesUploading}
-            onDeleteImage={async (url) => {
-              if (!selectedSpot) return;
-              await deleteImage(selectedSpot.id, url);
-            }}
-            onUploadImages={async (uris) => {
-              if (!selectedSpot) return;
-              await uploadImages(selectedSpot.id, uris);
-            }}
-            creatorUsername={spotCreatorUsername ?? undefined}
-            creatorAvatarUrl={spotCreatorAvatarUrl ?? undefined}
-            activeConditions={activeConditions}
-            myConditions={myConditions}
-            onToggleCondition={async (condition) => {
-              if (!selectedSpot) return;
-              await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              await toggleCondition(selectedSpot.id, condition);
-              if (selectedSpot.user_id !== session?.user.id) {
-                const username = await getMyUsername();
-                await sendPushNotification(selectedSpot.id, 'condition', username, session?.user.id);
-              }
-            }}
-            isWishlisted={selectedSpot ? isWishlisted(selectedSpot.id) : false}
-            onToggleWishlist={async () => {
-              if (!selectedSpot) return;
-              await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              const wasAlreadyWishlisted = isWishlisted(selectedSpot.id);
-              await toggleWishlist(selectedSpot.id);
-              if (selectedSpot.user_id !== session?.user.id && !wasAlreadyWishlisted) {
-                const username = await getMyUsername();
-                await sendPushNotification(selectedSpot.id, 'wishlist', username, session?.user.id);
-              }
-            }}
-            detailsLoading={detailsLoading}
-            isReviewFlaggedByMe={isReviewFlaggedByMe}
-            onToggleReviewFlag={async (reviewId: string, reason?: string) => {
-              await toggleReviewFlag(reviewId, reason);
-            }}
-            onViewProfile={(userId) => {
-              if (publicProfileOpen) return;
-              reopenSpotDetailsOnProfileCloseRef.current = true;
-              setDetailsOpen(false);
+            if (newSpot.spot_type === 'skatepark' || newSpot.spot_type === 'skateshop') {
+              setPlacesWithAutoClear((prev) => [
+                ...prev,
+                {
+                  id: newSpot.id,
+                  name: newSpot.name,
+                  type: newSpot.spot_type as 'skatepark' | 'skateshop',
+                  lat: newSpot.lat,
+                  lng: newSpot.lng,
+                  tags: {},
+                },
+              ]);
               setTimeout(() => {
-                setPublicProfileUserId(userId);
-                setPublicProfileOpen(true);
-              }, 350);
-            }}
-            onConditionDone={async () => {
-              if (selectedSpot && selectedSpot.user_id !== session?.user.id) {
-                const username = await getMyUsername();
-                await sendPushNotification(selectedSpot.id, 'condition', username, session?.user.id);
-              }
-            }}
-            userLocation={
-              userLocationRef.current
-                ? {
-                  latitude: userLocationRef.current.latitude,
-                  longitude: userLocationRef.current.longitude,
-                }
-                : null
+                setPlacesWithAutoClear((prev) => prev.filter((p) => p.id !== newSpot.id));
+              }, 4000);
             }
-            spotId={selectedSpot?.id ?? null}
-            commentCount={commentCount}
-            friendIds={friendIds}
-            onUpdateSpot={async (spotId, name, description, tags) => {
-              const err = await updateSpot(spotId, name, description, tags, true);
-              if (!err && selectedSpot) {
-                setTimeout(() => {
-                  setSelectedSpot((prev) => (prev ? { ...prev, name, description, tags } : prev));
-                }, 400);
-              }
-              return err;
-            }}
-            creatorBadge={spotCreatorBadge}
-          />
-          <SkateShopDetailsModal
-            visible={placeDetailsOpen}
-            place={selectedPlace}
-            onClose={() => {
-              setPlaceDetailsOpen(false);
-              setSelectedPlace(null);
-              markerRefs.current[selectedPlaceId ?? '']?.hideCallout?.();
-              setSelectedPlaceId(null);
-              if (openedFromFavoritesRef.current) {
-                setPlaces([]);
-                openedFromFavoritesRef.current = false;
-              }
-              closeDetailsModal();
-            }}
-            isFavorite={selectedPlace ? isPlaceFavorite(selectedPlace.id) : false}
-            onToggleFavorite={async () => {
-              if (!selectedPlace) return;
-              await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              await togglePlaceFavorite(selectedPlace);
-            }}
-            userLocation={
-              userLocationRef.current
+          }
+          closeCreateModal();
+        }}
+        isVetted={isVetted}
+        pendingImages={pendingImages}
+        onAddImage={(uri) => setPendingImages((prev) => (prev.includes(uri) ? prev : [...prev, uri]))}
+        onRemoveImage={(uri) => setPendingImages((prev) => prev.filter((u) => u !== uri))}
+        spotType={spotType}
+        onChangeSpotType={(v) => {
+          setSpotType(v);
+          if (v !== 'spot') setCreateSpotVisibility('public');
+        }}
+      />
+      {/* Details Modal */}
+      <SpotDetailsModal
+        visible={detailsOpen}
+        spot={selectedSpot}
+        isFlaggedByMe={selectedSpot ? isFlaggedByMe(selectedSpot.id) : false}
+        flagCount={selectedSpot?.flag_count ?? 0}
+        onToggleFlag={async (reason?: string) => {
+          if (!selectedSpot) return;
+          await toggleFlag(selectedSpot.id, reason);
+        }}
+        reviews={spotReviews}
+        newDifficulty={newDifficulty}
+        existingDifficultyVoteId={existingDifficultyVoteId}
+        onChangeDifficulty={setNewDifficulty}
+        onSubmitDifficulty={async (overrideDifficulty?: number) => {
+          if (!selectedSpot) return;
+          const err = await submitDifficulty(selectedSpot.id, overrideDifficulty);
+          if (err) {
+            setError(err);
+            return;
+          }
+          await reload();
+          const { data } = await supabase
+            .from('spots')
+            .select('avg_difficulty, difficulty_vote_count')
+            .eq('id', selectedSpot.id)
+            .single();
+          if (data) {
+            setSelectedSpot((prev) =>
+              prev
                 ? {
-                  latitude: userLocationRef.current.latitude,
-                  longitude: userLocationRef.current.longitude,
+                  ...prev,
+                  avg_difficulty: data.avg_difficulty,
+                  difficulty_vote_count: data.difficulty_vote_count,
                 }
-                : null
+                : prev
+            );
+          }
+        }}
+        existingReviewId={existingReviewId}
+        avgRating={avgRating}
+        newRating={newReviewRating}
+        newComment={newReviewComment}
+        onChangeRating={setNewReviewRating}
+        onChangeComment={setNewReviewComment}
+        onSubmitReview={async (overrideRating?: number) => {
+          if (!selectedSpot) return;
+          await submitReview(selectedSpot.id, overrideRating);
+        }}
+        onClose={closeDetailsModal}
+        currentUserId={session?.user.id ?? null}
+        onDelete={confirmDelete}
+        isFavorite={selectedSpot ? isFavorite(selectedSpot.id) : false}
+        onToggleFavorite={async () => {
+          if (!selectedSpot) return;
+          await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          const wasAlreadyFavorited = isFavorite(selectedSpot.id);
+          await toggleFavorite(selectedSpot.id);
+          if (selectedSpot.user_id !== session?.user.id && !wasAlreadyFavorited) {
+            const username = await getMyUsername();
+            await sendPushNotification(selectedSpot.id, 'favorite', username, session?.user.id);
+          }
+        }}
+        onDeleteReview={async (reviewId) => {
+          if (!selectedSpot) return;
+          const err = await deleteReview(reviewId, selectedSpot.id);
+          if (err) setError(err);
+        }}
+        images={images}
+        imagesLoading={imagesUploading}
+        onDeleteImage={async (url) => {
+          if (!selectedSpot) return;
+          await deleteImage(selectedSpot.id, url);
+        }}
+        onUploadImages={async (uris) => {
+          if (!selectedSpot) return;
+          await uploadImages(selectedSpot.id, uris);
+        }}
+        creatorUsername={spotCreatorUsername ?? undefined}
+        creatorAvatarUrl={spotCreatorAvatarUrl ?? undefined}
+        activeConditions={activeConditions}
+        myConditions={myConditions}
+        onToggleCondition={async (condition) => {
+          if (!selectedSpot) return;
+          await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          await toggleCondition(selectedSpot.id, condition);
+          if (selectedSpot.user_id !== session?.user.id) {
+            const username = await getMyUsername();
+            await sendPushNotification(selectedSpot.id, 'condition', username, session?.user.id);
+          }
+        }}
+        isWishlisted={selectedSpot ? isWishlisted(selectedSpot.id) : false}
+        onToggleWishlist={async () => {
+          if (!selectedSpot) return;
+          await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          const wasAlreadyWishlisted = isWishlisted(selectedSpot.id);
+          await toggleWishlist(selectedSpot.id);
+          if (selectedSpot.user_id !== session?.user.id && !wasAlreadyWishlisted) {
+            const username = await getMyUsername();
+            await sendPushNotification(selectedSpot.id, 'wishlist', username, session?.user.id);
+          }
+        }}
+        detailsLoading={detailsLoading}
+        isReviewFlaggedByMe={isReviewFlaggedByMe}
+        onToggleReviewFlag={async (reviewId: string, reason?: string) => {
+          await toggleReviewFlag(reviewId, reason);
+        }}
+        onViewProfile={(userId) => {
+          if (publicProfileOpen) return;
+          reopenSpotDetailsOnProfileCloseRef.current = true;
+          setDetailsOpen(false);
+          setTimeout(() => {
+            setPublicProfileUserId(userId);
+            setPublicProfileOpen(true);
+          }, 350);
+        }}
+        onConditionDone={async () => {
+          if (selectedSpot && selectedSpot.user_id !== session?.user.id) {
+            const username = await getMyUsername();
+            await sendPushNotification(selectedSpot.id, 'condition', username, session?.user.id);
+          }
+        }}
+        userLocation={
+          userLocationRef.current
+            ? {
+              latitude: userLocationRef.current.latitude,
+              longitude: userLocationRef.current.longitude,
             }
-          />
-          <SettingsPanel
-            visible={settingsOpen}
-            onClose={() => setSettingsOpen(false)}
-            onSignOut={async () => {
-              await signOut();
-              setSettingsOpen(false);
-            }}
-            onShowOnboarding={() => setShowOnboarding(true)}
-          />
-          {showOnboarding ? (
-            <View
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                zIndex: 999,
-              }}>
-              <OnboardingScreen onFinish={() => setShowOnboarding(false)} />
-            </View>
-          ) : null}
-          <ProfileModal
-            visible={profileOpen}
-            onClose={() => {
-              setProfileOpen(false);
-              AsyncStorage.removeItem('pendingNotificationProfile');
-              loadPendingRequests();
-              if (reopenCrewDetailOnProfileCloseRef.current) {
-                reopenCrewDetailOnProfileCloseRef.current = false;
-                setTimeout(() => setCrewDetailOpen(true), 350);
-              }
-            }}
-            mySpots={mySpots}
-            myReviews={myReviews}
-            onLoadMyReviews={loadMyReviews}
-            allSpots={spots}
-            onSelectSpot={(s) => {
-              setProfileOpen(false);
-              reopenCrewDetailOnProfileCloseRef.current = false;
-              setHighlightSpotId(s.id);
-              highlightSpotIdRef.current = s.id;
-              if (s.spot_type === 'skatepark' || s.spot_type === 'skateshop') {
-                setPlacesWithAutoClear((prev) =>
-                  prev.some((p) => p.id === s.id)
-                    ? prev
-                    : [
-                      ...prev,
-                      {
-                        id: s.id,
-                        name: s.name,
-                        type: s.spot_type as 'skatepark' | 'skateshop',
-                        lat: s.lat,
-                        lng: s.lng,
-                        tags: {},
-                      },
-                    ]
-                );
-                setTimeout(() => {
-                  animateToSpotWithModalOffset(s.lat, s.lng);
-                  openSpotDetails(s);
-                }, 400);
-              } else {
-                animateToSpotWithModalOffset(s.lat, s.lng);
-                openSpotDetails(s);
-              }
-            }}
-            onSignOut={async () => {
-              await signOut();
-              setProfileOpen(false);
-              reopenCrewDetailOnProfileCloseRef.current = false;
-            }}
-            onViewProfile={(userId) => {
-              setProfileOpen(false);
-              openedPublicProfileFromProfileRef.current = true;
-              setTimeout(() => {
-                setPublicProfileUserId(userId);
-                setPublicProfileOpen(true);
-              }, 350);
-            }}
-          />
-          <PublicProfileModal
-            visible={publicProfileOpen}
-            onClose={() => {
-              setPublicProfileOpen(false);
-              setPublicProfileUserId(null);
-              AsyncStorage.removeItem('pendingNotificationPublicProfile');
-              if (openedPublicProfileFromProfileRef.current) {
-                openedPublicProfileFromProfileRef.current = false;
-                setTimeout(() => setProfileOpen(true), 350);
-              } else if (reopenSpotDetailsOnProfileCloseRef.current) {
-                reopenSpotDetailsOnProfileCloseRef.current = false;
-                setTimeout(() => setDetailsOpen(true), 350);
-              } else if (reopenCrewDetailOnProfileCloseRef.current) {
-                reopenCrewDetailOnProfileCloseRef.current = false;
-                setTimeout(() => setCrewDetailOpen(true), 350);
-              }
-            }}
-            userId={publicProfileUserId}
-            allSpots={spots}
-            onSelectSpot={(s) => {
-              setPublicProfileOpen(false);
-              setPublicProfileUserId(null);
-              openedPublicProfileFromProfileRef.current = false;
-              reopenSpotDetailsOnProfileCloseRef.current = false;
-              reopenCrewDetailOnProfileCloseRef.current = false;
-              setHighlightSpotId(s.id);
-              highlightSpotIdRef.current = s.id;
+            : null
+        }
+        spotId={selectedSpot?.id ?? null}
+        commentCount={commentCount}
+        friendIds={friendIds}
+        onUpdateSpot={async (spotId, name, description, tags) => {
+          const err = await updateSpot(spotId, name, description, tags, true);
+          if (!err && selectedSpot) {
+            setTimeout(() => {
+              setSelectedSpot((prev) => (prev ? { ...prev, name, description, tags } : prev));
+            }, 400);
+          }
+          return err;
+        }}
+        creatorBadge={spotCreatorBadge}
+      />
+      <SkateShopDetailsModal
+        visible={placeDetailsOpen}
+        place={selectedPlace}
+        onClose={() => {
+          setPlaceDetailsOpen(false);
+          setSelectedPlace(null);
+          markerRefs.current[selectedPlaceId ?? '']?.hideCallout?.();
+          setSelectedPlaceId(null);
+          if (openedFromFavoritesRef.current) {
+            setPlaces([]);
+            openedFromFavoritesRef.current = false;
+          }
+          closeDetailsModal();
+        }}
+        isFavorite={selectedPlace ? isPlaceFavorite(selectedPlace.id) : false}
+        onToggleFavorite={async () => {
+          if (!selectedPlace) return;
+          await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          await togglePlaceFavorite(selectedPlace);
+        }}
+        userLocation={
+          userLocationRef.current
+            ? {
+              latitude: userLocationRef.current.latitude,
+              longitude: userLocationRef.current.longitude,
+            }
+            : null
+        }
+      />
+      <SettingsPanel
+        visible={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        onSignOut={async () => {
+          await signOut();
+          setSettingsOpen(false);
+        }}
+        onShowOnboarding={() => setShowOnboarding(true)}
+      />
+      {showOnboarding ? (
+        <View
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 999,
+          }}>
+          <OnboardingScreen onFinish={() => setShowOnboarding(false)} />
+        </View>
+      ) : null}
+      <ProfileModal
+        visible={profileOpen}
+        onClose={() => {
+          setProfileOpen(false);
+          AsyncStorage.removeItem('pendingNotificationProfile');
+          loadPendingRequests();
+          if (reopenCrewDetailOnProfileCloseRef.current) {
+            reopenCrewDetailOnProfileCloseRef.current = false;
+            setTimeout(() => setCrewDetailOpen(true), 350);
+          }
+        }}
+        mySpots={mySpots}
+        myReviews={myReviews}
+        onLoadMyReviews={loadMyReviews}
+        allSpots={spots}
+        onSelectSpot={(s) => {
+          setProfileOpen(false);
+          reopenCrewDetailOnProfileCloseRef.current = false;
+          setHighlightSpotId(s.id);
+          highlightSpotIdRef.current = s.id;
+          if (s.spot_type === 'skatepark' || s.spot_type === 'skateshop') {
+            setPlacesWithAutoClear((prev) =>
+              prev.some((p) => p.id === s.id)
+                ? prev
+                : [
+                  ...prev,
+                  {
+                    id: s.id,
+                    name: s.name,
+                    type: s.spot_type as 'skatepark' | 'skateshop',
+                    lat: s.lat,
+                    lng: s.lng,
+                    tags: {},
+                  },
+                ]
+            );
+            setTimeout(() => {
               animateToSpotWithModalOffset(s.lat, s.lng);
               openSpotDetails(s);
-            }}
-          />
-          <CreateEventModal
-            visible={createEventOpen}
-            onClose={() => {
-              setCreateEventOpen(false);
-              setPendingEventCoord(null);
-              if (editingEvent) {
-                setTimeout(() => {
-                  setEventDetailsOpen(true);
-                }, 350);
-              }
-              setEditingEvent(null);
-            }}
-            onSubmit={async (
+            }, 400);
+          } else {
+            animateToSpotWithModalOffset(s.lat, s.lng);
+            openSpotDetails(s);
+          }
+        }}
+        onSignOut={async () => {
+          await signOut();
+          setProfileOpen(false);
+          reopenCrewDetailOnProfileCloseRef.current = false;
+        }}
+        onViewProfile={(userId) => {
+          setProfileOpen(false);
+          openedPublicProfileFromProfileRef.current = true;
+          setTimeout(() => {
+            setPublicProfileUserId(userId);
+            setPublicProfileOpen(true);
+          }, 350);
+        }}
+      />
+      <PublicProfileModal
+        visible={publicProfileOpen}
+        onClose={() => {
+          setPublicProfileOpen(false);
+          setPublicProfileUserId(null);
+          AsyncStorage.removeItem('pendingNotificationPublicProfile');
+          if (openedPublicProfileFromProfileRef.current) {
+            openedPublicProfileFromProfileRef.current = false;
+            setTimeout(() => setProfileOpen(true), 350);
+          } else if (reopenSpotDetailsOnProfileCloseRef.current) {
+            reopenSpotDetailsOnProfileCloseRef.current = false;
+            setTimeout(() => setDetailsOpen(true), 350);
+          } else if (reopenCrewDetailOnProfileCloseRef.current) {
+            reopenCrewDetailOnProfileCloseRef.current = false;
+            setTimeout(() => setCrewDetailOpen(true), 350);
+          }
+        }}
+        userId={publicProfileUserId}
+        allSpots={spots}
+        onSelectSpot={(s) => {
+          setPublicProfileOpen(false);
+          setPublicProfileUserId(null);
+          openedPublicProfileFromProfileRef.current = false;
+          reopenSpotDetailsOnProfileCloseRef.current = false;
+          reopenCrewDetailOnProfileCloseRef.current = false;
+          setHighlightSpotId(s.id);
+          highlightSpotIdRef.current = s.id;
+          animateToSpotWithModalOffset(s.lat, s.lng);
+          openSpotDetails(s);
+        }}
+      />
+      <CreateEventModal
+        visible={createEventOpen}
+        onClose={() => {
+          setCreateEventOpen(false);
+          setPendingEventCoord(null);
+          if (editingEvent) {
+            setTimeout(() => {
+              setEventDetailsOpen(true);
+            }, 350);
+          }
+          setEditingEvent(null);
+        }}
+        onSubmit={async (
+          title,
+          description,
+          locationName,
+          lat,
+          lng,
+          eventDate,
+          visibility,
+          spotId,
+          inviteUserIds
+        ) => {
+          if (editingEvent) {
+            const err = await updateEvent(
+              editingEvent.id,
               title,
               description,
               locationName,
-              lat,
-              lng,
               eventDate,
-              visibility,
-              spotId,
-              inviteUserIds
-            ) => {
-              if (editingEvent) {
-                const err = await updateEvent(
-                  editingEvent.id,
-                  title,
-                  description,
-                  locationName,
-                  eventDate,
-                  visibility
-                );
-                if (!err) {
-                  setSelectedEvent((prev) =>
-                    prev
-                      ? {
-                        ...prev,
-                        title,
-                        description,
-                        location_name: locationName,
-                        event_date: eventDate.toISOString(),
-                      }
-                      : prev
-                  );
-                }
-                return err;
-              }
-              return await createEvent(
-                title,
-                description,
-                locationName,
-                lat,
-                lng,
-                eventDate,
-                visibility,
-                spotId,
-                inviteUserIds
+              visibility
+            );
+            if (!err) {
+              setSelectedEvent((prev) =>
+                prev
+                  ? {
+                    ...prev,
+                    title,
+                    description,
+                    location_name: locationName,
+                    event_date: eventDate.toISOString(),
+                  }
+                  : prev
               );
-            }}
-            pendingCoord={pendingEventCoord}
-            spots={spots}
-            editEvent={editingEvent}
-          />
-          <EventDetailsModal
-            visible={eventDetailsOpen}
-            event={selectedEvent}
-            currentUserId={session?.user.id ?? null}
-            onClose={() => {
-              setEventDetailsOpen(false);
-              setSelectedEvent(null);
-            }}
-            onCancelEvent={async (eventId) => {
-              await cancelEvent(eventId);
-            }}
-            onViewSpotDetails={() => {
-              if (!selectedEvent?.spot_id) return;
-              const spot = spots.find((s) => s.id === selectedEvent.spot_id);
-              if (spot) {
-                setEventDetailsOpen(false);
-                setTimeout(() => {
-                  openedFromPanelRef.current = true;
-                  setHighlightSpotId(spot.id);
-                  highlightSpotIdRef.current = spot.id;
-                  animateToSpotWithModalOffset(spot.lat, spot.lng);
-                  openSpotDetails(spot);
-                }, 350);
-              }
-            }}
-            onLoadRsvps={loadEventRsvps}
-            onUpsertRsvp={upsertRsvp}
-            onDeleteRsvp={deleteRsvp}
-            onEditEvent={() => {
-              setEventDetailsOpen(false);
-              setEditingEvent(selectedEvent);
-              setTimeout(() => {
-                setCreateEventOpen(true);
-              }, 350);
-            }}
-            onViewProfile={(userId) => {
-              setEventDetailsOpen(false);
-              setSelectedEvent(null);
-              setTimeout(() => {
-                setPublicProfileUserId(userId);
-                setPublicProfileOpen(true);
-              }, 350);
-            }}
-          />
-          <WhatsNewModal visible={showWhatsNew} onClose={dismissWhatsNew} />
-          <CrewsModal
-            visible={crewsOpen}
-            initialTab={crewsInitialTab}
-            onClose={() => setCrewsOpen(false)}
-            onSelectCrew={(id) => {
-              setSelectedCrewId(id);
-              setCrewsOpen(false);
-              setTimeout(() => setCrewDetailOpen(true), 350);
-            }}
-            onCreatePress={() => {
-              setEditingCrew(null);
-              setCrewsOpen(false);
-              setCrewReopenAfterCreate('crews');
-              setTimeout(() => setCreateCrewOpen(true), 350);
-            }}
-          />
-          <CrewDetailModal
-            visible={crewDetailOpen}
-            onClose={() => {
-              setCrewDetailOpen(false);
-              setSelectedCrewId(null);
-              setTimeout(() => setCrewsOpen(true), 350);
-            }}
-            crewId={selectedCrewId}
-            onEdit={(crew) => {
-              setEditingCrew(crew);
-              setCrewDetailOpen(false);
-              setCrewReopenAfterCreate('detail');
-              setTimeout(() => setCreateCrewOpen(true), 350);
-            }}
-            onSelectSpot={(spot) => {
-              setCrewDetailOpen(false);
-              setCrewsOpen(false);
-              setSelectedCrewId(null);
+            }
+            return err;
+          }
+          return await createEvent(
+            title,
+            description,
+            locationName,
+            lat,
+            lng,
+            eventDate,
+            visibility,
+            spotId,
+            inviteUserIds
+          );
+        }}
+        pendingCoord={pendingEventCoord}
+        spots={spots}
+        editEvent={editingEvent}
+      />
+      <EventDetailsModal
+        visible={eventDetailsOpen}
+        event={selectedEvent}
+        currentUserId={session?.user.id ?? null}
+        onClose={() => {
+          setEventDetailsOpen(false);
+          setSelectedEvent(null);
+        }}
+        onCancelEvent={async (eventId) => {
+          await cancelEvent(eventId);
+        }}
+        onViewSpotDetails={() => {
+          if (!selectedEvent?.spot_id) return;
+          const spot = spots.find((s) => s.id === selectedEvent.spot_id);
+          if (spot) {
+            setEventDetailsOpen(false);
+            setTimeout(() => {
+              openedFromPanelRef.current = true;
+              setHighlightSpotId(spot.id);
+              highlightSpotIdRef.current = spot.id;
               animateToSpotWithModalOffset(spot.lat, spot.lng);
               openSpotDetails(spot);
-            }}
-            onSelectMember={(userId) => {
-              if (publicProfileOpen || profileOpen) return;
-              reopenCrewDetailOnProfileCloseRef.current = true;
-              setCrewDetailOpen(false);
-              if (userId === session?.user.id) {
-                setTimeout(() => setProfileOpen(true), 350);
-              } else {
-                setTimeout(() => {
-                  setPublicProfileUserId(userId);
-                  setPublicProfileOpen(true);
-                }, 350);
-              }
-            }}
-          />
-          <CreateCrewModal
-            visible={createCrewOpen}
-            onClose={() => {
-              setCreateCrewOpen(false);
-              const reopen = crewReopenAfterCreate;
-              setCrewReopenAfterCreate(null);
-              if (reopen === 'crews') {
-                setTimeout(() => setCrewsOpen(true), 350);
-              } else if (reopen === 'detail') {
-                setTimeout(() => setCrewDetailOpen(true), 350);
-              }
-            }}
-            editCrew={editingCrew}
-            onSubmit={async ({ name, description, isPublic, imageUri }) => {
-              if (editingCrew) {
-                let avatarUrl = editingCrew.avatar_url;
-                if (imageUri) {
-                  const up = await uploadCrewAvatar(editingCrew.id, imageUri);
-                  if (up.error) return up.error;
-                  avatarUrl = up.url;
-                }
-                return updateCrew(editingCrew.id, {
-                  name,
-                  description: description ?? null,
-                  is_public: isPublic,
-                  avatar_url: avatarUrl,
-                });
-              }
-              const res = await createCrew({ name, description, isPublic });
-              if (res.error || !res.id) return res.error;
-              if (imageUri) {
-                const up = await uploadCrewAvatar(res.id, imageUri);
-                if (up.error) return up.error;
-                await updateCrew(res.id, { avatar_url: up.url });
-              }
-              return null;
-            }}
-          />
-        </View>
+            }, 350);
+          }
+        }}
+        onLoadRsvps={loadEventRsvps}
+        onUpsertRsvp={upsertRsvp}
+        onDeleteRsvp={deleteRsvp}
+        onEditEvent={() => {
+          setEventDetailsOpen(false);
+          setEditingEvent(selectedEvent);
+          setTimeout(() => {
+            setCreateEventOpen(true);
+          }, 350);
+        }}
+        onViewProfile={(userId) => {
+          setEventDetailsOpen(false);
+          setSelectedEvent(null);
+          setTimeout(() => {
+            setPublicProfileUserId(userId);
+            setPublicProfileOpen(true);
+          }, 350);
+        }}
+      />
+      <WhatsNewModal visible={showWhatsNew} onClose={dismissWhatsNew} />
+      <CrewsModal
+        visible={crewsOpen}
+        initialTab={crewsInitialTab}
+        onClose={() => setCrewsOpen(false)}
+        onSelectCrew={(id) => {
+          setSelectedCrewId(id);
+          setCrewsOpen(false);
+          setTimeout(() => setCrewDetailOpen(true), 350);
+        }}
+        onCreatePress={() => {
+          setEditingCrew(null);
+          setCrewsOpen(false);
+          setCrewReopenAfterCreate('crews');
+          setTimeout(() => setCreateCrewOpen(true), 350);
+        }}
+      />
+      <CrewDetailModal
+        visible={crewDetailOpen}
+        onClose={() => {
+          setCrewDetailOpen(false);
+          setSelectedCrewId(null);
+          setTimeout(() => setCrewsOpen(true), 350);
+        }}
+        crewId={selectedCrewId}
+        onEdit={(crew) => {
+          setEditingCrew(crew);
+          setCrewDetailOpen(false);
+          setCrewReopenAfterCreate('detail');
+          setTimeout(() => setCreateCrewOpen(true), 350);
+        }}
+        onSelectSpot={(spot) => {
+          setCrewDetailOpen(false);
+          setCrewsOpen(false);
+          setSelectedCrewId(null);
+          animateToSpotWithModalOffset(spot.lat, spot.lng);
+          openSpotDetails(spot);
+        }}
+        onSelectMember={(userId) => {
+          if (publicProfileOpen || profileOpen) return;
+          reopenCrewDetailOnProfileCloseRef.current = true;
+          setCrewDetailOpen(false);
+          if (userId === session?.user.id) {
+            setTimeout(() => setProfileOpen(true), 350);
+          } else {
+            setTimeout(() => {
+              setPublicProfileUserId(userId);
+              setPublicProfileOpen(true);
+            }, 350);
+          }
+        }}
+      />
+      <CreateCrewModal
+        visible={createCrewOpen}
+        onClose={() => {
+          setCreateCrewOpen(false);
+          const reopen = crewReopenAfterCreate;
+          setCrewReopenAfterCreate(null);
+          if (reopen === 'crews') {
+            setTimeout(() => setCrewsOpen(true), 350);
+          } else if (reopen === 'detail') {
+            setTimeout(() => setCrewDetailOpen(true), 350);
+          }
+        }}
+        editCrew={editingCrew}
+        onSubmit={async ({ name, description, isPublic, imageUri }) => {
+          if (editingCrew) {
+            let avatarUrl = editingCrew.avatar_url;
+            if (imageUri) {
+              const up = await uploadCrewAvatar(editingCrew.id, imageUri);
+              if (up.error) return up.error;
+              avatarUrl = up.url;
+            }
+            return updateCrew(editingCrew.id, {
+              name,
+              description: description ?? null,
+              is_public: isPublic,
+              avatar_url: avatarUrl,
+            });
+          }
+          const res = await createCrew({ name, description, isPublic });
+          if (res.error || !res.id) return res.error;
+          if (imageUri) {
+            const up = await uploadCrewAvatar(res.id, imageUri);
+            if (up.error) return up.error;
+            await updateCrew(res.id, { avatar_url: up.url });
+          }
+          return null;
+        }}
+      />
+    </View>
   );
 }
