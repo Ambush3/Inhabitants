@@ -19,6 +19,8 @@ import MapView, { Marker, Region, LongPressEvent, MapMarker } from 'react-native
 import MapViewClustering from 'react-native-map-clustering';
 import * as Location from 'expo-location';
 import * as Haptics from 'expo-haptics';
+import * as ImagePicker from 'expo-image-picker';
+import { extractLatLngFromExif } from '@/src/libs/exifLocation';
 import { useLocalSearchParams, useFocusEffect, usePathname, router } from 'expo-router';
 
 import { supabase } from '@/src/libs/supabase';
@@ -481,6 +483,7 @@ export default function Index() {
     clearSearch,
     setSpotVisibility,
     updateSpot,
+    removeFromSearchResults,
   } = useSpots();
 
   const { showWhatsNew, dismissWhatsNew } = useWhatsNew(!!session);
@@ -635,33 +638,37 @@ export default function Index() {
     setPreviewImageUrl(data?.[0]?.url ?? null);
   }, []);
 
-  const openSpotDetails = useCallback(async (spot: Spot) => {
-    setPreviewSpot(null);
-    setPreviewImageUrl(null);
-    setSelectedSpot(spot);
-    setDetailsOpen(true);
-    setDetailsLoading(true);
-    resetReviews();
-    clearImages();
+  const openSpotDetails = useCallback(
+    async (spot: Spot) => {
+      const freshSpot = spots.find((s) => s.id === spot.id) ?? spot;
+      setPreviewSpot(null);
+      setPreviewImageUrl(null);
+      setSelectedSpot(freshSpot);
+      setDetailsOpen(true);
+      setDetailsLoading(true);
+      resetReviews();
+      clearImages();
 
-    const [profileResult, , , , commentResult] = await Promise.all([
-      supabase.from('profiles').select('username, avatar_url, badge').eq('id', spot.user_id).single(),
-      loadReviews(spot.id),
-      loadImages(spot.id),
-      loadConditions(spot.id),
-      supabase.from('spot_comments').select('*', { count: 'exact', head: true }).eq('spot_id', spot.id),
-    ]);
+      const [profileResult, , , , commentResult] = await Promise.all([
+        supabase.from('profiles').select('username, avatar_url, badge').eq('id', freshSpot.user_id).single(),
+        loadReviews(freshSpot.id),
+        loadImages(freshSpot.id),
+        loadConditions(freshSpot.id),
+        supabase.from('spot_comments').select('*', { count: 'exact', head: true }).eq('spot_id', freshSpot.id),
+      ]);
 
-    if (spot.spot_type === 'spot') {
-      await loadMyDifficultyVote(spot.id);
-    }
+      if (freshSpot.spot_type === 'spot') {
+        await loadMyDifficultyVote(freshSpot.id);
+      }
 
-    setSpotCreatorUsername(profileResult.data?.username ?? null);
-    setSpotCreatorAvatarUrl(profileResult.data?.avatar_url ?? null);
-    setSpotCreatorBadge(profileResult.data?.badge ?? null);
-    setCommentCount(commentResult.count ?? 0);
-    setDetailsLoading(false);
-  }, []);
+      setSpotCreatorUsername(profileResult.data?.username ?? null);
+      setSpotCreatorAvatarUrl(profileResult.data?.avatar_url ?? null);
+      setSpotCreatorBadge(profileResult.data?.badge ?? null);
+      setCommentCount(commentResult.count ?? 0);
+      setDetailsLoading(false);
+    },
+    [spots]
+  );
 
   async function onRefresh() {
     setRefreshing(true);
@@ -679,6 +686,36 @@ export default function Index() {
     return data?.username ?? 'Someone';
   }
 
+  async function handleQuickAddFromPhoto() {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') return;
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsMultipleSelection: false,
+      quality: 1,
+      exif: true,
+    });
+
+    if (result.canceled || result.assets.length === 0) return;
+
+    const asset = result.assets[0];
+    const coords = extractLatLngFromExif(asset.exif);
+
+    setPendingImages([asset.uri]);
+    setSpotName('');
+    setSpotDesc('');
+    setSpotRating(0);
+
+    if (coords) {
+      setPendingCoord(coords);
+    } else {
+      setPendingCoord(null);
+    }
+
+    setCreateOpen(true);
+  }
+
   function confirmDelete(spot: Spot) {
     Alert.alert('Delete spot?', spot.name, [
       { text: 'Cancel', style: 'cancel' },
@@ -692,6 +729,7 @@ export default function Index() {
             setSelectedSpot(null);
             resetReviews();
           });
+          removeFromSearchResults(spot.id);
         },
       },
     ]);
@@ -1700,9 +1738,9 @@ export default function Index() {
           }}
           style={{
             position: 'absolute',
-            bottom: 110,
+            bottom: 50,
             left: 16,
-            right: 16,
+            right: 80,
             backgroundColor: c.surface,
             borderRadius: 12,
             padding: 12,
@@ -1771,6 +1809,23 @@ export default function Index() {
           </Pressable>
         </Pressable>
       ) : null}
+      <Pressable
+        onPress={handleQuickAddFromPhoto}
+        style={{
+          position: 'absolute',
+          bottom: 110,
+          right: 16,
+          backgroundColor: c.surface,
+          borderRadius: 30,
+          padding: 12,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.2,
+          shadowRadius: 4,
+          elevation: 4,
+        }}>
+        <Ionicons name="camera" size={22} color="#007AFF" />
+      </Pressable>
       <Pressable
         onPress={() => {
           autoCenterRef.current = true;
@@ -1999,10 +2054,14 @@ export default function Index() {
         friendIds={friendIds}
         onUpdateSpot={async (spotId, name, description, tags) => {
           const err = await updateSpot(spotId, name, description, tags, true);
-          if (!err && selectedSpot) {
-            setTimeout(() => {
-              setSelectedSpot((prev) => (prev ? { ...prev, name, description, tags } : prev));
-            }, 400);
+          if (!err) {
+            await reload();
+            await loadMySpots();
+            if (selectedSpot) {
+              setTimeout(() => {
+                setSelectedSpot((prev) => (prev ? { ...prev, name, description, tags } : prev));
+              }, 400);
+            }
           }
           return err;
         }}
