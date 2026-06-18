@@ -606,10 +606,10 @@ export default function Index() {
   }
 
   const animateToSpotWithModalOffset = useCallback(
-    (lat: number, lng: number, modalSize: 'full' | 'small' = 'full') => {
+    (lat: number, lng: number, modalSize: 'full' | 'small' | 'medium' = 'full') => {
       preModalRegionRef.current = mapRegionRef.current;
 
-      const MODAL_HEIGHT_RATIO = modalSize === 'small' ? 0.25 : 0.55;
+      const MODAL_HEIGHT_RATIO = modalSize === 'small' ? 0.25 : modalSize === 'medium' ? 0.4 : 0.55;
       const latDelta = 0.03;
       const offsetLat = lat - latDelta * MODAL_HEIGHT_RATIO;
 
@@ -691,7 +691,7 @@ export default function Index() {
     if (status !== 'granted') return;
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'],
       allowsMultipleSelection: false,
       quality: 1,
       exif: true,
@@ -709,11 +709,14 @@ export default function Index() {
 
     if (coords) {
       setPendingCoord(coords);
+      animateToSpotWithModalOffset(coords.lat, coords.lng, 'medium');
+      setTimeout(() => {
+        setCreateOpen(true);
+      }, 450);
     } else {
       setPendingCoord(null);
+      setCreateOpen(true);
     }
-
-    setCreateOpen(true);
   }
 
   function confirmDelete(spot: Spot) {
@@ -1660,7 +1663,9 @@ export default function Index() {
         initialEventFilter={eventFilterOverride}
         unreadRsvpCount={unreadRsvpCount}
         onClearUnreadRsvps={clearUnreadRsvpCount}
+        onQuickAddFromPhoto={handleQuickAddFromPhoto}
       />
+
       <SpotMap
         mapRef={mapRef}
         visibleSpots={visibleSpots}
@@ -1738,9 +1743,9 @@ export default function Index() {
           }}
           style={{
             position: 'absolute',
-            bottom: 50,
+            bottom: 110,
             left: 16,
-            right: 80,
+            right: 16,
             backgroundColor: c.surface,
             borderRadius: 12,
             padding: 12,
@@ -1810,23 +1815,6 @@ export default function Index() {
         </Pressable>
       ) : null}
       <Pressable
-        onPress={handleQuickAddFromPhoto}
-        style={{
-          position: 'absolute',
-          bottom: 110,
-          right: 16,
-          backgroundColor: c.surface,
-          borderRadius: 30,
-          padding: 12,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.2,
-          shadowRadius: 4,
-          elevation: 4,
-        }}>
-        <Ionicons name="camera" size={22} color="#007AFF" />
-      </Pressable>
-      <Pressable
         onPress={() => {
           autoCenterRef.current = true;
           if (userLocationRef.current) {
@@ -1889,6 +1877,7 @@ export default function Index() {
               await submitReview(newSpot.id, spotRating, spotComment);
             }
             await loadMySpots();
+            await reload();
 
             if (newSpot.spot_type === 'skatepark' || newSpot.spot_type === 'skateshop') {
               setPlacesWithAutoClear((prev) => [
@@ -1906,6 +1895,15 @@ export default function Index() {
                 setPlacesWithAutoClear((prev) => prev.filter((p) => p.id !== newSpot.id));
               }, 4000);
             }
+
+            closeCreateModal();
+            animateToSpotWithModalOffset(newSpot.lat, newSpot.lng);
+            setHighlightSpotId(newSpot.id);
+            highlightSpotIdRef.current = newSpot.id;
+            setTimeout(() => {
+              openSpotDetails(newSpot);
+            }, 450);
+            return;
           }
           closeCreateModal();
         }}
