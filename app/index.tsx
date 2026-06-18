@@ -2247,7 +2247,6 @@ export default function Index() {
         visible={createEventOpen}
         onClose={() => {
           setCreateEventOpen(false);
-          setPendingEventCoord(null);
           if (editingEvent) {
             setTimeout(() => {
               setEventDetailsOpen(true);
@@ -2305,11 +2304,14 @@ export default function Index() {
 
           if (!err) {
             setCreateEventOpen(false);
-            setPendingEventCoord(null);
-            await loadPublicEvents();
-            await loadRsvpCounts(events.map((e) => e.id));
-            loadInvitedEventIds();
+            setPendingEventCoord({ lat, lng });
             animateToSpotWithModalOffset(lat, lng);
+            setTimeout(async () => {
+              await loadPublicEvents();
+              await loadRsvpCounts(events.map((e) => e.id));
+              loadInvitedEventIds();
+              setPendingEventCoord(null);
+            }, 3000);
           }
           return err;
         }}
