@@ -640,6 +640,18 @@ export default function Index() {
 
   const openSpotDetails = useCallback(
     async (spot: Spot) => {
+      if (!session) {
+        Alert.alert(
+          'Sign in required',
+          'Create a free account to view full spot details, reviews, and photos.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Sign In', onPress: () => router.push('/auth') },
+          ]
+        );
+        return;
+      }
+
       const freshSpot = spots.find((s) => s.id === spot.id) ?? spot;
       setPreviewSpot(null);
       setPreviewImageUrl(null);
@@ -745,6 +757,17 @@ export default function Index() {
     setSpotDesc('');
     setCreateOpen(true);
     setSpotRating(0);
+  }
+
+  function requireAuth(action: () => void) {
+    if (!session) {
+      Alert.alert('Sign in required', 'Create a free account to unlock this feature.', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Sign In', onPress: () => router.push('/auth') },
+      ]);
+      return;
+    }
+    action();
   }
 
   usePushNotifications(
@@ -1209,6 +1232,12 @@ export default function Index() {
     return () => sub.remove();
   }, []);
 
+  useEffect(() => {
+    if (events.length > 0) {
+      mapRef.current?.animateToRegion(mapRegionRef.current, 0);
+    }
+  }, [events.length]);
+
   if (Platform.OS === 'web') {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: c.headerBg }}>
@@ -1363,6 +1392,7 @@ export default function Index() {
         </View>
       ) : null}
       <ExplorePanel
+        session={session}
         visible={panelOpen}
         pendingFriendRequestsCount={pendingReceived.length}
         feedItems={feedItems}
@@ -1445,71 +1475,77 @@ export default function Index() {
         topRated={topRated}
         mySpots={mySpots}
         mySpotsLoading={mySpotsLoading}
-        onLoadSkateparks={() => {
-          setPanelOpen(false);
-          const communityParks = spots
-            .filter((s) => s.spot_type === 'skatepark')
-            .map((s) => ({
-              id: s.id,
-              name: s.name,
-              type: 'skatepark' as const,
-              lat: s.lat,
-              lng: s.lng,
-              tags: {},
-            }));
-          loadNearbySkateParks(
-            mapRegionRef.current.latitude,
-            mapRegionRef.current.longitude,
-            20000,
-            undefined,
-            (googleParks) => {
-              setPlacesWithAutoClear(() => [...communityParks, ...googleParks]);
-            }
-          );
-        }}
+        onLoadSkateparks={() =>
+          requireAuth(() => {
+            setPanelOpen(false);
+            const communityParks = spots
+              .filter((s) => s.spot_type === 'skatepark')
+              .map((s) => ({
+                id: s.id,
+                name: s.name,
+                type: 'skatepark' as const,
+                lat: s.lat,
+                lng: s.lng,
+                tags: {},
+              }));
+            loadNearbySkateParks(
+              mapRegionRef.current.latitude,
+              mapRegionRef.current.longitude,
+              20000,
+              undefined,
+              (googleParks) => {
+                setPlacesWithAutoClear(() => [...communityParks, ...googleParks]);
+              }
+            );
+          })
+        }
         onOpenProfile={() => {
           setPanelOpen(false);
           setProfileOpen(true);
         }}
-        onLoadSkateShops={() => {
-          setPanelOpen(false);
-          const communityShops = spots
-            .filter((s) => s.spot_type === 'skateshop')
-            .map((s) => ({
-              id: s.id,
-              name: s.name,
-              type: 'skateshop' as const,
-              lat: s.lat,
-              lng: s.lng,
-              tags: {},
-            }));
-          loadNearbySkateShops(
-            mapRegionRef.current.latitude,
-            mapRegionRef.current.longitude,
-            20000,
-            undefined,
-            (googleShops) => {
-              setPlacesWithAutoClear(() => [...communityShops, ...googleShops]);
-            }
-          );
-        }}
-        onLoadTopRated={async () => {
-          const topSpot = await loadTopRatedSpotsInArea(mapRegionRef.current, 10);
-          if (topSpot) {
-            mapRef.current?.animateToRegion(
-              {
-                latitude: topSpot.lat,
-                longitude: topSpot.lng,
-                latitudeDelta: 0.05,
-                longitudeDelta: 0.05,
-              },
-              1200
+        onLoadSkateShops={() =>
+          requireAuth(() => {
+            setPanelOpen(false);
+            const communityShops = spots
+              .filter((s) => s.spot_type === 'skateshop')
+              .map((s) => ({
+                id: s.id,
+                name: s.name,
+                type: 'skateshop' as const,
+                lat: s.lat,
+                lng: s.lng,
+                tags: {},
+              }));
+            loadNearbySkateShops(
+              mapRegionRef.current.latitude,
+              mapRegionRef.current.longitude,
+              20000,
+              undefined,
+              (googleShops) => {
+                setPlacesWithAutoClear(() => [...communityShops, ...googleShops]);
+              }
             );
-          }
-          setTimeout(() => {
-            clearTopRated();
-          }, 60000);
-        }}
+          })
+        }
+        onLoadTopRated={() =>
+          requireAuth(async () => {
+            const topSpot = await loadTopRatedSpotsInArea(mapRegionRef.current, 10);
+            if (topSpot) {
+              mapRef.current?.animateToRegion(
+                {
+                  latitude: topSpot.lat,
+                  longitude: topSpot.lng,
+                  latitudeDelta: 0.05,
+                  longitudeDelta: 0.05,
+                },
+                1200
+              );
+            }
+            setTimeout(() => {
+              clearTopRated();
+            }, 60000);
+          })
+        }
         onSelectSpot={(s) => {
           if (actionSheetOpenRef.current) return;
           setPanelOpen(false);
@@ -1549,7 +1585,7 @@ export default function Index() {
           await signOut();
           setPanelOpen(false);
         }}
-        onSearch={(tag) => searchByTag(tag)}
+        onSearch={(tag) => requireAuth(() => searchByTag(tag))}
         onClearSearch={clearSearch}
         difficultyFilter={difficultyFilter}
         onToggleDifficultyFilter={(level) => {
@@ -2095,6 +2131,7 @@ export default function Index() {
         }
       />
       <SettingsPanel
+        session={session}
         visible={settingsOpen}
         onClose={() => setSettingsOpen(false)}
         onSignOut={async () => {
@@ -2253,7 +2290,8 @@ export default function Index() {
             }
             return err;
           }
-          return await createEvent(
+
+          const err = await createEvent(
             title,
             description,
             locationName,
@@ -2264,6 +2302,16 @@ export default function Index() {
             spotId,
             inviteUserIds
           );
+
+          if (!err) {
+            setCreateEventOpen(false);
+            setPendingEventCoord(null);
+            await loadPublicEvents();
+            await loadRsvpCounts(events.map((e) => e.id));
+            loadInvitedEventIds();
+            animateToSpotWithModalOffset(lat, lng);
+          }
+          return err;
         }}
         pendingCoord={pendingEventCoord}
         spots={spots}
@@ -2278,7 +2326,11 @@ export default function Index() {
           setSelectedEvent(null);
         }}
         onCancelEvent={async (eventId) => {
-          await cancelEvent(eventId);
+          const err = await cancelEvent(eventId);
+          if (!err) {
+            setEventDetailsOpen(false);
+            setSelectedEvent(null);
+          }
         }}
         onViewSpotDetails={() => {
           if (!selectedEvent?.spot_id) return;

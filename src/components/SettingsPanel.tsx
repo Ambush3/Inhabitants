@@ -3,6 +3,7 @@ import { View, Text, Modal, Pressable, Switch, Alert, ScrollView, Image } from '
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/src/libs/supabase';
+import { Session } from '@supabase/supabase-js';
 import { useTheme } from '@/src/context/ThemeContext';
 import { changelog } from '@/src/changelog';
 import { useNotificationPreferences, NotificationPrefs } from '@/src/hooks/useNotificationPreferences';
@@ -17,6 +18,7 @@ type Props = {
   onClose: () => void;
   onSignOut: () => void;
   onShowOnboarding: () => void;
+  session: Session | null;
 };
 
 function SectionLabel({ label }: { label: string }) {
@@ -36,7 +38,7 @@ function SectionLabel({ label }: { label: string }) {
   );
 }
 
-export function SettingsPanel({ visible, onClose, onSignOut, onShowOnboarding }: Props) {
+export function SettingsPanel({ visible, onClose, onSignOut, onShowOnboarding, session }: Props) {
   const insets = useSafeAreaInsets();
   const [resetSent, setResetSent] = useState(false);
   const [changelogOpen, setChangelogOpen] = useState(false);
@@ -220,42 +222,66 @@ export function SettingsPanel({ visible, onClose, onSignOut, onShowOnboarding }:
               <Ionicons name="settings-outline" size={20} color={c.text} style={{ marginRight: 8 }} />
               <Text style={{ fontSize: 18, fontWeight: '600', color: c.text }}>Settings</Text>
             </View>
-
             {/* Avatar */}
-            <View style={{ alignItems: 'center', marginBottom: 8 }}>
-              <Pressable onPress={handleAvatarUpload}>
-                {avatarUrl ? (
-                  <Image
-                    source={{ uri: avatarUrl }}
-                    style={{ width: 72, height: 72, borderRadius: 36, marginBottom: 8 }}
-                  />
-                ) : (
-                  <View
-                    style={{
-                      width: 72,
-                      height: 72,
-                      borderRadius: 36,
-                      backgroundColor: c.tagBg,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      marginBottom: 8,
-                    }}>
-                    <Ionicons name="person-outline" size={32} color={c.subtext} />
-                  </View>
-                )}
-              </Pressable>
-              {username ? (
-                <Text style={{ fontSize: 14, fontWeight: '600', color: c.text, marginBottom: 4 }}>
-                  @{username}
+            {session ? (
+              <View style={{ alignItems: 'center', marginBottom: 8 }}>
+                <Pressable onPress={handleAvatarUpload}>
+                  {avatarUrl ? (
+                    <Image
+                      source={{ uri: avatarUrl }}
+                      style={{ width: 72, height: 72, borderRadius: 36, marginBottom: 8 }}
+                    />
+                  ) : (
+                    <View
+                      style={{
+                        width: 72,
+                        height: 72,
+                        borderRadius: 36,
+                        backgroundColor: c.tagBg,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginBottom: 8,
+                      }}>
+                      <Ionicons name="person-outline" size={32} color={c.subtext} />
+                    </View>
+                  )}
+                </Pressable>
+                {username ? (
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: c.text, marginBottom: 4 }}>
+                    @{username}
+                  </Text>
+                ) : null}
+                <Pressable onPress={handleAvatarUpload}>
+                  <Text style={{ fontSize: 13, color: '#007AFF' }}>
+                    {avatarLoading ? 'Uploading...' : 'Change Photo'}
+                  </Text>
+                </Pressable>
+              </View>
+            ) : (
+              <View style={{ alignItems: 'center', marginBottom: 16 }}>
+                <View
+                  style={{
+                    width: 72,
+                    height: 72,
+                    borderRadius: 36,
+                    backgroundColor: c.tagBg,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginBottom: 8,
+                  }}>
+                  <Ionicons name="person-outline" size={32} color={c.subtext} />
+                </View>
+                <Text
+                  style={{
+                    fontSize: 13,
+                    color: c.subtext,
+                    textAlign: 'center',
+                    paddingHorizontal: 8,
+                  }}>
+                  Sign in to manage your profile
                 </Text>
-              ) : null}
-              <Pressable onPress={handleAvatarUpload}>
-                <Text style={{ fontSize: 13, color: '#007AFF' }}>
-                  {avatarLoading ? 'Uploading...' : 'Change Photo'}
-                </Text>
-              </Pressable>
-            </View>
-
+              </View>
+            )}
             <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
               {/* ── APPEARANCE ── */}
               <SectionLabel label="APPEARANCE" />
@@ -269,40 +295,78 @@ export function SettingsPanel({ visible, onClose, onSignOut, onShowOnboarding }:
 
               {/* ── PRIVACY & ACCOUNT ── */}
               <SectionLabel label="PRIVACY & ACCOUNT" />
-              <View style={rowStyle}>
-                <View style={rowLeftStyle}>
-                  <Ionicons name="location-outline" size={20} color={c.text} />
-                  <Text style={{ fontSize: 15, color: c.text }}>Public Check-ins</Text>
-                </View>
-                <Switch
-                  value={publicCheckIns}
-                  onValueChange={async (v) => {
-                    setPublicCheckIns(v);
-                    const {
-                      data: { user },
-                    } = await supabase.auth.getUser();
-                    if (user)
-                      await supabase
-                        .from('profiles')
-                        .update({ public_check_ins: v })
-                        .eq('id', user.id);
-                  }}
-                />
-              </View>
-              <Pressable onPress={handleResetPassword} style={rowStyle}>
-                <View style={rowLeftStyle}>
-                  <Ionicons name="lock-closed-outline" size={20} color={c.text} />
-                  <Text style={{ fontSize: 15, color: c.text }}>Reset Password</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={16} color={c.subtext} />
-              </Pressable>
-              <Pressable onPress={handleDeleteAccount} style={{ ...rowStyle, borderBottomWidth: 0 }}>
-                <View style={rowLeftStyle}>
-                  <Ionicons name="trash-outline" size={20} color={c.danger} />
-                  <Text style={{ fontSize: 15, color: c.danger }}>Delete Account</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={16} color={c.danger} />
-              </Pressable>
+              {!session ? (
+                <Pressable
+                  onPress={() =>
+                    Alert.alert(
+                      'Sign in required',
+                      'Create a free account to manage privacy and account settings.',
+                      [{ text: 'OK' }]
+                    )
+                  }
+                  style={{ opacity: 0.5 }}>
+                  <View style={rowStyle}>
+                    <View style={rowLeftStyle}>
+                      <Ionicons name="location-outline" size={20} color={c.text} />
+                      <Text style={{ fontSize: 15, color: c.text }}>Public Check-ins</Text>
+                    </View>
+                    <Switch value={false} disabled />
+                  </View>
+                  <View style={rowStyle}>
+                    <View style={rowLeftStyle}>
+                      <Ionicons name="lock-closed-outline" size={20} color={c.text} />
+                      <Text style={{ fontSize: 15, color: c.text }}>Reset Password</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={16} color={c.subtext} />
+                  </View>
+                  <View style={{ ...rowStyle, borderBottomWidth: 0 }}>
+                    <View style={rowLeftStyle}>
+                      <Ionicons name="trash-outline" size={20} color={c.danger} />
+                      <Text style={{ fontSize: 15, color: c.danger }}>Delete Account</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={16} color={c.danger} />
+                  </View>
+                </Pressable>
+              ) : (
+                <>
+                  <View style={rowStyle}>
+                    <View style={rowLeftStyle}>
+                      <Ionicons name="location-outline" size={20} color={c.text} />
+                      <Text style={{ fontSize: 15, color: c.text }}>Public Check-ins</Text>
+                    </View>
+                    <Switch
+                      value={publicCheckIns}
+                      onValueChange={async (v) => {
+                        setPublicCheckIns(v);
+                        const {
+                          data: { user },
+                        } = await supabase.auth.getUser();
+                        if (user)
+                          await supabase
+                            .from('profiles')
+                            .update({ public_check_ins: v })
+                            .eq('id', user.id);
+                      }}
+                    />
+                  </View>
+                  <Pressable onPress={handleResetPassword} style={rowStyle}>
+                    <View style={rowLeftStyle}>
+                      <Ionicons name="lock-closed-outline" size={20} color={c.text} />
+                      <Text style={{ fontSize: 15, color: c.text }}>Reset Password</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={16} color={c.subtext} />
+                  </Pressable>
+                  <Pressable
+                    onPress={handleDeleteAccount}
+                    style={{ ...rowStyle, borderBottomWidth: 0 }}>
+                    <View style={rowLeftStyle}>
+                      <Ionicons name="trash-outline" size={20} color={c.danger} />
+                      <Text style={{ fontSize: 15, color: c.danger }}>Delete Account</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={16} color={c.danger} />
+                  </Pressable>
+                </>
+              )}
 
               {/* ── INFO ── */}
               <SectionLabel label="INFO" />
@@ -384,7 +448,6 @@ export function SettingsPanel({ visible, onClose, onSignOut, onShowOnboarding }:
 
               <View style={{ height: 32 }} />
             </ScrollView>
-
             {/* Changelog modal */}
             <Modal
               visible={changelogOpen}
@@ -446,7 +509,11 @@ export function SettingsPanel({ visible, onClose, onSignOut, onShowOnboarding }:
                 </Pressable>
               </View>
             </Modal>
-            <FeedbackBoardModal visible={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
+            <FeedbackBoardModal
+              visible={feedbackOpen}
+              onClose={() => setFeedbackOpen(false)}
+              session={session}
+            />
           </Pressable>
         </Pressable>
       </Modal>
