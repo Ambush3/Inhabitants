@@ -4,6 +4,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Place, Spot } from '@/src/types';
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
+import { Session } from '@supabase/supabase-js';
 import { useTheme } from '@/src/context/ThemeContext';
 import { AnimatedSpotCard } from '@/src/components/AnimatedSpotCard';
 import Swipeable, { SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
@@ -74,6 +76,7 @@ type Props = {
   unreadRsvpCount: number;
   onClearUnreadRsvps: () => void;
   onQuickAddFromPhoto: () => void;
+  session: Session | null;
 };
 
 type Tab = 'explore' | 'myspots' | 'favorites' | 'feed' | 'events';
@@ -130,6 +133,7 @@ export function ExplorePanel({
   unreadRsvpCount,
   onClearUnreadRsvps,
   onQuickAddFromPhoto,
+  session,
 }: Props) {
   function notificationLabel(n: AppNotification): string {
     const actor = n.actor_username ? `@${n.actor_username}` : 'Someone';
@@ -1931,65 +1935,59 @@ export function ExplorePanel({
               padding: 16,
             }}>
             <Pressable
-              onPress={onOpenProfile}
+              onPress={() => {
+                if (session) {
+                  onOpenProfile();
+                } else {
+                  onClose();
+                  router.push('/auth');
+                }
+              }}
               style={{
                 flexDirection: 'row',
                 alignItems: 'center',
                 gap: 10,
                 marginBottom: 12,
               }}>
-              {myAvatarUrl ? (
-                <Image
-                  source={{ uri: myAvatarUrl }}
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 18,
-                  }}
-                />
-              ) : (
-                <View
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 18,
-                    backgroundColor: c.tagBg,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}>
-                  <Ionicons name="person-outline" size={18} color={c.subtext} />
-                </View>
-              )}
+              <View
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 18,
+                  backgroundColor: c.tagBg,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                <Ionicons name="person-outline" size={18} color={c.subtext} />
+              </View>
               <View style={{ marginLeft: 6 }}>
-                {myUsername ? (
-                  <Text
-                    style={{
-                      fontSize: 14,
-                      fontWeight: '600',
-                      color: c.text,
-                    }}>
-                    @{myUsername}
-                  </Text>
-                ) : null}
-                <Text
-                  style={{
-                    fontSize: 12,
-                    color: '#007AFF',
-                    marginTop: 2,
-                  }}>
-                  View Profile
+                <Text style={{ fontSize: 14, fontWeight: '600', color: c.text }}>
+                  {session ? (myUsername ? `@${myUsername}` : '') : 'Guest'}
+                </Text>
+                <Text style={{ fontSize: 12, color: '#007AFF', marginTop: 2 }}>
+                  {session ? 'View Profile' : 'Sign in to create an account'}
                 </Text>
               </View>
             </Pressable>
+
             <Pressable
-              onPress={onSignOut}
+              onPress={() => {
+                if (session) {
+                  onSignOut();
+                } else {
+                  onClose();
+                  router.push('/auth');
+                }
+              }}
               style={{
                 padding: 12,
                 borderRadius: 8,
                 backgroundColor: c.tagBg,
                 alignItems: 'center',
               }}>
-              <Text style={{ color: c.danger, fontWeight: '600' }}>Sign out</Text>
+              <Text style={{ color: session ? c.danger : '#007AFF', fontWeight: '600' }}>
+                {session ? 'Sign out' : 'Sign In'}
+              </Text>
             </Pressable>
           </View>
         </Pressable>

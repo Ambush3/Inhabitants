@@ -73,22 +73,26 @@ function RootLayoutInner() {
         }
       });
     } else {
-      if (pathname === '/reset-password') return;
+      if (pathname === '/reset-password' || pathname === '/auth') return;
       Linking.getInitialURL().then((url) => {
         if (url && url.includes('access_token')) return;
-        router.replace('/auth');
+        router.replace('/');
       });
     }
   }, [session, loading, pathname]);
 
   useEffect(() => {
+    let handled = false;
+
     async function handleDeepLink(url: string) {
+      if (handled) return;
       if (url.includes('type=recovery') || url.includes('access_token')) {
         const params = new URLSearchParams(url.split('#')[1]);
         const accessToken = params.get('access_token');
         const refreshToken = params.get('refresh_token');
         const type = params.get('type');
         if (accessToken && refreshToken && type === 'recovery') {
+          handled = true;
           await supabase.auth.setSession({
             access_token: accessToken,
             refresh_token: refreshToken,
