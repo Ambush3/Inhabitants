@@ -88,7 +88,17 @@ export function useEvents() {
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) return;
-    const { data } = await supabase.from('event_invites').select('event_id').eq('user_id', user.id);
+
+    const now = new Date();
+    now.setHours(now.getHours() - 2);
+
+    const { data } = await supabase
+      .from('event_invites')
+      .select('event_id, events!inner(event_date, cancelled)')
+      .eq('user_id', user.id)
+      .eq('events.cancelled', false)
+      .gte('events.event_date', now.toISOString());
+
     const newIds = new Set((data ?? []).map((r: any) => r.event_id));
 
     const seenRaw = await AsyncStorage.getItem(`seenInvites:${user.id}`);
@@ -251,6 +261,7 @@ export function useEvents() {
     setMyEvents((prev) => prev.filter((e) => e.id !== eventId));
     return null;
   }
+
   async function getEventInvites(
     eventId: string
   ): Promise<{ id: string; username: string | null; avatar_url: string | null }[]> {
