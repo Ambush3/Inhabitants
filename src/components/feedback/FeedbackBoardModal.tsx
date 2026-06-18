@@ -14,6 +14,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/src/libs/supabase';
+import { Session } from '@supabase/supabase-js';
 import { useTheme } from '@/src/context/ThemeContext';
 import { useFeedback, FeedbackPost, FeedbackSort, FeedbackCategory } from '@/src/hooks/useFeedback';
 import { FeedbackPostModal } from './FeedbackPostModal';
@@ -33,9 +34,10 @@ const CATEGORY_LABEL: Record<string, string> = {
 type Props = {
   visible: boolean;
   onClose: () => void;
+  session: Session | null;
 };
 
-export function FeedbackBoardModal({ visible, onClose }: Props) {
+export function FeedbackBoardModal({ visible, onClose, session }: Props) {
   const { theme } = useTheme();
   const c = theme.colors;
   const insets = useSafeAreaInsets();
@@ -83,6 +85,16 @@ export function FeedbackBoardModal({ visible, onClose }: Props) {
     ]);
   }
 
+  function requireAuth(action: () => void) {
+    if (!session) {
+      Alert.alert('Sign in required', 'Create a free account to vote, post, or report feedback.', [
+        { text: 'OK' },
+      ]);
+      return;
+    }
+    action();
+  }
+
   function renderPost({ item }: { item: FeedbackPost }) {
     return (
       <View
@@ -105,16 +117,12 @@ export function FeedbackBoardModal({ visible, onClose }: Props) {
             paddingVertical: 12,
             backgroundColor: c.headerBg,
           }}>
-          <Pressable onPress={() => vote(item.id, 1)} hitSlop={6}>
+          <Pressable onPress={() => requireAuth(() => vote(item.id, 1))} hitSlop={6}>
             <Ionicons name="caret-up" size={24} color={item.my_vote === 1 ? c.buttonBg : c.subtext} />
           </Pressable>
           <Text style={{ color: c.text, fontWeight: '700', fontSize: 14 }}>{item.score}</Text>
-          <Pressable onPress={() => vote(item.id, -1)} hitSlop={6}>
-            <Ionicons
-              name="caret-down"
-              size={24}
-              color={item.my_vote === -1 ? c.danger : c.subtext}
-            />
+          <Pressable onPress={() => requireAuth(() => vote(item.id, -1))} hitSlop={6}>
+            <Ionicons name="caret-down" size={24} color={item.my_vote === -1 ? c.danger : c.subtext} />
           </Pressable>
         </View>
 
@@ -237,11 +245,13 @@ export function FeedbackBoardModal({ visible, onClose }: Props) {
         post={selectedPost}
         currentUserId={currentUserId}
         onClose={() => setSelectedId(null)}
-        onVote={(value) => selectedPost && vote(selectedPost.id, value)}
+        onVote={(value) => requireAuth(() => selectedPost && vote(selectedPost.id, value))}
         onReport={async (reason) => {
-          if (!selectedPost) return;
-          await reportPost(selectedPost.id, reason);
-          Alert.alert('Thanks', 'Post reported.');
+          requireAuth(async () => {
+            if (!selectedPost) return;
+            await reportPost(selectedPost.id, reason);
+            Alert.alert('Thanks', 'Post reported.');
+          });
         }}
       />
 
