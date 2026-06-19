@@ -9,6 +9,7 @@ export const changelog = [
       'Map now navigates to a new spot or event immediately after creation',
       'Browse the map and view spot previews without signing in',
       'Feedback board is viewable by everyone; posting and voting require an account',
+      'Trick Journal to add tricks that you have done at certain spots',
     ],
   },
   {
