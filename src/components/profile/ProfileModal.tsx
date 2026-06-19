@@ -19,6 +19,7 @@ import { Spot } from '@/src/types';
 import { useFriendships, Friend } from '@/src/hooks/social/useFriendships';
 import { useCollections, Collection } from '@/src/hooks/useCollections';
 import { useCheckIns, PassportEntry } from '@/src/hooks/useCheckIns';
+import { TrickLog } from '@/src/hooks/useTrickLog';
 import { sendFriendAcceptedNotification } from '@/src/libs/sendPushNotification';
 import { useInvite } from '@/src/hooks/useInvite';
 import { moderateText } from '@/src/libs/moderator/textModerator';
@@ -42,6 +43,9 @@ type Props = {
   allSpots: Spot[];
   onSignOut: () => void;
   onViewProfile?: (userId: string) => void;
+  trickLogs: TrickLog[];
+  trickLogsLoading: boolean;
+  onDeleteTrickLog: (id: string) => Promise<string | null>;
 };
 
 type Tab = 'spots' | 'reviews' | 'friends' | 'collections' | 'passport';
@@ -56,6 +60,9 @@ export function ProfileModal({
   allSpots,
   onSignOut,
   onViewProfile,
+  trickLogs,
+  trickLogsLoading,
+  onDeleteTrickLog,
 }: Props) {
   const { theme } = useTheme();
   const c = theme.colors;
@@ -106,6 +113,8 @@ export function ProfileModal({
   const [contacts, setContacts] = useState<any[]>([]);
   const [selectedPhones, setSelectedPhones] = useState<string[]>([]);
   const [contactsLoading, setContactsLoading] = useState(false);
+  const [listsSubTab, setListsSubTab] = useState<'collections' | 'journal'>('collections');
+
   const { shareInviteLink, inviteViaContacts, sendSMSInvite } = useInvite();
 
   function toggleFriendSelected(id: string) {
@@ -834,38 +843,126 @@ export function ProfileModal({
                 ) : /* Collections */
                   activeTab === 'collections' ? (
                     <>
-                      {selectedCollection ? (
-                        <>
+                      <View
+                        style={{
+                          flexDirection: 'row',
+                          marginBottom: 16,
+                          borderRadius: 8,
+                          backgroundColor: c.tagBg,
+                          padding: 4,
+                        }}>
+                        {(['collections', 'journal'] as const).map((sub) => (
                           <Pressable
+                            key={sub}
                             onPress={() => {
+                              setListsSubTab(sub);
                               setSelectedCollection(null);
-                              setCollectionSpots([]);
                             }}
                             style={{
-                              flexDirection: 'row',
+                              flex: 1,
+                              paddingVertical: 8,
+                              borderRadius: 6,
                               alignItems: 'center',
-                              gap: 6,
-                              marginBottom: 16,
+                              backgroundColor: listsSubTab === sub ? c.surface : 'transparent',
                             }}>
-                            <Ionicons name="chevron-back" size={18} color="#007AFF" />
-                            <Text style={{ color: '#007AFF', fontWeight: '600', fontSize: 14 }}>
-                              Collections
+                            <Text
+                              style={{
+                                fontSize: 12,
+                                fontWeight: '600',
+                                color: listsSubTab === sub ? c.text : c.subtext,
+                              }}>
+                              {sub === 'collections' ? 'Collections' : 'Trick Journal'}
                             </Text>
                           </Pressable>
-                          <Text
-                            style={{
-                              fontWeight: '700',
-                              fontSize: 16,
-                              color: c.text,
-                              marginBottom: 16,
-                            }}>
-                            {selectedCollection.name}
-                          </Text>
-                          {collectionSpotsLoading ? (
+                        ))}
+                      </View>
+
+                      {listsSubTab === 'collections' ? (
+                        <>
+                          {selectedCollection ? (
+                            <>
+                              <Pressable
+                                onPress={() => {
+                                  setSelectedCollection(null);
+                                  setCollectionSpots([]);
+                                }}
+                                style={{
+                                  flexDirection: 'row',
+                                  alignItems: 'center',
+                                  gap: 6,
+                                  marginBottom: 16,
+                                }}>
+                                <Ionicons name="chevron-back" size={18} color="#007AFF" />
+                                <Text style={{ color: '#007AFF', fontWeight: '600', fontSize: 14 }}>
+                                  Collections
+                                </Text>
+                              </Pressable>
+                              <Text
+                                style={{
+                                  fontWeight: '700',
+                                  fontSize: 16,
+                                  color: c.text,
+                                  marginBottom: 16,
+                                }}>
+                                {selectedCollection.name}
+                              </Text>
+                              {collectionSpotsLoading ? (
+                                <Text
+                                  style={{
+                                    color: c.subtext,
+                                    textAlign: 'center',
+                                    marginTop: 24,
+                                  }}>
+                                  Loading...
+                                </Text>
+                              ) : collectionSpots.length === 0 ? (
+                                <Text
+                                  style={{
+                                    color: c.subtext,
+                                    fontSize: 14,
+                                    textAlign: 'center',
+                                    marginTop: 24,
+                                  }}>
+                                  No spots in this collection yet.
+                                </Text>
+                              ) : (
+                                collectionSpots.map((s) => (
+                                  <Pressable
+                                    key={s.id}
+                                    onPress={() => {
+                                      onSelectSpot(s);
+                                      onClose();
+                                    }}
+                                    style={{
+                                      flexDirection: 'row',
+                                      alignItems: 'center',
+                                      paddingVertical: 12,
+                                      borderBottomWidth: 1,
+                                      borderColor: c.border,
+                                      gap: 10,
+                                    }}>
+                                    <Ionicons
+                                      name="location-outline"
+                                      size={16}
+                                      color={c.subtext}
+                                    />
+                                    <Text style={{ flex: 1, fontWeight: '600', color: c.text }}>
+                                      {s.name}
+                                    </Text>
+                                    <Ionicons
+                                      name="chevron-forward"
+                                      size={16}
+                                      color={c.subtext}
+                                    />
+                                  </Pressable>
+                                ))
+                              )}
+                            </>
+                          ) : collectionsLoading ? (
                             <Text style={{ color: c.subtext, textAlign: 'center', marginTop: 24 }}>
                               Loading...
                             </Text>
-                          ) : collectionSpots.length === 0 ? (
+                          ) : collections.length === 0 ? (
                             <Text
                               style={{
                                 color: c.subtext,
@@ -873,87 +970,180 @@ export function ProfileModal({
                                 textAlign: 'center',
                                 marginTop: 24,
                               }}>
-                              No spots in this collection yet.
+                              No collections yet. Add spots to collections from the spot details page.
                             </Text>
                           ) : (
-                            collectionSpots.map((s) => (
+                            collections.map((col) => (
                               <Pressable
-                                key={s.id}
-                                onPress={() => {
-                                  onSelectSpot(s);
-                                  onClose();
+                                key={col.id}
+                                onPress={async () => {
+                                  setSelectedCollection(col);
+                                  setCollectionSpotsLoading(true);
+                                  const spots = await loadCollectionSpots(col.id);
+                                  setCollectionSpots(spots);
+                                  setCollectionSpotsLoading(false);
                                 }}
                                 style={{
                                   flexDirection: 'row',
                                   alignItems: 'center',
-                                  paddingVertical: 12,
+                                  paddingVertical: 14,
                                   borderBottomWidth: 1,
                                   borderColor: c.border,
-                                  gap: 10,
+                                  gap: 12,
                                 }}>
-                                <Ionicons name="location-outline" size={16} color={c.subtext} />
-                                <Text style={{ flex: 1, fontWeight: '600', color: c.text }}>
-                                  {s.name}
-                                </Text>
+                                <View
+                                  style={{
+                                    width: 40,
+                                    height: 40,
+                                    borderRadius: 10,
+                                    backgroundColor: c.tagBg,
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                  }}>
+                                  <Ionicons
+                                    name={col.name === 'Wishlist' ? 'star' : 'folder'}
+                                    size={20}
+                                    color={c.subtext}
+                                  />
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                  <Text
+                                    style={{ fontWeight: '600', fontSize: 14, color: c.text }}>
+                                    {col.name}
+                                  </Text>
+                                  <Text style={{ fontSize: 12, color: c.subtext }}>
+                                    {col.spot_count} {col.spot_count === 1 ? 'spot' : 'spots'}
+                                  </Text>
+                                </View>
                                 <Ionicons name="chevron-forward" size={16} color={c.subtext} />
                               </Pressable>
                             ))
                           )}
                         </>
-                      ) : collectionsLoading ? (
-                        <Text style={{ color: c.subtext, textAlign: 'center', marginTop: 24 }}>
-                          Loading...
-                        </Text>
-                      ) : collections.length === 0 ? (
-                        <Text
-                          style={{ color: c.subtext, fontSize: 14, textAlign: 'center', marginTop: 24 }}>
-                          No collections yet. Add spots to collections from the spot details page.
-                        </Text>
                       ) : (
-                        collections.map((col) => (
-                          <Pressable
-                            key={col.id}
-                            onPress={async () => {
-                              setSelectedCollection(col);
-                              setCollectionSpotsLoading(true);
-                              const spots = await loadCollectionSpots(col.id);
-                              setCollectionSpots(spots);
-                              setCollectionSpotsLoading(false);
-                            }}
-                            style={{
-                              flexDirection: 'row',
-                              alignItems: 'center',
-                              paddingVertical: 14,
-                              borderBottomWidth: 1,
-                              borderColor: c.border,
-                              gap: 12,
-                            }}>
-                            <View
+                        <>
+                          {trickLogsLoading ? (
+                            <Text style={{ color: c.subtext, textAlign: 'center', marginTop: 24 }}>
+                              Loading...
+                            </Text>
+                          ) : trickLogs.length === 0 ? (
+                            <Text
                               style={{
-                                width: 40,
-                                height: 40,
-                                borderRadius: 10,
-                                backgroundColor: c.tagBg,
-                                alignItems: 'center',
-                                justifyContent: 'center',
+                                color: c.subtext,
+                                fontSize: 14,
+                                textAlign: 'center',
+                                marginTop: 24,
                               }}>
-                              <Ionicons
-                                name={col.name === 'Wishlist' ? 'star' : 'folder'}
-                                size={20}
-                                color={c.subtext}
-                              />
-                            </View>
-                            <View style={{ flex: 1 }}>
-                              <Text style={{ fontWeight: '600', fontSize: 14, color: c.text }}>
-                                {col.name}
-                              </Text>
-                              <Text style={{ fontSize: 12, color: c.subtext }}>
-                                {col.spot_count} {col.spot_count === 1 ? 'spot' : 'spots'}
-                              </Text>
-                            </View>
-                            <Ionicons name="chevron-forward" size={16} color={c.subtext} />
-                          </Pressable>
-                        ))
+                              No tricks logged yet. Open a spot, tap Lists → Log a Trick.
+                            </Text>
+                          ) : (
+                            (() => {
+                              const grouped = trickLogs.reduce<
+                                Record<string, { spotName: string; logs: TrickLog[] }>
+                              >((acc, log) => {
+                                const spotName = log.spot?.name ?? 'Unknown Spot';
+                                if (!acc[log.spot_id]) acc[log.spot_id] = { spotName, logs: [] };
+                                acc[log.spot_id].logs.push(log);
+                                return acc;
+                              }, {});
+                              return Object.entries(grouped).map(([spotId, { spotName, logs }]) => (
+                                <View key={spotId} style={{ marginBottom: 16 }}>
+                                  <View
+                                    style={{
+                                      flexDirection: 'row',
+                                      alignItems: 'center',
+                                      gap: 6,
+                                      marginBottom: 6,
+                                    }}>
+                                    <Ionicons
+                                      name="location-outline"
+                                      size={13}
+                                      color={c.subtext}
+                                    />
+                                    <Text
+                                      style={{
+                                        fontWeight: '700',
+                                        color: c.text,
+                                        fontSize: 13,
+                                        flex: 1,
+                                      }}>
+                                      {spotName}
+                                    </Text>
+                                    <Text style={{ fontSize: 11, color: c.subtext }}>
+                                      {logs.length} trick{logs.length !== 1 ? 's' : ''}
+                                    </Text>
+                                  </View>
+                                  {logs.map((log) => (
+                                    <View
+                                      key={log.id}
+                                      style={{
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        paddingVertical: 8,
+                                        borderBottomWidth: 1,
+                                        borderColor: c.border,
+                                        gap: 8,
+                                      }}>
+                                      <Ionicons
+                                        name="checkmark-circle"
+                                        size={14}
+                                        color="#34C759"
+                                      />
+                                      <View style={{ flex: 1 }}>
+                                        <Text
+                                          style={{
+                                            fontWeight: '600',
+                                            color: c.text,
+                                            fontSize: 13,
+                                          }}>
+                                          {log.trick_name}
+                                        </Text>
+                                        <Text
+                                          style={{
+                                            fontSize: 11,
+                                            color: c.subtext,
+                                            marginTop: 1,
+                                          }}>
+                                          {new Date(log.logged_at).toLocaleDateString(
+                                            [],
+                                            {
+                                              month: 'short',
+                                              day: 'numeric',
+                                              year: 'numeric',
+                                            }
+                                          )}
+                                        </Text>
+                                      </View>
+                                      <Pressable
+                                        onPress={() =>
+                                          Alert.alert(
+                                            'Delete entry?',
+                                            'This cannot be undone.',
+                                            [
+                                              { text: 'Cancel', style: 'cancel' },
+                                              {
+                                                text: 'Delete',
+                                                style: 'destructive',
+                                                onPress: () =>
+                                                  onDeleteTrickLog(log.id),
+                                              },
+                                            ]
+                                          )
+                                        }
+                                        hitSlop={8}>
+                                        <Ionicons
+                                          name="trash-outline"
+                                          size={15}
+                                          color={c.subtext}
+                                        />
+                                      </Pressable>
+                                    </View>
+                                  ))}
+                                </View>
+                              ));
+                            })()
+                          )}
+                        </>
                       )}
                     </>
                   ) : /* Passport */

@@ -13,6 +13,7 @@ import { TopRatedItem } from '@/src/hooks/useTopRated';
 import { AppNotification } from '@/src/hooks/useNotifications';
 import { FeedItem } from '@/src/hooks/useSocialFeed';
 import { SkateEvent } from '@/src/hooks/useEvents';
+import { TrickLog } from '@/src/hooks/useTrickLog';
 
 import { supabase } from '@/src/libs/supabase';
 
@@ -1210,6 +1211,7 @@ export function ExplorePanel({
                   }}>
                   ADD A SPOT
                 </Text>
+
                 <Pressable
                   onPress={() => {
                     onClose();
