@@ -60,6 +60,7 @@ import { useSpotFlags } from '@/src/hooks/flaggingSystem/useSpotFlags';
 import { useReviewFlags } from '@/src/hooks/flaggingSystem/useReviewFlags';
 import { useEvents, SkateEvent } from '@/src/hooks/useEvents';
 import { useWhatsNew } from '@/src/hooks/useWhatsNew';
+import { useTrickLog } from '@/src/hooks/useTrickLog';
 
 import { useTheme } from '@/src/context/ThemeContext';
 
@@ -374,6 +375,16 @@ export default function Index() {
   );
 
   const {
+    trickLogs,
+    spotTrickLogs,
+    loading: trickLoading,
+    logTrick,
+    loadTrickLogsForSpot,
+    loadAllTrickLogs,
+    deleteTrickLog,
+  } = useTrickLog();
+
+  const {
     events,
     myEvents,
     invitedEventIds,
@@ -461,7 +472,7 @@ export default function Index() {
 
   const [isVetted, setIsVetted] = useState(false);
 
-  const { theme, loadThemeForUser, resetTheme } = useTheme();
+  const { theme, loadThemeForUser } = useTheme();
   const c = theme.colors;
 
   const insets = useSafeAreaInsets();
@@ -1238,6 +1249,19 @@ export default function Index() {
     }
   }, [events.length]);
 
+  useEffect(() => {
+    if (panelOpen && session) {
+      loadFeed(friends.map((f) => f.id));
+      loadNotifications();
+    }
+  }, [panelOpen]);
+
+  useEffect(() => {
+    if (profileOpen && session) {
+      loadAllTrickLogs();
+    }
+  }, [profileOpen]);
+
   if (Platform.OS === 'web') {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: c.headerBg }}>
@@ -1501,6 +1525,7 @@ export default function Index() {
         }
         onOpenProfile={() => {
           setPanelOpen(false);
+          loadAllTrickLogs();
           setProfileOpen(true);
         }}
         onLoadSkateShops={() =>
@@ -2100,7 +2125,24 @@ export default function Index() {
           return err;
         }}
         creatorBadge={spotCreatorBadge}
+        spotTrickLogs={spotTrickLogs}
+        onLogTrickSubmit={async (trickName, loggedAt) => {
+          if (!selectedSpot) return null;
+          const err = await logTrick(selectedSpot.id, trickName, loggedAt);
+          if (!err) await loadTrickLogsForSpot(selectedSpot.id);
+          return err;
+        }}
+        onDeleteTrickLog={async (id) => {
+          const err = await deleteTrickLog(id);
+          if (!err && selectedSpot) await loadTrickLogsForSpot(selectedSpot.id);
+          return err;
+        }}
+        onOpenTrickLog={() => {
+          if (!selectedSpot) return;
+          loadTrickLogsForSpot(selectedSpot.id);
+        }}
       />
+
       <SkateShopDetailsModal
         visible={placeDetailsOpen}
         place={selectedPlace}
@@ -2211,7 +2253,14 @@ export default function Index() {
             setPublicProfileOpen(true);
           }, 350);
         }}
+        trickLogs={trickLogs}
+        trickLogsLoading={trickLoading}
+        onDeleteTrickLog={async (id) => {
+          const err = await deleteTrickLog(id);
+          return err;
+        }}
       />
+
       <PublicProfileModal
         visible={publicProfileOpen}
         onClose={() => {
@@ -2319,6 +2368,7 @@ export default function Index() {
         spots={spots}
         editEvent={editingEvent}
       />
+
       <EventDetailsModal
         visible={eventDetailsOpen}
         event={selectedEvent}

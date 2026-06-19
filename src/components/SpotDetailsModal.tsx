@@ -33,6 +33,10 @@ import { SpotCommentsModal } from '@/src/components/SpotCommentsModal';
 import { CollectionsModal } from '@/src/components/CollectionsModal';
 import { AddSpotToCrewModal } from '@/src/components/crews/AddSpotToCrewModal';
 
+import { CrewsModal } from '@/src/components/crews/CrewsModal';
+import { TrickLog } from '@/src/hooks/useTrickLog';
+import { TrickLogModal } from '@/src/components/TrickLogModal';
+
 const geocodeCache = new Map<string, string>();
 
 function haversineMiles(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -119,6 +123,10 @@ type Props = {
   friendIds?: Set<string>;
   onUpdateSpot: (spotId: string, name: string, description: string, tags: string[]) => Promise<string | null>;
   creatorBadge?: 'local' | 'regular' | 'ambassador' | null;
+  onLogTrickSubmit: (trickName: string, loggedAt: Date) => Promise<string | null>;
+  onOpenTrickLog?: () => void;
+  spotTrickLogs: TrickLog[];
+  onDeleteTrickLog: (id: string) => Promise<string | null>;
 };
 
 export function SpotDetailsModal({
@@ -167,6 +175,10 @@ export function SpotDetailsModal({
   friendIds,
   onUpdateSpot,
   creatorBadge,
+  spotTrickLogs,
+  onLogTrickSubmit,
+  onOpenTrickLog,
+  onDeleteTrickLog,
 }: Props) {
   const { width } = Dimensions.get('window');
   const { theme } = useTheme();
@@ -350,8 +362,8 @@ export function SpotDetailsModal({
   const { checkIn, checkingIn, getVisitorCount, hasCheckedInWithinCooldown } = useCheckIns();
   const [visitorCount, setVisitorCount] = useState<number | null>(null);
   const [alreadyCheckedInToday, setAlreadyCheckedInToday] = useState(false);
-
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
+  const [trickLogOpen, setTrickLogOpen] = useState(false);
 
   const isOwner = spot?.user_id === currentUserId;
 
@@ -790,10 +802,24 @@ export function SpotDetailsModal({
               </Pressable>
 
               <Pressable
-                onPress={() => setCollectionsOpen(true)}
+                onPress={() => {
+                  ActionSheetIOS.showActionSheetWithOptions(
+                    {
+                      options: ['Cancel', 'Add to Collections', 'Log a Trick'],
+                      cancelButtonIndex: 0,
+                    },
+                    (index) => {
+                      if (index === 1) setCollectionsOpen(true);
+                      if (index === 2) {
+                        onOpenTrickLog?.();
+                        setTrickLogOpen(true);
+                      }
+                    }
+                  );
+                }}
                 style={[styles.actionBtn, { backgroundColor: c.tagBg }]}>
                 <Ionicons name="folder-outline" size={20} color={c.text} />
-                <Text style={[styles.actionLabel, { color: c.subtext }]}>Collections</Text>
+                <Text style={[styles.actionLabel, { color: c.subtext }]}>Lists</Text>
               </Pressable>
 
               <Pressable
@@ -1083,6 +1109,15 @@ export function SpotDetailsModal({
             onViewProfile?.(userId);
           }, 350);
         }}
+      />
+      <TrickLogModal
+        visible={trickLogOpen}
+        spotName={spot?.name ?? ''}
+        spotId={spotId ?? ''}
+        spotTrickLogs={spotTrickLogs}
+        onClose={() => setTrickLogOpen(false)}
+        onLogTrick={onLogTrickSubmit}
+        onDeleteTrickLog={onDeleteTrickLog}
       />
       {/* ── Flag modal ── */}
       <Modal
