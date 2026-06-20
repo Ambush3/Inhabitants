@@ -460,8 +460,6 @@ export function ProfileModal({
             </View>
           </View>
 
-          <SkateActivityGraph activityData={activityData} loading={streakLoading} />
-
           {/* ── Tab row ── */}
           <View
             style={{
@@ -1156,6 +1154,7 @@ export function ProfileModal({
                   ) : /* Passport */
                     activeTab === 'passport' ? (
                       <>
+                        <SkateActivityGraph activityData={activityData} loading={streakLoading} />
                         <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
                           <View
                             style={{
