@@ -23,6 +23,8 @@ import { TrickLog } from '@/src/hooks/useTrickLog';
 import { sendFriendAcceptedNotification } from '@/src/libs/sendPushNotification';
 import { useInvite } from '@/src/hooks/useInvite';
 import { moderateText } from '@/src/libs/moderator/textModerator';
+import { useStreak } from '@/src/hooks/useStreak';
+import { SkateActivityGraph } from '@/src/components/SkateActivityGraph';
 
 type MyReview = {
   id: string;
@@ -107,6 +109,8 @@ export function ProfileModal({
     useFriendships();
 
   const { loadPassport, passportEntries, passportLoading, togglePrivacy, deleteCheckIn } = useCheckIns();
+  const { activityData, loading: streakLoading, loadStreak } = useStreak();
+
   const [expandedPassportSpot, setExpandedPassportSpot] = useState<string | null>(null);
 
   const [contactsOpen, setContactsOpen] = useState(false);
@@ -196,6 +200,7 @@ export function ProfileModal({
     loadPendingRequests();
     loadFriends();
     loadPassport();
+    loadStreak();
   }, [visible]);
 
   const myActualSpots = mySpots.filter((s) => s.spot_type === 'spot');
@@ -1149,6 +1154,7 @@ export function ProfileModal({
                   ) : /* Passport */
                     activeTab === 'passport' ? (
                       <>
+                        <SkateActivityGraph activityData={activityData} loading={streakLoading} />
                         <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
                           <View
                             style={{
