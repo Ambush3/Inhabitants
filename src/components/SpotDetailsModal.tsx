@@ -28,6 +28,9 @@ import { useTheme } from '@/src/context/ThemeContext';
 
 import { CONDITION_META, SpotCondition } from '@/src/hooks/useSpotConditions';
 import { useCheckIns } from '@/src/hooks/useCheckIns';
+import { useCheckInMedia, PendingMedia } from '@/src/hooks/useCheckInMedia';
+import { SessionMediaStrip } from '@/src/components/SessionMediaStrip';
+import { SessionMediaViewerModal, ViewerMedia } from '@/src/components/SessionMediaViewerModal';
 
 import { SpotCommentsModal } from '@/src/components/SpotCommentsModal';
 import { CollectionsModal } from '@/src/components/CollectionsModal';
@@ -328,6 +331,7 @@ export function SpotDetailsModal({
     if (!spot || !visible) return;
     getVisitorCount(spot.id).then(setVisitorCount);
     hasCheckedInWithinCooldown(spot.id).then(setAlreadyCheckedInToday);
+    sessionMedia.loadMediaForSpot(spot.id);
   }, [spot?.id, visible]);
 
   function handleFlag() {
@@ -360,6 +364,44 @@ export function SpotDetailsModal({
   }
 
   const { checkIn, checkingIn, getVisitorCount, hasCheckedInWithinCooldown } = useCheckIns();
+  const { uploadMedia, uploading: uploadingSpotMedia } = useCheckInMedia();
+  const sessionMedia = useCheckInMedia();
+  const [sessionViewerMedia, setSessionViewerMedia] = useState<ViewerMedia | null>(null);
+  const [mediaGrid, setMediaGrid] = useState(false);
+
+  // Pick photos/videos and upload to a spot. checkInId links it to a passport
+  // visit (optional); null = a standalone spot upload.
+  async function pickAndUploadSpotMedia(spotId: string, checkInId: string | null) {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') return;
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images', 'videos'],
+      allowsMultipleSelection: true,
+      quality: 1,
+      selectionLimit: 5,
+    });
+    if (result.canceled) return;
+    const assets: PendingMedia[] = result.assets.map((a) => ({
+      uri: a.uri,
+      type: a.type === 'video' ? 'video' : 'image',
+    }));
+    if (!assets.length) return;
+    const res = await uploadMedia(spotId, checkInId, assets);
+    await sessionMedia.loadMediaForSpot(spotId);
+    if (res.error) Alert.alert('Upload failed', res.error);
+    else Alert.alert('Uploaded', `${res.uploaded} item${res.uploaded === 1 ? '' : 's'} added.`);
+  }
+
+  function promptAddSessionMedia(checkInId: string, spotId: string) {
+    Alert.alert(
+      'Add a photo or clip?',
+      'Capture this session and tie it to your passport entry.',
+      [
+        { text: 'Skip', style: 'cancel' },
+        { text: 'Add', onPress: () => pickAndUploadSpotMedia(spotId, checkInId) },
+      ]
+    );
+  }
   const [visitorCount, setVisitorCount] = useState<number | null>(null);
   const [alreadyCheckedInToday, setAlreadyCheckedInToday] = useState(false);
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
@@ -450,22 +492,6 @@ export function SpotDetailsModal({
             <View style={[styles.dragHandle, { backgroundColor: c.border }]} />
           </View>
 
-          {images.length > 0 && !detailsLoading ? (
-            <Pressable
-              onPress={() => {
-                setSelectedImageIndex(0);
-                setImageViewerOpen(true);
-              }}
-              style={styles.heroContainer}>
-              <Image source={{ uri: images[0] }} style={styles.heroImage} resizeMode="cover" />
-              {images.length > 1 ? (
-                <View style={styles.photoBadge}>
-                  <Ionicons name="images-outline" size={12} color="white" />
-                  <Text style={styles.photoBadgeText}>{images.length}</Text>
-                </View>
-              ) : null}
-            </Pressable>
-          ) : null}
           <ScrollView
             ref={scrollRef}
             keyboardShouldPersistTaps="handled"
@@ -637,6 +663,9 @@ export function SpotDetailsModal({
                                   await Haptics.notificationAsync(
                                     Haptics.NotificationFeedbackType.Success
                                   );
+                                  if (result.checkInId) {
+                                    promptAddSessionMedia(result.checkInId, spot.id);
+                                  }
                                 }
                               },
                             },
@@ -653,7 +682,18 @@ export function SpotDetailsModal({
                         setVisitorCount((prev) => (prev === null ? 1 : prev + 1));
                         Alert.alert(
                           'Checked in!',
-                          'Added to your passport and shared to your feed.'
+                          'Added to your passport and shared to your feed. Add a photo or clip from this session?',
+                          [
+                            { text: 'Skip', style: 'cancel' },
+                            {
+                              text: 'Add Photo/Clip',
+                              onPress: () => {
+                                if (result.checkInId) {
+                                  pickAndUploadSpotMedia(spot.id, result.checkInId);
+                                }
+                              },
+                            },
+                          ]
                         );
                       }
                     }}
@@ -842,19 +882,32 @@ export function SpotDetailsModal({
               </Pressable>
             </View>
 
-            {/* ── Photos ── */}
+            {/* ── Photos & Videos (any user) ── */}
             {visible ? (
               <View style={{ marginBottom: 14 }}>
                 <View style={[styles.divider, { backgroundColor: c.border }]} />
                 <View style={styles.sectionHeader}>
-                  <Text style={[styles.sectionTitle, { color: c.text }]}>Photos</Text>
-                  {isOwner && images.length + pendingImages.length < 5 ? (
-                    <Pressable onPress={handlePickImages}>
-                      <Text style={{ fontSize: 13, color: '#007AFF', fontWeight: '500' }}>
-                        + Add
-                      </Text>
-                    </Pressable>
-                  ) : null}
+                  <Text style={[styles.sectionTitle, { color: c.text }]}>Photos & Videos</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+                    {sessionMedia.media.length > 0 ? (
+                      <Pressable onPress={() => setMediaGrid((g) => !g)} hitSlop={6}>
+                        <Ionicons
+                          name={mediaGrid ? 'reorder-three-outline' : 'grid-outline'}
+                          size={18}
+                          color={c.subtext}
+                        />
+                      </Pressable>
+                    ) : null}
+                    {currentUserId ? (
+                      <Pressable
+                        onPress={() => spot && pickAndUploadSpotMedia(spot.id, null)}
+                        disabled={uploadingSpotMedia}>
+                        <Text style={{ fontSize: 13, color: '#007AFF', fontWeight: '500' }}>
+                          {uploadingSpotMedia ? 'Uploading…' : '+ Add'}
+                        </Text>
+                      </Pressable>
+                    ) : null}
+                  </View>
                 </View>
 
                 {detailsLoading ? (
@@ -862,35 +915,20 @@ export function SpotDetailsModal({
                     <SkeletonBar width={88} height={66} style={{ borderRadius: 10 }} />
                     <SkeletonBar width={88} height={66} style={{ borderRadius: 10 }} />
                   </View>
-                ) : isOwner ? (
-                  <FlatList
-                    data={[...images, ...pendingImages, 'add']}
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    keyExtractor={(item) => item}
-                    renderItem={renderImageItem}
+                ) : sessionMedia.media.length > 0 ? (
+                  <SessionMediaStrip
+                    media={sessionMedia.media}
+                    grid={mediaGrid}
+                    showUploader
+                    onPressMedia={(m) =>
+                      setSessionViewerMedia({ id: m.id, url: m.url, media_type: m.media_type })
+                    }
                   />
-                ) : images.length > 1 ? (
-                  <FlatList
-                    data={images.slice(1)}
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    keyExtractor={(url) => url}
-                    renderItem={renderViewImageItem}
-                  />
-                ) : images.length === 1 ? null : (
-                  <Text style={{ fontSize: 12, color: c.subtext }}>No photos yet.</Text>
+                ) : (
+                  <Text style={{ fontSize: 12, color: c.subtext }}>
+                    No photos or videos yet.
+                  </Text>
                 )}
-                {pendingImages.length > 0 && isOwner ? (
-                  <Pressable
-                    onPress={handleUploadPending}
-                    style={[styles.uploadBtn, { backgroundColor: c.buttonBg }]}>
-                    <Ionicons name="cloud-upload-outline" size={16} color={c.background} />
-                    <Text style={[styles.uploadBtnText, { color: c.background }]}>
-                      Upload {pendingImages.length} photo{pendingImages.length > 1 ? 's' : ''}
-                    </Text>
-                  </Pressable>
-                ) : null}
               </View>
             ) : null}
 
@@ -1093,6 +1131,25 @@ export function SpotDetailsModal({
           ) : null}
         </Animated.View>
       </Modal>
+      <SessionMediaViewerModal
+        visible={sessionViewerMedia !== null}
+        onClose={() => setSessionViewerMedia(null)}
+        mediaList={sessionMedia.media.map((m) => ({
+          id: m.id,
+          url: m.url,
+          media_type: m.media_type,
+          thumbnail_url: m.thumbnail_url,
+        }))}
+        initialIndex={Math.max(
+          0,
+          sessionMedia.media.findIndex((m) => m.id === sessionViewerMedia?.id)
+        )}
+        currentUserId={currentUserId}
+        onViewProfile={(userId) => {
+          setSessionViewerMedia(null);
+          setTimeout(() => onViewProfile?.(userId), 350);
+        }}
+      />
       <CollectionsModal visible={collectionsOpen} onClose={() => setCollectionsOpen(false)} spotId={spotId} />
       <AddSpotToCrewModal visible={addToCrewOpen} onClose={() => setAddToCrewOpen(false)} spotId={spotId} />
       <SpotCommentsModal

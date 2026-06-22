@@ -640,13 +640,16 @@ export default function Index() {
   const openSpotPreview = useCallback(async (spot: Spot) => {
     setPreviewSpot(spot);
     setPreviewImageUrl(null);
+    // Prefer the owner-pinned hero, then newest image, then a video thumbnail.
     const { data } = await supabase
-      .from('spot_images')
-      .select('url')
+      .from('check_in_media')
+      .select('url, thumbnail_url, media_type, is_hero')
       .eq('spot_id', spot.id)
-      .order('created_at', { ascending: true })
-      .limit(1);
-    setPreviewImageUrl(data?.[0]?.url ?? null);
+      .order('is_hero', { ascending: false })
+      .order('created_at', { ascending: false });
+    const image = data?.find((m) => m.media_type === 'image');
+    const videoThumb = data?.find((m) => m.thumbnail_url);
+    setPreviewImageUrl(image?.url ?? videoThumb?.thumbnail_url ?? null);
   }, []);
 
   const openSpotDetails = useCallback(

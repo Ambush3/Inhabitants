@@ -1562,35 +1562,22 @@ export function ExplorePanel({
                         borderBottomWidth: 1,
                         borderColor: c.border,
                       }}>
-                      {item.actor.avatar_url ? (
-                        <Image
-                          source={{
-                            uri: item.actor.avatar_url,
-                          }}
-                          style={{
-                            width: 36,
-                            height: 36,
-                            borderRadius: 18,
-                          }}
-                        />
-                      ) : (
-                        <View
-                          style={{
-                            width: 36,
-                            height: 36,
-                            borderRadius: 18,
-                            backgroundColor: c.tagBg,
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                          }}>
-                          <Ionicons name="person-outline" size={18} color={c.subtext} />
-                        </View>
-                      )}
+                      <View
+                        style={{
+                          width: 36,
+                          height: 36,
+                          borderRadius: 18,
+                          backgroundColor: c.tagBg,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}>
+                        <Ionicons name="person-outline" size={18} color={c.subtext} />
+                      </View>
                       <View style={{ flex: 1 }}>
                         <Text style={{ fontSize: 13, color: c.text }}>
                           <Text style={{ fontWeight: '700' }}>
                             @{item.actor.username ?? 'someone'}
-                          </Text>{' '}
+                          </Text>
                           {item.kind === 'spot_created'
                             ? 'created'
                             : item.kind === 'check_in'
@@ -1951,17 +1938,29 @@ export function ExplorePanel({
                 gap: 10,
                 marginBottom: 12,
               }}>
-              <View
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 18,
-                  backgroundColor: c.tagBg,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}>
-                <Ionicons name="person-outline" size={18} color={c.subtext} />
-              </View>
+              {session && myAvatarUrl ? (
+                <Image
+                  source={{ uri: myAvatarUrl }}
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 18,
+                    backgroundColor: c.tagBg,
+                  }}
+                />
+              ) : (
+                <View
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 18,
+                    backgroundColor: c.tagBg,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}>
+                  <Ionicons name="person-outline" size={18} color={c.subtext} />
+                </View>
+              )}
               <View style={{ marginLeft: 6 }}>
                 <Text style={{ fontSize: 14, fontWeight: '600', color: c.text }}>
                   {session ? (myUsername ? `@${myUsername}` : '') : 'Guest'}
