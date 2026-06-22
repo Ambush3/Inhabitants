@@ -82,6 +82,20 @@ const slides = [
     subtitle:
       'Create or join crews to skate with your group. Invite friends, share spots to the crew, and tap any member to open their profile. Manage invites from the Crews menu.',
   },
+  {
+    id: '12',
+    emoji: '🎬',
+    title: 'Photos & Videos',
+    subtitle:
+      'Add photos and clips to any spot — anyone can contribute. After a check-in you can attach a session to your passport. Tap a thumbnail to swipe through them full screen; videos autoplay.',
+  },
+  {
+    id: '13',
+    emoji: '💬',
+    title: 'Like & Comment',
+    subtitle:
+      'Give a thumbs up and leave comments on any photo or video. Find all of your own uploads under Profile → Lists → Media, where you can hold to select and delete several at once.',
+  },
 ];
 
 type Props = {
