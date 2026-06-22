@@ -14,6 +14,20 @@ export type SpotVisitorSummary = {
   unique_skater_count: number;
 };
 
+export type PassportMedia = {
+  id: string;
+  url: string;
+  thumbnail_url?: string | null;
+  media_type: 'image' | 'video';
+};
+
+export type PassportVisit = {
+  id: string;
+  checked_in_at: string;
+  is_private: boolean;
+  media: PassportMedia[];
+};
+
 export type PassportEntry = {
   spot_id: string;
   spot_name: string;
@@ -21,7 +35,7 @@ export type PassportEntry = {
   spot_lng: number;
   visit_count: number;
   last_visited_at: string;
-  visits: { id: string; checked_in_at: string; is_private: boolean }[];
+  visits: PassportVisit[];
 };
 
 const FEED_COOLDOWN_MS = 24 * 60 * 60 * 1000;
@@ -44,7 +58,7 @@ export function useCheckIns() {
     async (
       spotId: string,
       isPrivate = false
-    ): Promise<{ success: boolean; error?: string; alreadyCheckedIn?: boolean }> => {
+    ): Promise<{ success: boolean; error?: string; alreadyCheckedIn?: boolean; checkInId?: string }> => {
       const userId = await getCurrentUserId();
       if (!userId) return { success: false, error: 'Not authenticated' };
 
@@ -85,7 +99,7 @@ export function useCheckIns() {
             check_in_id: data.id,
           });
         }
-        return { success: true, alreadyCheckedIn: withinCooldown };
+        return { success: true, alreadyCheckedIn: withinCooldown, checkInId: data.id };
       } catch (e: any) {
         return { success: false, error: e.message };
       } finally {
@@ -147,6 +161,12 @@ export function useCheckIns() {
             name,
             lat,
             lng
+          ),
+          check_in_media (
+            id,
+            url,
+            thumbnail_url,
+            media_type
           )
         `
         )
@@ -161,7 +181,12 @@ export function useCheckIns() {
         if (!spot) continue;
 
         const existing = grouped.get(row.spot_id);
-        const visit = { id: row.id, checked_in_at: row.checked_in_at, is_private: row.is_private };
+        const visit: PassportVisit = {
+          id: row.id,
+          checked_in_at: row.checked_in_at,
+          is_private: row.is_private,
+          media: ((row.check_in_media as any) ?? []) as PassportMedia[],
+        };
 
         if (existing) {
           existing.visit_count += 1;
