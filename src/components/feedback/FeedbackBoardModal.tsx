@@ -35,9 +35,10 @@ type Props = {
   visible: boolean;
   onClose: () => void;
   session: Session | null;
+  initialPostId?: string | null;
 };
 
-export function FeedbackBoardModal({ visible, onClose, session }: Props) {
+export function FeedbackBoardModal({ visible, onClose, session, initialPostId }: Props) {
   const { theme } = useTheme();
   const c = theme.colors;
   const insets = useSafeAreaInsets();
@@ -59,6 +60,11 @@ export function FeedbackBoardModal({ visible, onClose, session }: Props) {
       loadPosts(sort);
     }
   }, [visible, sort]);
+
+  // Deep link from a feedback-reply notification: open that post.
+  useEffect(() => {
+    if (visible && initialPostId) setSelectedId(initialPostId);
+  }, [visible, initialPostId]);
 
   const selectedPost = posts.find((p) => p.id === selectedId) ?? null;
 

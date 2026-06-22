@@ -159,6 +159,8 @@ export function ExplorePanel({
         return `${actor} joined "${crew}"`;
       case 'crew_spot_added':
         return `${actor} added "${spot}" to "${crew}"`;
+      case 'feedback_reply':
+        return `${actor} replied to your feedback`;
       default:
         return `Activity on "${spot}"`;
     }
