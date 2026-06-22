@@ -10,6 +10,7 @@ export type AppNotification = {
     spot_name: string | null;
     crew_id?: string | null;
     crew_name?: string | null;
+    feedback_post_id?: string | null;
     read: boolean;
     created_at: string;
 };

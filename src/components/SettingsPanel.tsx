@@ -19,6 +19,7 @@ type Props = {
   onSignOut: () => void;
   onShowOnboarding: () => void;
   session: Session | null;
+  initialFeedbackPostId?: string | null;
 };
 
 function SectionLabel({ label }: { label: string }) {
@@ -38,13 +39,25 @@ function SectionLabel({ label }: { label: string }) {
   );
 }
 
-export function SettingsPanel({ visible, onClose, onSignOut, onShowOnboarding, session }: Props) {
+export function SettingsPanel({
+  visible,
+  onClose,
+  onSignOut,
+  onShowOnboarding,
+  session,
+  initialFeedbackPostId,
+}: Props) {
   const insets = useSafeAreaInsets();
   const [resetSent, setResetSent] = useState(false);
   const [changelogOpen, setChangelogOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const { theme, darkMode, toggleDarkMode } = useTheme();
   const c = theme.colors;
+
+  // Deep link: a feedback-reply notification opens the board on that post.
+  useEffect(() => {
+    if (visible && initialFeedbackPostId) setFeedbackOpen(true);
+  }, [visible, initialFeedbackPostId]);
 
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [avatarLoading, setAvatarLoading] = useState(false);
@@ -513,6 +526,7 @@ export function SettingsPanel({ visible, onClose, onSignOut, onShowOnboarding, s
               visible={feedbackOpen}
               onClose={() => setFeedbackOpen(false)}
               session={session}
+              initialPostId={initialFeedbackPostId}
             />
           </Pressable>
         </Pressable>

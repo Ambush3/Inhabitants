@@ -42,7 +42,41 @@ Deno.serve(async (req) => {
             crew_id,
             crew_name,
             spot_name,
+            feedback_post_id,
         } = await req.json();
+
+        if (event_type === 'feedback_reply') {
+            await supabase.from('notifications').insert({
+                user_id: addressee_id,
+                type: 'feedback_reply',
+                actor_id: actor_id ?? null,
+                actor_username: actor_username ?? null,
+                feedback_post_id: feedback_post_id ?? null,
+            });
+            const { data: tokenRow } = await supabase
+                .from('push_tokens')
+                .select('token')
+                .eq('user_id', addressee_id)
+                .maybeSingle();
+            if (!tokenRow) return new Response(JSON.stringify({ inserted: true }), { status: 200 });
+            const response = await fetch('https://exp.host/--/api/v2/push/send', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    'Accept-Encoding': 'gzip, deflate',
+                },
+                body: JSON.stringify({
+                    to: tokenRow.token,
+                    title: '💬 Reply to your feedback',
+                    body: `${actor_username} replied to your feedback`,
+                    sound: 'default',
+                    data: { url: 'inhabitants://?openFeedback=1' },
+                }),
+            });
+            const result = await response.json();
+            return new Response(JSON.stringify(result), { status: 200 });
+        }
 
         if (event_type === 'friend_request' || event_type === 'friend_accepted') {
             if (!(await isAllowed(addressee_id, event_type))) {
