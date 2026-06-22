@@ -6,6 +6,9 @@ import { useTheme } from '@/src/context/ThemeContext';
 import { Spot } from '@/src/types';
 import { useFriendships, FriendshipStatus } from '@/src/hooks/social/useFriendships';
 import { sendFriendRequestNotification } from '@/src/libs/sendPushNotification';
+import { useCheckInMedia } from '@/src/hooks/useCheckInMedia';
+import { SessionMediaStrip } from '@/src/components/SessionMediaStrip';
+import { SessionMediaViewerModal, ViewerMedia } from '@/src/components/SessionMediaViewerModal';
 
 type PublicReview = {
   id: string;
@@ -44,6 +47,9 @@ export function PublicProfileModal({ visible, onClose, userId, onSelectSpot, all
   const [cooldown, setCooldown] = useState(false);
 
   const [badge, setBadge] = useState<'local' | 'regular' | 'ambassador' | null>(null);
+  const [myId, setMyId] = useState<string | null>(null);
+  const [viewerMedia, setViewerMedia] = useState<ViewerMedia | null>(null);
+  const sessionMedia = useCheckInMedia();
 
   function startCooldown() {
     setCooldown(true);
@@ -102,6 +108,8 @@ export function PublicProfileModal({ visible, onClose, userId, onSelectSpot, all
       setLoading(false);
     }
     load();
+    sessionMedia.loadMediaForUser(userId!);
+    supabase.auth.getUser().then(({ data }) => setMyId(data.user?.id ?? null));
   }, [visible, userId]);
 
   useEffect(() => {
@@ -420,6 +428,18 @@ export function PublicProfileModal({ visible, onClose, userId, onSelectSpot, all
               </View>
             </View>
 
+            {sessionMedia.media.length > 0 ? (
+              <View style={{ marginHorizontal: 16, marginBottom: 20 }}>
+                <SessionMediaStrip
+                  media={sessionMedia.media}
+                  title="Sessions"
+                  onPressMedia={(m) =>
+                    setViewerMedia({ id: m.id, url: m.url, media_type: m.media_type })
+                  }
+                />
+              </View>
+            ) : null}
+
             <View
               style={{
                 flexDirection: 'row',
@@ -576,6 +596,22 @@ export function PublicProfileModal({ visible, onClose, userId, onSelectSpot, all
             </View>
           </ScrollView>
         )}
+
+        <SessionMediaViewerModal
+          visible={viewerMedia !== null}
+          onClose={() => setViewerMedia(null)}
+          mediaList={sessionMedia.media.map((m) => ({
+            id: m.id,
+            url: m.url,
+            media_type: m.media_type,
+            thumbnail_url: m.thumbnail_url,
+          }))}
+          initialIndex={Math.max(
+            0,
+            sessionMedia.media.findIndex((m) => m.id === viewerMedia?.id)
+          )}
+          currentUserId={myId}
+        />
       </SafeAreaView>
     </Modal>
   );
