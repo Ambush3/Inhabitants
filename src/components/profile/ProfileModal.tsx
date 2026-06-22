@@ -19,12 +19,14 @@ import { Spot } from '@/src/types';
 import { useFriendships, Friend } from '@/src/hooks/social/useFriendships';
 import { useCollections, Collection } from '@/src/hooks/useCollections';
 import { useCheckIns, PassportEntry } from '@/src/hooks/useCheckIns';
+import { MyMediaGrid } from '@/src/components/profile/MyMediaGrid';
 import { TrickLog } from '@/src/hooks/useTrickLog';
 import { sendFriendAcceptedNotification } from '@/src/libs/sendPushNotification';
 import { useInvite } from '@/src/hooks/useInvite';
 import { moderateText } from '@/src/libs/moderator/textModerator';
 import { useStreak } from '@/src/hooks/useStreak';
 import { SkateActivityGraph } from '@/src/components/SkateActivityGraph';
+import { SessionMediaViewerModal, ViewerMedia } from '@/src/components/SessionMediaViewerModal';
 
 type MyReview = {
   id: string;
@@ -112,12 +114,14 @@ export function ProfileModal({
   const { activityData, loading: streakLoading, loadStreak } = useStreak();
 
   const [expandedPassportSpot, setExpandedPassportSpot] = useState<string | null>(null);
+  const [myId, setMyId] = useState<string | null>(null);
+  const [viewer, setViewer] = useState<{ list: ViewerMedia[]; index: number } | null>(null);
 
   const [contactsOpen, setContactsOpen] = useState(false);
   const [contacts, setContacts] = useState<any[]>([]);
   const [selectedPhones, setSelectedPhones] = useState<string[]>([]);
   const [contactsLoading, setContactsLoading] = useState(false);
-  const [listsSubTab, setListsSubTab] = useState<'collections' | 'journal'>('collections');
+  const [listsSubTab, setListsSubTab] = useState<'collections' | 'journal' | 'media'>('collections');
 
   const { shareInviteLink, inviteViaContacts, sendSMSInvite } = useInvite();
 
@@ -183,6 +187,7 @@ export function ProfileModal({
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) return;
+      setMyId(user.id);
       const { data } = await supabase
         .from('profiles')
         .select('avatar_url, username, created_at, first_name, last_name, badge')
@@ -202,6 +207,7 @@ export function ProfileModal({
     loadPassport();
     loadStreak();
   }, [visible]);
+
 
   const myActualSpots = mySpots.filter((s) => s.spot_type === 'spot');
   const avgRatingGiven =
@@ -856,7 +862,7 @@ export function ProfileModal({
                           backgroundColor: c.tagBg,
                           padding: 4,
                         }}>
-                        {(['collections', 'journal'] as const).map((sub) => (
+                        {(['collections', 'journal', 'media'] as const).map((sub) => (
                           <Pressable
                             key={sub}
                             onPress={() => {
@@ -876,7 +882,11 @@ export function ProfileModal({
                                 fontWeight: '600',
                                 color: listsSubTab === sub ? c.text : c.subtext,
                               }}>
-                              {sub === 'collections' ? 'Collections' : 'Trick Journal'}
+                              {sub === 'collections'
+                                ? 'Collections'
+                                : sub === 'journal'
+                                  ? 'Trick Journal'
+                                  : 'Media'}
                             </Text>
                           </Pressable>
                         ))}
@@ -1025,7 +1035,7 @@ export function ProfileModal({
                             ))
                           )}
                         </>
-                      ) : (
+                      ) : listsSubTab === 'journal' ? (
                         <>
                           {trickLogsLoading ? (
                             <Text style={{ color: c.subtext, textAlign: 'center', marginTop: 24 }}>
@@ -1149,6 +1159,8 @@ export function ProfileModal({
                             })()
                           )}
                         </>
+                      ) : (
+                        <MyMediaGrid userId={myId} onViewProfile={onViewProfile} />
                       )}
                     </>
                   ) : /* Passport */
@@ -1246,8 +1258,8 @@ export function ProfileModal({
                                 {expanded ? (
                                   <View style={{ marginTop: 12, gap: 8 }}>
                                     {entry.visits.map((v) => (
+                                      <View key={v.id} style={{ gap: 8 }}>
                                       <View
-                                        key={v.id}
                                         style={{
                                           flexDirection: 'row',
                                           alignItems: 'center',
@@ -1297,6 +1309,62 @@ export function ProfileModal({
                                           />
                                         </Pressable>
                                       </View>
+                                      {v.media.length > 0 ? (
+                                        <View
+                                          style={{
+                                            flexDirection: 'row',
+                                            flexWrap: 'wrap',
+                                            gap: 8,
+                                            paddingLeft: 50,
+                                          }}>
+                                          {v.media.map((m, mi) => (
+                                            <Pressable
+                                              key={m.id}
+                                              onPress={() =>
+                                                setViewer({
+                                                  list: v.media.map((mm) => ({
+                                                    id: mm.id,
+                                                    url: mm.url,
+                                                    media_type: mm.media_type,
+                                                    thumbnail_url: mm.thumbnail_url,
+                                                  })),
+                                                  index: mi,
+                                                })
+                                              }
+                                              style={{
+                                                width: 64,
+                                                height: 64,
+                                                borderRadius: 8,
+                                                overflow: 'hidden',
+                                                backgroundColor: c.border,
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                              }}>
+                                              <Image
+                                                source={{
+                                                  uri:
+                                                    m.media_type === 'video'
+                                                      ? m.thumbnail_url ?? m.url
+                                                      : m.url,
+                                                }}
+                                                style={{ width: '100%', height: '100%' }}
+                                              />
+                                              {m.media_type === 'video' ? (
+                                                <View
+                                                  style={{
+                                                    position: 'absolute',
+                                                    backgroundColor: 'rgba(0,0,0,0.35)',
+                                                    borderRadius: 12,
+                                                    padding: 2,
+                                                  }}>
+                                                  <Ionicons name="play" size={16} color="#fff" />
+                                                </View>
+                                              ) : null}
+                                            </Pressable>
+                                          ))}
+                                        </View>
+                                      ) : null}
+                                      </View>
                                     ))}
                                   </View>
                                 ) : null}
@@ -1323,6 +1391,16 @@ export function ProfileModal({
           </View>
         </ScrollView>
       </SafeAreaView>
+
+      {/* ── Session media viewer ── */}
+      <SessionMediaViewerModal
+        visible={viewer !== null}
+        onClose={() => setViewer(null)}
+        mediaList={viewer?.list ?? []}
+        initialIndex={viewer?.index ?? 0}
+        currentUserId={myId}
+        onViewProfile={onViewProfile}
+      />
 
       {/* ── Edit profile modal ── */}
       <Modal visible={editOpen} animationType="slide" transparent onRequestClose={() => setEditOpen(false)}>

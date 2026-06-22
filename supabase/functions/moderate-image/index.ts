@@ -9,7 +9,14 @@ const supabase = createClient(
 
 Deno.serve(async (req) => {
     try {
-        const { image_url, spot_id, user_id } = await req.json();
+        const {
+            image_url,
+            match_url,
+            spot_id,
+            user_id,
+            bucket = 'spot-images',
+            table = 'spot_images',
+        } = await req.json();
 
         const imageRes = await fetch(image_url);
         const imageBuffer = await imageRes.arrayBuffer();
@@ -51,20 +58,16 @@ Deno.serve(async (req) => {
         );
 
         if (flagged) {
+            // Remove every uploaded file tied to this row (e.g. video + its
+            // thumbnail), then delete the row by its primary url.
+            const deleteUrl = match_url || image_url;
+            const fileUrls = [...new Set([image_url, match_url].filter(Boolean))];
+            for (const u of fileUrls) {
+                const filePath = u.split(`/storage/v1/object/public/${bucket}/`)[1];
+                if (filePath) await supabase.storage.from(bucket).remove([filePath]);
+            }
+            await supabase.from(table).delete().eq('url', deleteUrl);
             if (spot_id) {
-                const urlParts = image_url.split(
-                    '/storage/v1/object/public/spot-images/'
-                );
-                const filePath = urlParts[1];
-                if (filePath) {
-                    await supabase.storage
-                        .from('spot-images')
-                        .remove([filePath]);
-                    await supabase
-                        .from('spot_images')
-                        .delete()
-                        .eq('url', image_url);
-                }
                 await supabase.functions.invoke('send-push-notification', {
                     body: {
                         spot_id,
