@@ -1,5 +1,20 @@
 export const changelog = [
   {
+    version: '1.8.0',
+    date: 'June 2026',
+    changes: [
+      'Photos & Videos on every spot — any signed-in skater can add clips and photos',
+      'Attach a session to a check-in so it lands on your passport',
+      'Full-screen media viewer — swipe between items, videos autoplay muted and loop',
+      'Like (thumbs up) and comment on any photo or video, with content moderation',
+      'Video thumbnails generated on upload so clips preview before you tap',
+      'Toggle the spot Photos & Videos between a scrolling row and a grid',
+      'Manage your uploads under Profile → Lists → Media, with multi-select delete',
+      'Official replies on the feedback board are highlighted with a Team badge',
+      'Get notified when the team replies to your feedback — taps open the post',
+    ],
+  },
+  {
     version: '1.7',
     date: 'June 2026',
     changes: [
