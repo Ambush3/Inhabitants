@@ -183,7 +183,9 @@ export function FeedbackPostModal({ visible, post, currentUserId, onClose, onVot
                 No comments yet. Start the discussion!
               </Text>
             }
-            renderItem={({ item }) => (
+            renderItem={({ item }) => {
+              const isAdmin = !!item.profiles?.is_admin;
+              return (
               <View style={{ flexDirection: 'row', gap: 10 }}>
                 {item.profiles?.avatar_url ? (
                   <Image
@@ -195,10 +197,40 @@ export function FeedbackPostModal({ visible, post, currentUserId, onClose, onVot
                     style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: c.border }}
                   />
                 )}
-                <View style={{ flex: 1 }}>
-                  <Text style={{ color: c.text, fontWeight: '600', fontSize: 13 }}>
-                    {item.profiles?.username ?? 'Unknown'}
-                  </Text>
+                <View
+                  style={{
+                    flex: 1,
+                    ...(isAdmin
+                      ? {
+                          backgroundColor: 'rgba(0,122,255,0.10)',
+                          borderRadius: 10,
+                          borderWidth: 1,
+                          borderColor: 'rgba(0,122,255,0.25)',
+                          padding: 8,
+                        }
+                      : {}),
+                  }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Text
+                      style={{
+                        color: isAdmin ? '#007AFF' : c.text,
+                        fontWeight: '700',
+                        fontSize: 13,
+                      }}>
+                      {item.profiles?.username ?? 'Unknown'}
+                    </Text>
+                    {isAdmin ? (
+                      <View
+                        style={{
+                          backgroundColor: '#007AFF',
+                          borderRadius: 5,
+                          paddingHorizontal: 5,
+                          paddingVertical: 1,
+                        }}>
+                        <Text style={{ color: '#fff', fontSize: 9, fontWeight: '800' }}>TEAM</Text>
+                      </View>
+                    ) : null}
+                  </View>
                   <Text style={{ color: c.text, fontSize: 14, marginTop: 2 }}>{item.content}</Text>
                 </View>
                 <Pressable
@@ -215,7 +247,8 @@ export function FeedbackPostModal({ visible, post, currentUserId, onClose, onVot
                   />
                 </Pressable>
               </View>
-            )}
+              );
+            }}
           />
         )}
 

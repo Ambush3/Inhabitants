@@ -8,7 +8,7 @@ export type FeedbackComment = {
   user_id: string | null;
   content: string;
   created_at: string;
-  profiles: { username: string | null; avatar_url: string | null } | null;
+  profiles: { username: string | null; avatar_url: string | null; is_admin?: boolean } | null;
 };
 
 export function useFeedbackComments() {
@@ -20,7 +20,7 @@ export function useFeedbackComments() {
     try {
       const { data } = await supabase
         .from('feedback_comments')
-        .select('*, profiles(username, avatar_url)')
+        .select('*, profiles(username, avatar_url, is_admin)')
         .eq('post_id', postId)
         .order('created_at', { ascending: true });
       setComments((data ?? []) as FeedbackComment[]);
@@ -56,7 +56,35 @@ export function useFeedbackComments() {
       .insert({ post_id: postId, user_id: user.id, content: trimmed });
     if (error) return error.message;
     await loadComments(postId);
+    notifyOnAdminReply(postId, user.id).catch(() => {});
     return null;
+  }
+
+  // If an admin replies to someone else's post, notify the post author.
+  async function notifyOnAdminReply(postId: string, commenterId: string) {
+    const { data: me } = await supabase
+      .from('profiles')
+      .select('is_admin, username')
+      .eq('id', commenterId)
+      .single();
+    if (!me?.is_admin) return;
+
+    const { data: post } = await supabase
+      .from('feedback_posts')
+      .select('user_id')
+      .eq('id', postId)
+      .single();
+    if (!post?.user_id || post.user_id === commenterId) return;
+
+    await supabase.functions.invoke('send-push-notification', {
+      body: {
+        event_type: 'feedback_reply',
+        addressee_id: post.user_id,
+        actor_id: commenterId,
+        actor_username: me.username ?? 'The team',
+        feedback_post_id: postId,
+      },
+    });
   }
 
   async function deleteComment(commentId: string, postId: string): Promise<string | null> {
