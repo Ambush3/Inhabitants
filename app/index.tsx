@@ -454,6 +454,7 @@ export default function Index() {
   const [spotCreatorAvatarUrl, setSpotCreatorAvatarUrl] = useState<string | null>(null);
 
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [pendingFeedbackPostId, setPendingFeedbackPostId] = useState<string | null>(null);
 
   const [refreshing, setRefreshing] = useState(false);
 
@@ -1470,6 +1471,12 @@ export default function Index() {
             setCrewDetailOpen(true);
             return;
           }
+          if (n.type === 'feedback_reply') {
+            setPanelOpen(false);
+            setPendingFeedbackPostId(n.feedback_post_id ?? null);
+            setSettingsOpen(true);
+            return;
+          }
           openedFromPanelRef.current = true;
           const spot = n.spot_id ? spots.find((s) => s.id === n.spot_id) : null;
           if (spot) {
@@ -2178,10 +2185,15 @@ export default function Index() {
       <SettingsPanel
         session={session}
         visible={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
+        initialFeedbackPostId={pendingFeedbackPostId}
+        onClose={() => {
+          setSettingsOpen(false);
+          setPendingFeedbackPostId(null);
+        }}
         onSignOut={async () => {
           await signOut();
           setSettingsOpen(false);
+          setPendingFeedbackPostId(null);
         }}
         onShowOnboarding={() => setShowOnboarding(true)}
       />
