@@ -243,7 +243,7 @@ export function PublicProfileModal({ visible, onClose, userId, onSelectSpot, all
                       badge === 'ambassador'
                         ? '#FF9500'
                         : badge === 'regular'
-                          ? '#007AFF'
+                          ? c.accent
                           : '#34C759'
                     }
                   />
@@ -255,7 +255,7 @@ export function PublicProfileModal({ visible, onClose, userId, onSelectSpot, all
                         badge === 'ambassador'
                           ? '#FF9500'
                           : badge === 'regular'
-                            ? '#007AFF'
+                            ? c.accent
                             : '#34C759',
                     }}>
                     {badge.toUpperCase()}
@@ -326,7 +326,7 @@ export function PublicProfileModal({ visible, onClose, userId, onSelectSpot, all
                       ? c.tagBg
                       : friendshipStatus === 'pending_sent'
                         ? c.tagBg
-                        : '#007AFF',
+                        : c.accent,
                   borderWidth: friendshipStatus === 'accepted' ? 1 : 0,
                   borderColor: c.border,
                 }}>

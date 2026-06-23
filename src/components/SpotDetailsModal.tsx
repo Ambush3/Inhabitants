@@ -409,7 +409,7 @@ export function SpotDetailsModal({
 
   const isOwner = spot?.user_id === currentUserId;
 
-  const badgeColor = creatorBadge === 'ambassador' ? '#FF9500' : creatorBadge === 'regular' ? '#007AFF' : '#34C759';
+  const badgeColor = creatorBadge === 'ambassador' ? '#FF9500' : creatorBadge === 'regular' ? c.accent : '#34C759';
   const badgeBg =
     creatorBadge === 'ambassador'
       ? 'rgba(255,149,0,0.12)'
@@ -529,7 +529,7 @@ export function SpotDetailsModal({
                         <Ionicons
                           name="checkmark-circle"
                           size={18}
-                          color="#007AFF"
+                          color={c.accent}
                           style={{ marginLeft: 6, marginTop: 3 }}
                         />
                       </Pressable>
@@ -877,8 +877,8 @@ export function SpotDetailsModal({
               <Pressable
                 onPress={handleDirections}
                 style={[styles.actionBtn, { backgroundColor: 'rgba(0,122,255,0.12)' }]}>
-                <Ionicons name="navigate-outline" size={20} color="#007AFF" />
-                <Text style={[styles.actionLabel, { color: '#007AFF' }]}>Directions</Text>
+                <Ionicons name="navigate-outline" size={20} color={c.accent} />
+                <Text style={[styles.actionLabel, { color: c.accent }]}>Directions</Text>
               </Pressable>
             </View>
 
@@ -902,7 +902,7 @@ export function SpotDetailsModal({
                       <Pressable
                         onPress={() => spot && pickAndUploadSpotMedia(spot.id, null)}
                         disabled={uploadingSpotMedia}>
-                        <Text style={{ fontSize: 13, color: '#007AFF', fontWeight: '500' }}>
+                        <Text style={{ fontSize: 13, color: c.accent, fontWeight: '500' }}>
                           {uploadingSpotMedia ? 'Uploading…' : '+ Add'}
                         </Text>
                       </Pressable>
@@ -1221,7 +1221,7 @@ export function SpotDetailsModal({
                   <Ionicons
                     name={flagReason === reason ? 'radio-button-on' : 'radio-button-off'}
                     size={18}
-                    color={flagReason === reason ? '#007AFF' : c.subtext}
+                    color={flagReason === reason ? c.accent : c.subtext}
                   />
                   <Text style={{ fontSize: 14, color: c.text }}>{reason}</Text>
                 </Pressable>
@@ -1411,7 +1411,7 @@ export function SpotDetailsModal({
                 }}
                 disabled={editSaving || !editName.trim()}
                 style={{
-                  backgroundColor: '#007AFF',
+                  backgroundColor: c.accent,
                   borderRadius: 10,
                   padding: 13,
                   alignItems: 'center',
