@@ -240,7 +240,7 @@ export function ProfileModal({
               setEditOpen(true);
             }}
             style={{ padding: 4 }}>
-            <Text style={{ fontSize: 14, color: '#007AFF', fontWeight: '600' }}>Edit</Text>
+            <Text style={{ fontSize: 14, color: c.accent, fontWeight: '600' }}>Edit</Text>
           </Pressable>
         </View>
 
@@ -308,7 +308,7 @@ export function ProfileModal({
                   name="shield-checkmark"
                   size={14}
                   color={
-                    badge === 'ambassador' ? '#FF9500' : badge === 'regular' ? '#007AFF' : '#34C759'
+                    badge === 'ambassador' ? '#FF9500' : badge === 'regular' ? c.accent : '#34C759'
                   }
                 />
                 <Text
@@ -319,7 +319,7 @@ export function ProfileModal({
                       badge === 'ambassador'
                         ? '#FF9500'
                         : badge === 'regular'
-                          ? '#007AFF'
+                          ? c.accent
                           : '#34C759',
                   }}>
                   {badge.toUpperCase()}
@@ -383,7 +383,7 @@ export function ProfileModal({
                         sendFriendAcceptedNotification(f.id, username, user.id);
                     }}
                     style={{
-                      backgroundColor: '#007AFF',
+                      backgroundColor: c.accent,
                       borderRadius: 8,
                       paddingHorizontal: 12,
                       paddingVertical: 6,
@@ -645,8 +645,8 @@ export function ProfileModal({
                             borderRadius: 10,
                             padding: 11,
                           }}>
-                          <Ionicons name="people-outline" size={16} color="#007AFF" />
-                          <Text style={{ fontSize: 13, fontWeight: '600', color: '#007AFF' }}>
+                          <Ionicons name="people-outline" size={16} color={c.accent} />
+                          <Text style={{ fontSize: 13, fontWeight: '600', color: c.accent }}>
                             {contactsLoading ? 'Loading...' : 'Invite Contacts'}
                           </Text>
                         </Pressable>
@@ -754,7 +754,7 @@ export function ProfileModal({
                               borderColor: c.border,
                             }}>
                             <Pressable onPress={exitSelection} disabled={bulkRemoving}>
-                              <Text style={{ color: '#007AFF', fontWeight: '600', fontSize: 14 }}>
+                              <Text style={{ color: c.accent, fontWeight: '600', fontSize: 14 }}>
                                 Cancel
                               </Text>
                             </Pressable>
@@ -840,7 +840,7 @@ export function ProfileModal({
                                 <Ionicons
                                   name={selected ? 'checkbox' : 'square-outline'}
                                   size={22}
-                                  color={selected ? '#007AFF' : c.subtext}
+                                  color={selected ? c.accent : c.subtext}
                                 />
                               ) : (
                                 <Ionicons name="chevron-forward" size={16} color={c.subtext} />
@@ -907,8 +907,8 @@ export function ProfileModal({
                                   gap: 6,
                                   marginBottom: 16,
                                 }}>
-                                <Ionicons name="chevron-back" size={18} color="#007AFF" />
-                                <Text style={{ color: '#007AFF', fontWeight: '600', fontSize: 14 }}>
+                                <Ionicons name="chevron-back" size={18} color={c.accent} />
+                                <Text style={{ color: c.accent, fontWeight: '600', fontSize: 14 }}>
                                   Collections
                                 </Text>
                               </Pressable>
@@ -1287,7 +1287,7 @@ export function ProfileModal({
                                         </Text>
                                         <Pressable
                                           onPress={() => togglePrivacy(v.id, !v.is_private)}>
-                                          <Text style={{ fontSize: 12, color: '#007AFF' }}>
+                                          <Text style={{ fontSize: 12, color: c.accent }}>
                                             {v.is_private ? 'Make public' : 'Make private'}
                                           </Text>
                                         </Pressable>
@@ -1535,7 +1535,7 @@ export function ProfileModal({
                 setEditOpen(false);
               }}
               style={{
-                backgroundColor: '#007AFF',
+                backgroundColor: c.accent,
                 borderRadius: 10,
                 padding: 13,
                 alignItems: 'center',
@@ -1645,7 +1645,7 @@ export function ProfileModal({
                       <Ionicons
                         name={selected ? 'checkbox' : 'square-outline'}
                         size={22}
-                        color={selected ? '#007AFF' : c.subtext}
+                        color={selected ? c.accent : c.subtext}
                       />
                     </Pressable>
                   );
@@ -1666,7 +1666,7 @@ export function ProfileModal({
               }}
               disabled={selectedPhones.length === 0}
               style={{
-                backgroundColor: '#007AFF',
+                backgroundColor: c.accent,
                 borderRadius: 10,
                 padding: 13,
                 alignItems: 'center',

@@ -87,7 +87,7 @@ function CommentRow({ item, currentUserId, c, mediaId, deleteComment, updateComm
             if (onViewProfile && !isOwn) onViewProfile(item.user_id);
           }}
           style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-          <Text style={{ fontWeight: '600', fontSize: 13, color: !isOwn ? '#007AFF' : c.text }}>
+          <Text style={{ fontWeight: '600', fontSize: 13, color: !isOwn ? c.accent : c.text }}>
             {item.profiles?.username ?? 'Unknown'}
           </Text>
           <Text style={{ fontSize: 11, color: c.subtext }}>{timeAgo(item.created_at)}</Text>
@@ -112,7 +112,7 @@ function CommentRow({ item, currentUserId, c, mediaId, deleteComment, updateComm
             />
             <View style={{ flexDirection: 'row', gap: 8 }}>
               <Pressable onPress={handleSave} disabled={saving || !editText.trim()} style={{ opacity: saving || !editText.trim() ? 0.4 : 1 }}>
-                <Text style={{ fontSize: 12, color: '#007AFF', fontWeight: '700' }}>{saving ? 'Saving...' : 'Save'}</Text>
+                <Text style={{ fontSize: 12, color: c.accent, fontWeight: '700' }}>{saving ? 'Saving...' : 'Save'}</Text>
               </Pressable>
               <Pressable onPress={() => { setEditing(false); setEditText(item.content); }}>
                 <Text style={{ fontSize: 12, color: c.subtext, fontWeight: '600' }}>Cancel</Text>
@@ -419,7 +419,7 @@ export function SessionMediaViewerModal({
             onPress={handleSubmit}
             disabled={submitting || !input.trim()}
             style={{ opacity: submitting || !input.trim() ? 0.4 : 1 }}>
-            <Ionicons name="send" size={24} color="#007AFF" />
+            <Ionicons name="send" size={24} color={c.accent} />
           </Pressable>
         </View>
       </KeyboardAvoidingView>

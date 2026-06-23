@@ -8,6 +8,8 @@ import { useTheme } from '@/src/context/ThemeContext';
 import { changelog } from '@/src/changelog';
 import { useNotificationPreferences, NotificationPrefs } from '@/src/hooks/useNotificationPreferences';
 import { FeedbackBoardModal } from '@/src/components/feedback/FeedbackBoardModal';
+import { ThemeBackdrop } from '@/src/components/ThemeBackdrop';
+import { ThemePickerModal } from '@/src/components/ThemePickerModal';
 
 import * as ImagePicker from 'expo-image-picker';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
@@ -51,8 +53,10 @@ export function SettingsPanel({
   const [resetSent, setResetSent] = useState(false);
   const [changelogOpen, setChangelogOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
-  const { theme, darkMode, toggleDarkMode } = useTheme();
+  const [themePickerOpen, setThemePickerOpen] = useState(false);
+  const { theme, themeId, themes } = useTheme();
   const c = theme.colors;
+  const currentThemeName = themes.find((t) => t.id === themeId)?.name ?? '';
 
   // Deep link: a feedback-reply notification opens the board on that post.
   useEffect(() => {
@@ -225,11 +229,11 @@ export function SettingsPanel({
               paddingTop: insets.top,
               width: 280,
               height: '100%',
-              backgroundColor: c.panelBg,
-              padding: 16,
+              backgroundColor: 'transparent',
               flexDirection: 'column',
             }}
             onPress={() => { }}>
+            <ThemeBackdrop color={c.panelBg} style={{ flex: 1, padding: 16, flexDirection: 'column' }}>
             {/* Header */}
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
               <Ionicons name="settings-outline" size={20} color={c.text} style={{ marginRight: 8 }} />
@@ -265,7 +269,7 @@ export function SettingsPanel({
                   </Text>
                 ) : null}
                 <Pressable onPress={handleAvatarUpload}>
-                  <Text style={{ fontSize: 13, color: '#007AFF' }}>
+                  <Text style={{ fontSize: 13, color: c.accent }}>
                     {avatarLoading ? 'Uploading...' : 'Change Photo'}
                   </Text>
                 </Pressable>
@@ -298,13 +302,16 @@ export function SettingsPanel({
             <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
               {/* ── APPEARANCE ── */}
               <SectionLabel label="APPEARANCE" />
-              <View style={rowStyle}>
+              <Pressable onPress={() => setThemePickerOpen(true)} style={rowStyle}>
                 <View style={rowLeftStyle}>
-                  <Ionicons name="moon-outline" size={20} color={c.text} />
-                  <Text style={{ fontSize: 15, color: c.text }}>Dark Mode</Text>
+                  <Ionicons name="color-palette-outline" size={20} color={c.text} />
+                  <Text style={{ fontSize: 15, color: c.text }}>Themes</Text>
                 </View>
-                <Switch value={darkMode} onValueChange={toggleDarkMode} />
-              </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Text style={{ fontSize: 13, color: c.subtext }}>{currentThemeName}</Text>
+                  <Ionicons name="chevron-forward" size={16} color={c.subtext} />
+                </View>
+              </Pressable>
 
               {/* ── PRIVACY & ACCOUNT ── */}
               <SectionLabel label="PRIVACY & ACCOUNT" />
@@ -461,6 +468,8 @@ export function SettingsPanel({
 
               <View style={{ height: 32 }} />
             </ScrollView>
+            </ThemeBackdrop>
+            <ThemePickerModal visible={themePickerOpen} onClose={() => setThemePickerOpen(false)} />
             {/* Changelog modal */}
             <Modal
               visible={changelogOpen}
@@ -499,7 +508,7 @@ export function SettingsPanel({
                       </View>
                       {release.changes.map((change, i) => (
                         <View key={i} style={{ flexDirection: 'row', gap: 8, marginBottom: 6 }}>
-                          <Text style={{ color: '#007AFF', fontSize: 13 }}>•</Text>
+                          <Text style={{ color: c.accent, fontSize: 13 }}>•</Text>
                           <Text style={{ color: c.text, fontSize: 13, flex: 1 }}>
                             {change}
                           </Text>

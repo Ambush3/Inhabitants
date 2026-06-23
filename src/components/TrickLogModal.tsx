@@ -135,7 +135,7 @@ export function TrickLogModal({
               onPress={handleSubmit}
               disabled={saving || !trickName.trim()}
               style={{
-                backgroundColor: trickName.trim() ? '#007AFF' : c.tagBg,
+                backgroundColor: trickName.trim() ? c.accent : c.tagBg,
                 borderRadius: 10,
                 paddingHorizontal: 16,
                 alignItems: 'center',

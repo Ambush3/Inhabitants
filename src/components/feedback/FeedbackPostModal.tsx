@@ -213,7 +213,7 @@ export function FeedbackPostModal({ visible, post, currentUserId, onClose, onVot
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                     <Text
                       style={{
-                        color: isAdmin ? '#007AFF' : c.text,
+                        color: isAdmin ? c.accent : c.text,
                         fontWeight: '700',
                         fontSize: 13,
                       }}>
@@ -222,7 +222,7 @@ export function FeedbackPostModal({ visible, post, currentUserId, onClose, onVot
                     {isAdmin ? (
                       <View
                         style={{
-                          backgroundColor: '#007AFF',
+                          backgroundColor: c.accent,
                           borderRadius: 5,
                           paddingHorizontal: 5,
                           paddingVertical: 1,
