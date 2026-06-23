@@ -61,7 +61,7 @@ export function MyMediaGrid({ userId, onViewProfile }: Props) {
             marginBottom: 12,
           }}>
           <Pressable onPress={exitSelect}>
-            <Text style={{ fontSize: 14, color: '#007AFF', fontWeight: '600' }}>Cancel</Text>
+            <Text style={{ fontSize: 14, color: c.accent, fontWeight: '600' }}>Cancel</Text>
           </Pressable>
           <Text style={{ fontSize: 13, color: c.subtext }}>{selectedIds.size} selected</Text>
           <Pressable
@@ -132,7 +132,7 @@ export function MyMediaGrid({ userId, onViewProfile }: Props) {
                     top: 4,
                     right: 4,
                     borderRadius: 12,
-                    backgroundColor: selected ? '#007AFF' : 'rgba(0,0,0,0.45)',
+                    backgroundColor: selected ? c.accent : 'rgba(0,0,0,0.45)',
                   }}>
                   <Ionicons
                     name={selected ? 'checkmark-circle' : 'ellipse-outline'}

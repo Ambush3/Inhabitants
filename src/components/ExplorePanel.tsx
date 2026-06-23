@@ -8,6 +8,7 @@ import { router } from 'expo-router';
 import { Session } from '@supabase/supabase-js';
 import { useTheme } from '@/src/context/ThemeContext';
 import { AnimatedSpotCard } from '@/src/components/AnimatedSpotCard';
+import { ThemeBackdrop } from '@/src/components/ThemeBackdrop';
 import Swipeable, { SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { TopRatedItem } from '@/src/hooks/useTopRated';
 import { AppNotification } from '@/src/hooks/useNotifications';
@@ -317,10 +318,11 @@ export function ExplorePanel({
             paddingTop: insets.top,
             width: 280,
             height: '100%',
-            backgroundColor: c.panelBg,
+            backgroundColor: 'transparent',
             flexDirection: 'column',
           }}
           onPress={() => { }}>
+          <ThemeBackdrop color={c.panelBg} style={{ flex: 1, flexDirection: 'column' }}>
           {/* Tab Bar */}
           <View
             style={{
@@ -339,13 +341,13 @@ export function ExplorePanel({
                   alignItems: 'center',
                   paddingBottom: 10,
                   borderBottomWidth: 2,
-                  borderColor: activeTab === tab.key ? '#007AFF' : 'transparent',
+                  borderColor: activeTab === tab.key ? c.accent : 'transparent',
                 }}>
                 <View style={{ position: 'relative' }}>
                   <Ionicons
                     name={tab.icon as any}
                     size={18}
-                    color={activeTab === tab.key ? '#007AFF' : c.subtext}
+                    color={activeTab === tab.key ? c.accent : c.subtext}
                   />
                   {tab.key === 'events' && unreadInviteCount + unreadRsvpCount > 0 ? (
                     <View
@@ -371,7 +373,7 @@ export function ExplorePanel({
                   style={{
                     fontSize: 10,
                     marginTop: 3,
-                    color: activeTab === tab.key ? '#007AFF' : c.subtext,
+                    color: activeTab === tab.key ? c.accent : c.subtext,
                     fontWeight: activeTab === tab.key ? '600' : '400',
                   }}>
                   {tab.label}
@@ -465,7 +467,7 @@ export function ExplorePanel({
                         <Text
                           style={{
                             fontSize: 11,
-                            color: '#007AFF',
+                            color: c.accent,
                             fontWeight: '600',
                           }}>
                           Mark all read
@@ -495,7 +497,7 @@ export function ExplorePanel({
                                 width: 8,
                                 height: 8,
                                 borderRadius: 4,
-                                backgroundColor: '#007AFF',
+                                backgroundColor: c.accent,
                               }}
                             />
                           ) : (
@@ -710,7 +712,7 @@ export function ExplorePanel({
                         <Text
                           style={{
                             fontSize: 11,
-                            color: '#007AFF',
+                            color: c.accent,
                             fontWeight: '600',
                           }}>
                           Clear
@@ -1672,7 +1674,7 @@ export function ExplorePanel({
                       flexDirection: 'row',
                       alignItems: 'center',
                       gap: 4,
-                      backgroundColor: '#007AFF',
+                      backgroundColor: c.accent,
                       borderRadius: 8,
                       paddingHorizontal: 10,
                       paddingVertical: 5,
@@ -1707,8 +1709,8 @@ export function ExplorePanel({
                           paddingVertical: 5,
                           borderRadius: 6,
                           borderWidth: 1,
-                          borderColor: isActive ? '#007AFF' : c.inputBorder,
-                          backgroundColor: isActive ? '#007AFF' : c.surface,
+                          borderColor: isActive ? c.accent : c.inputBorder,
+                          backgroundColor: isActive ? c.accent : c.surface,
                           alignItems: 'center',
                         }}>
                         <Text
@@ -1791,7 +1793,7 @@ export function ExplorePanel({
                                 <Text
                                   style={{
                                     fontSize: 9,
-                                    color: '#007AFF',
+                                    color: c.accent,
                                     fontWeight: '700',
                                   }}>
                                   MINE
@@ -1967,7 +1969,7 @@ export function ExplorePanel({
                 <Text style={{ fontSize: 14, fontWeight: '600', color: c.text }}>
                   {session ? (myUsername ? `@${myUsername}` : '') : 'Guest'}
                 </Text>
-                <Text style={{ fontSize: 12, color: '#007AFF', marginTop: 2 }}>
+                <Text style={{ fontSize: 12, color: c.accent, marginTop: 2 }}>
                   {session ? 'View Profile' : 'Sign in to create an account'}
                 </Text>
               </View>
@@ -1988,11 +1990,12 @@ export function ExplorePanel({
                 backgroundColor: c.tagBg,
                 alignItems: 'center',
               }}>
-              <Text style={{ color: session ? c.danger : '#007AFF', fontWeight: '600' }}>
+              <Text style={{ color: session ? c.danger : c.accent, fontWeight: '600' }}>
                 {session ? 'Sign out' : 'Sign In'}
               </Text>
             </Pressable>
           </View>
+          </ThemeBackdrop>
         </Pressable>
       </Pressable>
     </Modal>

@@ -183,7 +183,7 @@ export function EventCommentsModal({
                         style={{
                           fontSize: 13,
                           fontWeight: '700',
-                          color: item.user_id !== currentUserId ? '#007AFF' : c.text,
+                          color: item.user_id !== currentUserId ? c.accent : c.text,
                         }}>
                         @{item.profile?.username ?? 'unknown'}
                       </Text>
@@ -240,7 +240,7 @@ export function EventCommentsModal({
                 width: 40,
                 height: 40,
                 borderRadius: 20,
-                backgroundColor: input.trim() ? '#007AFF' : c.tagBg,
+                backgroundColor: input.trim() ? c.accent : c.tagBg,
                 alignItems: 'center',
                 justifyContent: 'center',
                 alignSelf: 'flex-end',

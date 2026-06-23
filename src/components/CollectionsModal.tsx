@@ -98,7 +98,7 @@ export function CollectionsModal({ visible, onClose, spotId }: Props) {
                                 Collections
                             </Text>
                             <Pressable onPress={() => setCreating(true)}>
-                                <Ionicons name="add" size={24} color="#007AFF" />
+                                <Ionicons name="add" size={24} color={c.accent} />
                             </Pressable>
                             <Pressable onPress={onClose} style={{ marginLeft: 12 }}>
                                 <Ionicons name="close" size={24} color={c.text} />
@@ -135,7 +135,7 @@ export function CollectionsModal({ visible, onClose, spotId }: Props) {
                                     onPress={handleCreate}
                                     disabled={submitting || !newName.trim()}
                                     style={{ opacity: submitting || !newName.trim() ? 0.4 : 1 }}>
-                                    <Ionicons name="checkmark-circle" size={28} color="#007AFF" />
+                                    <Ionicons name="checkmark-circle" size={28} color={c.accent} />
                                 </Pressable>
                                 <Pressable onPress={() => { setCreating(false); setNewName(''); }}>
                                     <Ionicons name="close-circle" size={28} color={c.subtext} />
@@ -183,11 +183,11 @@ export function CollectionsModal({ visible, onClose, spotId }: Props) {
                                                 <Ionicons
                                                     name={item.name === 'Wishlist' ? 'star' : 'folder'}
                                                     size={18}
-                                                    color={isIn ? '#007AFF' : c.subtext}
+                                                    color={isIn ? c.accent : c.subtext}
                                                 />
                                             </View>
                                             <View style={{ flex: 1 }}>
-                                                <Text style={{ fontWeight: '600', fontSize: 14, color: isIn ? '#007AFF' : c.text }}>
+                                                <Text style={{ fontWeight: '600', fontSize: 14, color: isIn ? c.accent : c.text }}>
                                                     {item.name}
                                                 </Text>
                                                 <Text style={{ fontSize: 12, color: c.subtext }}>
@@ -195,7 +195,7 @@ export function CollectionsModal({ visible, onClose, spotId }: Props) {
                                                 </Text>
                                             </View>
                                             {isIn ? (
-                                                <Ionicons name="checkmark-circle" size={22} color="#007AFF" />
+                                                <Ionicons name="checkmark-circle" size={22} color={c.accent} />
                                             ) : (
                                                 <Ionicons name="add-circle-outline" size={22} color={c.subtext} />
                                             )}

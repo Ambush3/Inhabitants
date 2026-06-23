@@ -98,7 +98,7 @@ function CommentRow({
             style={{
               fontWeight: '600',
               fontSize: 13,
-              color: item.user_id !== currentUserId ? '#007AFF' : c.text,
+              color: item.user_id !== currentUserId ? c.accent : c.text,
             }}>
             {item.profiles?.username ?? 'Unknown'}
           </Text>
@@ -110,7 +110,7 @@ function CommentRow({
                 paddingHorizontal: 5,
                 paddingVertical: 2,
               }}>
-              <Text style={{ fontSize: 9, color: '#007AFF', fontWeight: '700' }}>FRIEND</Text>
+              <Text style={{ fontSize: 9, color: c.accent, fontWeight: '700' }}>FRIEND</Text>
             </View>
           ) : null}
           {item.user_id === currentUserId ? (
@@ -152,7 +152,7 @@ function CommentRow({
                 onPress={handleSave}
                 disabled={saving || !editText.trim()}
                 style={{ opacity: saving || !editText.trim() ? 0.4 : 1 }}>
-                <Text style={{ fontSize: 12, color: '#007AFF', fontWeight: '700' }}>
+                <Text style={{ fontSize: 12, color: c.accent, fontWeight: '700' }}>
                   {saving ? 'Saving...' : 'Save'}
                 </Text>
               </Pressable>
@@ -221,7 +221,7 @@ function CommentRow({
                   <Ionicons
                     name={flagReason === reason ? 'radio-button-on' : 'radio-button-off'}
                     size={18}
-                    color={flagReason === reason ? '#007AFF' : c.subtext}
+                    color={flagReason === reason ? c.accent : c.subtext}
                   />
                   <Text style={{ fontSize: 14, color: c.text }}>{reason}</Text>
                 </Pressable>
@@ -484,7 +484,7 @@ export function SpotCommentsModal({
                     onPress={handleSubmit}
                     disabled={submitting || !input.trim()}
                     style={{ opacity: submitting || !input.trim() ? 0.4 : 1 }}>
-                    <Ionicons name="send" size={24} color="#007AFF" />
+                    <Ionicons name="send" size={24} color={c.accent} />
                   </Pressable>
                 )}
               </View>

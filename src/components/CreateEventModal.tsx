@@ -496,7 +496,7 @@ export function CreateEventModal({ visible, onClose, onSubmit, pendingCoord, spo
                     <Pressable
                       onPress={() => setShowDatePicker(false)}
                       style={{
-                        backgroundColor: '#007AFF',
+                        backgroundColor: c.accent,
                         borderRadius: 8,
                         padding: 12,
                         alignItems: 'center',
@@ -542,7 +542,7 @@ export function CreateEventModal({ visible, onClose, onSubmit, pendingCoord, spo
                     <Pressable
                       onPress={() => setShowTimePicker(false)}
                       style={{
-                        backgroundColor: '#007AFF',
+                        backgroundColor: c.accent,
                         borderRadius: 8,
                         padding: 12,
                         alignItems: 'center',
@@ -565,7 +565,7 @@ export function CreateEventModal({ visible, onClose, onSubmit, pendingCoord, spo
                     paddingVertical: 8,
                     borderRadius: 8,
                     borderWidth: 1.5,
-                    borderColor: visibility === v ? '#007AFF' : c.inputBorder,
+                    borderColor: visibility === v ? c.accent : c.inputBorder,
                     backgroundColor: visibility === v ? 'rgba(0,122,255,0.08)' : c.surface,
                     alignItems: 'center',
                   }}>
@@ -573,7 +573,7 @@ export function CreateEventModal({ visible, onClose, onSubmit, pendingCoord, spo
                     style={{
                       fontSize: 12,
                       fontWeight: '600',
-                      color: visibility === v ? '#007AFF' : c.subtext,
+                      color: visibility === v ? c.accent : c.subtext,
                     }}>
                     {v === 'public' ? 'Public' : v === 'friends' ? 'Friends' : 'Invite Only'}
                   </Text>
@@ -646,7 +646,7 @@ export function CreateEventModal({ visible, onClose, onSubmit, pendingCoord, spo
                   <Ionicons
                     name={invitedIds.has(u.id) ? 'checkmark-circle' : 'add-circle-outline'}
                     size={22}
-                    color={invitedIds.has(u.id) ? '#007AFF' : c.subtext}
+                    color={invitedIds.has(u.id) ? c.accent : c.subtext}
                   />
                 </Pressable>
               ))
@@ -687,14 +687,14 @@ export function CreateEventModal({ visible, onClose, onSubmit, pendingCoord, spo
                     <Ionicons
                       name={invitedIds.has(f.id) ? 'checkmark-circle' : 'add-circle-outline'}
                       size={22}
-                      color={invitedIds.has(f.id) ? '#007AFF' : c.subtext}
+                      color={invitedIds.has(f.id) ? c.accent : c.subtext}
                     />
                   </Pressable>
                 ))}
               </>
             ) : null}
             {invitedIds.size > 0 ? (
-              <Text style={{ fontSize: 12, color: '#007AFF', fontWeight: '600' }}>
+              <Text style={{ fontSize: 12, color: c.accent, fontWeight: '600' }}>
                 {invitedIds.size} {invitedIds.size === 1 ? 'person' : 'people'} invited
               </Text>
             ) : null}
@@ -702,7 +702,7 @@ export function CreateEventModal({ visible, onClose, onSubmit, pendingCoord, spo
               onPress={handleSubmit}
               disabled={saving}
               style={{
-                backgroundColor: '#007AFF',
+                backgroundColor: c.accent,
                 borderRadius: 10,
                 padding: 13,
                 alignItems: 'center',
@@ -744,7 +744,7 @@ export function CreateEventModal({ visible, onClose, onSubmit, pendingCoord, spo
                 setGeocoding(false);
               }}
               style={{
-                backgroundColor: '#007AFF',
+                backgroundColor: c.accent,
                 borderRadius: 8,
                 paddingHorizontal: 16,
                 paddingVertical: 8,
@@ -856,7 +856,7 @@ export function CreateEventModal({ visible, onClose, onSubmit, pendingCoord, spo
                 <Ionicons name="location-outline" size={16} color={c.subtext} />
                 <Text style={{ flex: 1, fontWeight: '600', color: c.text }}>{s.name}</Text>
                 {selectedSpotId === s.id ? (
-                  <Ionicons name="checkmark-circle" size={20} color="#007AFF" />
+                  <Ionicons name="checkmark-circle" size={20} color={c.accent} />
                 ) : null}
               </Pressable>
             ))}

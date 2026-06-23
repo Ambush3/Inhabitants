@@ -32,6 +32,7 @@ import { SkateShopDetailsModal } from '@/src/components/SkateShopDetailsModal';
 import { ExplorePanel } from '@/src/components/ExplorePanel';
 import { SettingsPanel } from '@/src/components/SettingsPanel';
 import { OnboardingScreen } from '@/src/components/onboarding/OnboardingScreen';
+import { ThemeBackdrop } from '@/src/components/ThemeBackdrop';
 import { ProfileModal } from '@/src/components/profile/ProfileModal';
 import { PublicProfileModal } from '@/src/components/profile/PublicProfileModal';
 import { MySpotMarker } from '@/src/components/SpotMarkers/MySpotMarker';
@@ -1306,10 +1307,11 @@ export default function Index() {
 
   return (
     <View style={{ flex: 1, backgroundColor: c.headerBg }}>
+      <ThemeBackdrop color={c.headerBg}>
       <View
         style={{
           height: insets.top,
-          backgroundColor: c.headerBg,
+          backgroundColor: 'transparent',
         }}
       />
       {displayError ? (
@@ -1331,7 +1333,7 @@ export default function Index() {
           justifyContent: 'space-between',
           borderBottomWidth: 1,
           borderColor: c.border,
-          backgroundColor: c.headerBg,
+          backgroundColor: 'transparent',
         }}>
         <Pressable onPress={() => setPanelOpen(true)} style={{ padding: 8 }}>
           <Ionicons name="menu" size={24} color={c.text} />
@@ -1385,7 +1387,7 @@ export default function Index() {
                   },
                 ],
               }}>
-              <Ionicons name="refresh" size={20} color={refreshing ? '#007AFF' : c.text} />
+              <Ionicons name="refresh" size={20} color={refreshing ? c.accent : c.text} />
             </Animated.View>
           </Pressable>
           <Pressable onPress={() => setSettingsOpen(true)} style={{ padding: 8 }}>
@@ -1393,6 +1395,7 @@ export default function Index() {
           </Pressable>
         </View>
       </View>
+      </ThemeBackdrop>
       {showOfflineBanner ? (
         <View
           style={{
@@ -1907,7 +1910,7 @@ export default function Index() {
           shadowRadius: 4,
           elevation: 4,
         }}>
-        <Ionicons name="navigate" size={22} color="#007AFF" />
+        <Ionicons name="navigate" size={22} color={c.accent} />
       </Pressable>
       {/* Create A Spot Modal */}
       <CreateSpotModal
