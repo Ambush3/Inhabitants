@@ -52,7 +52,7 @@ export function WhatsNewModal({ visible, onClose }: Props) {
                 justifyContent: 'center',
                 marginBottom: 12,
               }}>
-              <Ionicons name="sparkles" size={24} color="#007AFF" />
+              <Ionicons name="sparkles" size={24} color={c.accent} />
             </View>
             <Text style={{ fontSize: 20, fontWeight: '700', color: c.text, marginBottom: 4 }}>
               {"What's New"}
@@ -88,7 +88,7 @@ export function WhatsNewModal({ visible, onClose }: Props) {
 
           <Pressable
             onPress={onClose}
-            style={{ backgroundColor: '#007AFF', borderRadius: 12, padding: 14, alignItems: 'center' }}>
+            style={{ backgroundColor: c.accent, borderRadius: 12, padding: 14, alignItems: 'center' }}>
             <Text style={{ color: 'white', fontWeight: '700', fontSize: 15 }}>{"Let's Go"}</Text>
           </Pressable>
         </View>

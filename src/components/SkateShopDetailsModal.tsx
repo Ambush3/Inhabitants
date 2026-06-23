@@ -274,7 +274,7 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
                 </Pressable>
               ) : null}
               <Pressable onPress={handleDirections} style={{ padding: 4 }}>
-                <Ionicons name="share-outline" size={24} color="#007AFF" />
+                <Ionicons name="share-outline" size={24} color={c.accent} />
               </Pressable>
               <Pressable onPress={onToggleFavorite} style={{ padding: 4 }}>
                 <Ionicons
@@ -399,8 +399,8 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
                   gap: 10,
                   marginBottom: 12,
                 }}>
-                <Ionicons name="call-outline" size={18} color="#007AFF" />
-                <Text style={{ color: '#007AFF' }}>{phone}</Text>
+                <Ionicons name="call-outline" size={18} color={c.accent} />
+                <Text style={{ color: c.accent }}>{phone}</Text>
               </Pressable>
             ) : null}
             {website ? (
@@ -412,8 +412,8 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
                   gap: 10,
                   marginBottom: 12,
                 }}>
-                <Ionicons name="globe-outline" size={18} color="#007AFF" />
-                <Text style={{ color: '#007AFF' }} numberOfLines={1}>
+                <Ionicons name="globe-outline" size={18} color={c.accent} />
+                <Text style={{ color: c.accent }} numberOfLines={1}>
                   {website}
                 </Text>
               </Pressable>

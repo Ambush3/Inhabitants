@@ -231,7 +231,7 @@ export function EventDetailsModal({
                       minWidth: 16,
                       height: 18,
                       borderRadius: 9,
-                      backgroundColor: '#007AFF',
+                      backgroundColor: c.accent,
                       alignItems: 'center',
                       justifyContent: 'center',
                       paddingHorizontal: 4,
@@ -267,7 +267,7 @@ export function EventDetailsModal({
             {event.creator?.username ? (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                 <Ionicons name="person-outline" size={16} color={c.subtext} />
-                <Text style={{ fontSize: 14, color: '#007AFF' }}>@{event.creator.username}</Text>
+                <Text style={{ fontSize: 14, color: c.accent }}>@{event.creator.username}</Text>
               </View>
             ) : null}
             {event.description ? (
@@ -464,10 +464,10 @@ export function EventDetailsModal({
                 borderWidth: 1,
                 borderRadius: 10,
                 padding: 12,
-                borderColor: '#007AFF',
+                borderColor: c.accent,
               }}>
-              <Ionicons name="navigate-outline" size={15} color="#007AFF" />
-              <Text style={{ fontWeight: '600', fontSize: 15, color: '#007AFF' }}>Directions</Text>
+              <Ionicons name="navigate-outline" size={15} color={c.accent} />
+              <Text style={{ fontWeight: '600', fontSize: 15, color: c.accent }}>Directions</Text>
             </Pressable>
 
             <Pressable
