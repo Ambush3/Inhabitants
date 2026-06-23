@@ -2371,14 +2371,19 @@ export default function Index() {
 
           if (!err) {
             setCreateEventOpen(false);
-            setPendingEventCoord({ lat, lng });
-            animateToSpotWithModalOffset(lat, lng);
+            // Defer map work until the modal (and its "Pick on map" MapView)
+            // has fully unmounted — animating the main map while a second
+            // MapView is tearing down crashes on the new architecture.
+            setTimeout(() => {
+              setPendingEventCoord({ lat, lng });
+              animateToSpotWithModalOffset(lat, lng);
+            }, 500);
             setTimeout(async () => {
-              await loadPublicEvents();
-              await loadRsvpCounts(events.map((e) => e.id));
+              const fresh = await loadPublicEvents();
+              await loadRsvpCounts(fresh.map((e) => e.id));
               loadInvitedEventIds();
               setPendingEventCoord(null);
-            }, 3000);
+            }, 3500);
           }
           return err;
         }}

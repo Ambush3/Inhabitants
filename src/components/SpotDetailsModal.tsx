@@ -577,7 +577,7 @@ export function SpotDetailsModal({
                           <Ionicons name="person-outline" size={11} color={c.subtext} />
                         </View>
                       )}
-                      <Text style={styles.creatorName}>@{creatorUsername}</Text>
+                      <Text style={[styles.creatorName, { color: c.accent }]}>@{creatorUsername}</Text>
                       {creatorBadge ? (
                         <View style={[styles.badge, { backgroundColor: badgeBg }]}>
                           <Ionicons name="shield-checkmark" size={10} color={badgeColor} />
@@ -601,10 +601,12 @@ export function SpotDetailsModal({
                 </View>
 
                 {/* Comment button lives top-right of header */}
-                <Pressable onPress={() => setCommentsOpen(true)} style={styles.commentBtn}>
-                  <Ionicons name="chatbubbles-outline" size={24} color={c.text} />
+                <Pressable
+                  onPress={() => setCommentsOpen(true)}
+                  style={[styles.commentBtn, { backgroundColor: c.tagBg }]}>
+                  <Ionicons name="chatbubbles-outline" size={20} color={c.text} />
                   {liveCommentCount > 0 ? (
-                    <View style={styles.commentBadge}>
+                    <View style={[styles.commentBadge, { backgroundColor: c.accent }]}>
                       <Text style={styles.commentBadgeText}>
                         {liveCommentCount > 99 ? '99+' : liveCommentCount}
                       </Text>
@@ -625,6 +627,7 @@ export function SpotDetailsModal({
               <View style={[styles.ratingCard, { backgroundColor: c.tagBg }]}>
                 {/* Left: aggregate + visitor count + check-in pill */}
                 <View style={{ flex: 1 }}>
+                  <Text style={[styles.cardLabel, { color: c.subtext }]}>Rating</Text>
                   {reviews.length > 0 ? (
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                       <Text style={[styles.ratingScore, { color: c.text }]}>
@@ -775,6 +778,7 @@ export function SpotDetailsModal({
             {!detailsLoading && spot?.spot_type === 'spot' ? (
               <View style={[styles.ratingCard, { backgroundColor: c.tagBg }]}>
                 <View style={{ flex: 1 }}>
+                  <Text style={[styles.cardLabel, { color: c.subtext }]}>Difficulty</Text>
                   {spot.difficulty_vote_count > 0 && spot.avg_difficulty !== null ? (
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                       <Text style={[styles.ratingScore, { color: c.text }]}>
@@ -876,7 +880,7 @@ export function SpotDetailsModal({
 
               <Pressable
                 onPress={handleDirections}
-                style={[styles.actionBtn, { backgroundColor: 'rgba(0,122,255,0.12)' }]}>
+                style={[styles.actionBtn, { backgroundColor: c.tagBg }]}>
                 <Ionicons name="navigate-outline" size={20} color={c.accent} />
                 <Text style={[styles.actionLabel, { color: c.accent }]}>Directions</Text>
               </Pressable>
@@ -1559,39 +1563,49 @@ const styles = StyleSheet.create({
   },
   commentBtn: {
     position: 'relative',
-    padding: 4,
-    paddingTop: 4,
-    paddingRight: 8,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   commentBadge: {
     position: 'absolute',
-    top: 0,
-    right: 2,
+    top: 1,
+    right: 1,
     minWidth: 16,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: '#007AFF',
+    height: 16,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 4,
+    paddingHorizontal: 3,
   },
   commentBadgeText: {
     color: 'white',
     fontSize: 9,
     fontWeight: '700',
+    lineHeight: 12,
   },
   ratingCard: {
     flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    marginBottom: 12,
+    alignItems: 'flex-start',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    marginBottom: 10,
     gap: 8,
   },
-  ratingScore: {
-    fontSize: 18,
+  cardLabel: {
+    fontSize: 10,
     fontWeight: '700',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    marginBottom: 4,
+  },
+  ratingScore: {
+    fontSize: 20,
+    fontWeight: '800',
+    letterSpacing: -0.3,
   },
   actionsToolbar: {
     flexDirection: 'row',
@@ -1602,28 +1616,29 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 5,
-    paddingVertical: 10,
+    gap: 6,
+    paddingVertical: 12,
     borderRadius: 14,
   },
   actionLabel: {
-    fontSize: 10,
-    fontWeight: '500',
+    fontSize: 11,
+    fontWeight: '600',
   },
   divider: {
     height: 1,
-    marginVertical: 14,
-    opacity: 0.6,
+    marginVertical: 16,
+    opacity: 0.4,
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 10,
+    marginBottom: 12,
   },
   sectionTitle: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
+    letterSpacing: -0.2,
   },
   photoThumb: {
     width: 88,

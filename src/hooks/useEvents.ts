@@ -111,18 +111,20 @@ export function useEvents() {
     setInvitedEventIds(newIds);
   }
 
-  async function loadPublicEvents() {
+  async function loadPublicEvents(): Promise<SkateEvent[]> {
     setLoading(true);
     try {
       const now = new Date();
       now.setHours(now.getHours() - 2);
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('events')
         .select('*, creator:profiles!events_creator_id_fkey(username, avatar_url)')
         .eq('cancelled', false)
         .gte('event_date', now.toISOString())
         .order('event_date', { ascending: true });
-      setEvents(data ?? []);
+      const list = (data ?? []) as SkateEvent[];
+      setEvents(list);
+      return list;
     } finally {
       setLoading(false);
     }
