@@ -20,7 +20,6 @@ export const changelog = [
     changes: [
       'Difficulty ratings — vote 1 to 5 skulls on any spot, see the community average',
       'Filter the map and search results by Beginner, Intermediate, or Advanced difficulty',
-      'Quick Add from Photo — create a spot directly from a camera roll photo, auto-filling location from GPS data when available',
       'Map now navigates to a new spot or event immediately after creation',
       'Browse the map and view spot previews without signing in',
       'Feedback board is viewable by everyone; posting and voting require an account',
