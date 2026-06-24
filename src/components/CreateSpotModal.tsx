@@ -231,8 +231,7 @@ export function CreateSpotModal({
                   }}>
                   <Ionicons name="warning-outline" size={16} color="#FF9500" />
                   <Text style={{ fontSize: 12, color: '#FF9500', flex: 1 }}>
-                    No location detected from this photo. Close this and long-press the map to set a
-                    location, then try Quick Add again.
+                    No location set. Close this and long-press the map to drop a pin where the spot is.
                   </Text>
                 </View>
               )}

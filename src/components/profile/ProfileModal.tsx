@@ -1222,7 +1222,17 @@ export function ProfileModal({
                                   paddingVertical: 14,
                                 }}>
                                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                                  <View
+                                  <Pressable
+                                    onPress={() => {
+                                      const spot = allSpots.find((s) => s.id === entry.spot_id);
+                                      if (spot) {
+                                        onSelectSpot(spot);
+                                        onClose();
+                                      } else {
+                                        Alert.alert('Spot unavailable', "Couldn't open this spot on the map.");
+                                      }
+                                    }}
+                                    hitSlop={6}
                                     style={{
                                       width: 40,
                                       height: 40,
@@ -1231,8 +1241,8 @@ export function ProfileModal({
                                       alignItems: 'center',
                                       justifyContent: 'center',
                                     }}>
-                                    <Ionicons name="location-outline" size={18} color="#34C759" />
-                                  </View>
+                                    <Ionicons name="navigate-outline" size={18} color="#34C759" />
+                                  </Pressable>
                                   <View style={{ flex: 1 }}>
                                     <Text
                                       style={{ fontWeight: '700', color: c.text, fontSize: 14 }}>

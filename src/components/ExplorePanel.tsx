@@ -77,7 +77,6 @@ type Props = {
   eventRsvpCounts: Record<string, { going: number; maybe: number }>;
   unreadRsvpCount: number;
   onClearUnreadRsvps: () => void;
-  onQuickAddFromPhoto: () => void;
   session: Session | null;
 };
 
@@ -134,7 +133,6 @@ export function ExplorePanel({
   eventRsvpCounts,
   unreadRsvpCount,
   onClearUnreadRsvps,
-  onQuickAddFromPhoto,
   session,
 }: Props) {
   function notificationLabel(n: AppNotification): string {
@@ -1196,46 +1194,6 @@ export function ExplorePanel({
                   ))
                 )}
 
-                <View
-                  style={{
-                    height: 1,
-                    backgroundColor: c.border,
-                    marginTop: 16,
-                    marginBottom: 16,
-                  }}
-                />
-
-                <Text
-                  style={{
-                    fontSize: 11,
-                    fontWeight: '600',
-                    color: c.subtext,
-                    marginBottom: 8,
-                    letterSpacing: 0.8,
-                  }}>
-                  ADD A SPOT
-                </Text>
-
-                <Pressable
-                  onPress={() => {
-                    onClose();
-                    onQuickAddFromPhoto();
-                  }}
-                  style={{
-                    backgroundColor: c.tagBg,
-                    borderRadius: 8,
-                    padding: 12,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 8,
-                    height: 56,
-                  }}>
-                  <View style={{ width: 32, alignItems: 'center' }}>
-                    <Ionicons name="camera-outline" size={24} color={c.text} />
-                  </View>
-                  <Text style={{ color: c.text, fontWeight: '600' }}>Quick Add from Photo</Text>
-                </Pressable>
               </View>
             ) : null}
 

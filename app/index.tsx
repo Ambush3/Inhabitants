@@ -19,8 +19,6 @@ import MapView, { Marker, Region, LongPressEvent, MapMarker } from 'react-native
 import MapViewClustering from 'react-native-map-clustering';
 import * as Location from 'expo-location';
 import * as Haptics from 'expo-haptics';
-import * as ImagePicker from 'expo-image-picker';
-import { extractLatLngFromExif } from '@/src/libs/exifLocation';
 import { useLocalSearchParams, useFocusEffect, usePathname, router } from 'expo-router';
 
 import { supabase } from '@/src/libs/supabase';
@@ -321,9 +319,31 @@ export default function Index() {
     setNewDifficulty,
     loadMyDifficultyVote,
     submitDifficulty,
+    removeDifficulty,
     resetDifficulty,
     existingVoteId: existingDifficultyVoteId,
   } = useDifficulty();
+
+  async function refreshSpotDifficulty(spotId: string) {
+    // Update just the open spot's stats — a full reload() re-renders the
+    // clustered map and can fling the selected pin to the corner.
+    const { data } = await supabase
+      .from('spots')
+      .select('avg_difficulty, difficulty_vote_count')
+      .eq('id', spotId)
+      .single();
+    if (data) {
+      setSelectedSpot((prev) =>
+        prev
+          ? {
+            ...prev,
+            avg_difficulty: data.avg_difficulty,
+            difficulty_vote_count: data.difficulty_vote_count,
+          }
+          : prev
+      );
+    }
+  }
 
   const {
     isOnline,
@@ -712,39 +732,6 @@ export default function Index() {
       .eq('id', session.user.id)
       .single();
     return data?.username ?? 'Someone';
-  }
-
-  async function handleQuickAddFromPhoto() {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') return;
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsMultipleSelection: false,
-      quality: 1,
-      exif: true,
-    });
-
-    if (result.canceled || result.assets.length === 0) return;
-
-    const asset = result.assets[0];
-    const coords = extractLatLngFromExif(asset.exif);
-
-    setPendingImages([asset.uri]);
-    setSpotName('');
-    setSpotDesc('');
-    setSpotRating(0);
-
-    if (coords) {
-      setPendingCoord(coords);
-      animateToSpotWithModalOffset(coords.lat, coords.lng, 'medium');
-      setTimeout(() => {
-        setCreateOpen(true);
-      }, 450);
-    } else {
-      setPendingCoord(null);
-      setCreateOpen(true);
-    }
   }
 
   function confirmDelete(spot: Spot) {
@@ -1737,7 +1724,6 @@ export default function Index() {
         initialEventFilter={eventFilterOverride}
         unreadRsvpCount={unreadRsvpCount}
         onClearUnreadRsvps={clearUnreadRsvpCount}
-        onQuickAddFromPhoto={handleQuickAddFromPhoto}
       />
 
       <SpotMap
@@ -2012,23 +1998,16 @@ export default function Index() {
             setError(err);
             return;
           }
-          await reload();
-          const { data } = await supabase
-            .from('spots')
-            .select('avg_difficulty, difficulty_vote_count')
-            .eq('id', selectedSpot.id)
-            .single();
-          if (data) {
-            setSelectedSpot((prev) =>
-              prev
-                ? {
-                  ...prev,
-                  avg_difficulty: data.avg_difficulty,
-                  difficulty_vote_count: data.difficulty_vote_count,
-                }
-                : prev
-            );
+          await refreshSpotDifficulty(selectedSpot.id);
+        }}
+        onRemoveDifficulty={async () => {
+          if (!selectedSpot) return;
+          const err = await removeDifficulty();
+          if (err) {
+            setError(err);
+            return;
           }
+          await refreshSpotDifficulty(selectedSpot.id);
         }}
         existingReviewId={existingReviewId}
         avgRating={avgRating}

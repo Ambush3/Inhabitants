@@ -19,6 +19,7 @@ import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/src/context/ThemeContext';
 import { EventVisibility, SkateEvent } from '@/src/hooks/useEvents';
+import { useCrews } from '@/src/hooks/useCrews';
 import { Spot } from '@/src/types';
 import { supabase } from '@/src/libs/supabase';
 
@@ -74,6 +75,11 @@ export function CreateEventModal({ visible, onClose, onSubmit, pendingCoord, spo
   const [userSearchQuery, setUserSearchQuery] = useState('');
   const [userSearchResults, setUserSearchResults] = useState<Friend[]>([]);
 
+  const { myCrews, loadMyCrews } = useCrews();
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [selectedCrews, setSelectedCrews] = useState<Set<string>>(new Set());
+  const crewMembersRef = useRef<Record<string, string[]>>({});
+
   const [spotPickerOpen, setSpotPickerOpen] = useState(false);
   const [spotSearch, setSpotSearch] = useState('');
 
@@ -102,6 +108,8 @@ export function CreateEventModal({ visible, onClose, onSubmit, pendingCoord, spo
       setUserSearchQuery('');
       setUserSearchResults([]);
       setSpotSearch('');
+      setSelectedCrews(new Set());
+      crewMembersRef.current = {};
 
       const nextDefault = new Date();
       nextDefault.setHours(nextDefault.getHours() + 1, 0, 0, 0);
@@ -126,7 +134,40 @@ export function CreateEventModal({ visible, onClose, onSubmit, pendingCoord, spo
     }
 
     loadFriends();
+    loadMyCrews();
+    supabase.auth.getUser().then(({ data }) => setCurrentUserId(data.user?.id ?? null));
   }, [visible, editEvent, pendingCoord]);
+
+  async function toggleCrew(crewId: string) {
+    if (!currentUserId) return;
+    if (selectedCrews.has(crewId)) {
+      const members = crewMembersRef.current[crewId] ?? [];
+      setInvitedIds((prev) => {
+        const next = new Set(prev);
+        members.forEach((m) => next.delete(m));
+        return next;
+      });
+      setSelectedCrews((prev) => {
+        const next = new Set(prev);
+        next.delete(crewId);
+        return next;
+      });
+    } else {
+      const { data } = await supabase
+        .from('crew_members')
+        .select('user_id')
+        .eq('crew_id', crewId)
+        .neq('user_id', currentUserId);
+      const members: string[] = (data ?? []).map((r: { user_id: string }) => r.user_id);
+      crewMembersRef.current[crewId] = members;
+      setInvitedIds((prev) => {
+        const next = new Set(prev);
+        members.forEach((m) => next.add(m));
+        return next;
+      });
+      setSelectedCrews((prev) => new Set(prev).add(crewId));
+    }
+  }
 
   async function loadFriends() {
     const {
@@ -559,7 +600,14 @@ export function CreateEventModal({ visible, onClose, onSubmit, pendingCoord, spo
               {(['public', 'friends', 'invite'] as EventVisibility[]).map((v) => (
                 <Pressable
                   key={v}
-                  onPress={() => setVisibility(v)}
+                  onPress={() => {
+                    setVisibility(v);
+                    if (v !== 'invite') {
+                      setInvitedIds(new Set());
+                      setSelectedCrews(new Set());
+                      crewMembersRef.current = {};
+                    }
+                  }}
                   style={{
                     flex: 1,
                     paddingVertical: 8,
@@ -580,6 +628,51 @@ export function CreateEventModal({ visible, onClose, onSubmit, pendingCoord, spo
                 </Pressable>
               ))}
             </View>
+            {visibility === 'invite' ? (
+              <>
+            {myCrews.length > 0 ? (
+              <>
+                <Text style={{ fontSize: 13, color: c.subtext }}>Invite a Crew</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                  {myCrews.map((crew) => {
+                    const on = selectedCrews.has(crew.id);
+                    return (
+                      <Pressable
+                        key={crew.id}
+                        onPress={() => toggleCrew(crew.id)}
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          gap: 6,
+                          paddingHorizontal: 12,
+                          paddingVertical: 8,
+                          borderRadius: 20,
+                          borderWidth: 1,
+                          borderColor: on ? c.accent : c.inputBorder,
+                          backgroundColor: on ? 'rgba(0,122,255,0.10)' : c.surface,
+                        }}>
+                        <Ionicons
+                          name={on ? 'checkmark-circle' : 'people-outline'}
+                          size={16}
+                          color={on ? c.accent : c.subtext}
+                        />
+                        <Text
+                          style={{
+                            fontSize: 13,
+                            fontWeight: '600',
+                            color: on ? c.accent : c.text,
+                          }}>
+                          {crew.name}
+                        </Text>
+                        <Text style={{ fontSize: 11, color: c.subtext }}>
+                          {crew.member_count}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </>
+            ) : null}
             <Text style={{ fontSize: 13, color: c.subtext }}>Invite People</Text>
             <TextInput
               ref={inviteInputRef}
@@ -697,6 +790,8 @@ export function CreateEventModal({ visible, onClose, onSubmit, pendingCoord, spo
               <Text style={{ fontSize: 12, color: c.accent, fontWeight: '600' }}>
                 {invitedIds.size} {invitedIds.size === 1 ? 'person' : 'people'} invited
               </Text>
+            ) : null}
+              </>
             ) : null}
             <Pressable
               onPress={handleSubmit}
