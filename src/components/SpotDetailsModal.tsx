@@ -91,6 +91,7 @@ type Props = {
   existingDifficultyVoteId: string | null;
   onChangeDifficulty: (v: number) => void;
   onSubmitDifficulty: (overrideDifficulty?: number) => void;
+  onRemoveDifficulty: () => void;
   avgRating: number;
   newRating: number;
   newComment: string;
@@ -143,6 +144,7 @@ export function SpotDetailsModal({
   existingDifficultyVoteId,
   onChangeDifficulty,
   onSubmitDifficulty,
+  onRemoveDifficulty,
   avgRating,
   newRating,
   newComment,
@@ -812,8 +814,13 @@ export function SpotDetailsModal({
                       <Pressable
                         key={level}
                         onPress={() => {
-                          onChangeDifficulty(level);
-                          onSubmitDifficulty(level);
+                          // re-tapping your current vote clears it
+                          if (existingDifficultyVoteId && level === newDifficulty) {
+                            onRemoveDifficulty();
+                          } else {
+                            onChangeDifficulty(level);
+                            onSubmitDifficulty(level);
+                          }
                         }}>
                         <Ionicons
                           name={level <= newDifficulty ? 'skull' : 'skull-outline'}

@@ -75,9 +75,7 @@ export function WhatsNewModal({ visible, onClose }: Props) {
                     justifyContent: 'center',
                     flexShrink: 0,
                   }}>
-                  <Text style={{ fontSize: 14 }}>
-                    {i === 0 ? '✦' : i === 1 ? '✦' : i === 2 ? '✦' : '✦'}
-                  </Text>
+                  <Text style={{ fontSize: 14, color: c.accent, fontWeight: '700' }}>✦</Text>
                 </View>
                 <Text style={{ fontSize: 14, color: c.text, lineHeight: 20, flex: 1, paddingTop: 6 }}>
                   {item}

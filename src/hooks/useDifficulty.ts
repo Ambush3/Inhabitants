@@ -56,6 +56,18 @@ export function useDifficulty() {
     return null;
   }
 
+  async function removeDifficulty(): Promise<string | null> {
+    if (!existingVoteId) return null;
+    const { error } = await supabase
+      .from('spot_difficulty_votes')
+      .delete()
+      .eq('id', existingVoteId);
+    if (error) return error.message;
+    setExistingVoteId(null);
+    setNewDifficulty(0);
+    return null;
+  }
+
   function resetDifficulty() {
     setNewDifficulty(0);
     setExistingVoteId(null);
@@ -66,6 +78,7 @@ export function useDifficulty() {
     setNewDifficulty,
     loadMyDifficultyVote,
     submitDifficulty,
+    removeDifficulty,
     resetDifficulty,
     existingVoteId,
   };
