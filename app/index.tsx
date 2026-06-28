@@ -35,6 +35,8 @@ import { ProfileModal } from '@/src/components/profile/ProfileModal';
 import { PublicProfileModal } from '@/src/components/profile/PublicProfileModal';
 import { MySpotMarker } from '@/src/components/SpotMarkers/MySpotMarker';
 import { OtherUsersSpotMarkers } from '@/src/components/SpotMarkers/OtherUsersSpotMarkers';
+import { TrackedMarker } from '@/src/components/SpotMarkers/TrackedMarker';
+import { DARK_MAP_STYLE } from '@/src/constants/darkMapStyle';
 import { CreateEventModal } from '@/src/components/CreateEventModal';
 import { EventDetailsModal } from '@/src/components/EventDetailsModal';
 import { WhatsNewModal } from '@/src/components/WhatsNewModal';
@@ -111,10 +113,12 @@ const SpotMap = React.memo(
     spots,
     events,
     pendingEventCoord,
+    mapStyle,
   }: any) => (
     <MapViewClustering
       ref={mapRef}
       provider={PROVIDER_GOOGLE}
+      customMapStyle={mapStyle}
       style={{ flex: 1, marginBottom: -34 }}
       initialRegion={initialRegion}
       onPress={onPress}
@@ -164,13 +168,12 @@ const SpotMap = React.memo(
         .map((s: any) =>
           s.spot_type === 'spot' ? (
             s.user_id === session?.user.id ? (
-              <Marker
+              <TrackedMarker
                 ref={(ref) => {
                   markerRefs.current[s.id] = ref;
                 }}
                 key={`${s.id}-${s.id === highlightSpotId}`}
                 coordinate={{ latitude: s.lat, longitude: s.lng }}
-                tracksViewChanges={false}
                 anchor={{ x: 0.5, y: 0.5 }}
                 onPress={() => {
                   suppressMapPressRef.current = true;
@@ -180,15 +183,14 @@ const SpotMap = React.memo(
                   openSpotPreview(s);
                 }}>
                 <MySpotMarker selected={s.id === highlightSpotId} />
-              </Marker>
+              </TrackedMarker>
             ) : (
-              <Marker
+              <TrackedMarker
                 ref={(ref) => {
                   markerRefs.current[s.id] = ref;
                 }}
                 key={`${s.id}-${s.id === highlightSpotId}`}
                 coordinate={{ latitude: s.lat, longitude: s.lng }}
-                tracksViewChanges={false}
                 anchor={{ x: 0.5, y: 0.5 }}
                 onPress={() => {
                   suppressMapPressRef.current = true;
@@ -201,7 +203,7 @@ const SpotMap = React.memo(
                   selected={s.id === highlightSpotId}
                   isFriend={s.user_id ? friendIds.has(s.user_id) : false}
                 />
-              </Marker>
+              </TrackedMarker>
             )
           ) : s.lat && s.lng ? (
             <SkateMarker
@@ -268,7 +270,8 @@ const SpotMap = React.memo(
       prevProps.pendingCoord === nextProps.pendingCoord &&
       prevProps.initialRegion === nextProps.initialRegion &&
       prevProps.events === nextProps.events &&
-      prevProps.pendingEventCoord === nextProps.pendingEventCoord
+      prevProps.pendingEventCoord === nextProps.pendingEventCoord &&
+      prevProps.mapStyle === nextProps.mapStyle
     );
   }
 );
@@ -580,10 +583,8 @@ export default function Index() {
   }, [filteredSearchResults, spots, cachedMapSpots, isOnline, difficultyFilter]);
 
   const displayError = error ?? nearbyError ?? topRatedError;
+  const mapStyle = useMemo(() => (theme.dark ? DARK_MAP_STYLE : []), [theme.dark]);
   const openedFromPanelRef = useRef(false);
-  // Spot edits are applied to the spots/mySpots arrays only on detail close.
-  // Mutating those arrays while the modal is open re-clusters the map and
-  // flings the selected pin to the corner until a region change settles it.
   const pendingSpotEditRef = useRef<
     { id: string; name: string; description: string | null; tags: string[] } | null
   >(null);
@@ -603,8 +604,6 @@ export default function Index() {
   function closeDetailsModal() {
     const idToHide = highlightSpotIdRef.current;
 
-    // Flush any deferred spot edit now that the modal is closing and the map is
-    // about to re-center — the re-cluster lands the pin in the right place.
     const pendingEdit = pendingSpotEditRef.current;
     if (pendingEdit) {
       patchSpotLocal(pendingEdit.id, {
@@ -1787,6 +1786,7 @@ export default function Index() {
         spots={spots}
         events={events}
         pendingEventCoord={pendingEventCoord}
+        mapStyle={mapStyle}
       />
       {locating ? (
         <View
@@ -1889,30 +1889,6 @@ export default function Index() {
           </Pressable>
         </Pressable>
       ) : null}
-      <Pressable
-        onPress={() => {
-          autoCenterRef.current = true;
-          if (userLocationRef.current) {
-            mapRef.current?.animateToRegion(userLocationRef.current, 600);
-          } else {
-            setUseDeviceLocation(true);
-          }
-        }}
-        style={{
-          position: 'absolute',
-          bottom: 50,
-          right: 16,
-          backgroundColor: c.surface,
-          borderRadius: 30,
-          padding: 12,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.2,
-          shadowRadius: 4,
-          elevation: 4,
-        }}>
-        <Ionicons name="navigate" size={22} color={c.accent} />
-      </Pressable>
       {/* Create A Spot Modal */}
       <CreateSpotModal
         visible={createOpen}
@@ -2119,9 +2095,6 @@ export default function Index() {
         commentCount={commentCount}
         friendIds={friendIds}
         onUpdateSpot={async (spotId, name, description, tags) => {
-          // DB-only update + patch the open spot. Defer the spots/mySpots array
-          // patch to modal close — mutating those arrays while the map is
-          // mounted re-clusters it and flings the selected pin to the corner.
           const err = await updateSpot(spotId, name, description, tags, true);
           if (!err) {
             const normalizedDesc = description.trim() || null;
