@@ -600,6 +600,12 @@ export function SpotDetailsModal({
                       ))}
                     </View>
                   ) : null}
+
+                  {spot?.description ? (
+                    <Text style={{ fontSize: 13, color: c.text, lineHeight: 18, marginTop: 10 }}>
+                      {spot.description}
+                    </Text>
+                  ) : null}
                 </View>
 
                 {/* Comment button lives top-right of header */}

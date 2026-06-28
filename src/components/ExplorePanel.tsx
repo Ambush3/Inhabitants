@@ -1524,22 +1524,35 @@ export function ExplorePanel({
                         borderBottomWidth: 1,
                         borderColor: c.border,
                       }}>
-                      <View
-                        style={{
-                          width: 36,
-                          height: 36,
-                          borderRadius: 18,
-                          backgroundColor: c.tagBg,
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}>
-                        <Ionicons name="person-outline" size={18} color={c.subtext} />
-                      </View>
+                      {item.actor.avatar_url ? (
+                        <Image
+                          source={{ uri: item.actor.avatar_url }}
+                          style={{
+                            width: 36,
+                            height: 36,
+                            borderRadius: 18,
+                            backgroundColor: c.tagBg,
+                          }}
+                        />
+                      ) : (
+                        <View
+                          style={{
+                            width: 36,
+                            height: 36,
+                            borderRadius: 18,
+                            backgroundColor: c.tagBg,
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}>
+                          <Ionicons name="person-outline" size={18} color={c.subtext} />
+                        </View>
+                      )}
                       <View style={{ flex: 1 }}>
                         <Text style={{ fontSize: 13, color: c.text }}>
                           <Text style={{ fontWeight: '700' }}>
                             @{item.actor.username ?? 'someone'}
                           </Text>
+                          {' '}
                           {item.kind === 'spot_created'
                             ? 'created'
                             : item.kind === 'check_in'

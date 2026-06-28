@@ -8,6 +8,7 @@ import {
   ImageBackground,
   StyleSheet,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme, ThemeOption } from '@/src/context/ThemeContext';
@@ -42,11 +43,14 @@ function ThemeCard({
           source={option.theme.backgroundImage}
           resizeMode="cover"
           style={{ flex: 1 }}>
-          <View
-            style={[
-              StyleSheet.absoluteFill,
-              { backgroundColor: option.theme.scrim ?? 'rgba(0,0,0,0.45)' },
-            ]}
+          <LinearGradient
+            colors={
+              option.theme.scrimHeader ?? [
+                option.theme.scrim ?? 'rgba(0,0,0,0.45)',
+                option.theme.scrim ?? 'rgba(0,0,0,0.45)',
+              ]
+            }
+            style={StyleSheet.absoluteFill}
           />
           <CardContent name={option.name} textColor="#fff" accent={option.swatch} selected={selected} />
         </ImageBackground>

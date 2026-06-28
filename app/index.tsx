@@ -15,7 +15,7 @@ import {
   Image,
   ActivityIndicator,
 } from 'react-native';
-import MapView, { Marker, Region, LongPressEvent, MapMarker } from 'react-native-maps';
+import MapView, { Marker, Region, LongPressEvent, MapMarker, PROVIDER_GOOGLE } from 'react-native-maps';
 import MapViewClustering from 'react-native-map-clustering';
 import * as Location from 'expo-location';
 import * as Haptics from 'expo-haptics';
@@ -114,6 +114,7 @@ const SpotMap = React.memo(
   }: any) => (
     <MapViewClustering
       ref={mapRef}
+      provider={PROVIDER_GOOGLE}
       style={{ flex: 1, marginBottom: -34 }}
       initialRegion={initialRegion}
       onPress={onPress}
@@ -504,6 +505,7 @@ export default function Index() {
   const {
     spots,
     mySpots,
+    patchSpotLocal,
     mySpotsLoading,
     error,
     setError,
@@ -579,6 +581,12 @@ export default function Index() {
 
   const displayError = error ?? nearbyError ?? topRatedError;
   const openedFromPanelRef = useRef(false);
+  // Spot edits are applied to the spots/mySpots arrays only on detail close.
+  // Mutating those arrays while the modal is open re-clusters the map and
+  // flings the selected pin to the corner until a region change settles it.
+  const pendingSpotEditRef = useRef<
+    { id: string; name: string; description: string | null; tags: string[] } | null
+  >(null);
 
   const spinAnim = useRef(new Animated.Value(0)).current;
 
@@ -594,6 +602,18 @@ export default function Index() {
 
   function closeDetailsModal() {
     const idToHide = highlightSpotIdRef.current;
+
+    // Flush any deferred spot edit now that the modal is closing and the map is
+    // about to re-center — the re-cluster lands the pin in the right place.
+    const pendingEdit = pendingSpotEditRef.current;
+    if (pendingEdit) {
+      patchSpotLocal(pendingEdit.id, {
+        name: pendingEdit.name,
+        description: pendingEdit.description,
+        tags: pendingEdit.tags,
+      });
+      pendingSpotEditRef.current = null;
+    }
 
     setDetailsOpen(false);
     setSelectedSpot(null);
@@ -1236,12 +1256,6 @@ export default function Index() {
   }, []);
 
   useEffect(() => {
-    if (events.length > 0) {
-      mapRef.current?.animateToRegion(mapRegionRef.current, 0);
-    }
-  }, [events.length]);
-
-  useEffect(() => {
     if (panelOpen && session) {
       loadFeed(friends.map((f) => f.id));
       loadNotifications();
@@ -1294,7 +1308,7 @@ export default function Index() {
 
   return (
     <View style={{ flex: 1, backgroundColor: c.headerBg }}>
-      <ThemeBackdrop color={c.headerBg}>
+      <ThemeBackdrop color={c.headerBg} variant="header">
       <View
         style={{
           height: insets.top,
@@ -1640,7 +1654,7 @@ export default function Index() {
             prev.some((x) => x.id === resolved.id) ? prev : [...prev, resolved]
           );
           setTimeout(() => {
-            markerRefs.current[p.id]?.showCallout();
+            markerRefs.current[p.id]?.showCallout?.();
           }, 650);
         }}
         onCycleSpotVisibility={async (spot) => {
@@ -1710,6 +1724,7 @@ export default function Index() {
         }}
         onDeleteEvent={async (eventId) => {
           await cancelEvent(eventId);
+          setPendingEventCoord(null);
         }}
         onRefreshEvents={() => {
           loadPublicEvents().then(() => {
@@ -2104,15 +2119,18 @@ export default function Index() {
         commentCount={commentCount}
         friendIds={friendIds}
         onUpdateSpot={async (spotId, name, description, tags) => {
+          // DB-only update + patch the open spot. Defer the spots/mySpots array
+          // patch to modal close — mutating those arrays while the map is
+          // mounted re-clusters it and flings the selected pin to the corner.
           const err = await updateSpot(spotId, name, description, tags, true);
           if (!err) {
-            await reload();
-            await loadMySpots();
-            if (selectedSpot) {
-              setTimeout(() => {
-                setSelectedSpot((prev) => (prev ? { ...prev, name, description, tags } : prev));
-              }, 400);
-            }
+            const normalizedDesc = description.trim() || null;
+            setSelectedSpot((prev) =>
+              prev && prev.id === spotId
+                ? { ...prev, name, description: normalizedDesc, tags }
+                : prev
+            );
+            pendingSpotEditRef.current = { id: spotId, name, description: normalizedDesc, tags };
           }
           return err;
         }}
@@ -2384,6 +2402,7 @@ export default function Index() {
           if (!err) {
             setEventDetailsOpen(false);
             setSelectedEvent(null);
+            setPendingEventCoord(null);
           }
         }}
         onViewSpotDetails={() => {
