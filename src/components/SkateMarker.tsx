@@ -1,5 +1,5 @@
 import React, { forwardRef } from 'react';
-import { Marker } from 'react-native-maps';
+import { TrackedMarker } from '@/src/components/SpotMarkers/TrackedMarker';
 import { PinMarker } from '@/src/components/SpotMarkers/PinMarker';
 
 type Props = {
@@ -35,13 +35,12 @@ export const SkateMarker = forwardRef<any, Props>(
     ({ id, lat, lng, type = 'skatepark', onPress }, ref) => {
         const config = TYPE_CONFIG[type ?? 'skatepark'];
         return (
-            <Marker
+            <TrackedMarker
                 ref={ref}
                 identifier={id}
                 coordinate={{ latitude: lat, longitude: lng }}
                 onPress={onPress}
                 anchor={{ x: 0.5, y: 1.0 }}
-                tracksViewChanges={false}
             >
                 <PinMarker
                     color={config.color}
@@ -52,7 +51,7 @@ export const SkateMarker = forwardRef<any, Props>(
                     iconWidth={config.iconWidth}
                     iconHeight={config.iconHeight}
                 />
-            </Marker>
+            </TrackedMarker>
         );
     }
 );

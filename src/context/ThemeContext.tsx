@@ -27,9 +27,6 @@ type Theme = {
   // Optional image that takes over key surfaces (Explore/Settings panels, top bar).
   backgroundImage?: number;
   scrim?: string;
-  // Vertical gradient scrims (top → bottom) layered over the image for legibility
-  // + depth. `header` keeps the artwork visible; `panel` fades to near-solid so
-  // list/content text reads cleanly. Falls back to flat `scrim` when unset.
   scrimHeader?: readonly [string, string, ...string[]];
   scrimPanel?: readonly [string, string, ...string[]];
 };
