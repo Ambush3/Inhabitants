@@ -8,12 +8,13 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
-  Image,
   StyleSheet,
   ActivityIndicator,
   Alert,
   Dimensions,
+  Image as RNImage,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useVideoPlayer, VideoView } from 'expo-video';
@@ -187,7 +188,7 @@ export function SessionMediaViewerModal({
   useEffect(() => {
     const uri = active?.media_type === 'video' ? active?.thumbnail_url : active?.url;
     if (!uri) return;
-    Image.getSize(
+    RNImage.getSize(
       uri,
       (w, h) => h > 0 && setActiveAspect(w / h),
       () => setActiveAspect(1.4)
@@ -305,14 +306,14 @@ export function SessionMediaViewerModal({
                       <Image
                         source={{ uri: item.thumbnail_url ?? item.url }}
                         style={{ width: '100%', height: '100%' }}
-                        resizeMode="contain"
+                        contentFit="contain"
                       />
                     )
                   ) : (
                     <Image
                       source={{ uri: item.url }}
                       style={{ width: '100%', height: '100%' }}
-                      resizeMode="contain"
+                      contentFit="contain"
                     />
                   )}
                 </View>

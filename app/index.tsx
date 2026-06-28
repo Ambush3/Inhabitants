@@ -12,9 +12,9 @@ import {
   Easing,
   ActionSheetIOS,
   Linking,
-  Image,
   ActivityIndicator,
 } from 'react-native';
+import { Image } from 'expo-image';
 import MapView, { Marker, Region, LongPressEvent, MapMarker, PROVIDER_GOOGLE } from 'react-native-maps';
 import MapViewClustering from 'react-native-map-clustering';
 import * as Location from 'expo-location';
