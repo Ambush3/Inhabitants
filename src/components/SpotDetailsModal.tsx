@@ -992,7 +992,7 @@ export function SpotDetailsModal({
               <View
                 style={[
                   styles.conditionsCard,
-                  { backgroundColor: 'rgba(52,199,89,0.06)', borderColor: 'rgba(52,199,89,0.12)' },
+                  { backgroundColor: c.tagBg, borderColor: c.border },
                 ]}>
                 <View style={styles.sectionHeader}>
                   <Text style={[styles.sectionTitle, { color: c.text }]}>Current Conditions</Text>
