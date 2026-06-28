@@ -36,7 +36,8 @@ import { PublicProfileModal } from '@/src/components/profile/PublicProfileModal'
 import { MySpotMarker } from '@/src/components/SpotMarkers/MySpotMarker';
 import { OtherUsersSpotMarkers } from '@/src/components/SpotMarkers/OtherUsersSpotMarkers';
 import { TrackedMarker } from '@/src/components/SpotMarkers/TrackedMarker';
-import { DARK_MAP_STYLE } from '@/src/constants/darkMapStyle';
+import { MapLegend } from '@/src/components/MapLegend';
+import { DARK_MAP_STYLE, LIGHT_MAP_STYLE } from '@/src/constants/darkMapStyle';
 import { CreateEventModal } from '@/src/components/CreateEventModal';
 import { EventDetailsModal } from '@/src/components/EventDetailsModal';
 import { WhatsNewModal } from '@/src/components/WhatsNewModal';
@@ -583,7 +584,7 @@ export default function Index() {
   }, [filteredSearchResults, spots, cachedMapSpots, isOnline, difficultyFilter]);
 
   const displayError = error ?? nearbyError ?? topRatedError;
-  const mapStyle = useMemo(() => (theme.dark ? DARK_MAP_STYLE : []), [theme.dark]);
+  const mapStyle = useMemo(() => (theme.dark ? DARK_MAP_STYLE : LIGHT_MAP_STYLE), [theme.dark]);
   const openedFromPanelRef = useRef(false);
   const pendingSpotEditRef = useRef<
     { id: string; name: string; description: string | null; tags: string[] } | null
@@ -1787,6 +1788,9 @@ export default function Index() {
         events={events}
         pendingEventCoord={pendingEventCoord}
         mapStyle={mapStyle}
+      />
+      <MapLegend
+        style={{ position: 'absolute', top: insets.top + 80, right: 12, alignItems: 'flex-end' }}
       />
       {locating ? (
         <View

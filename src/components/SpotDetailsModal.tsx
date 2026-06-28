@@ -632,159 +632,98 @@ export function SpotDetailsModal({
                 <SkeletonBar width={60} height={12} style={{ marginLeft: 'auto' }} />
               </View>
             ) : (
-              <View style={[styles.ratingCard, { backgroundColor: c.tagBg }]}>
-                {/* Left: aggregate + visitor count + check-in pill */}
+              <View style={[styles.ratingCard, { backgroundColor: c.tagBg, alignItems: 'center' }]}>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.cardLabel, { color: c.subtext }]}>Rating</Text>
                   {reviews.length > 0 ? (
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                      <Text style={[styles.ratingScore, { color: c.text }]}>
-                        {avgRating.toFixed(1)}
-                      </Text>
-                      <Text style={{ fontSize: 14, color: '#F5A623', letterSpacing: 1 }}>
-                        {'★'.repeat(Math.round(avgRating))}
-                        {'☆'.repeat(5 - Math.round(avgRating))}
-                      </Text>
-                      <Text style={{ fontSize: 11, color: c.subtext }}>
+                    <>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <Text style={[styles.ratingScore, { color: c.text }]}>
+                          {avgRating.toFixed(1)}
+                        </Text>
+                        <View style={{ flexDirection: 'row', gap: 1 }}>
+                          {[1, 2, 3, 4, 5].map((i) => {
+                            const filled = avgRating >= i;
+                            const half = !filled && avgRating >= i - 0.5;
+                            return (
+                              <Ionicons
+                                key={i}
+                                name={filled ? 'star' : half ? 'star-half' : 'star-outline'}
+                                size={15}
+                                color={filled || half ? '#F5A623' : c.subtext}
+                              />
+                            );
+                          })}
+                        </View>
+                      </View>
+                      <Text style={{ fontSize: 11, color: c.subtext, marginTop: 3 }}>
                         {reviews.length} rating{reviews.length !== 1 ? 's' : ''}
                       </Text>
-                    </View>
+                    </>
                   ) : (
                     <Text style={{ fontSize: 13, color: c.subtext }}>No ratings yet</Text>
                   )}
-                  <Text style={{ fontSize: 12, color: c.subtext, marginTop: 4 }}>
-                    {visitorCount !== null && visitorCount > 0
-                      ? `${visitorCount} ${visitorCount === 1 ? 'skater has' : 'skaters have'} visited this spot`
-                      : 'No check-ins yet'}
-                  </Text>
-                  <Pressable
-                    onPress={async () => {
-                      if (!spot) return;
-                      if (alreadyCheckedInToday) {
-                        Alert.alert(
-                          'Check in again?',
-                          "You already checked in here today. This will add another visit to your passport but won't post to your feed.",
-                          [
-                            { text: 'Cancel', style: 'cancel' },
-                            {
-                              text: 'Check In Again',
-                              onPress: async () => {
-                                const result = await checkIn(spot.id);
-                                if (result.success) {
-                                  await Haptics.notificationAsync(
-                                    Haptics.NotificationFeedbackType.Success
-                                  );
-                                  if (result.checkInId) {
-                                    promptAddSessionMedia(result.checkInId, spot.id);
-                                  }
-                                }
-                              },
-                            },
-                          ]
-                        );
-                        return;
-                      }
-                      const result = await checkIn(spot.id);
-                      if (result.success) {
-                        await Haptics.notificationAsync(
-                          Haptics.NotificationFeedbackType.Success
-                        );
-                        setAlreadyCheckedInToday(true);
-                        setVisitorCount((prev) => (prev === null ? 1 : prev + 1));
-                        Alert.alert(
-                          'Checked in!',
-                          'Added to your passport and shared to your feed. Add a photo or clip from this session?',
-                          [
-                            { text: 'Skip', style: 'cancel' },
-                            {
-                              text: 'Add Photo/Clip',
-                              onPress: () => {
-                                if (result.checkInId) {
-                                  pickAndUploadSpotMedia(spot.id, result.checkInId);
-                                }
-                              },
-                            },
-                          ]
-                        );
-                      }
-                    }}
-                    disabled={checkingIn}
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: 4,
-                      paddingHorizontal: 10,
-                      paddingVertical: 5,
-                      borderRadius: 20,
-                      marginTop: 6,
-                      alignSelf: 'flex-start',
-                      backgroundColor: alreadyCheckedInToday
-                        ? 'rgba(52,199,89,0.12)'
-                        : 'transparent',
-                      borderWidth: 1,
-                      borderColor: alreadyCheckedInToday ? '#34C759' : c.border,
-                    }}>
-                    <Ionicons
-                      name={
-                        alreadyCheckedInToday ? 'checkmark-circle-outline' : 'location-outline'
-                      }
-                      size={13}
-                      color={alreadyCheckedInToday ? '#34C759' : c.subtext}
-                    />
-                    <Text
-                      style={{
-                        fontSize: 12,
-                        fontWeight: '600',
-                        color: alreadyCheckedInToday ? '#34C759' : c.subtext,
-                      }}>
-                      {alreadyCheckedInToday ? 'Checked In' : 'Check In'}
-                    </Text>
-                  </Pressable>
                 </View>
 
-                {/* Right: your rating (spot type only) */}
                 {spot?.spot_type === 'spot' ? (
-                  <View style={{ alignItems: 'flex-end', gap: 2, alignSelf: 'flex-start' }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                      <Text
+                  <>
+                    <View
+                      style={{
+                        width: 1,
+                        alignSelf: 'stretch',
+                        backgroundColor: c.border,
+                        marginHorizontal: 14,
+                      }}
+                    />
+                    <View style={{ alignItems: 'flex-end' }}>
+                      <View
                         style={{
-                          fontSize: 10,
-                          color: c.subtext,
-                          textTransform: 'uppercase',
-                          letterSpacing: 0.5,
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          gap: 6,
+                          marginBottom: 6,
                         }}>
-                        {existingReviewId ? 'Your rating' : 'Rate'}
-                      </Text>
-                      {existingReviewId ? (
-                        <Pressable onPress={() => onDeleteReview(existingReviewId)}>
-                          <Text style={{ fontSize: 11, color: c.danger }}>Remove</Text>
-                        </Pressable>
-                      ) : null}
-                    </View>
-                    <View style={{ flexDirection: 'row', gap: 4 }}>
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <Pressable
-                          key={star}
-                          onPress={() => {
-                            onChangeRating(star);
-                            onSubmitReview(star);
+                        <Text
+                          style={{
+                            fontSize: 10,
+                            fontWeight: '700',
+                            color: c.subtext,
+                            textTransform: 'uppercase',
+                            letterSpacing: 0.6,
                           }}>
-                          <Ionicons
-                            name={star <= newRating ? 'star' : 'star-outline'}
-                            size={22}
-                            color={star <= newRating ? '#F5A623' : c.subtext}
-                          />
-                        </Pressable>
-                      ))}
+                          {existingReviewId ? 'Your rating' : 'Rate'}
+                        </Text>
+                        {existingReviewId ? (
+                          <Pressable onPress={() => onDeleteReview(existingReviewId)} hitSlop={8}>
+                            <Ionicons name="close-circle" size={16} color={c.subtext} />
+                          </Pressable>
+                        ) : null}
+                      </View>
+                      <View style={{ flexDirection: 'row', gap: 4 }}>
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <Pressable
+                            key={star}
+                            onPress={() => {
+                              onChangeRating(star);
+                              onSubmitReview(star);
+                            }}>
+                            <Ionicons
+                              name={star <= newRating ? 'star' : 'star-outline'}
+                              size={22}
+                              color={star <= newRating ? '#F5A623' : c.subtext}
+                            />
+                          </Pressable>
+                        ))}
+                      </View>
                     </View>
-                  </View>
+                  </>
                 ) : null}
               </View>
             )}
 
             {/* ── Difficulty card ── */}
             {!detailsLoading && spot?.spot_type === 'spot' ? (
-              <View style={[styles.ratingCard, { backgroundColor: c.tagBg }]}>
+              <View style={[styles.ratingCard, { backgroundColor: c.tagBg, alignItems: 'center' }]}>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.cardLabel, { color: c.subtext }]}>Difficulty</Text>
                   {spot.difficulty_vote_count > 0 && spot.avg_difficulty !== null ? (
@@ -805,13 +744,23 @@ export function SpotDetailsModal({
                   )}
                 </View>
 
-                <View style={{ alignItems: 'flex-end', gap: 2, alignSelf: 'flex-start' }}>
+                <View
+                  style={{
+                    width: 1,
+                    alignSelf: 'stretch',
+                    backgroundColor: c.border,
+                    marginHorizontal: 14,
+                  }}
+                />
+
+                <View style={{ alignItems: 'flex-end', gap: 6 }}>
                   <Text
                     style={{
                       fontSize: 10,
+                      fontWeight: '700',
                       color: c.subtext,
                       textTransform: 'uppercase',
-                      letterSpacing: 0.5,
+                      letterSpacing: 0.6,
                     }}>
                     {existingDifficultyVoteId ? 'Your vote' : 'Rate difficulty'}
                   </Text>
@@ -837,6 +786,95 @@ export function SpotDetailsModal({
                     ))}
                   </View>
                 </View>
+              </View>
+            ) : null}
+
+            {/* ── Check-in card ── */}
+            {!detailsLoading ? (
+              <View style={[styles.ratingCard, { backgroundColor: c.tagBg, alignItems: 'center' }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
+                  <Ionicons name="people-outline" size={16} color={c.subtext} />
+                  <Text style={{ fontSize: 13, color: c.subtext }}>
+                    {visitorCount !== null && visitorCount > 0
+                      ? `${visitorCount} ${visitorCount === 1 ? 'skater has' : 'skaters have'} visited`
+                      : 'No check-ins yet'}
+                  </Text>
+                </View>
+                <Pressable
+                  onPress={async () => {
+                    if (!spot) return;
+                    if (alreadyCheckedInToday) {
+                      Alert.alert(
+                        'Check in again?',
+                        "You already checked in here today. This will add another visit to your passport but won't post to your feed.",
+                        [
+                          { text: 'Cancel', style: 'cancel' },
+                          {
+                            text: 'Check In Again',
+                            onPress: async () => {
+                              const result = await checkIn(spot.id);
+                              if (result.success) {
+                                await Haptics.notificationAsync(
+                                  Haptics.NotificationFeedbackType.Success
+                                );
+                                if (result.checkInId) {
+                                  promptAddSessionMedia(result.checkInId, spot.id);
+                                }
+                              }
+                            },
+                          },
+                        ]
+                      );
+                      return;
+                    }
+                    const result = await checkIn(spot.id);
+                    if (result.success) {
+                      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                      setAlreadyCheckedInToday(true);
+                      setVisitorCount((prev) => (prev === null ? 1 : prev + 1));
+                      Alert.alert(
+                        'Checked in!',
+                        'Added to your passport and shared to your feed. Add a photo or clip from this session?',
+                        [
+                          { text: 'Skip', style: 'cancel' },
+                          {
+                            text: 'Add Photo/Clip',
+                            onPress: () => {
+                              if (result.checkInId) {
+                                pickAndUploadSpotMedia(spot.id, result.checkInId);
+                              }
+                            },
+                          },
+                        ]
+                      );
+                    }
+                  }}
+                  disabled={checkingIn}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 5,
+                    paddingHorizontal: 16,
+                    paddingVertical: 8,
+                    borderRadius: 20,
+                    backgroundColor: alreadyCheckedInToday ? 'rgba(52,199,89,0.15)' : '#34C759',
+                    borderWidth: 1,
+                    borderColor: '#34C759',
+                  }}>
+                  <Ionicons
+                    name={alreadyCheckedInToday ? 'checkmark-circle' : 'location'}
+                    size={15}
+                    color={alreadyCheckedInToday ? '#34C759' : '#fff'}
+                  />
+                  <Text
+                    style={{
+                      fontSize: 13,
+                      fontWeight: '700',
+                      color: alreadyCheckedInToday ? '#34C759' : '#fff',
+                    }}>
+                    {alreadyCheckedInToday ? 'Checked In' : 'Check In'}
+                  </Text>
+                </Pressable>
               </View>
             ) : null}
 

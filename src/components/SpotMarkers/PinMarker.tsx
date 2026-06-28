@@ -1,5 +1,5 @@
 import React from 'react';
-import Svg, { Path, Image, Defs, ClipPath, Rect } from 'react-native-svg';
+import Svg, { Path, Image, Ellipse } from 'react-native-svg';
 
 type Props = {
     color?: string;
@@ -24,7 +24,8 @@ export function PinMarker({
     const h = size;
 
     return (
-        <Svg width={w} height={h} viewBox="0 0 75 100">
+        <Svg width={w} height={h} viewBox="0 0 75 104">
+            <Ellipse cx={37.5} cy={99} rx={12} ry={3.5} fill="#000" opacity={0.3} />
             <Path
                 d="M37.5 2 C18.5 2 3 17.5 3 36.5 C3 55.5 37.5 98 37.5 98 C37.5 98 72 55.5 72 36.5 C72 17.5 56.5 2 37.5 2 Z"
                 fill={color}
