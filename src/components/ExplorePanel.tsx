@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, Modal, ScrollView, Pressable, TextInput, Image, Alert } from 'react-native';
+import { View, Text, Modal, ScrollView, Pressable, TextInput, Alert } from 'react-native';
+import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Place, Spot } from '@/src/types';
