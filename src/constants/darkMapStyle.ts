@@ -1,3 +1,13 @@
+const POI_HIDE = [
+  { featureType: 'poi.attraction', stylers: [{ visibility: 'off' }] },
+  { featureType: 'poi.government', stylers: [{ visibility: 'off' }] },
+  { featureType: 'poi.medical', stylers: [{ visibility: 'off' }] },
+  { featureType: 'poi.place_of_worship', stylers: [{ visibility: 'off' }] },
+  { featureType: 'poi.school', stylers: [{ visibility: 'off' }] },
+  { featureType: 'poi.sports_complex', stylers: [{ visibility: 'off' }] },
+  { featureType: 'poi.park', elementType: 'labels', stylers: [{ visibility: 'off' }] },
+];
+
 export const DARK_MAP_STYLE = [
   { elementType: 'geometry', stylers: [{ color: '#242f3e' }] },
   { elementType: 'labels.text.stroke', stylers: [{ color: '#242f3e' }] },
@@ -77,4 +87,7 @@ export const DARK_MAP_STYLE = [
     elementType: 'labels.text.stroke',
     stylers: [{ color: '#17263c' }],
   },
+  ...POI_HIDE,
 ];
+
+export const LIGHT_MAP_STYLE = [...POI_HIDE];
