@@ -176,6 +176,7 @@ const SpotMap = React.memo(
                 key={`${s.id}-${s.id === highlightSpotId}`}
                 coordinate={{ latitude: s.lat, longitude: s.lng }}
                 anchor={{ x: 0.5, y: 0.5 }}
+                keepActive={s.id === highlightSpotId}
                 onPress={() => {
                   suppressMapPressRef.current = true;
                   setHighlightSpotId(s.id);
@@ -193,6 +194,7 @@ const SpotMap = React.memo(
                 key={`${s.id}-${s.id === highlightSpotId}`}
                 coordinate={{ latitude: s.lat, longitude: s.lng }}
                 anchor={{ x: 0.5, y: 0.5 }}
+                keepActive={s.id === highlightSpotId}
                 onPress={() => {
                   suppressMapPressRef.current = true;
                   setHighlightSpotId(s.id);

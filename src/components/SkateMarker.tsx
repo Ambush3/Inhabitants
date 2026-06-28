@@ -43,6 +43,7 @@ export const SkateMarker = forwardRef<any, Props>(
                 coordinate={{ latitude: lat, longitude: lng }}
                 onPress={onPress}
                 anchor={{ x: 0.5, y: 1.0 }}
+                keepActive={selected}
             >
                 <View style={{ alignItems: 'center', justifyContent: 'center' }}>
                     <SelectedPulse selected={selected} />
