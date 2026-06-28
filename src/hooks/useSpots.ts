@@ -283,9 +283,17 @@ export function useSpots() {
     }
     return null;
   }
+  // Patch a single spot in the local arrays without a refetch (avoids the
+  // clustered-map re-render that flings a selected pin to the corner).
+  function patchSpotLocal(id: string, fields: Partial<Spot>) {
+    setSpots((prev) => prev.map((s) => (s.id === id ? { ...s, ...fields } : s)));
+    setMySpots((prev) => prev.map((s) => (s.id === id ? { ...s, ...fields } : s)));
+  }
+
   return {
     spots,
     mySpots,
+    patchSpotLocal,
     mySpotsLoading,
     loading,
     error,

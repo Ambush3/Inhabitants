@@ -27,6 +27,11 @@ type Theme = {
   // Optional image that takes over key surfaces (Explore/Settings panels, top bar).
   backgroundImage?: number;
   scrim?: string;
+  // Vertical gradient scrims (top → bottom) layered over the image for legibility
+  // + depth. `header` keeps the artwork visible; `panel` fades to near-solid so
+  // list/content text reads cleanly. Falls back to flat `scrim` when unset.
+  scrimHeader?: readonly [string, string, ...string[]];
+  scrimPanel?: readonly [string, string, ...string[]];
 };
 
 export type ThemeOption = {
@@ -176,13 +181,15 @@ export const THEMES: ThemeOption[] = [
     },
   },
   {
-    id: 'graffiti-monsters',
-    name: 'Graffiti Monsters',
+    id: 'graffiti',
+    name: 'Graffiti',
     swatch: '#22D3EE',
     theme: {
       dark: true,
-      backgroundImage: require('../../assets/themes/graffiti-monsters.jpg'),
+      backgroundImage: require('../../assets/themes/graffiti.jpg'),
       scrim: 'rgba(0,0,0,0.55)',
+      scrimHeader: ['rgba(8,8,12,0.78)', 'rgba(8,8,12,0.32)', 'rgba(8,8,12,0.82)'],
+      scrimPanel: ['rgba(8,8,12,0.5)', 'rgba(8,8,12,0.93)', 'rgba(8,8,12,0.985)'],
       colors: {
         background: '#0a0a0a',
         surface: '#141414',
@@ -208,6 +215,8 @@ export const THEMES: ThemeOption[] = [
       dark: true,
       backgroundImage: require('../../assets/themes/sticker-collage-inhabitants.jpg'),
       scrim: 'rgba(0,0,0,0.55)',
+      scrimHeader: ['rgba(10,9,6,0.78)', 'rgba(10,9,6,0.3)', 'rgba(10,9,6,0.82)'],
+      scrimPanel: ['rgba(10,9,6,0.5)', 'rgba(10,9,6,0.93)', 'rgba(10,9,6,0.985)'],
       colors: {
         background: '#0a0a0a',
         surface: '#141414',

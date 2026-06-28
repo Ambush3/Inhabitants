@@ -1,0 +1,21 @@
+# EAS regenerates native projects via prebuild on its servers (CNG).
+# Exclude heavy local dirs so "Compressing project files" doesn't stall.
+
+# Native (regenerated on server)
+/ios
+/android
+
+# Dependencies (reinstalled on server)
+node_modules/
+
+# Expo / build output
+.expo/
+dist/
+web-build/
+build/
+
+# misc
+.DS_Store
+.idea/
+.vscode/
+*.tsbuildinfo
