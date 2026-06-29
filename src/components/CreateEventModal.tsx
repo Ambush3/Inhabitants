@@ -11,7 +11,8 @@ import {
   StyleSheet,
   Image,
 } from 'react-native';
-import MapView from 'react-native-maps';
+import MapView, { PROVIDER_GOOGLE } from 'react-native-maps';
+import { DARK_MAP_STYLE, LIGHT_MAP_STYLE } from '@/src/constants/darkMapStyle';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
@@ -850,6 +851,8 @@ export function CreateEventModal({ visible, onClose, onSubmit, pendingCoord, spo
           </View>
           <View style={{ flex: 1 }}>
             <MapView
+              provider={PROVIDER_GOOGLE}
+              customMapStyle={darkMode ? DARK_MAP_STYLE : LIGHT_MAP_STYLE}
               style={{ flex: 1 }}
               region={mapPickerRegion}
               onRegionChangeComplete={(region) => {

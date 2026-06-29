@@ -25,8 +25,6 @@ const api = {
   info: (message: string, opts?: ToastOptions) => show(message, 'none', 'none', opts),
 };
 
-// Burnt renders native toasts above everything (including RN Modals) with no JS
-// overlay, so the provider is just a passthrough kept for API compatibility.
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
