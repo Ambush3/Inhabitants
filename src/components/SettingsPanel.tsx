@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/src/libs/supabase';
 import { Session } from '@supabase/supabase-js';
 import { useTheme } from '@/src/context/ThemeContext';
+import { useToast } from '@/src/context/ToastContext';
 import { changelog } from '@/src/changelog';
 import { useNotificationPreferences, NotificationPrefs } from '@/src/hooks/useNotificationPreferences';
 import { FeedbackBoardModal } from '@/src/components/feedback/FeedbackBoardModal';
@@ -56,6 +57,7 @@ export function SettingsPanel({
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [themePickerOpen, setThemePickerOpen] = useState(false);
   const { theme, themeId, themes } = useTheme();
+  const toast = useToast();
   const c = theme.colors;
   const currentThemeName = themes.find((t) => t.id === themeId)?.name ?? '';
 
@@ -103,10 +105,10 @@ export function SettingsPanel({
       redirectTo: 'inhabitants://reset-password',
     });
     if (error) {
-      Alert.alert('Error', error.message);
+      toast.error(error.message);
     } else {
       setResetSent(true);
-      Alert.alert('Email sent', 'Check your inbox for a password reset link.');
+      toast.success('Check your inbox for a password reset link.');
     }
   }
 
@@ -167,8 +169,7 @@ export function SettingsPanel({
 
     if (moderationResult?.safe === false) {
       await supabase.storage.from('avatars').remove([filename]);
-      Alert.alert(
-        'Image Rejected',
+      toast.error(
         'Your profile photo was flagged as inappropriate. Please choose a different image.'
       );
       setAvatarLoading(false);
@@ -193,7 +194,7 @@ export function SettingsPanel({
           onPress: async () => {
             const { error } = await supabase.rpc('delete_user');
             if (error) {
-              Alert.alert('Error', error.message);
+              toast.error(error.message);
             } else {
               await supabase.auth.signOut();
               onSignOut();

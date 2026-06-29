@@ -19,6 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useTheme } from '@/src/context/ThemeContext';
+import { useToast } from '@/src/context/ToastContext';
 import * as Haptics from 'expo-haptics';
 import { useCheckInMediaComments, CheckInMediaComment } from '@/src/hooks/useCheckInMediaComments';
 import { useCheckInMediaLikes } from '@/src/hooks/useCheckInMediaLikes';
@@ -168,6 +169,7 @@ export function SessionMediaViewerModal({
   onViewProfile,
 }: Props) {
   const { theme } = useTheme();
+  const toast = useToast();
   const c = theme.colors;
   const insets = useSafeAreaInsets();
   const { comments, loading, loadComments, addComment, updateComment, deleteComment, flagComment, resetComments } =
@@ -228,7 +230,7 @@ export function SessionMediaViewerModal({
     const err = await addComment(active.id, input.trim());
     setSubmitting(false);
     if (err) {
-      Alert.alert('Could not post', err);
+      toast.error(err);
       return;
     }
     setInput('');

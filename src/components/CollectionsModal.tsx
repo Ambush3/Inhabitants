@@ -10,11 +10,11 @@ import {
     Platform,
     StyleSheet,
     ActivityIndicator,
-    Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/src/context/ThemeContext';
+import { useToast } from '@/src/context/ToastContext';
 import { useCollections, Collection } from '@/src/hooks/useCollections';
 
 type Props = {
@@ -25,6 +25,7 @@ type Props = {
 
 export function CollectionsModal({ visible, onClose, spotId }: Props) {
     const { theme } = useTheme();
+    const toast = useToast();
     const c = theme.colors;
     const insets = useSafeAreaInsets();
     const {
@@ -65,7 +66,7 @@ export function CollectionsModal({ visible, onClose, spotId }: Props) {
         if (!newName.trim()) return;
         setSubmitting(true);
         const err = await createCollection(newName.trim());
-        if (err) Alert.alert('Error', err);
+        if (err) toast.error(err);
         setNewName('');
         setCreating(false);
         setSubmitting(false);

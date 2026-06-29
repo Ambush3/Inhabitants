@@ -3,6 +3,7 @@ import { View, Text, Pressable, Alert } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/src/context/ThemeContext';
+import { useToast } from '@/src/context/ToastContext';
 import { useCheckInMedia } from '@/src/hooks/useCheckInMedia';
 import { SessionMediaViewerModal, ViewerMedia } from '@/src/components/SessionMediaViewerModal';
 
@@ -13,6 +14,7 @@ type Props = {
 
 export function MyMediaGrid({ userId, onViewProfile }: Props) {
   const { theme } = useTheme();
+  const toast = useToast();
   const c = theme.colors;
   const media = useCheckInMedia();
   const [viewerMedia, setViewerMedia] = useState<ViewerMedia | null>(null);
