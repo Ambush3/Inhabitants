@@ -5,10 +5,10 @@ import {
   Modal,
   Pressable,
   ScrollView,
-  Image,
   Alert,
   TextInput,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/src/context/ThemeContext';

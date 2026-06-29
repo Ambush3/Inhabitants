@@ -6,12 +6,12 @@ import {
   Modal,
   ScrollView,
   Pressable,
-  Image,
   SafeAreaView,
   KeyboardAvoidingView,
   Platform,
   Alert,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/src/libs/supabase';
 import { useTheme } from '@/src/context/ThemeContext';

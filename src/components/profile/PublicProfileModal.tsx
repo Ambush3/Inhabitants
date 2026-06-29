@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Modal, ScrollView, Pressable, Image, SafeAreaView, Alert } from 'react-native';
+import { View, Text, Modal, ScrollView, Pressable, SafeAreaView, Alert } from 'react-native';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/src/libs/supabase';
 import { useTheme } from '@/src/context/ThemeContext';
