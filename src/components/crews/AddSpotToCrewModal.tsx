@@ -7,11 +7,11 @@ import {
   ScrollView,
   Image,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/src/context/ThemeContext';
+import { useToast } from '@/src/context/ToastContext';
 import { useCrews } from '@/src/hooks/useCrews';
 import { supabase } from '@/src/libs/supabase';
 
@@ -23,6 +23,7 @@ type Props = {
 
 export function AddSpotToCrewModal({ visible, onClose, spotId }: Props) {
   const { theme } = useTheme();
+  const toast = useToast();
   const c = theme.colors;
   const insets = useSafeAreaInsets();
   const { myCrews, loadingMine, loadMyCrews, addSpotToCrew, removeSpotFromCrew } = useCrews();
@@ -66,7 +67,7 @@ export function AddSpotToCrewModal({ visible, onClose, spotId }: Props) {
       ? await removeSpotFromCrew(crewId, spotId)
       : await addSpotToCrew(crewId, spotId);
     if (err) {
-      Alert.alert('Error', err);
+      toast.error(err);
     } else {
       setMemberCrewIdsWithSpot((prev) => {
         const next = new Set(prev);

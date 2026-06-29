@@ -8,13 +8,13 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  Alert,
   Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '@/src/context/ThemeContext';
+import { useToast } from '@/src/context/ToastContext';
 import { Crew } from '@/src/hooks/useCrews';
 
 type Props = {
@@ -26,6 +26,7 @@ type Props = {
 
 export function CreateCrewModal({ visible, onClose, onSubmit, editCrew }: Props) {
   const { theme } = useTheme();
+  const toast = useToast();
   const c = theme.colors;
   const insets = useSafeAreaInsets();
 
@@ -47,7 +48,7 @@ export function CreateCrewModal({ visible, onClose, onSubmit, editCrew }: Props)
   async function pickImage() {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permission required', 'Allow photo access to set an avatar.');
+      toast.info('Allow photo access to set an avatar.');
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -63,11 +64,11 @@ export function CreateCrewModal({ visible, onClose, onSubmit, editCrew }: Props)
   async function handleSubmit() {
     const trimmed = name.trim();
     if (trimmed.length < 2) {
-      Alert.alert('Name too short', 'Crew name must be at least 2 characters.');
+      toast.error('Crew name must be at least 2 characters.');
       return;
     }
     if (trimmed.length > 50) {
-      Alert.alert('Name too long', 'Crew name must be 50 characters or fewer.');
+      toast.error('Crew name must be 50 characters or fewer.');
       return;
     }
     setSaving(true);
@@ -79,7 +80,7 @@ export function CreateCrewModal({ visible, onClose, onSubmit, editCrew }: Props)
     });
     setSaving(false);
     if (err) {
-      Alert.alert('Error', err);
+      toast.error(err);
       return;
     }
     onClose();

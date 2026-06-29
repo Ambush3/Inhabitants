@@ -15,6 +15,7 @@ import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/src/libs/supabase';
 import { useTheme } from '@/src/context/ThemeContext';
+import { useToast } from '@/src/context/ToastContext';
 import { Spot } from '@/src/types';
 import { useFriendships, Friend } from '@/src/hooks/social/useFriendships';
 import { useCollections, Collection } from '@/src/hooks/useCollections';
@@ -69,6 +70,7 @@ export function ProfileModal({
   onDeleteTrickLog,
 }: Props) {
   const { theme } = useTheme();
+  const toast = useToast();
   const c = theme.colors;
 
   const [activeTab, setActiveTab] = useState<Tab>('spots');
@@ -1229,7 +1231,7 @@ export function ProfileModal({
                                         onSelectSpot(spot);
                                         onClose();
                                       } else {
-                                        Alert.alert('Spot unavailable', "Couldn't open this spot on the map.");
+                                        toast.error("Couldn't open this spot on the map.");
                                       }
                                     }}
                                     hitSlop={6}
@@ -1497,20 +1499,20 @@ export function ProfileModal({
                 if (!trimmedUsername) return;
                 const usernameCheck = moderateText(trimmedUsername);
                 if (!usernameCheck.allowed) {
-                  Alert.alert('Username not allowed', usernameCheck.reason);
+                  toast.error(usernameCheck.reason ?? 'Username not allowed');
                   return;
                 }
                 if (trimmedFirst) {
                   const fnCheck = moderateText(trimmedFirst);
                   if (!fnCheck.allowed) {
-                    Alert.alert('First name not allowed', fnCheck.reason);
+                    toast.error(fnCheck.reason ?? 'First name not allowed');
                     return;
                   }
                 }
                 if (trimmedLast) {
                   const lnCheck = moderateText(trimmedLast);
                   if (!lnCheck.allowed) {
-                    Alert.alert('Last name not allowed', lnCheck.reason);
+                    toast.error(lnCheck.reason ?? 'Last name not allowed');
                     return;
                   }
                 }
@@ -1529,8 +1531,7 @@ export function ProfileModal({
                     .eq('id', user.id);
                   if (error) {
                     setEditLoading(false);
-                    Alert.alert(
-                      'Could not save profile',
+                    toast.error(
                       /disallowed content/i.test(error.message)
                         ? 'Your profile contains inappropriate content and cannot be saved.'
                         : error.message

@@ -15,6 +15,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/src/context/ThemeContext';
+import { useToast } from '@/src/context/ToastContext';
 import { useFeedbackComments } from '@/src/hooks/useFeedbackComments';
 import { FeedbackPost } from '@/src/hooks/useFeedback';
 
@@ -36,6 +37,7 @@ type Props = {
 
 export function FeedbackPostModal({ visible, post, currentUserId, onClose, onVote, onReport }: Props) {
   const { theme } = useTheme();
+  const toast = useToast();
   const c = theme.colors;
   const insets = useSafeAreaInsets();
   const { comments, loading, loadComments, addComment, deleteComment, reportComment } =
@@ -55,7 +57,7 @@ export function FeedbackPostModal({ visible, post, currentUserId, onClose, onVot
     const err = await addComment(post.id, input);
     setSending(false);
     if (err) {
-      Alert.alert('Cannot post', err);
+      toast.error(err);
       return;
     }
     setInput('');
@@ -69,7 +71,7 @@ export function FeedbackPostModal({ visible, post, currentUserId, onClose, onVot
         style: 'destructive',
         onPress: async () => {
           await reportComment(commentId, 'reported by user');
-          Alert.alert('Thanks', 'Comment reported.');
+          toast.success('Comment reported.');
         },
       },
     ]);

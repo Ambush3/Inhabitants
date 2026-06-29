@@ -4,6 +4,7 @@ import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/src/libs/supabase';
 import { useTheme } from '@/src/context/ThemeContext';
+import { useToast } from '@/src/context/ToastContext';
 import { Spot } from '@/src/types';
 import { useFriendships, FriendshipStatus } from '@/src/hooks/social/useFriendships';
 import { sendFriendRequestNotification } from '@/src/libs/sendPushNotification';
@@ -30,6 +31,7 @@ type Props = {
 
 export function PublicProfileModal({ visible, onClose, userId, onSelectSpot, allSpots }: Props) {
   const { theme } = useTheme();
+  const toast = useToast();
   const c = theme.colors;
 
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
