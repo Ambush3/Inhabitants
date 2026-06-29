@@ -13,6 +13,7 @@ import {
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/src/context/ThemeContext';
+import { useToast } from '@/src/context/ToastContext';
 import { useEventComments, EventComment } from '@/src/hooks/useEventComments';
 
 type Props = {
@@ -35,6 +36,7 @@ export function EventCommentsModal({
   onViewProfile,
 }: Props) {
   const { theme } = useTheme();
+  const toast = useToast();
   const c = theme.colors;
   const { comments, loading, loadComments, addComment, deleteComment, clearComments } = useEventComments();
   const [input, setInput] = useState('');
@@ -74,7 +76,7 @@ export function EventCommentsModal({
     const err = await addComment(eventId, input, currentUserId);
     setSubmitting(false);
     if (err) {
-      Alert.alert('Error', err);
+      toast.error(err);
       return;
     }
     setInput('');

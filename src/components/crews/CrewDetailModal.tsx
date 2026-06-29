@@ -12,6 +12,7 @@ import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/src/context/ThemeContext';
+import { useToast } from '@/src/context/ToastContext';
 import { Crew, CrewMember, useCrews } from '@/src/hooks/useCrews';
 import { Spot } from '@/src/types';
 import { supabase } from '@/src/libs/supabase';
@@ -32,6 +33,7 @@ type UserSearchResult = {
 };
 
 export function CrewDetailModal({ visible, onClose, crewId, onEdit, onSelectSpot, onSelectMember }: Props) {
+  const toast = useToast();
   const { theme } = useTheme();
   const c = theme.colors;
   const insets = useSafeAreaInsets();
@@ -123,7 +125,7 @@ export function CrewDetailModal({ visible, onClose, crewId, onEdit, onSelectSpot
         style: 'destructive',
         onPress: async () => {
           const err = await leaveCrew(crew.id);
-          if (err) Alert.alert('Error', err);
+          if (err) toast.error(err);
           else onClose();
         },
       },
@@ -139,7 +141,7 @@ export function CrewDetailModal({ visible, onClose, crewId, onEdit, onSelectSpot
         style: 'destructive',
         onPress: async () => {
           const err = await deleteCrew(crew.id);
-          if (err) Alert.alert('Error', err);
+          if (err) toast.error(err);
           else onClose();
         },
       },
@@ -149,7 +151,7 @@ export function CrewDetailModal({ visible, onClose, crewId, onEdit, onSelectSpot
   async function handleJoin() {
     if (!crew) return;
     const err = await joinPublicCrew(crew.id);
-    if (err) Alert.alert('Error', err);
+    if (err) toast.error(err);
     else await refresh();
   }
 
@@ -157,11 +159,11 @@ export function CrewDetailModal({ visible, onClose, crewId, onEdit, onSelectSpot
     if (!crew) return;
     const err = await inviteUser(crew.id, userId);
     if (err) {
-      Alert.alert('Error', err);
+      toast.error(err);
       return;
     }
     setInviteResults((prev) => prev.filter((u) => u.id !== userId));
-    Alert.alert('Invite sent');
+    toast.success('Invite sent');
   }
 
   async function handleRemoveMember(userId: string) {
@@ -173,7 +175,7 @@ export function CrewDetailModal({ visible, onClose, crewId, onEdit, onSelectSpot
         style: 'destructive',
         onPress: async () => {
           const err = await removeMember(crew.id, userId);
-          if (err) Alert.alert('Error', err);
+          if (err) toast.error(err);
           else await refresh();
         },
       },
@@ -183,14 +185,14 @@ export function CrewDetailModal({ visible, onClose, crewId, onEdit, onSelectSpot
   async function handlePromote(userId: string, role: 'admin' | 'member') {
     if (!crew) return;
     const err = await changeRole(crew.id, userId, role);
-    if (err) Alert.alert('Error', err);
+    if (err) toast.error(err);
     else await refresh();
   }
 
   async function handleRemoveSpot(spotId: string) {
     if (!crew) return;
     const err = await removeSpotFromCrew(crew.id, spotId);
-    if (err) Alert.alert('Error', err);
+    if (err) toast.error(err);
     else await refresh();
   }
 

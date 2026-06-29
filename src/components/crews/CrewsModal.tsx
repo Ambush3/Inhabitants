@@ -7,12 +7,12 @@ import {
   ScrollView,
   TextInput,
   RefreshControl,
-  Alert,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/src/context/ThemeContext';
+import { useToast } from '@/src/context/ToastContext';
 import { useCrews, Crew } from '@/src/hooks/useCrews';
 
 type Props = {
@@ -27,6 +27,7 @@ type Tab = 'mine' | 'discover' | 'invites';
 
 export function CrewsModal({ visible, onClose, onSelectCrew, onCreatePress, initialTab }: Props) {
   const { theme } = useTheme();
+  const toast = useToast();
   const c = theme.colors;
   const insets = useSafeAreaInsets();
   const {
@@ -64,11 +65,11 @@ export function CrewsModal({ visible, onClose, onSelectCrew, onCreatePress, init
 
   async function handleAccept(inviteId: string) {
     const err = await acceptInvite(inviteId);
-    if (err) Alert.alert('Error', err);
+    if (err) toast.error(err);
   }
   async function handleDecline(inviteId: string) {
     const err = await declineInvite(inviteId);
-    if (err) Alert.alert('Error', err);
+    if (err) toast.error(err);
   }
 
   function renderCrewRow(crew: Crew) {

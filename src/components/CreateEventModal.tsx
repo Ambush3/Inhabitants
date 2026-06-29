@@ -9,7 +9,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
-  Alert,
   Image,
 } from 'react-native';
 import MapView from 'react-native-maps';
@@ -18,6 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/src/context/ThemeContext';
+import { useToast } from '@/src/context/ToastContext';
 import { EventVisibility, SkateEvent } from '@/src/hooks/useEvents';
 import { useCrews } from '@/src/hooks/useCrews';
 import { Spot } from '@/src/types';
@@ -50,6 +50,7 @@ type Props = {
 
 export function CreateEventModal({ visible, onClose, onSubmit, pendingCoord, spots, editEvent }: Props) {
   const { theme, darkMode } = useTheme();
+  const toast = useToast();
   const c = theme.colors;
   const insets = useSafeAreaInsets();
 
@@ -236,19 +237,19 @@ export function CreateEventModal({ visible, onClose, onSubmit, pendingCoord, spo
 
   async function handleSubmit() {
     if (!title.trim()) {
-      Alert.alert('Error', 'Title is required');
+      toast.error('Title is required');
       return;
     }
     if (!locationName.trim()) {
-      Alert.alert('Error', 'Location is required');
+      toast.error('Location is required');
       return;
     }
     if (eventDate < new Date()) {
-      Alert.alert('Error', 'Event date must be in the future');
+      toast.error('Event date must be in the future');
       return;
     }
     if (lat === null || lng === null) {
-      Alert.alert('Error', 'Location coordinates are required');
+      toast.error('Location coordinates are required');
       return;
     }
 
@@ -265,7 +266,7 @@ export function CreateEventModal({ visible, onClose, onSubmit, pendingCoord, spo
       Array.from(invitedIds)
     );
     setSaving(false);
-    if (err) Alert.alert('Error', err);
+    if (err) toast.error(err);
     else onClose();
   }
 
