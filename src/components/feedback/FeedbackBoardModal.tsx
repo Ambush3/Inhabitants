@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/src/libs/supabase';
 import { Session } from '@supabase/supabase-js';
 import { useTheme } from '@/src/context/ThemeContext';
+import { useToast } from '@/src/context/ToastContext';
 import { useFeedback, FeedbackPost, FeedbackSort, FeedbackCategory } from '@/src/hooks/useFeedback';
 import { FeedbackPostModal } from './FeedbackPostModal';
 
@@ -40,6 +41,7 @@ type Props = {
 
 export function FeedbackBoardModal({ visible, onClose, session, initialPostId }: Props) {
   const { theme } = useTheme();
+  const toast = useToast();
   const c = theme.colors;
   const insets = useSafeAreaInsets();
   const { posts, loading, loadPosts, createPost, vote, deletePost, reportPost } = useFeedback();
@@ -74,7 +76,7 @@ export function FeedbackBoardModal({ visible, onClose, session, initialPostId }:
     const err = await createPost(newTitle, newBody, newCategory);
     setSubmitting(false);
     if (err) {
-      Alert.alert('Cannot post', err);
+      toast.error(err);
       return;
     }
     setNewTitle('');
@@ -256,7 +258,7 @@ export function FeedbackBoardModal({ visible, onClose, session, initialPostId }:
           requireAuth(async () => {
             if (!selectedPost) return;
             await reportPost(selectedPost.id, reason);
-            Alert.alert('Thanks', 'Post reported.');
+            toast.success('Post reported.');
           });
         }}
       />

@@ -25,6 +25,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
 import * as Location from 'expo-location';
 import { useTheme } from '@/src/context/ThemeContext';
+import { useToast } from '@/src/context/ToastContext';
 
 import { CONDITION_META, SpotCondition } from '@/src/hooks/useSpotConditions';
 import { useCheckIns } from '@/src/hooks/useCheckIns';
@@ -187,6 +188,7 @@ export function SpotDetailsModal({
 }: Props) {
   const { width } = Dimensions.get('window');
   const { theme } = useTheme();
+  const toast = useToast();
   const c = theme.colors;
 
   const scrollRef = useRef<ScrollView>(null);
@@ -390,8 +392,8 @@ export function SpotDetailsModal({
     if (!assets.length) return;
     const res = await uploadMedia(spotId, checkInId, assets);
     await sessionMedia.loadMediaForSpot(spotId);
-    if (res.error) Alert.alert('Upload failed', res.error);
-    else Alert.alert('Uploaded', `${res.uploaded} item${res.uploaded === 1 ? '' : 's'} added.`);
+    if (res.error) toast.error(res.error);
+    else toast.success(`${res.uploaded} item${res.uploaded === 1 ? '' : 's'} added.`);
   }
 
   function promptAddSessionMedia(checkInId: string, spotId: string) {
@@ -523,10 +525,7 @@ export function SpotDetailsModal({
                     {spot?.is_verified ? (
                       <Pressable
                         onPress={() =>
-                          Alert.alert(
-                            'Verified Spot',
-                            'This spot has been rated by 3 or more skaters.'
-                          )
+                          toast.info('This spot has been rated by 3 or more skaters.')
                         }>
                         <Ionicons
                           name="checkmark-circle"
@@ -1461,7 +1460,7 @@ export function SpotDetailsModal({
                   setEditSaving(true);
                   const err = await onUpdateSpot(spot!.id, editName, editDesc, editTags);
                   setEditSaving(false);
-                  if (err) Alert.alert('Error', err);
+                  if (err) toast.error(err);
                   else setEditOpen(false);
                 }}
                 disabled={editSaving || !editName.trim()}

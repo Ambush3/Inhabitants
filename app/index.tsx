@@ -115,8 +115,10 @@ const SpotMap = React.memo(
     events,
     pendingEventCoord,
     mapStyle,
+    mapDark,
   }: any) => (
     <MapViewClustering
+      key={mapDark ? 'map-dark' : 'map-light'}
       ref={mapRef}
       provider={PROVIDER_GOOGLE}
       customMapStyle={mapStyle}
@@ -275,7 +277,8 @@ const SpotMap = React.memo(
       prevProps.initialRegion === nextProps.initialRegion &&
       prevProps.events === nextProps.events &&
       prevProps.pendingEventCoord === nextProps.pendingEventCoord &&
-      prevProps.mapStyle === nextProps.mapStyle
+      prevProps.mapStyle === nextProps.mapStyle &&
+      prevProps.mapDark === nextProps.mapDark
     );
   }
 );
@@ -588,6 +591,14 @@ export default function Index() {
 
   const displayError = error ?? nearbyError ?? topRatedError;
   const mapStyle = useMemo(() => (theme.dark ? DARK_MAP_STYLE : LIGHT_MAP_STYLE), [theme.dark]);
+  const themeFirstRenderRef = useRef(true);
+  useEffect(() => {
+    if (themeFirstRenderRef.current) {
+      themeFirstRenderRef.current = false;
+      return;
+    }
+    setInitialRegion(mapRegionRef.current);
+  }, [theme.dark]);
   const openedFromPanelRef = useRef(false);
   const pendingSpotEditRef = useRef<
     { id: string; name: string; description: string | null; tags: string[] } | null
@@ -1713,16 +1724,18 @@ export default function Index() {
               }, 450);
             }
           } else {
-            setPendingEventCoord({ lat: event.lat, lng: event.lng });
-            mapRef.current?.animateToRegion(
-              {
-                latitude: event.lat - 0.03 * 0.45,
-                longitude: event.lng,
-                latitudeDelta: 0.03,
-                longitudeDelta: 0.03,
-              },
-              400
-            );
+            setTimeout(() => {
+              setPendingEventCoord({ lat: event.lat, lng: event.lng });
+              mapRef.current?.animateToRegion(
+                {
+                  latitude: event.lat - 0.03 * 0.45,
+                  longitude: event.lng,
+                  latitudeDelta: 0.03,
+                  longitudeDelta: 0.03,
+                },
+                400
+              );
+            }, 450);
           }
         }}
         onDeleteEvent={async (eventId) => {
@@ -1791,6 +1804,7 @@ export default function Index() {
         events={events}
         pendingEventCoord={pendingEventCoord}
         mapStyle={mapStyle}
+        mapDark={theme.dark}
       />
       <MapLegend
         style={{ position: 'absolute', top: insets.top + 80, right: 12, alignItems: 'flex-end' }}

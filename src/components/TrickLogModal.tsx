@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/src/context/ThemeContext';
+import { useToast } from '@/src/context/ToastContext';
 import { TrickLog } from '@/src/hooks/useTrickLog';
 
 type Props = {
@@ -34,6 +35,7 @@ export function TrickLogModal({
   onDeleteTrickLog,
 }: Props) {
   const { theme } = useTheme();
+  const toast = useToast();
   const c = theme.colors;
 
   const [trickName, setTrickName] = useState('');
@@ -53,7 +55,7 @@ export function TrickLogModal({
     const err = await onLogTrick(trickName.trim(), loggedAt);
     setSaving(false);
     if (err) {
-      Alert.alert('Error', err);
+      toast.error(err);
       return;
     }
     setTrickName('');
