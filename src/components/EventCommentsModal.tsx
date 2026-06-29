@@ -8,9 +8,9 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Platform,
-  Image,
   Alert,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/src/context/ThemeContext';
 import { useEventComments, EventComment } from '@/src/hooks/useEventComments';

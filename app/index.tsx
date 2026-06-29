@@ -12,9 +12,9 @@ import {
   Easing,
   ActionSheetIOS,
   Linking,
-  Image,
   ActivityIndicator,
 } from 'react-native';
+import { Image } from 'expo-image';
 import MapView, { Marker, Region, LongPressEvent, MapMarker, PROVIDER_GOOGLE } from 'react-native-maps';
 import MapViewClustering from 'react-native-map-clustering';
 import * as Location from 'expo-location';
@@ -120,6 +120,7 @@ const SpotMap = React.memo(
       ref={mapRef}
       provider={PROVIDER_GOOGLE}
       customMapStyle={mapStyle}
+      animationEnabled={false}
       style={{ flex: 1, marginBottom: -34 }}
       initialRegion={initialRegion}
       onPress={onPress}

@@ -12,13 +12,13 @@ import {
   StyleSheet,
   ActionSheetIOS,
   Share,
-  Image,
   FlatList,
   Dimensions,
   Alert,
   PanResponder,
   Animated,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { Spot, Review } from '@/src/types';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -439,7 +439,7 @@ export function SpotDetailsModal({
             <Image
               source={{ uri: item }}
               style={[styles.photoThumb, { opacity: isPending ? 0.5 : 1 }]}
-              resizeMode="cover"
+              contentFit="cover"
             />
           </Pressable>
           <Pressable
@@ -463,7 +463,7 @@ export function SpotDetailsModal({
   const renderViewImageItem = useCallback(
     ({ item: url }: { item: string }) => (
       <Pressable onPress={() => setSelectedImageIndex(images.indexOf(url))} style={{ marginRight: 8 }}>
-        <Image source={{ uri: url }} style={styles.photoThumb} resizeMode="cover" />
+        <Image source={{ uri: url }} style={styles.photoThumb} contentFit="cover" />
       </Pressable>
     ),
     [images]
@@ -1157,7 +1157,7 @@ export function SpotDetailsModal({
             keyExtractor={(url) => url}
             renderItem={({ item: url }) => (
               <View style={{ width, justifyContent: 'center', alignItems: 'center' }}>
-                <Image source={{ uri: url }} style={{ width, height: '80%' }} resizeMode="contain" />
+                <Image source={{ uri: url }} style={{ width, height: '80%' }} contentFit="contain" />
               </View>
             )}
             onViewableItemsChanged={onViewableItemsChanged.current}
