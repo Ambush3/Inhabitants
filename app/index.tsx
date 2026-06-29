@@ -120,6 +120,7 @@ const SpotMap = React.memo(
       ref={mapRef}
       provider={PROVIDER_GOOGLE}
       customMapStyle={mapStyle}
+      animationEnabled={false}
       style={{ flex: 1, marginBottom: -34 }}
       initialRegion={initialRegion}
       onPress={onPress}
