@@ -9,7 +9,7 @@ type Props = {
 };
 
 function getColor(count: number, isDark: boolean): string {
-  if (count === 0) return isDark ? '#1e1e1e' : '#d0d7de';
+  if (count === 0) return isDark ? '#3a3f47' : '#d0d7de';
   if (count === 1) return '#9be9a8';
   if (count <= 3) return '#40c463';
   if (count <= 6) return '#30a14e';

@@ -65,6 +65,7 @@ import { useWhatsNew } from '@/src/hooks/useWhatsNew';
 import { useTrickLog } from '@/src/hooks/useTrickLog';
 
 import { useTheme } from '@/src/context/ThemeContext';
+import { useMapProvider } from '@/src/context/MapProviderContext';
 
 import { Ionicons } from '@expo/vector-icons';
 import { Place, Spot } from '@/src/types';
@@ -116,12 +117,14 @@ const SpotMap = React.memo(
     pendingEventCoord,
     mapStyle,
     mapDark,
+    mapProvider,
   }: any) => (
     <MapViewClustering
-      key={mapDark ? 'map-dark' : 'map-light'}
+      key={`${mapProvider}-${mapDark ? 'dark' : 'light'}`}
       ref={mapRef}
-      provider={PROVIDER_GOOGLE}
-      customMapStyle={mapStyle}
+      provider={mapProvider === 'google' ? PROVIDER_GOOGLE : undefined}
+      customMapStyle={mapProvider === 'google' ? mapStyle : []}
+      userInterfaceStyle={mapDark ? 'dark' : 'light'}
       animationEnabled={false}
       style={{ flex: 1, marginBottom: -34 }}
       initialRegion={initialRegion}
@@ -278,7 +281,8 @@ const SpotMap = React.memo(
       prevProps.events === nextProps.events &&
       prevProps.pendingEventCoord === nextProps.pendingEventCoord &&
       prevProps.mapStyle === nextProps.mapStyle &&
-      prevProps.mapDark === nextProps.mapDark
+      prevProps.mapDark === nextProps.mapDark &&
+      prevProps.mapProvider === nextProps.mapProvider
     );
   }
 );
@@ -506,6 +510,7 @@ export default function Index() {
   const [isVetted, setIsVetted] = useState(false);
 
   const { theme, loadThemeForUser } = useTheme();
+  const { mapProvider } = useMapProvider();
   const c = theme.colors;
 
   const insets = useSafeAreaInsets();
@@ -1805,6 +1810,7 @@ export default function Index() {
         pendingEventCoord={pendingEventCoord}
         mapStyle={mapStyle}
         mapDark={theme.dark}
+        mapProvider={mapProvider}
       />
       <MapLegend
         style={{ position: 'absolute', top: insets.top + 80, right: 12, alignItems: 'flex-end' }}

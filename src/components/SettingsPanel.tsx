@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/src/libs/supabase';
 import { Session } from '@supabase/supabase-js';
 import { useTheme } from '@/src/context/ThemeContext';
+import { useMapProvider } from '@/src/context/MapProviderContext';
 import { useToast } from '@/src/context/ToastContext';
 import { changelog } from '@/src/changelog';
 import { useNotificationPreferences, NotificationPrefs } from '@/src/hooks/useNotificationPreferences';
@@ -57,6 +58,7 @@ export function SettingsPanel({
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [themePickerOpen, setThemePickerOpen] = useState(false);
   const { theme, themeId, themes } = useTheme();
+  const { mapProvider, setMapProvider } = useMapProvider();
   const toast = useToast();
   const c = theme.colors;
   const currentThemeName = themes.find((t) => t.id === themeId)?.name ?? '';
@@ -314,6 +316,41 @@ export function SettingsPanel({
                   <Ionicons name="chevron-forward" size={16} color={c.subtext} />
                 </View>
               </Pressable>
+
+              <View style={rowStyle}>
+                <View style={rowLeftStyle}>
+                  <Ionicons name="map-outline" size={20} color={c.text} />
+                  <Text style={{ fontSize: 15, color: c.text }}>Map</Text>
+                </View>
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    backgroundColor: c.tagBg,
+                    borderRadius: 8,
+                    padding: 2,
+                  }}>
+                  {(['apple', 'google'] as const).map((opt) => (
+                    <Pressable
+                      key={opt}
+                      onPress={() => setMapProvider(opt)}
+                      style={{
+                        paddingVertical: 5,
+                        paddingHorizontal: 12,
+                        borderRadius: 6,
+                        backgroundColor: mapProvider === opt ? c.accent : 'transparent',
+                      }}>
+                      <Text
+                        style={{
+                          fontSize: 13,
+                          fontWeight: '600',
+                          color: mapProvider === opt ? '#fff' : c.subtext,
+                        }}>
+                        {opt === 'apple' ? 'Apple' : 'Google'}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
 
               {/* ── PRIVACY & ACCOUNT ── */}
               <SectionLabel label="PRIVACY & ACCOUNT" />

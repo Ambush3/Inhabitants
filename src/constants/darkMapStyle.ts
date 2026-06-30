@@ -9,8 +9,8 @@ const POI_HIDE = [
 ];
 
 export const DARK_MAP_STYLE = [
-  { elementType: 'geometry', stylers: [{ color: '#242f3e' }] },
-  { elementType: 'labels.text.stroke', stylers: [{ color: '#242f3e' }] },
+  { elementType: 'geometry', stylers: [{ color: '#353f4f' }] },
+  { elementType: 'labels.text.stroke', stylers: [{ color: '#353f4f' }] },
   { elementType: 'labels.text.fill', stylers: [{ color: '#746855' }] },
   {
     featureType: 'administrative.locality',
@@ -25,7 +25,7 @@ export const DARK_MAP_STYLE = [
   {
     featureType: 'poi.park',
     elementType: 'geometry',
-    stylers: [{ color: '#263c3f' }],
+    stylers: [{ color: '#33474a' }],
   },
   {
     featureType: 'poi.park',
@@ -35,12 +35,12 @@ export const DARK_MAP_STYLE = [
   {
     featureType: 'road',
     elementType: 'geometry',
-    stylers: [{ color: '#38414e' }],
+    stylers: [{ color: '#4b5566' }],
   },
   {
     featureType: 'road',
     elementType: 'geometry.stroke',
-    stylers: [{ color: '#212a37' }],
+    stylers: [{ color: '#2e3848' }],
   },
   {
     featureType: 'road',
@@ -50,12 +50,12 @@ export const DARK_MAP_STYLE = [
   {
     featureType: 'road.highway',
     elementType: 'geometry',
-    stylers: [{ color: '#746855' }],
+    stylers: [{ color: '#5d6678' }],
   },
   {
     featureType: 'road.highway',
     elementType: 'geometry.stroke',
-    stylers: [{ color: '#1f2835' }],
+    stylers: [{ color: '#2e3848' }],
   },
   {
     featureType: 'road.highway',
@@ -65,7 +65,7 @@ export const DARK_MAP_STYLE = [
   {
     featureType: 'transit',
     elementType: 'geometry',
-    stylers: [{ color: '#2f3948' }],
+    stylers: [{ color: '#3e4859' }],
   },
   {
     featureType: 'transit.station',
@@ -75,7 +75,7 @@ export const DARK_MAP_STYLE = [
   {
     featureType: 'water',
     elementType: 'geometry',
-    stylers: [{ color: '#17263c' }],
+    stylers: [{ color: '#27384d' }],
   },
   {
     featureType: 'water',
@@ -85,7 +85,7 @@ export const DARK_MAP_STYLE = [
   {
     featureType: 'water',
     elementType: 'labels.text.stroke',
-    stylers: [{ color: '#17263c' }],
+    stylers: [{ color: '#27384d' }],
   },
   ...POI_HIDE,
 ];
