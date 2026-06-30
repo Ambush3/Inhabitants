@@ -7,6 +7,7 @@ import * as ExpoSplashScreen from 'expo-splash-screen';
 import { useAuth } from '@/src/hooks/useAuth';
 import { ThemeProvider, useTheme } from '@/src/context/ThemeContext';
 import { ToastProvider } from '@/src/context/ToastContext';
+import { MapProviderProvider } from '@/src/context/MapProviderContext';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { supabase } from '@/src/libs/supabase';
@@ -133,9 +134,11 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <ThemeProvider>
-          <ToastProvider>
-            <RootLayoutInner />
-          </ToastProvider>
+          <MapProviderProvider>
+            <ToastProvider>
+              <RootLayoutInner />
+            </ToastProvider>
+          </MapProviderProvider>
         </ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
