@@ -37,6 +37,7 @@ import { MySpotMarker } from '@/src/components/SpotMarkers/MySpotMarker';
 import { OtherUsersSpotMarkers } from '@/src/components/SpotMarkers/OtherUsersSpotMarkers';
 import { TrackedMarker } from '@/src/components/SpotMarkers/TrackedMarker';
 import { MapLegend } from '@/src/components/MapLegend';
+import { MapControls } from '@/src/components/MapControls';
 import { DARK_MAP_STYLE, LIGHT_MAP_STYLE } from '@/src/constants/darkMapStyle';
 import { CreateEventModal } from '@/src/components/CreateEventModal';
 import { EventDetailsModal } from '@/src/components/EventDetailsModal';
@@ -609,6 +610,10 @@ export default function Index() {
   const [eventDetailsOpen, setEventDetailsOpen] = useState(false);
 
   const [difficultyFilter, setDifficultyFilter] = useState<Set<'beginner' | 'intermediate' | 'advanced'>>(new Set());
+  const [ownershipFilter, setOwnershipFilter] = useState<Set<'mine' | 'friends' | 'community'>>(new Set());
+  const [mapSearch, setMapSearch] = useState('');
+  const [headerHeight, setHeaderHeight] = useState(0);
+  const [bannerVisible, setBannerVisible] = useState(false);
 
   function matchesDifficultyFilter(spot: Spot): boolean {
     if (difficultyFilter.size === 0) return true;
@@ -627,12 +632,70 @@ export default function Index() {
 
   const visibleSpots = useMemo(() => {
     const sourceSpots = isOnline ? spots : cachedMapSpots;
-    const base =
+    let list =
       filteredSearchResults.length > 0 ? filteredSearchResults : sourceSpots.filter(matchesDifficultyFilter);
-    return base.filter((s) => s.lat && s.lng);
-  }, [filteredSearchResults, spots, cachedMapSpots, isOnline, difficultyFilter]);
+
+    if (ownershipFilter.size > 0) {
+      const myId = session?.user?.id;
+      list = list.filter((s) => {
+        const mine = !!myId && s.user_id === myId;
+        const friend = !mine && !!s.user_id && friendIds.has(s.user_id);
+        const community = !mine && !friend;
+        return (
+          (ownershipFilter.has('mine') && mine) ||
+          (ownershipFilter.has('friends') && friend) ||
+          (ownershipFilter.has('community') && community)
+        );
+      });
+    }
+
+    const q = mapSearch.trim().toLowerCase();
+    if (q) {
+      list = list.filter(
+        (s) =>
+          s.name?.toLowerCase().includes(q) ||
+          (s.tags ?? []).some((t: string) => t.toLowerCase().includes(q))
+      );
+    }
+
+    return list.filter((s) => s.lat && s.lng);
+  }, [
+    filteredSearchResults,
+    spots,
+    cachedMapSpots,
+    isOnline,
+    difficultyFilter,
+    ownershipFilter,
+    mapSearch,
+    session,
+    friendIds,
+  ]);
+
+  const toggleOwnershipFilter = (key: 'mine' | 'friends' | 'community') =>
+    setOwnershipFilter((prev) => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+
+  const toggleDifficultyFilter = (key: 'beginner' | 'intermediate' | 'advanced') =>
+    setDifficultyFilter((prev) => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
 
   const displayError = error ?? nearbyError ?? topRatedError;
+
+  useEffect(() => {
+    if (!displayError) {
+      setBannerVisible(false);
+      return;
+    }
+    setBannerVisible(true);
+    const t = setTimeout(() => setBannerVisible(false), 6000);
+    return () => clearTimeout(t);
+  }, [displayError]);
   const mapStyle = useMemo(() => (theme.dark ? DARK_MAP_STYLE : LIGHT_MAP_STYLE), [theme.dark]);
   const themeFirstRenderRef = useRef(true);
   useEffect(() => {
@@ -1365,6 +1428,7 @@ export default function Index() {
 
   return (
     <View style={{ flex: 1, backgroundColor: c.headerBg }}>
+      <View onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}>
       <ThemeBackdrop color={c.headerBg} variant="header">
       <View
         style={{
@@ -1372,7 +1436,7 @@ export default function Index() {
           backgroundColor: 'transparent',
         }}
       />
-      {displayError ? (
+      {displayError && bannerVisible ? (
         <Text
           style={{
             color: 'red',
@@ -1480,6 +1544,7 @@ export default function Index() {
           </Text>
         </View>
       ) : null}
+      </View>
       <ExplorePanel
         session={session}
         visible={panelOpen}
@@ -1851,9 +1916,22 @@ export default function Index() {
         mapProvider={mapProvider}
         clusterColor={c.accent}
       />
-      <MapLegend
-        style={{ position: 'absolute', top: insets.top + 80, right: 12, alignItems: 'flex-end' }}
-      />
+      {!detailsOpen && !placeDetailsOpen && !eventDetailsOpen ? (
+        <>
+          <MapControls
+            style={{ position: 'absolute', top: (headerHeight || insets.top + 56) + 8, left: 12, right: 12 }}
+            search={mapSearch}
+            onSearchChange={setMapSearch}
+            ownershipFilter={ownershipFilter}
+            onToggleOwnership={toggleOwnershipFilter}
+            difficultyFilter={difficultyFilter}
+            onToggleDifficulty={toggleDifficultyFilter}
+          />
+          <MapLegend
+            style={{ position: 'absolute', top: (headerHeight || insets.top + 56) + 112, right: 12, alignItems: 'flex-end' }}
+          />
+        </>
+      ) : null}
       {locating ? (
         <View
           pointerEvents="none"
