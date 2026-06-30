@@ -118,6 +118,7 @@ const SpotMap = React.memo(
     mapStyle,
     mapDark,
     mapProvider,
+    clusterColor,
   }: any) => (
     <MapViewClustering
       key={`${mapProvider}-${mapDark ? 'dark' : 'light'}`}
@@ -126,6 +127,42 @@ const SpotMap = React.memo(
       customMapStyle={mapProvider === 'google' ? mapStyle : []}
       userInterfaceStyle={mapDark ? 'dark' : 'light'}
       animationEnabled={false}
+      renderCluster={(cluster: any) => {
+        const { id, geometry, onPress: onClusterPress, properties } = cluster;
+        const count = properties.point_count;
+        const size = count < 10 ? 38 : count < 50 ? 46 : 54;
+        return (
+          <Marker
+            key={`cluster-${id}`}
+            coordinate={{
+              latitude: geometry.coordinates[1],
+              longitude: geometry.coordinates[0],
+            }}
+            onPress={onClusterPress}
+            anchor={{ x: 0.5, y: 0.5 }}>
+            <View
+              style={{
+                width: size,
+                height: size,
+                borderRadius: size / 2,
+                backgroundColor: clusterColor,
+                borderWidth: 2.5,
+                borderColor: '#ffffff',
+                alignItems: 'center',
+                justifyContent: 'center',
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 1 },
+                shadowOpacity: 0.3,
+                shadowRadius: 3,
+                elevation: 4,
+              }}>
+              <Text style={{ color: '#ffffff', fontWeight: '800', fontSize: count < 100 ? 14 : 12 }}>
+                {count}
+              </Text>
+            </View>
+          </Marker>
+        );
+      }}
       style={{ flex: 1, marginBottom: -34 }}
       initialRegion={initialRegion}
       onPress={onPress}
@@ -282,7 +319,8 @@ const SpotMap = React.memo(
       prevProps.pendingEventCoord === nextProps.pendingEventCoord &&
       prevProps.mapStyle === nextProps.mapStyle &&
       prevProps.mapDark === nextProps.mapDark &&
-      prevProps.mapProvider === nextProps.mapProvider
+      prevProps.mapProvider === nextProps.mapProvider &&
+      prevProps.clusterColor === nextProps.clusterColor
     );
   }
 );
@@ -1811,6 +1849,7 @@ export default function Index() {
         mapStyle={mapStyle}
         mapDark={theme.dark}
         mapProvider={mapProvider}
+        clusterColor={c.accent}
       />
       <MapLegend
         style={{ position: 'absolute', top: insets.top + 80, right: 12, alignItems: 'flex-end' }}
