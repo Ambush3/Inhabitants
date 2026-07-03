@@ -676,6 +676,16 @@ export default function Index() {
     friendIds,
   ]);
 
+  const visiblePlaces = useMemo(() => {
+    const spotIds = new Set(visibleSpots.map((s) => s.id));
+    const seen = new Set<string>();
+    return places.filter((p) => {
+      if (spotIds.has(p.id) || seen.has(p.id)) return false;
+      seen.add(p.id);
+      return true;
+    });
+  }, [places, visibleSpots]);
+
   const toggleOwnershipFilter = (key: 'mine' | 'friends' | 'community') =>
     setOwnershipFilter((prev) => {
       const next = new Set(prev);
@@ -1882,7 +1892,7 @@ export default function Index() {
       <SpotMap
         mapRef={mapRef}
         visibleSpots={visibleSpots}
-        places={places}
+        places={visiblePlaces}
         highlightSpotId={highlightSpotId}
         selectedPlaceId={selectedPlaceId}
         session={session}
