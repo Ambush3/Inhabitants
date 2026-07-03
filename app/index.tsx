@@ -773,9 +773,6 @@ export default function Index() {
     resetDifficulty();
 
     if (idToHide) {
-      setTimeout(() => {
-        markerRefs.current[idToHide]?.hideCallout?.();
-      }, 100);
       if (openedFromDeepLinkRef.current) {
         setPlaces([]);
       }
@@ -1799,9 +1796,6 @@ export default function Index() {
           setPlacesWithAutoClear((prev) =>
             prev.some((x) => x.id === resolved.id) ? prev : [...prev, resolved]
           );
-          setTimeout(() => {
-            markerRefs.current[p.id]?.showCallout?.();
-          }, 650);
         }}
         onCycleSpotVisibility={async (spot) => {
           if (actionSheetOpenRef.current) return;
@@ -1908,8 +1902,6 @@ export default function Index() {
           setSelectedPlaceId(null);
           setPreviewSpot(null);
           setPreviewImageUrl(null);
-          markerRefs.current[highlightSpotId ?? '']?.hideCallout?.();
-          markerRefs.current[selectedPlaceId ?? '']?.hideCallout?.();
         }}
         onPanDrag={() => {
           autoCenterRef.current = false;
@@ -2300,7 +2292,6 @@ export default function Index() {
         onClose={() => {
           setPlaceDetailsOpen(false);
           setSelectedPlace(null);
-          markerRefs.current[selectedPlaceId ?? '']?.hideCallout?.();
           setSelectedPlaceId(null);
           openedFromFavoritesRef.current = false;
           closeDetailsModal();
