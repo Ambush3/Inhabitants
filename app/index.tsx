@@ -1877,7 +1877,7 @@ export default function Index() {
         }}
         onRegionChangeComplete={(r: Region) => {
           mapRegionRef.current = r;
-          const shouldShow = r.latitudeDelta < 0.3;
+          const shouldShow = r.latitudeDelta < 0.5;
           setMarkersVisible((prev) => (prev === shouldShow ? prev : shouldShow));
           if (regionWriteTimerRef.current) clearTimeout(regionWriteTimerRef.current);
           regionWriteTimerRef.current = setTimeout(() => {
