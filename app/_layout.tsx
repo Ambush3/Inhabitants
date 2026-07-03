@@ -8,6 +8,17 @@ import { useAuth } from '@/src/hooks/useAuth';
 import { ThemeProvider, useTheme } from '@/src/context/ThemeContext';
 import { ToastProvider } from '@/src/context/ToastContext';
 import { MapProviderProvider } from '@/src/context/MapProviderContext';
+import { ErrorBoundary } from '@/src/components/ErrorBoundary';
+import * as Sentry from '@sentry/react-native';
+
+const SENTRY_DSN = process.env.EXPO_PUBLIC_SENTRY_DSN;
+if (SENTRY_DSN) {
+  Sentry.init({
+    dsn: SENTRY_DSN,
+    tracesSampleRate: 0,
+    enableNative: true,
+  });
+}
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { supabase } from '@/src/libs/supabase';
@@ -129,18 +140,22 @@ function RootLayoutInner() {
   );
 }
 
-export default function RootLayout() {
+function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>
-        <ThemeProvider>
-          <MapProviderProvider>
-            <ToastProvider>
-              <RootLayoutInner />
-            </ToastProvider>
-          </MapProviderProvider>
-        </ThemeProvider>
-      </SafeAreaProvider>
+      <ErrorBoundary>
+        <SafeAreaProvider>
+          <ThemeProvider>
+            <MapProviderProvider>
+              <ToastProvider>
+                <RootLayoutInner />
+              </ToastProvider>
+            </MapProviderProvider>
+          </ThemeProvider>
+        </SafeAreaProvider>
+      </ErrorBoundary>
     </GestureHandlerRootView>
   );
 }
+
+export default Sentry.wrap(RootLayout);
