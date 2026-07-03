@@ -18,6 +18,7 @@
     "@react-navigation/bottom-tabs": "^7.4.0",
     "@react-navigation/elements": "^2.6.3",
     "@react-navigation/native": "^7.1.8",
+    "@sentry/react-native": "~7.2.0",
     "@supabase/supabase-js": "^2.93.3",
     "base64-arraybuffer": "^1.0.2",
     "burnt": "^0.13.0",
