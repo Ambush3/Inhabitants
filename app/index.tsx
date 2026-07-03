@@ -336,6 +336,7 @@ export default function Index() {
   const markerRefs = useRef<Record<string, MapMarker | null>>({});
 
   const placesTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const detailSheetOpenRef = useRef(false);
 
   const highlightSpotIdRef = useRef<string | null>(null);
 
@@ -609,6 +610,10 @@ export default function Index() {
   const [selectedEvent, setSelectedEvent] = useState<SkateEvent | null>(null);
   const [eventDetailsOpen, setEventDetailsOpen] = useState(false);
 
+  useEffect(() => {
+    detailSheetOpenRef.current = detailsOpen || placeDetailsOpen || eventDetailsOpen;
+  }, [detailsOpen, placeDetailsOpen, eventDetailsOpen]);
+
   const [difficultyFilter, setDifficultyFilter] = useState<Set<'beginner' | 'intermediate' | 'advanced'>>(new Set());
   const [ownershipFilter, setOwnershipFilter] = useState<Set<'mine' | 'friends' | 'community'>>(new Set());
   const [mapSearch, setMapSearch] = useState('');
@@ -742,14 +747,16 @@ export default function Index() {
     setSpotCreatorAvatarUrl(null);
     setSpotCreatorBadge(null);
 
-    mapRef.current?.animateToRegion(
-      {
-        ...mapRegionRef.current,
-        latitudeDelta: 0.08,
-        longitudeDelta: 0.08,
-      },
-      400
-    );
+    setTimeout(() => {
+      mapRef.current?.animateToRegion(
+        {
+          ...mapRegionRef.current,
+          latitudeDelta: 0.08,
+          longitudeDelta: 0.08,
+        },
+        400
+      );
+    }, 300);
 
     openedFromPanelRef.current = false;
     resetConditions();
@@ -773,9 +780,16 @@ export default function Index() {
   function setPlacesWithAutoClear(updater: (prev: Place[]) => Place[]) {
     if (placesTimerRef.current) clearTimeout(placesTimerRef.current);
     setPlaces(updater);
-    placesTimerRef.current = setTimeout(() => {
-      setPlaces([]);
-    }, 30000);
+    const scheduleClear = () => {
+      placesTimerRef.current = setTimeout(() => {
+        if (detailSheetOpenRef.current) {
+          scheduleClear();
+        } else {
+          setPlaces([]);
+        }
+      }, 30000);
+    };
+    scheduleClear();
   }
 
   const animateToSpotWithModalOffset = useCallback(
@@ -2278,10 +2292,7 @@ export default function Index() {
           setSelectedPlace(null);
           markerRefs.current[selectedPlaceId ?? '']?.hideCallout?.();
           setSelectedPlaceId(null);
-          if (openedFromFavoritesRef.current) {
-            setPlaces([]);
-            openedFromFavoritesRef.current = false;
-          }
+          openedFromFavoritesRef.current = false;
           closeDetailsModal();
         }}
         isFavorite={selectedPlace ? isPlaceFavorite(selectedPlace.id) : false}
