@@ -6,25 +6,27 @@ export function SelectedPulse({ selected }: { selected: boolean }) {
 
   useEffect(() => {
     if (selected) {
-      Animated.loop(
+      const loop = Animated.loop(
         Animated.sequence([
           Animated.timing(pulseAnim, { toValue: 1, duration: 900, useNativeDriver: true }),
           Animated.timing(pulseAnim, { toValue: 0, duration: 900, useNativeDriver: true }),
         ])
-      ).start();
-    } else {
-      pulseAnim.stopAnimation();
-      pulseAnim.setValue(0);
+      );
+      loop.start();
+      return () => loop.stop();
     }
+    pulseAnim.stopAnimation();
+    pulseAnim.setValue(0);
   }, [selected]);
 
-  if (!selected) return null;
-
-  const opacity = pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.4, 0] });
+  const opacity = selected
+    ? pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.4, 0] })
+    : 0;
   const scale = pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 2.0] });
 
   return (
     <Animated.View
+      pointerEvents="none"
       style={{
         position: 'absolute',
         width: 33,

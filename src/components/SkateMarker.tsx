@@ -12,6 +12,7 @@ type Props = {
     type?: 'skatepark' | 'skateshop';
     onPress?: () => void;
     selected?: boolean;
+    opacity?: number;
 };
 
 const TYPE_CONFIG = {
@@ -34,7 +35,7 @@ const TYPE_CONFIG = {
 };
 
 export const SkateMarker = forwardRef<any, Props>(
-    ({ id, lat, lng, type = 'skatepark', onPress, selected = false }, ref) => {
+    ({ id, lat, lng, type = 'skatepark', onPress, selected = false, opacity = 1 }, ref) => {
         const config = TYPE_CONFIG[type ?? 'skatepark'];
         return (
             <TrackedMarker
@@ -43,6 +44,7 @@ export const SkateMarker = forwardRef<any, Props>(
                 coordinate={{ latitude: lat, longitude: lng }}
                 onPress={onPress}
                 anchor={{ x: 0.5, y: 1.0 }}
+                opacity={opacity}
                 keepActive={selected}
             >
                 <View style={{ alignItems: 'center', justifyContent: 'center' }}>

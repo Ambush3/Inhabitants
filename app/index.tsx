@@ -16,7 +16,6 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import MapView, { Marker, Region, LongPressEvent, MapMarker, PROVIDER_GOOGLE } from 'react-native-maps';
-import MapViewClustering from 'react-native-map-clustering';
 import * as Location from 'expo-location';
 import * as Haptics from 'expo-haptics';
 import { useLocalSearchParams, useFocusEffect, usePathname, router } from 'expo-router';
@@ -120,50 +119,14 @@ const SpotMap = React.memo(
     mapDark,
     mapProvider,
     clusterColor,
+    markersVisible,
   }: any) => (
-    <MapViewClustering
+    <MapView
       key={`${mapProvider}-${mapDark ? 'dark' : 'light'}`}
       ref={mapRef}
       provider={mapProvider === 'google' ? PROVIDER_GOOGLE : undefined}
       customMapStyle={mapProvider === 'google' ? mapStyle : []}
       userInterfaceStyle={mapDark ? 'dark' : 'light'}
-      animationEnabled={false}
-      renderCluster={(cluster: any) => {
-        const { id, geometry, onPress: onClusterPress, properties } = cluster;
-        const count = properties.point_count;
-        const size = count < 10 ? 38 : count < 50 ? 46 : 54;
-        return (
-          <Marker
-            key={`cluster-${id}`}
-            coordinate={{
-              latitude: geometry.coordinates[1],
-              longitude: geometry.coordinates[0],
-            }}
-            onPress={onClusterPress}
-            anchor={{ x: 0.5, y: 0.5 }}>
-            <View
-              style={{
-                width: size,
-                height: size,
-                borderRadius: size / 2,
-                backgroundColor: clusterColor,
-                borderWidth: 2.5,
-                borderColor: '#ffffff',
-                alignItems: 'center',
-                justifyContent: 'center',
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 1 },
-                shadowOpacity: 0.3,
-                shadowRadius: 3,
-                elevation: 4,
-              }}>
-              <Text style={{ color: '#ffffff', fontWeight: '800', fontSize: count < 100 ? 14 : 12 }}>
-                {count}
-              </Text>
-            </View>
-          </Marker>
-        );
-      }}
       style={{ flex: 1, marginBottom: -34 }}
       initialRegion={initialRegion}
       onPress={onPress}
@@ -220,6 +183,7 @@ const SpotMap = React.memo(
                 key={s.id}
                 coordinate={{ latitude: s.lat, longitude: s.lng }}
                 anchor={{ x: 0.5, y: 0.5 }}
+                opacity={markersVisible || s.id === highlightSpotId ? 1 : 0}
                 keepActive={s.id === highlightSpotId}
                 onPress={() => {
                   suppressMapPressRef.current = true;
@@ -238,6 +202,7 @@ const SpotMap = React.memo(
                 key={s.id}
                 coordinate={{ latitude: s.lat, longitude: s.lng }}
                 anchor={{ x: 0.5, y: 0.5 }}
+                opacity={markersVisible || s.id === highlightSpotId ? 1 : 0}
                 keepActive={s.id === highlightSpotId}
                 onPress={() => {
                   suppressMapPressRef.current = true;
@@ -264,6 +229,7 @@ const SpotMap = React.memo(
               name={s.name}
               type={s.spot_type as 'skatepark' | 'skateshop'}
               selected={s.id === highlightSpotId}
+              opacity={markersVisible || s.id === highlightSpotId ? 1 : 0}
               onPress={() => {
                 suppressMapPressRef.current = true;
                 setHighlightSpotId(s.id);
@@ -288,6 +254,7 @@ const SpotMap = React.memo(
             name={p.name}
             type={p.type as 'skatepark' | 'skateshop'}
             selected={p.id === selectedPlaceId}
+            opacity={markersVisible || p.id === selectedPlaceId ? 1 : 0}
             onPress={() => {
               suppressMapPressRef.current = true;
               const communitySpot = spots.find((s: any) => s.id === p.id);
@@ -306,7 +273,7 @@ const SpotMap = React.memo(
             }}
           />
         ))}
-    </MapViewClustering>
+    </MapView>
   ),
   (prevProps, nextProps) => {
     return (
@@ -321,7 +288,8 @@ const SpotMap = React.memo(
       prevProps.mapStyle === nextProps.mapStyle &&
       prevProps.mapDark === nextProps.mapDark &&
       prevProps.mapProvider === nextProps.mapProvider &&
-      prevProps.clusterColor === nextProps.clusterColor
+      prevProps.clusterColor === nextProps.clusterColor &&
+      prevProps.markersVisible === nextProps.markersVisible
     );
   }
 );
@@ -619,6 +587,7 @@ export default function Index() {
   const [mapSearch, setMapSearch] = useState('');
   const [headerHeight, setHeaderHeight] = useState(0);
   const [bannerVisible, setBannerVisible] = useState(false);
+  const [markersVisible, setMarkersVisible] = useState(true);
 
   function matchesDifficultyFilter(spot: Spot): boolean {
     if (difficultyFilter.size === 0) return true;
@@ -1908,6 +1877,8 @@ export default function Index() {
         }}
         onRegionChangeComplete={(r: Region) => {
           mapRegionRef.current = r;
+          const shouldShow = r.latitudeDelta < 0.3;
+          setMarkersVisible((prev) => (prev === shouldShow ? prev : shouldShow));
           if (regionWriteTimerRef.current) clearTimeout(regionWriteTimerRef.current);
           regionWriteTimerRef.current = setTimeout(() => {
             AsyncStorage.setItem('cached_last_map_region', JSON.stringify(r)).catch(() => { });
@@ -1931,6 +1902,7 @@ export default function Index() {
         mapDark={theme.dark}
         mapProvider={mapProvider}
         clusterColor={c.accent}
+        markersVisible={markersVisible}
       />
       {!detailsOpen && !placeDetailsOpen && !eventDetailsOpen ? (
         <>
