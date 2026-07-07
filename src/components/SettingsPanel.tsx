@@ -17,6 +17,7 @@ import { ThemePickerModal } from '@/src/components/ThemePickerModal';
 import * as ImagePicker from 'expo-image-picker';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { decode } from 'base64-arraybuffer';
+import * as Application from 'expo-application';
 
 type Props = {
   visible: boolean;
@@ -504,6 +505,16 @@ export function SettingsPanel({
                 </View>
                 <Ionicons name="chevron-forward" size={16} color={c.subtext} />
               </Pressable>
+
+              <Text
+                style={{
+                  textAlign: 'center',
+                  fontSize: 12,
+                  color: c.subtext,
+                  marginTop: 24,
+                }}>
+                v{Application.nativeApplicationVersion} ({Application.nativeBuildVersion})
+              </Text>
 
               <View style={{ height: 32 }} />
             </ScrollView>

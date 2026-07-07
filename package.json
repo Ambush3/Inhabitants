@@ -23,6 +23,7 @@
     "base64-arraybuffer": "^1.0.2",
     "burnt": "^0.13.0",
     "expo": "~54.0.34",
+    "expo-application": "~7.0.8",
     "expo-constants": "~18.0.13",
     "expo-contacts": "~15.0.11",
     "expo-dev-client": "~6.0.21",
