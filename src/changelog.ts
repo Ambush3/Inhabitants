@@ -1,5 +1,20 @@
 export const changelog = [
   {
+    version: '1.9.0',
+    date: 'July 2026',
+    changes: [
+      'Choose your map — new Apple Maps / Google Maps toggle in Settings',
+      'Custom themes — pick from named color themes in Settings',
+      'Search this area — re-search and filter the map from a control at the top',
+      'Smoother map — faster panning, cached images, and cleaner marker clustering when zoomed out',
+      'Selected pins now pulse, and tapping a pin no longer reloads it',
+      'Toast notifications for a lighter, less intrusive experience',
+      'Crash reporting added so bugs get fixed faster',
+      'App version now shown at the bottom of Settings',
+      'Dark mode fixes for Google Maps and the Passport streak grid',
+    ],
+  },
+  {
     version: '1.8.0',
     date: 'June 2026',
     changes: [
