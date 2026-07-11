@@ -1757,14 +1757,19 @@ export default function Index() {
           setPanelOpen(false);
           openedFromFavoritesRef.current = true;
           setSelectedPlaceId(p.id);
-          animateToSpotWithModalOffset(p.lat, p.lng, 'small');
-          const full = await fetchPlaceById(p.id);
-          const resolved = full ?? p;
-          setSelectedPlace(resolved);
+          setSelectedPlace(p);
           setPlaceDetailsOpen(true);
           setPlacesWithAutoClear((prev) =>
-            prev.some((x) => x.id === resolved.id) ? prev : [...prev, resolved]
+            prev.some((x) => x.id === p.id) ? prev : [...prev, p]
           );
+          animateToSpotWithModalOffset(p.lat, p.lng, 'small');
+          const full = await fetchPlaceById(p.id);
+          if (full) {
+            setSelectedPlace(full);
+            setPlacesWithAutoClear((prev) =>
+              prev.map((x) => (x.id === full.id ? full : x))
+            );
+          }
         }}
         onCycleSpotVisibility={async (spot) => {
           if (actionSheetOpenRef.current) return;
