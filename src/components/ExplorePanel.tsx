@@ -198,6 +198,9 @@ export function ExplorePanel({
   const [myUsername, setMyUsername] = useState<string | null>(null);
 
   const [topRatedSearched, setTopRatedSearched] = useState(false);
+  const [topRatedFilter, setTopRatedFilter] = useState<'all' | 'spot' | 'skatepark' | 'skateshop'>(
+    'all'
+  );
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
 
   const [eventFilter, setEventFilter] = useState<'all' | 'public' | 'friends' | 'invited'>(
@@ -879,46 +882,108 @@ export function ExplorePanel({
                       opacity: 0.6,
                       marginTop: 8,
                     }}>
-                    No top rated spots found nearby.
+                    No top rated results found nearby.
                   </Text>
                 ) : null}
 
                 {topRated.length > 0 ? (
                   <View style={{ marginBottom: 16 }}>
-                    {topRated.filter((s) => s.spot_type === 'spot').length === 0 ? (
-                      <Text
-                        style={{
-                          color: c.subtext,
-                          fontSize: 13,
-                          opacity: 0.6,
-                        }}>
-                        No top rated spots nearby.
-                      </Text>
-                    ) : (
-                      topRated
-                        .filter((s) => s.spot_type === 'spot')
-                        .map((s, index) => (
-                          <AnimatedSpotCard key={s.id} index={index}>
-                            <Pressable
+                    <View
+                      style={{
+                        flexDirection: 'row',
+                        gap: 6,
+                        marginBottom: 10,
+                      }}>
+                      {(
+                        [
+                          { key: 'all', label: 'All' },
+                          { key: 'spot', label: 'Spots' },
+                          { key: 'skatepark', label: 'Parks' },
+                          { key: 'skateshop', label: 'Shops' },
+                        ] as const
+                      ).map((chip) => {
+                        const active = topRatedFilter === chip.key;
+                        return (
+                          <Pressable
+                            key={chip.key}
+                            onPress={() => setTopRatedFilter(chip.key)}
+                            style={{
+                              paddingVertical: 6,
+                              paddingHorizontal: 12,
+                              borderRadius: 999,
+                              backgroundColor: active ? c.text : c.tagBg,
+                            }}>
+                            <Text
                               style={{
-                                paddingVertical: 10,
-                                borderBottomWidth: 1,
-                                borderColor: c.border,
-                              }}
-                              onPress={() => {
-                                if ('isPlace' in s && s.isPlace) {
-                                  onSelectPlace({
-                                    id: s.id,
-                                    name: s.name,
-                                    lat: s.lat,
-                                    lng: s.lng,
-                                    type: s.type as 'skatepark' | 'skateshop',
-                                    tags: {},
-                                  });
-                                } else {
-                                  onSelectSpot(s as Spot);
-                                }
+                                fontSize: 12,
+                                fontWeight: '600',
+                                color: active ? c.background : c.text,
                               }}>
+                              {chip.label}
+                            </Text>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                    {(() => {
+                      const filtered =
+                        topRatedFilter === 'all'
+                          ? topRated
+                          : topRated.filter((s) => s.spot_type === topRatedFilter);
+                      if (filtered.length === 0) {
+                        return (
+                          <Text
+                            style={{
+                              color: c.subtext,
+                              fontSize: 13,
+                              opacity: 0.6,
+                            }}>
+                            No top rated {topRatedFilter === 'skatepark'
+                              ? 'parks'
+                              : topRatedFilter === 'skateshop'
+                                ? 'shops'
+                                : 'spots'}{' '}
+                            nearby.
+                          </Text>
+                        );
+                      }
+                      return filtered.map((s, index) => (
+                        <AnimatedSpotCard key={s.id} index={index}>
+                          <Pressable
+                            style={{
+                              paddingVertical: 10,
+                              borderBottomWidth: 1,
+                              borderColor: c.border,
+                              flexDirection: 'row',
+                              alignItems: 'center',
+                              gap: 10,
+                            }}
+                            onPress={() => {
+                              if ('isPlace' in s && s.isPlace) {
+                                onSelectPlace({
+                                  id: s.id,
+                                  name: s.name,
+                                  lat: s.lat,
+                                  lng: s.lng,
+                                  type: s.type as 'skatepark' | 'skateshop',
+                                  tags: {},
+                                });
+                              } else {
+                                onSelectSpot(s as Spot);
+                              }
+                            }}>
+                            <Image
+                              source={
+                                s.spot_type === 'skatepark'
+                                  ? require('@/assets/pin-images/skatepark-ramp.png')
+                                  : s.spot_type === 'skateshop'
+                                    ? require('@/assets/pin-images/skate-shop.png')
+                                    : require('@/assets/pin-images/icons8-skateboard-100.png')
+                              }
+                              style={{ width: 22, height: 22 }}
+                              tintColor={c.subtext}
+                            />
+                            <View style={{ flex: 1 }}>
                               <Text
                                 style={{
                                   fontWeight: '600',
@@ -934,10 +999,11 @@ export function ExplorePanel({
                                 }}>
                                 {s.avg.toFixed(1)} ★ ({s.count})
                               </Text>
-                            </Pressable>
-                          </AnimatedSpotCard>
-                        ))
-                    )}
+                            </View>
+                          </Pressable>
+                        </AnimatedSpotCard>
+                      ));
+                    })()}
                   </View>
                 ) : null}
               </View>
