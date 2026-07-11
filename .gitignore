@@ -46,6 +46,7 @@ app-example
 
 # local env files
 .env
+.prettierrc
 
 # deps / build
 build/
