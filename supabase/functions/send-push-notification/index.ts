@@ -187,7 +187,15 @@ Deno.serve(async (req) => {
                 .from('push_tokens')
                 .select('user_id, token')
                 .in('user_id', recipients);
-            const tokens = (tokenRows ?? []).map((r: any) => r.token).filter(Boolean);
+            const { data: actorTokenRows } = actor_id
+                ? await supabase.from('push_tokens').select('token').eq('user_id', actor_id)
+                : { data: [] };
+            const actorTokens = new Set(
+                (actorTokenRows ?? []).map((r: any) => r.token).filter(Boolean)
+            );
+            const tokens = (tokenRows ?? [])
+                .map((r: any) => r.token)
+                .filter((t: string) => t && !actorTokens.has(t));
             if (tokens.length === 0)
                 return new Response(JSON.stringify({ inserted: true }), { status: 200 });
             const title =
