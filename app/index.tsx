@@ -2590,21 +2590,31 @@ export default function Index() {
         visible={citiesOpen}
         onClose={() => setCitiesOpen(false)}
         onSelectCity={(city) => {
-          setCitiesOpen(false);
-          setPanelOpen(false);
-          const region = {
-            latitude: city.latitude,
-            longitude: city.longitude,
-            latitudeDelta: city.latitudeDelta,
-            longitudeDelta: city.longitudeDelta,
-          };
-          mapRegionRef.current = region;
-          mapRef.current?.animateToRegion(region, 800);
-          toast.show(`Exploring ${city.name}`);
-          loadTopRatedSpotsInArea(region, 10);
-          setTimeout(() => {
-            clearTopRated();
-          }, 60000);
+          requireAuth(async () => {
+            setCitiesOpen(false);
+            setPanelOpen(false);
+            const region = {
+              latitude: city.latitude,
+              longitude: city.longitude,
+              latitudeDelta: city.latitudeDelta,
+              longitudeDelta: city.longitudeDelta,
+            };
+            mapRegionRef.current = region;
+            mapRef.current?.animateToRegion(region, 800);
+            setPlacesWithAutoClear(() => []);
+
+            const spotsInCity = spots.filter(
+              (s) =>
+                s.spot_type === 'spot' &&
+                Math.abs(s.lat - city.latitude) <= city.latitudeDelta &&
+                Math.abs(s.lng - city.longitude) <= city.longitudeDelta
+            );
+            toast.show(
+              spotsInCity.length === 0
+                ? `No spots in ${city.name} yet — be the first to add one!`
+                : `Exploring ${city.name}`
+            );
+          });
         }}
       />
       <CreateEventModal
