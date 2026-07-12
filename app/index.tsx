@@ -113,6 +113,8 @@ const SpotMap = React.memo(
     setSelectedPlaceId,
     setSelectedPlace,
     setPlaceDetailsOpen,
+    setSelectedEvent,
+    setEventDetailsOpen,
     spots,
     events,
     pendingEventCoord,
@@ -273,6 +275,36 @@ const SpotMap = React.memo(
               }
             }}
           />
+        ))}
+      {events
+        .filter((e: any) => e.visibility === 'public' && e.lat != null && e.lng != null)
+        .map((e: any) => (
+          <TrackedMarker
+            key={`event-${e.id}`}
+            coordinate={{ latitude: e.lat, longitude: e.lng }}
+            anchor={{ x: 0.5, y: 0.5 }}
+            opacity={markersVisible ? 1 : 0}
+            onPress={() => {
+              suppressMapPressRef.current = true;
+              setSelectedEvent(e);
+              setEventDetailsOpen(true);
+              animateToSpotWithModalOffset(e.lat, e.lng, 'small');
+            }}>
+            <View style={{ width: 34, height: 34, alignItems: 'center', justifyContent: 'center' }}>
+              <View
+                style={{
+                  backgroundColor: '#FF9500',
+                  borderRadius: 16,
+                  padding: 6,
+                  borderWidth: 2,
+                  borderColor: 'white',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                <Ionicons name="calendar" size={14} color="white" />
+              </View>
+            </View>
+          </TrackedMarker>
         ))}
     </MapView>
   ),
@@ -1941,6 +1973,8 @@ export default function Index() {
         setSelectedPlaceId={setSelectedPlaceId}
         setSelectedPlace={setSelectedPlace}
         setPlaceDetailsOpen={setPlaceDetailsOpen}
+        setSelectedEvent={setSelectedEvent}
+        setEventDetailsOpen={setEventDetailsOpen}
         spots={spots}
         events={events}
         pendingEventCoord={pendingEventCoord}
