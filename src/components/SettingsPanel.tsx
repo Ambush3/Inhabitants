@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { showAlert } from '@/src/components/ui/ThemedAlert';
+import { showAlert, AlertHost } from '@/src/components/ui/ThemedAlert';
 import { View, Text, Modal, Pressable, Switch, ScrollView } from 'react-native';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -8,7 +8,7 @@ import { supabase } from '@/src/libs/supabase';
 import { Session } from '@supabase/supabase-js';
 import { useTheme } from '@/src/context/ThemeContext';
 import { useMapProvider } from '@/src/context/MapProviderContext';
-import { useToast } from '@/src/context/ToastContext';
+import { useToast, ToastHost } from '@/src/context/ToastContext';
 import { changelog } from '@/src/changelog';
 import { useNotificationPreferences, NotificationPrefs } from '@/src/hooks/useNotificationPreferences';
 import { FeedbackBoardModal } from '@/src/components/feedback/FeedbackBoardModal';
@@ -227,6 +227,8 @@ export function SettingsPanel({
   return (
     <>
       <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      {visible ? <AlertHost /> : null}
+      {visible ? <ToastHost /> : null}
         <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)' }} onPress={onClose}>
           <Pressable
             style={{

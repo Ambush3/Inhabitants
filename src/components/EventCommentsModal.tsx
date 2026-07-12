@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { showAlert } from '@/src/components/ui/ThemedAlert';
+import { showAlert, AlertHost } from '@/src/components/ui/ThemedAlert';
 import {
   View,
   Text,
@@ -13,7 +13,7 @@ import {
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/src/context/ThemeContext';
-import { useToast } from '@/src/context/ToastContext';
+import { useToast, ToastHost } from '@/src/context/ToastContext';
 import { useEventComments, EventComment } from '@/src/hooks/useEventComments';
 
 type Props = {
@@ -96,6 +96,8 @@ export function EventCommentsModal({
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      {visible ? <AlertHost /> : null}
+      {visible ? <ToastHost /> : null}
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1, justifyContent: 'flex-end' }}>

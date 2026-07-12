@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { showAlert } from '@/src/components/ui/ThemedAlert';
+import { showAlert, AlertHost } from '@/src/components/ui/ThemedAlert';
 import {
   View,
   Text,
@@ -25,7 +25,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
 import * as Location from 'expo-location';
 import { useTheme } from '@/src/context/ThemeContext';
-import { useToast } from '@/src/context/ToastContext';
+import { useToast, ToastHost } from '@/src/context/ToastContext';
 
 import { CONDITION_META, SpotCondition } from '@/src/hooks/useSpotConditions';
 import { useCheckIns } from '@/src/hooks/useCheckIns';
@@ -480,6 +480,8 @@ export function SpotDetailsModal({
         if (imageViewerOpen) return;
         onClose();
       }}>
+      {visible ? <AlertHost /> : null}
+      {visible ? <ToastHost /> : null}
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1, justifyContent: 'flex-end' }}>

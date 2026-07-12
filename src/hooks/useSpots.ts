@@ -2,6 +2,13 @@ import { useState } from 'react';
 import { supabase } from '@/src/libs/supabase';
 import { Spot } from '@/src/types';
 import { moderateText } from '@/src/libs/moderator/textModerator';
+import { haversineMeters } from '@/src/libs/distance';
+
+const DUPLICATE_RADIUS_METERS = 40;
+
+function normalizeSpotName(name: string): string {
+  return name.trim().toLowerCase().replace(/[\s\-_.]+/g, '');
+}
 
 export type SpotVisibility = 'public' | 'friends' | 'private';
 
@@ -288,6 +295,32 @@ export function useSpots() {
     setMySpots((prev) => prev.map((s) => (s.id === id ? { ...s, ...fields } : s)));
   }
 
+  async function findNearbyDuplicate(lat: number, lng: number, name: string): Promise<Spot | null> {
+    const target = normalizeSpotName(name);
+    if (!target) return null;
+
+    const delta = 0.0007;
+    const { data } = await supabase
+      .from('spots')
+      .select('*')
+      .eq('is_flagged', false)
+      .gte('lat', lat - delta)
+      .lte('lat', lat + delta)
+      .gte('lng', lng - delta)
+      .lte('lng', lng + delta);
+
+    for (const s of (data ?? []) as Spot[]) {
+      if (s.lat == null || s.lng == null) continue;
+      if (haversineMeters(lat, lng, s.lat, s.lng) > DUPLICATE_RADIUS_METERS) continue;
+      const existing = normalizeSpotName(s.name);
+      if (!existing) continue;
+      if (existing === target || existing.includes(target) || target.includes(existing)) {
+        return s;
+      }
+    }
+    return null;
+  }
+
   return {
     spots,
     mySpots,
@@ -299,6 +332,7 @@ export function useSpots() {
     reload,
     loadMySpots,
     createSpotAt,
+    findNearbyDuplicate,
     deleteSpotById,
     searchResults,
     searching,

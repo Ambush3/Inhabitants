@@ -123,12 +123,14 @@ const SpotMap = React.memo(
     mapProvider,
     clusterColor,
     markersVisible,
+    mapType,
   }: any) => (
     <MapView
       key={`${mapProvider}-${mapDark ? 'dark' : 'light'}`}
       ref={mapRef}
       provider={mapProvider === 'google' ? PROVIDER_GOOGLE : undefined}
-      customMapStyle={mapProvider === 'google' ? mapStyle : []}
+      mapType={mapType}
+      customMapStyle={mapProvider === 'google' && mapType === 'standard' ? mapStyle : []}
       userInterfaceStyle={mapDark ? 'dark' : 'light'}
       style={{ flex: 1, marginBottom: -34 }}
       initialRegion={initialRegion}
@@ -136,7 +138,7 @@ const SpotMap = React.memo(
       onPanDrag={onPanDrag}
       onRegionChangeComplete={onRegionChangeComplete}
       showsUserLocation
-      showsMyLocationButton
+      showsMyLocationButton={false}
       followsUserLocation={false}
       onLongPress={onLongPress}>
       {pendingCoord ? (
@@ -321,6 +323,7 @@ const SpotMap = React.memo(
       prevProps.mapStyle === nextProps.mapStyle &&
       prevProps.mapDark === nextProps.mapDark &&
       prevProps.mapProvider === nextProps.mapProvider &&
+      prevProps.mapType === nextProps.mapType &&
       prevProps.clusterColor === nextProps.clusterColor &&
       prevProps.markersVisible === nextProps.markersVisible
     );
@@ -550,7 +553,7 @@ export default function Index() {
   const [isVetted, setIsVetted] = useState(false);
 
   const { theme, loadThemeForUser } = useTheme();
-  const { mapProvider } = useMapProvider();
+  const { mapProvider, mapType, setMapType } = useMapProvider();
   const toast = useToast();
   const c = theme.colors;
 
@@ -568,6 +571,7 @@ export default function Index() {
     reload,
     loadMySpots,
     createSpotAt,
+    findNearbyDuplicate,
     deleteSpotById,
     searchResults,
     searchByTag,
@@ -1981,6 +1985,7 @@ export default function Index() {
         mapStyle={mapStyle}
         mapDark={theme.dark}
         mapProvider={mapProvider}
+        mapType={mapType}
         clusterColor={c.accent}
         markersVisible={markersVisible}
       />
@@ -1998,33 +2003,66 @@ export default function Index() {
           <MapLegend
             style={{ position: 'absolute', top: (headerHeight || insets.top + 56) + 112, right: 12, alignItems: 'flex-end' }}
           />
-          {mapProvider !== 'google' ? (
-            <Pressable
-              onPress={recenterToUser}
-              disabled={locating}
-              style={{
-                position: 'absolute',
-                bottom: 40,
-                right: 16,
-                width: 44,
-                height: 44,
-                borderRadius: 22,
-                backgroundColor: c.surface,
-                alignItems: 'center',
-                justifyContent: 'center',
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.25,
-                shadowRadius: 4,
-                elevation: 4,
-              }}>
-              <Ionicons
-                name={locating ? 'ellipsis-horizontal' : 'locate'}
-                size={22}
-                color={c.accent}
-              />
-            </Pressable>
-          ) : null}
+          <Pressable
+            onPress={recenterToUser}
+            disabled={locating}
+            style={{
+              position: 'absolute',
+              bottom: 40,
+              right: 16,
+              width: 44,
+              height: 44,
+              borderRadius: 22,
+              backgroundColor: c.surface,
+              alignItems: 'center',
+              justifyContent: 'center',
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.25,
+              shadowRadius: 4,
+              elevation: 4,
+            }}>
+            <Ionicons
+              name={locating ? 'ellipsis-horizontal' : 'locate'}
+              size={22}
+              color={c.accent}
+            />
+          </Pressable>
+          <Pressable
+            onPress={() => {
+              const next =
+                mapType === 'standard'
+                  ? 'satellite'
+                  : mapType === 'satellite'
+                    ? 'hybrid'
+                    : 'standard';
+              setMapType(next);
+              toast.show(
+                next === 'standard' ? 'Standard' : next === 'satellite' ? 'Satellite' : 'Hybrid'
+              );
+            }}
+            style={{
+              position: 'absolute',
+              bottom: 92,
+              right: 16,
+              width: 44,
+              height: 44,
+              borderRadius: 22,
+              backgroundColor: c.surface,
+              alignItems: 'center',
+              justifyContent: 'center',
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.25,
+              shadowRadius: 4,
+              elevation: 4,
+            }}>
+            <Ionicons
+              name={mapType === 'standard' ? 'layers-outline' : 'layers'}
+              size={22}
+              color={c.accent}
+            />
+          </Pressable>
         </>
       ) : null}
       {locating ? (
@@ -2148,6 +2186,29 @@ export default function Index() {
         onChangeVisibility={setCreateSpotVisibility}
         onCreate={async () => {
           if (!pendingCoord) return;
+          const duplicate = await findNearbyDuplicate(pendingCoord.lat, pendingCoord.lng, spotName);
+          if (duplicate) {
+            showAlert(
+              'Spot already exists',
+              `"${duplicate.name}" is already here. View it instead of creating a duplicate.`,
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'View spot',
+                  onPress: () => {
+                    setTimeout(() => {
+                      closeCreateModal();
+                      setHighlightSpotId(duplicate.id);
+                      highlightSpotIdRef.current = duplicate.id;
+                      animateToSpotWithModalOffset(duplicate.lat, duplicate.lng);
+                      setTimeout(() => openSpotDetails(duplicate), 450);
+                    }, 300);
+                  },
+                },
+              ]
+            );
+            return;
+          }
           const newSpot = await createSpotAt(
             pendingCoord.lat,
             pendingCoord.lng,

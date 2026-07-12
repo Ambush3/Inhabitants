@@ -1,4 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { AlertHost } from '@/src/components/ui/ThemedAlert';
+import { ToastHost } from '@/src/context/ToastContext';
 import {
   View,
   Text,
@@ -130,6 +132,8 @@ export function CreateSpotModal({
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onCancel}>
+      {visible ? <AlertHost /> : null}
+      {visible ? <ToastHost /> : null}
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <Pressable
           style={{
