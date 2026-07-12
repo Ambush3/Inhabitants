@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { showAlert } from '@/src/components/ui/ThemedAlert';
+import { showAlert, AlertHost } from '@/src/components/ui/ThemedAlert';
 import {
   View,
   Text,
@@ -138,6 +138,7 @@ export function EventDetailsModal({
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      {visible ? <AlertHost /> : null}
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1, justifyContent: 'flex-end' }}>

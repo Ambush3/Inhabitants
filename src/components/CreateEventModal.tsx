@@ -19,7 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/src/context/ThemeContext';
-import { useToast } from '@/src/context/ToastContext';
+import { useToast, ToastHost } from '@/src/context/ToastContext';
 import { EventVisibility, SkateEvent } from '@/src/hooks/useEvents';
 import { useCrews } from '@/src/hooks/useCrews';
 import { Spot } from '@/src/types';
@@ -275,6 +275,7 @@ export function CreateEventModal({ visible, onClose, onSubmit, pendingCoord, spo
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      {visible ? <ToastHost /> : null}
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' }} onPress={onClose} />
         <View
