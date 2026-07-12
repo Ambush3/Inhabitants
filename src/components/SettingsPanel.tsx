@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Modal, Pressable, Switch, Alert, ScrollView } from 'react-native';
+import { showAlert } from '@/src/components/ui/ThemedAlert';
+import { View, Text, Modal, Pressable, Switch, ScrollView } from 'react-native';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -186,7 +187,7 @@ export function SettingsPanel({
   }
 
   function handleDeleteAccount() {
-    Alert.alert(
+    showAlert(
       'Delete Account',
       'This will permanently delete your account and all your data. This cannot be undone.',
       [
@@ -358,7 +359,7 @@ export function SettingsPanel({
               {!session ? (
                 <Pressable
                   onPress={() =>
-                    Alert.alert(
+                    showAlert(
                       'Sign in required',
                       'Create a free account to manage privacy and account settings.',
                       [{ text: 'OK' }]

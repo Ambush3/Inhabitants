@@ -226,8 +226,11 @@ export function useEvents() {
     title: string,
     description: string,
     locationName: string,
+    lat: number | null,
+    lng: number | null,
     eventDate: Date,
-    visibility: EventVisibility
+    visibility: EventVisibility,
+    spotId: string | null
   ): Promise<string | null> {
     const titleCheck = moderateText(title.trim());
     if (!titleCheck.allowed) return titleCheck.reason ?? 'Inappropriate content in title.';
@@ -245,8 +248,11 @@ export function useEvents() {
         title: title.trim(),
         description: description.trim() || null,
         location_name: locationName.trim(),
+        lat,
+        lng,
         event_date: eventDate.toISOString(),
         visibility,
+        spot_id: spotId ?? null,
       })
       .eq('id', eventId);
     if (error) return error.message;

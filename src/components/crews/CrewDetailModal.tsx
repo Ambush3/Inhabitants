@@ -1,18 +1,18 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { showAlert, AlertHost } from '@/src/components/ui/ThemedAlert';
 import {
   View,
   Text,
   Modal,
   Pressable,
   ScrollView,
-  Alert,
   TextInput,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/src/context/ThemeContext';
-import { useToast } from '@/src/context/ToastContext';
+import { useToast, ToastHost } from '@/src/context/ToastContext';
 import { Crew, CrewMember, useCrews } from '@/src/hooks/useCrews';
 import { Spot } from '@/src/types';
 import { supabase } from '@/src/libs/supabase';
@@ -118,7 +118,7 @@ export function CrewDetailModal({ visible, onClose, crewId, onEdit, onSelectSpot
 
   async function handleLeave() {
     if (!crew) return;
-    Alert.alert('Leave crew?', `Leave "${crew.name}"?`, [
+    showAlert('Leave crew?', `Leave "${crew.name}"?`, [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Leave',
@@ -134,7 +134,7 @@ export function CrewDetailModal({ visible, onClose, crewId, onEdit, onSelectSpot
 
   async function handleDelete() {
     if (!crew) return;
-    Alert.alert('Delete crew?', `Permanently delete "${crew.name}"?`, [
+    showAlert('Delete crew?', `Permanently delete "${crew.name}"?`, [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',
@@ -168,7 +168,7 @@ export function CrewDetailModal({ visible, onClose, crewId, onEdit, onSelectSpot
 
   async function handleRemoveMember(userId: string) {
     if (!crew) return;
-    Alert.alert('Remove member?', undefined, [
+    showAlert('Remove member?', undefined, [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Remove',
@@ -198,6 +198,8 @@ export function CrewDetailModal({ visible, onClose, crewId, onEdit, onSelectSpot
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+      {visible ? <AlertHost /> : null}
+      {visible ? <ToastHost /> : null}
       <View style={{ flex: 1, backgroundColor: c.background }}>
         <View
           style={{

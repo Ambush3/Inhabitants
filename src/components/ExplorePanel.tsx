@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, Modal, ScrollView, Pressable, TextInput, Alert } from 'react-native';
+import { showAlert } from '@/src/components/ui/ThemedAlert';
+import { View, Text, Modal, ScrollView, Pressable, TextInput } from 'react-native';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -1794,7 +1795,7 @@ export function ExplorePanel({
                           onPress={() => onSelectEvent(event)}
                           onLongPress={() => {
                             if (!isOwn) return;
-                            Alert.alert('Delete Event', `Delete "${event.title}"?`, [
+                            showAlert('Delete Event', `Delete "${event.title}"?`, [
                               { text: 'Cancel', style: 'cancel' },
                               {
                                 text: 'Delete',

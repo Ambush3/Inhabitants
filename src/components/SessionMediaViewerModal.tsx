@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { showAlert, AlertHost } from '@/src/components/ui/ThemedAlert';
 import {
   View,
   Text,
@@ -10,7 +11,6 @@ import {
   Platform,
   StyleSheet,
   ActivityIndicator,
-  Alert,
   Dimensions,
   Image as RNImage,
 } from 'react-native';
@@ -19,7 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useTheme } from '@/src/context/ThemeContext';
-import { useToast } from '@/src/context/ToastContext';
+import { useToast, ToastHost } from '@/src/context/ToastContext';
 import * as Haptics from 'expo-haptics';
 import { useCheckInMediaComments, CheckInMediaComment } from '@/src/hooks/useCheckInMediaComments';
 import { useCheckInMediaLikes } from '@/src/hooks/useCheckInMediaLikes';
@@ -67,7 +67,7 @@ function CommentRow({ item, currentUserId, c, mediaId, deleteComment, updateComm
   }
 
   function handleFlag() {
-    Alert.alert('Flag comment', 'Why are you reporting this?', [
+    showAlert('Flag comment', 'Why are you reporting this?', [
       ...FLAG_REASONS.map((reason) => ({
         text: reason,
         onPress: () => flagComment(item.id, reason),
@@ -257,6 +257,8 @@ export function SessionMediaViewerModal({
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+      {visible ? <AlertHost /> : null}
+      {visible ? <ToastHost /> : null}
       <KeyboardAvoidingView
         style={{ flex: 1, backgroundColor: c.background, paddingTop: insets.top }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>

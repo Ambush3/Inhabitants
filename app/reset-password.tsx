@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { showAlert } from '@/src/components/ui/ThemedAlert';
 import {
   Text,
   TextInput,
@@ -7,7 +8,6 @@ import {
   Platform,
   ScrollView,
   View,
-  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "@/src/hooks/useAuth";
@@ -46,7 +46,7 @@ export default function ResetPasswordScreen() {
     if (err) {
       console.log("err value:", JSON.stringify(err));
       if (err.toLowerCase().includes("session")) {
-        Alert.alert(
+        showAlert(
           "Link Expired",
           "Your reset link has expired. Please request a new one.",
           [{ text: "OK", onPress: () => router.replace("/auth") }],
@@ -56,7 +56,7 @@ export default function ResetPasswordScreen() {
       setError(err);
       return;
     }
-    Alert.alert("Success", "Your password has been updated.", [
+    showAlert("Success", "Your password has been updated.", [
       { text: "OK", onPress: () => router.replace("/") },
     ]);
   }

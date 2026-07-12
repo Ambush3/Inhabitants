@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { showAlert, AlertHost } from '@/src/components/ui/ThemedAlert';
 import {
   View,
   Text,
@@ -9,13 +10,12 @@ import {
   SafeAreaView,
   KeyboardAvoidingView,
   Platform,
-  Alert,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/src/libs/supabase';
 import { useTheme } from '@/src/context/ThemeContext';
-import { useToast } from '@/src/context/ToastContext';
+import { useToast, ToastHost } from '@/src/context/ToastContext';
 import { Spot } from '@/src/types';
 import { useFriendships, Friend } from '@/src/hooks/social/useFriendships';
 import { useCollections, Collection } from '@/src/hooks/useCollections';
@@ -217,6 +217,8 @@ export function ProfileModal({
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+      {visible ? <AlertHost /> : null}
+      {visible ? <ToastHost /> : null}
       <SafeAreaView style={{ flex: 1, backgroundColor: c.surface }}>
         {/* ── Header ── */}
         <View
@@ -766,7 +768,7 @@ export function ProfileModal({
                             <Pressable
                               disabled={selectedFriendIds.size === 0 || bulkRemoving}
                               onPress={() =>
-                                Alert.alert(
+                                showAlert(
                                   `Remove ${selectedFriendIds.size} friend${selectedFriendIds.size === 1 ? '' : 's'}?`,
                                   undefined,
                                   [
@@ -1133,7 +1135,7 @@ export function ProfileModal({
                                       </View>
                                       <Pressable
                                         onPress={() =>
-                                          Alert.alert(
+                                          showAlert(
                                             'Delete entry?',
                                             'This cannot be undone.',
                                             [
@@ -1305,7 +1307,7 @@ export function ProfileModal({
                                         </Pressable>
                                         <Pressable
                                           onPress={() =>
-                                            Alert.alert('Delete check-in?', undefined, [
+                                            showAlert('Delete check-in?', undefined, [
                                               { text: 'Cancel', style: 'cancel' },
                                               {
                                                 text: 'Delete',

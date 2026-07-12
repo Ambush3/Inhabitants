@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { showAlert, AlertHost } from '@/src/components/ui/ThemedAlert';
 import {
   View,
   Text,
@@ -7,7 +8,6 @@ import {
   TextInput,
   FlatList,
   Image,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
@@ -15,7 +15,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/src/context/ThemeContext';
-import { useToast } from '@/src/context/ToastContext';
+import { useToast, ToastHost } from '@/src/context/ToastContext';
 import { useFeedbackComments } from '@/src/hooks/useFeedbackComments';
 import { FeedbackPost } from '@/src/hooks/useFeedback';
 
@@ -64,7 +64,7 @@ export function FeedbackPostModal({ visible, post, currentUserId, onClose, onVot
   }
 
   function confirmReportComment(commentId: string) {
-    Alert.alert('Report comment?', 'Flag this comment for review.', [
+    showAlert('Report comment?', 'Flag this comment for review.', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Report',
@@ -79,7 +79,7 @@ export function FeedbackPostModal({ visible, post, currentUserId, onClose, onVot
 
   function confirmDeleteComment(commentId: string) {
     if (!post) return;
-    Alert.alert('Delete comment?', undefined, [
+    showAlert('Delete comment?', undefined, [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',
@@ -91,6 +91,8 @@ export function FeedbackPostModal({ visible, post, currentUserId, onClose, onVot
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+      {visible ? <AlertHost /> : null}
+      {visible ? <ToastHost /> : null}
       <KeyboardAvoidingView
         style={{ flex: 1, backgroundColor: c.background }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>

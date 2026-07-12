@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Pressable, Alert } from 'react-native';
+import { showAlert } from '@/src/components/ui/ThemedAlert';
+import { View, Text, Pressable } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/src/context/ThemeContext';
@@ -70,7 +71,7 @@ export function MyMediaGrid({ userId, onViewProfile }: Props) {
           <Pressable
             disabled={selectedIds.size === 0}
             onPress={() =>
-              Alert.alert(
+              showAlert(
                 `Delete ${selectedIds.size} item${selectedIds.size === 1 ? '' : 's'}?`,
                 'This removes them everywhere.',
                 [
@@ -146,7 +147,7 @@ export function MyMediaGrid({ userId, onViewProfile }: Props) {
               ) : (
                 <Pressable
                   onPress={() =>
-                    Alert.alert('Delete this?', 'This removes it everywhere.', [
+                    showAlert('Delete this?', 'This removes it everywhere.', [
                       { text: 'Cancel', style: 'cancel' },
                       { text: 'Delete', style: 'destructive', onPress: () => media.deleteMedia(m) },
                     ])

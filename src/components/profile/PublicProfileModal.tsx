@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Modal, ScrollView, Pressable, SafeAreaView, Alert } from 'react-native';
+import { showAlert, AlertHost } from '@/src/components/ui/ThemedAlert';
+import { View, Text, Modal, ScrollView, Pressable, SafeAreaView } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/src/libs/supabase';
 import { useTheme } from '@/src/context/ThemeContext';
-import { useToast } from '@/src/context/ToastContext';
+import { useToast, ToastHost } from '@/src/context/ToastContext';
 import { Spot } from '@/src/types';
 import { useFriendships, FriendshipStatus } from '@/src/hooks/social/useFriendships';
 import { sendFriendRequestNotification } from '@/src/libs/sendPushNotification';
@@ -27,9 +28,17 @@ type Props = {
   userId: string | null;
   onSelectSpot: (spot: Spot) => void;
   allSpots: Spot[];
+  onFriendshipChange?: () => void;
 };
 
-export function PublicProfileModal({ visible, onClose, userId, onSelectSpot, allSpots }: Props) {
+export function PublicProfileModal({
+  visible,
+  onClose,
+  userId,
+  onSelectSpot,
+  allSpots,
+  onFriendshipChange,
+}: Props) {
   const { theme } = useTheme();
   const toast = useToast();
   const c = theme.colors;
@@ -124,6 +133,8 @@ export function PublicProfileModal({ visible, onClose, userId, onSelectSpot, all
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+      {visible ? <AlertHost /> : null}
+      {visible ? <ToastHost /> : null}
       <SafeAreaView style={{ flex: 1, backgroundColor: c.surface }}>
         <View
           style={{
@@ -271,7 +282,7 @@ export function PublicProfileModal({ visible, onClose, userId, onSelectSpot, all
                 onPress={async () => {
                   if (friendshipLoading || cooldown) return;
                   if (friendshipStatus === 'pending_sent') {
-                    Alert.alert('Cancel friend request?', undefined, [
+                    showAlert('Cancel friend request?', undefined, [
                       {
                         text: 'Keep',
                         style: 'cancel',
@@ -285,38 +296,83 @@ export function PublicProfileModal({ visible, onClose, userId, onSelectSpot, all
                           setFriendshipStatus('none');
                           setFriendshipLoading(false);
                           startCooldown();
+                          onFriendshipChange?.();
                         },
                       },
                     ]);
                     return;
                   }
-                  setFriendshipLoading(true);
+                  if (friendshipStatus === 'accepted') {
+                    showAlert(
+                      'Remove friend?',
+                      username ? `Remove @${username} as a friend?` : undefined,
+                      [
+                        {
+                          text: 'Keep',
+                          style: 'cancel',
+                        },
+                        {
+                          text: 'Remove',
+                          style: 'destructive',
+                          onPress: async () => {
+                            setFriendshipLoading(true);
+                            await removeFriend(userId!);
+                            setFriendshipStatus('none');
+                            setFriendshipLoading(false);
+                            startCooldown();
+                            onFriendshipChange?.();
+                          },
+                        },
+                      ]
+                    );
+                    return;
+                  }
                   if (friendshipStatus === 'none') {
-                    await sendFriendRequest(userId!);
-                    setFriendshipStatus('pending_sent');
-                    const {
-                      data: { user },
-                    } = await supabase.auth.getUser();
-                    if (user) {
-                      const { data: profile } = await supabase
-                        .from('profiles')
-                        .select('username')
-                        .eq('id', user.id)
-                        .single();
-                      await sendFriendRequestNotification(
-                        userId!,
-                        profile?.username ?? 'Someone'
-                      );
-                    }
-                  } else if (friendshipStatus === 'pending_received') {
+                    showAlert(
+                      'Add friend?',
+                      username ? `Send @${username} a friend request?` : undefined,
+                      [
+                        {
+                          text: 'Cancel',
+                          style: 'cancel',
+                        },
+                        {
+                          text: 'Add Friend',
+                          onPress: async () => {
+                            setFriendshipLoading(true);
+                            await sendFriendRequest(userId!);
+                            setFriendshipStatus('pending_sent');
+                            const {
+                              data: { user },
+                            } = await supabase.auth.getUser();
+                            if (user) {
+                              const { data: profile } = await supabase
+                                .from('profiles')
+                                .select('username')
+                                .eq('id', user.id)
+                                .single();
+                              await sendFriendRequestNotification(
+                                userId!,
+                                profile?.username ?? 'Someone'
+                              );
+                            }
+                            setFriendshipLoading(false);
+                            startCooldown();
+                            onFriendshipChange?.();
+                          },
+                        },
+                      ]
+                    );
+                    return;
+                  }
+                  setFriendshipLoading(true);
+                  if (friendshipStatus === 'pending_received') {
                     await acceptFriendRequest(userId!);
                     setFriendshipStatus('accepted');
-                  } else if (friendshipStatus === 'accepted') {
-                    await removeFriend(userId!);
-                    setFriendshipStatus('none');
                   }
                   setFriendshipLoading(false);
                   startCooldown();
+                  onFriendshipChange?.();
                 }}
                 style={{
                   marginTop: 14,

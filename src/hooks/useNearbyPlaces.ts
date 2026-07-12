@@ -2,6 +2,11 @@ import  { useRef, useState } from 'react';
 import { Platform } from 'react-native';
 import { Place } from '@/src/types';
 
+export type NearbyResult = {
+    status: 'ok' | 'empty' | 'timeout' | 'error';
+    count: number;
+};
+
 const OVERPASS_ENDPOINTS = [
     'https://overpass-api.de/api/interpreter',
     'https://overpass.kumi.systems/api/interpreter',
@@ -17,19 +22,21 @@ export function useNearbyPlaces() {
 
     const abortRef = useRef<AbortController | null>(null);
 
-    async function loadNearbySkateParks(lat: number, lng: number, radiusMeters = 8000, name?: string, onLoaded?: (places: Place[]) => void) {
-        await fetchPlaces(lat, lng, radiusMeters, 'skatepark', name, onLoaded);
+    async function loadNearbySkateParks(lat: number, lng: number, radiusMeters = 8000, name?: string, onLoaded?: (places: Place[]) => void): Promise<NearbyResult> {
+        return fetchPlaces(lat, lng, radiusMeters, 'skatepark', name, onLoaded);
     }
 
-    async function loadNearbySkateShops(lat: number, lng: number, radiusMeters = 8000, name?: string, onLoaded?: (places: Place[]) => void) {
-        await fetchPlaces(lat, lng, radiusMeters, 'skateshop', name, onLoaded);
+    async function loadNearbySkateShops(lat: number, lng: number, radiusMeters = 8000, name?: string, onLoaded?: (places: Place[]) => void): Promise<NearbyResult> {
+        return fetchPlaces(lat, lng, radiusMeters, 'skateshop', name, onLoaded);
     }
 
-    async function fetchPlaces(lat: number, lng: number, radiusMeters: number, type: 'skatepark' | 'skateshop', name?: string, onLoaded?: (places: Place[]) => void) {        const setLoading = type === 'skatepark' ? setParksLoading : setShopsLoading;
+    async function fetchPlaces(lat: number, lng: number, radiusMeters: number, type: 'skatepark' | 'skateshop', name?: string, onLoaded?: (places: Place[]) => void): Promise<NearbyResult> {
+        const setLoading = type === 'skatepark' ? setParksLoading : setShopsLoading;
         setLoading(true);
         if (Platform.OS === 'web') {
             setError('Nearby search is native-only for now.');
-            return;
+            setLoading(false);
+            return { status: 'error', count: 0 };
         }
 
         abortRef.current?.abort();
@@ -64,6 +71,7 @@ export function useNearbyPlaces() {
             : 'No skate shops found nearby. Try zooming out and searching again.';
 
         let lastError: string | null = null;
+        let outcome: NearbyResult = { status: 'error', count: 0 };
 
         for (const endpoint of OVERPASS_ENDPOINTS) {
             if (controller.signal.aborted) break;
@@ -104,14 +112,17 @@ export function useNearbyPlaces() {
                     setPlaces(normalized)
                 }
                 lastError = null;
+                outcome = { status: normalized.length === 0 ? 'empty' : 'ok', count: normalized.length };
                 break;
 
             } catch (e: any) {
                 if (e?.name === 'AbortError') {
                     lastError = 'Search timed out. Try again.';
+                    outcome = { status: 'timeout', count: 0 };
                     break;
                 }
                 lastError = e?.message ?? 'Failed to load nearby places.';
+                outcome = { status: 'error', count: 0 };
             }
         }
 
@@ -127,6 +138,7 @@ export function useNearbyPlaces() {
                     } else {
                         setPlaces(googleResults);
                     }
+                    outcome = { status: 'ok', count: googleResults.length };
                 } else {
                     setError(lastError);
                 }
@@ -140,6 +152,7 @@ export function useNearbyPlaces() {
             abortRef.current = null;
             setLoading(false);
         }
+        return outcome;
     }
 
     // Fetch from Google Places API as a fallback if Overpass API fails

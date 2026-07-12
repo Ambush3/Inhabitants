@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { showAlert, AlertHost } from '@/src/components/ui/ThemedAlert';
 import {
   View,
   Text,
@@ -6,7 +7,6 @@ import {
   Pressable,
   TextInput,
   FlatList,
-  Alert,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
@@ -16,7 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/src/libs/supabase';
 import { Session } from '@supabase/supabase-js';
 import { useTheme } from '@/src/context/ThemeContext';
-import { useToast } from '@/src/context/ToastContext';
+import { useToast, ToastHost } from '@/src/context/ToastContext';
 import { useFeedback, FeedbackPost, FeedbackSort, FeedbackCategory } from '@/src/hooks/useFeedback';
 import { FeedbackPostModal } from './FeedbackPostModal';
 
@@ -87,7 +87,7 @@ export function FeedbackBoardModal({ visible, onClose, session, initialPostId }:
   }
 
   function confirmDeletePost(postId: string) {
-    Alert.alert('Delete post?', 'This cannot be undone.', [
+    showAlert('Delete post?', 'This cannot be undone.', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Delete', style: 'destructive', onPress: () => deletePost(postId) },
     ]);
@@ -95,7 +95,7 @@ export function FeedbackBoardModal({ visible, onClose, session, initialPostId }:
 
   function requireAuth(action: () => void) {
     if (!session) {
-      Alert.alert('Sign in required', 'Create a free account to vote, post, or report feedback.', [
+      showAlert('Sign in required', 'Create a free account to vote, post, or report feedback.', [
         { text: 'OK' },
       ]);
       return;
@@ -176,6 +176,8 @@ export function FeedbackBoardModal({ visible, onClose, session, initialPostId }:
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+      {visible ? <AlertHost /> : null}
+      {visible ? <ToastHost /> : null}
       <View style={{ flex: 1, backgroundColor: c.background }}>
         {/* header */}
         <View
