@@ -5,6 +5,7 @@ import { moderateText } from '@/src/libs/moderator/textModerator';
 import { haversineMeters } from '@/src/libs/distance';
 
 const DUPLICATE_RADIUS_METERS = 40;
+const DAILY_SPOT_LIMIT = 10;
 
 function normalizeSpotName(name: string): string {
   return name.trim().toLowerCase().replace(/[\s\-_.]+/g, '');
@@ -119,6 +120,17 @@ export function useSpots() {
         setError(`You are banned from creating spots until ${until}.`);
         return;
       }
+    }
+
+    const sinceIso = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const { count: recentCount } = await supabase
+      .from('spots')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .gte('created_at', sinceIso);
+    if ((recentCount ?? 0) >= DAILY_SPOT_LIMIT) {
+      setError(`You've reached the daily limit of ${DAILY_SPOT_LIMIT} new spots. Try again tomorrow.`);
+      return;
     }
 
     const trimmedName = name.trim();
