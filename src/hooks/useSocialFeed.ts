@@ -52,9 +52,7 @@ export function useSocialFeed() {
     const { data: { user } } = await supabase.auth.getUser();
     const myId = user?.id ?? null;
 
-    // crew context
     let myCrewIds: string[] = [];
-    let crewMateIds: string[] = [];
     const crewNameById: Record<string, string> = {};
     if (myId) {
       const { data: memberRows } = await supabase
@@ -63,22 +61,17 @@ export function useSocialFeed() {
         .eq('user_id', myId);
       myCrewIds = (memberRows ?? []).map((r: any) => r.crew_id);
       if (myCrewIds.length > 0) {
-        const [crewsRes, mateRes] = await Promise.all([
-          supabase.from('crews').select('id, name').in('id', myCrewIds),
-          supabase.from('crew_members').select('user_id').in('crew_id', myCrewIds),
-        ]);
-        (crewsRes.data ?? []).forEach((c: any) => {
+        const { data: crewsData } = await supabase
+          .from('crews')
+          .select('id, name')
+          .in('id', myCrewIds);
+        (crewsData ?? []).forEach((c: any) => {
           crewNameById[c.id] = c.name;
         });
-        const mateSet = new Set<string>();
-        (mateRes.data ?? []).forEach((r: any) => {
-          if (r.user_id && r.user_id !== myId) mateSet.add(r.user_id);
-        });
-        crewMateIds = Array.from(mateSet);
       }
     }
 
-    const actorIds = Array.from(new Set([...friendIds, ...crewMateIds]));
+    const actorIds = Array.from(new Set(friendIds));
 
     if (actorIds.length === 0 && myCrewIds.length === 0) {
       setItems([]);

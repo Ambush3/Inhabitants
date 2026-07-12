@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
+import { showAlert } from '@/src/components/ui/ThemedAlert';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   Text,
@@ -6,7 +7,6 @@ import {
   Button,
   ScrollView,
   Platform,
-  Alert,
   Pressable,
   Animated,
   Easing,
@@ -66,6 +66,7 @@ import { useTrickLog } from '@/src/hooks/useTrickLog';
 
 import { useTheme } from '@/src/context/ThemeContext';
 import { useMapProvider } from '@/src/context/MapProviderContext';
+import { useToast } from '@/src/context/ToastContext';
 
 import { Ionicons } from '@expo/vector-icons';
 import { Place, Spot } from '@/src/types';
@@ -388,7 +389,6 @@ export default function Index() {
     setPlaces,
     parksLoading,
     shopsLoading,
-    error: nearbyError,
     loadNearbySkateParks,
     loadNearbySkateShops,
     fetchPlaceById,
@@ -519,6 +519,7 @@ export default function Index() {
 
   const { theme, loadThemeForUser } = useTheme();
   const { mapProvider } = useMapProvider();
+  const toast = useToast();
   const c = theme.colors;
 
   const insets = useSafeAreaInsets();
@@ -669,7 +670,7 @@ export default function Index() {
       return next;
     });
 
-  const displayError = error ?? nearbyError ?? topRatedError;
+  const displayError = error ?? topRatedError;
 
   useEffect(() => {
     if (!displayError) {
@@ -807,7 +808,7 @@ export default function Index() {
   const openSpotDetails = useCallback(
     async (spot: Spot) => {
       if (!session) {
-        Alert.alert(
+        showAlert(
           'Sign in required',
           'Create a free account to view full spot details, reviews, and photos.',
           [
@@ -865,7 +866,7 @@ export default function Index() {
   }
 
   function confirmDelete(spot: Spot) {
-    Alert.alert('Delete spot?', spot.name, [
+    showAlert('Delete spot?', spot.name, [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',
@@ -894,7 +895,7 @@ export default function Index() {
 
   function requireAuth(action: () => void) {
     if (!session) {
-      Alert.alert('Sign in required', 'Create a free account to unlock this feature.', [
+      showAlert('Sign in required', 'Create a free account to unlock this feature.', [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Sign In', onPress: () => router.push('/auth') },
       ]);
@@ -1028,6 +1029,32 @@ export default function Index() {
       setUseDeviceLocation(false);
     })();
   }, [useDeviceLocation]);
+
+  async function recenterToUser() {
+    setLocating(true);
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') return;
+      let pos;
+      try {
+        pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      } catch {
+        pos = await Location.getLastKnownPositionAsync().catch(() => null);
+      }
+      if (!pos) return;
+      const region: Region = {
+        latitude: pos.coords.latitude,
+        longitude: pos.coords.longitude,
+        latitudeDelta: 0.02,
+        longitudeDelta: 0.02,
+      };
+      userLocationRef.current = region;
+      mapRegionRef.current = region;
+      mapRef.current?.animateToRegion(region, 500);
+    } finally {
+      setLocating(false);
+    }
+  }
 
   useEffect(() => {
     if (deepLinkRegion) return;
@@ -1626,8 +1653,9 @@ export default function Index() {
         mySpots={mySpots}
         mySpotsLoading={mySpotsLoading}
         onLoadSkateparks={() =>
-          requireAuth(() => {
+          requireAuth(async () => {
             setPanelOpen(false);
+            toast.show('Searching…');
             const communityParks = spots
               .filter((s) => s.spot_type === 'skatepark')
               .map((s) => ({
@@ -1638,7 +1666,8 @@ export default function Index() {
                 lng: s.lng,
                 tags: {},
               }));
-            loadNearbySkateParks(
+            setPlacesWithAutoClear(() => communityParks);
+            const res = await loadNearbySkateParks(
               mapRegionRef.current.latitude,
               mapRegionRef.current.longitude,
               20000,
@@ -1647,6 +1676,11 @@ export default function Index() {
                 setPlacesWithAutoClear(() => [...communityParks, ...googleParks]);
               }
             );
+            const total = communityParks.length + res.count;
+            if (total > 0) return;
+            if (res.status === 'timeout') toast.error('Timed out');
+            else if (res.status === 'error') toast.error('Couldn’t search right now');
+            else toast.show('No skate parks in this area');
           })
         }
         onOpenProfile={() => {
@@ -1655,8 +1689,9 @@ export default function Index() {
           setProfileOpen(true);
         }}
         onLoadSkateShops={() =>
-          requireAuth(() => {
+          requireAuth(async () => {
             setPanelOpen(false);
+            toast.show('Searching…');
             const communityShops = spots
               .filter((s) => s.spot_type === 'skateshop')
               .map((s) => ({
@@ -1667,7 +1702,8 @@ export default function Index() {
                 lng: s.lng,
                 tags: {},
               }));
-            loadNearbySkateShops(
+            setPlacesWithAutoClear(() => communityShops);
+            const res = await loadNearbySkateShops(
               mapRegionRef.current.latitude,
               mapRegionRef.current.longitude,
               20000,
@@ -1676,6 +1712,11 @@ export default function Index() {
                 setPlacesWithAutoClear(() => [...communityShops, ...googleShops]);
               }
             );
+            const total = communityShops.length + res.count;
+            if (total > 0) return;
+            if (res.status === 'timeout') toast.error('Timed out');
+            else if (res.status === 'error') toast.error('Couldn’t search right now');
+            else toast.show('No skate shops in this area');
           })
         }
         onLoadTopRated={() =>
@@ -1923,6 +1964,33 @@ export default function Index() {
           <MapLegend
             style={{ position: 'absolute', top: (headerHeight || insets.top + 56) + 112, right: 12, alignItems: 'flex-end' }}
           />
+          {mapProvider !== 'google' ? (
+            <Pressable
+              onPress={recenterToUser}
+              disabled={locating}
+              style={{
+                position: 'absolute',
+                bottom: 40,
+                right: 16,
+                width: 44,
+                height: 44,
+                borderRadius: 22,
+                backgroundColor: c.surface,
+                alignItems: 'center',
+                justifyContent: 'center',
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.25,
+                shadowRadius: 4,
+                elevation: 4,
+              }}>
+              <Ionicons
+                name={locating ? 'ellipsis-horizontal' : 'locate'}
+                size={22}
+                color={c.accent}
+              />
+            </Pressable>
+          ) : null}
         </>
       ) : null}
       {locating ? (
@@ -2412,6 +2480,10 @@ export default function Index() {
           animateToSpotWithModalOffset(s.lat, s.lng);
           openSpotDetails(s);
         }}
+        onFriendshipChange={() => {
+          loadFriends();
+          loadPendingRequests();
+        }}
       />
       <CreateEventModal
         visible={createEventOpen}
@@ -2441,8 +2513,11 @@ export default function Index() {
               title,
               description,
               locationName,
+              lat,
+              lng,
               eventDate,
-              visibility
+              visibility,
+              spotId ?? null
             );
             if (!err) {
               setSelectedEvent((prev) =>
@@ -2452,10 +2527,21 @@ export default function Index() {
                     title,
                     description,
                     location_name: locationName,
+                    lat,
+                    lng,
+                    spot_id: spotId ?? null,
                     event_date: eventDate.toISOString(),
                   }
                   : prev
               );
+              if (lat !== null && lng !== null) {
+                setHighlightSpotId(null);
+                highlightSpotIdRef.current = null;
+                setTimeout(() => {
+                  setPendingEventCoord({ lat, lng });
+                  animateToSpotWithModalOffset(lat, lng);
+                }, 500);
+              }
             }
             return err;
           }

@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { showAlert } from '@/src/components/ui/ThemedAlert';
 import {
   View,
   Text,
   Modal,
   Pressable,
   TextInput,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -76,7 +76,7 @@ export function TrickLogModal({
   }
 
   function confirmDelete(id: string) {
-    Alert.alert('Delete entry?', 'This cannot be undone.', [
+    showAlert('Delete entry?', 'This cannot be undone.', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',

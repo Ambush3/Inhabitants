@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { showAlert } from '@/src/components/ui/ThemedAlert';
 import {
   View,
   Text,
@@ -7,7 +8,6 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  Alert,
   Linking,
   StyleSheet,
 } from 'react-native';
@@ -265,10 +265,16 @@ export function EventDetailsModal({
               <Text style={{ fontSize: 14, color: c.text }}>{event.location_name}</Text>
             </View>
             {event.creator?.username ? (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Pressable
+                onPress={() => {
+                  if (onViewProfile && event.creator_id && event.creator_id !== currentUserId)
+                    onViewProfile(event.creator_id);
+                }}
+                disabled={!onViewProfile || event.creator_id === currentUserId}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                 <Ionicons name="person-outline" size={16} color={c.subtext} />
                 <Text style={{ fontSize: 14, color: c.accent }}>@{event.creator.username}</Text>
-              </View>
+              </Pressable>
             ) : null}
             {event.description ? (
               <Text style={{ fontSize: 14, color: c.text, lineHeight: 20 }}>{event.description}</Text>
@@ -426,7 +432,7 @@ export function EventDetailsModal({
             {isOwner ? (
               <Pressable
                 onPress={() => {
-                  Alert.alert('Cancel Event', `Cancel "${event.title}"?`, [
+                  showAlert('Cancel Event', `Cancel "${event.title}"?`, [
                     { text: 'Keep', style: 'cancel' },
                     {
                       text: 'Cancel Event',
@@ -439,51 +445,47 @@ export function EventDetailsModal({
                   ]);
                 }}
                 style={{
-                  flex: 1,
                   flexDirection: 'row',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: 6,
-                  borderWidth: 1,
+                  gap: 5,
                   borderRadius: 10,
-                  padding: 12,
-                  borderColor: c.danger,
+                  paddingVertical: 12,
+                  paddingHorizontal: 14,
+                  backgroundColor: `${c.danger}1F`,
                 }}>
-                <Ionicons name="trash-outline" size={15} color={c.danger} />
-                <Text style={{ fontWeight: '600', fontSize: 15, color: c.danger }}>Cancel Event</Text>
+                <Ionicons name="trash-outline" size={16} color={c.danger} />
+                <Text style={{ fontWeight: '600', fontSize: 15, color: c.danger }}>Cancel</Text>
               </Pressable>
             ) : null}
             <Pressable
               onPress={handleDirections}
               style={{
-                flex: 1,
+                flex: 1.4,
                 flexDirection: 'row',
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: 6,
-                borderWidth: 1,
                 borderRadius: 10,
                 padding: 12,
-                borderColor: c.accent,
+                backgroundColor: c.accent,
               }}>
-              <Ionicons name="navigate-outline" size={15} color={c.accent} />
-              <Text style={{ fontWeight: '600', fontSize: 15, color: c.accent }}>Directions</Text>
+              <Ionicons name="navigate-outline" size={15} color="#fff" />
+              <Text style={{ fontWeight: '700', fontSize: 15, color: '#fff' }}>Directions</Text>
             </Pressable>
 
             <Pressable
               onPress={onClose}
               style={{
-                flex: 1,
+                flex: 0.8,
                 flexDirection: 'row',
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: 6,
-                borderWidth: 1,
                 borderRadius: 10,
                 padding: 12,
-                borderColor: c.border,
               }}>
-              <Text style={{ fontWeight: '600', fontSize: 15, color: c.text }}>Close</Text>
+              <Text style={{ fontWeight: '600', fontSize: 15, color: c.subtext }}>Close</Text>
             </Pressable>
           </View>
         </View>

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { showAlert } from '@/src/components/ui/ThemedAlert';
 import {
   View,
   Text,
@@ -8,7 +9,6 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Platform,
-  Alert,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -84,7 +84,7 @@ export function EventCommentsModal({
   }
 
   function handleDelete(comment: EventComment) {
-    Alert.alert('Delete comment?', undefined, [
+    showAlert('Delete comment?', undefined, [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',

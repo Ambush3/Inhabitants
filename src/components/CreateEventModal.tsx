@@ -372,6 +372,7 @@ export function CreateEventModal({ visible, onClose, onSubmit, pendingCoord, spo
                       accuracy: Location.Accuracy.Balanced,
                     });
                     const { latitude, longitude } = pos.coords;
+                    setSelectedSpotId(null);
                     setLat(latitude);
                     setLng(longitude);
                     const name = await reverseGeocode(latitude, longitude);
@@ -836,6 +837,7 @@ export function CreateEventModal({ visible, onClose, onSubmit, pendingCoord, spo
                 if (!mapPickerCoord) return;
                 setGeocoding(true);
                 setMapPickerOpen(false);
+                setSelectedSpotId(null);
                 setLat(mapPickerCoord.lat);
                 setLng(mapPickerCoord.lng);
                 const name = await reverseGeocode(mapPickerCoord.lat, mapPickerCoord.lng);

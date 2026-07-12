@@ -161,11 +161,11 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
     if (!place || !session?.user.id) return;
     setSaving(true);
     const err = await saveOverride(place.id, session.user.id, {
-      name: editName || undefined,
-      phone: editPhone || undefined,
-      website: editWebsite || undefined,
-      hours: editHours || undefined,
-      address: editAddress || undefined,
+      name: editName,
+      phone: editPhone,
+      website: editWebsite,
+      hours: editHours,
+      address: editAddress,
     });
     setSaving(false);
     if (!err) setEditOpen(false);

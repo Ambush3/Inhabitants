@@ -7,9 +7,10 @@ export const TrackedMarker = forwardRef<any, Props>(({ keepActive, ...props }, r
   const [tracking, setTracking] = useState(true);
 
   useEffect(() => {
+    setTracking(true);
     const t = setTimeout(() => setTracking(false), 800);
     return () => clearTimeout(t);
-  }, []);
+  }, [keepActive]);
 
   return <Marker ref={ref} {...props} tracksViewChanges={tracking} />;
 });

@@ -9,6 +9,8 @@ import { ThemeProvider, useTheme } from '@/src/context/ThemeContext';
 import { ToastProvider } from '@/src/context/ToastContext';
 import { MapProviderProvider } from '@/src/context/MapProviderContext';
 import { ErrorBoundary } from '@/src/components/ErrorBoundary';
+import { AlertHost } from '@/src/components/ui/ThemedAlert';
+import { ToastHost } from '@/src/context/ToastContext';
 import * as Sentry from '@sentry/react-native';
 
 const SENTRY_DSN = process.env.EXPO_PUBLIC_SENTRY_DSN;
@@ -131,6 +133,8 @@ function RootLayoutInner() {
     <View style={{ flex: 1 }}>
       <StatusBar style={darkMode ? 'light' : 'dark'} />
       <Stack screenOptions={{ headerShown: false }} />
+      <AlertHost />
+      <ToastHost />
       {!splashDone && (
         <View style={StyleSheet.absoluteFill} pointerEvents="auto">
           <SplashScreen onFinish={() => setSplashDone(true)} />

@@ -4,7 +4,7 @@ import { supabase } from '@/src/libs/supabase';
 export type PlaceOverride = {
     id: string;
     place_id: string;
-    name: string;
+    name: string | null;
     phone: string | null;
     website: string | null;
     hours: string | null;
@@ -38,13 +38,31 @@ export function usePlaceOverrides() {
         hours?: string;
         address?: string;
     }) {
+        const normalized = {
+            name: fields.name?.trim() || null,
+            phone: fields.phone?.trim() || null,
+            website: fields.website?.trim() || null,
+            hours: fields.hours?.trim() || null,
+            address: fields.address?.trim() || null,
+        };
+
+        if (Object.values(normalized).every((v) => v === null)) {
+            const { error } = await supabase
+                .from('place_overrides')
+                .delete()
+                .eq('place_id', placeId);
+            if (error) return error.message;
+            setOverride(null);
+            return null;
+        }
+
         const { data, error } = await supabase
             .from('place_overrides')
             .upsert({
                 place_id: placeId,
                 updated_by: userId,
                 updated_at: new Date().toISOString(),
-                ...fields,
+                ...normalized,
             }, { onConflict: 'place_id' })
             .select()
             .single();

@@ -47,7 +47,7 @@ export const SkateMarker = forwardRef<any, Props>(
                 opacity={opacity}
                 keepActive={selected}
             >
-                <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+                <View style={{ width: 48, height: 64, alignItems: 'center', justifyContent: 'center' }}>
                     <SelectedPulse selected={selected} />
                     <PinMarker
                         color={config.color}

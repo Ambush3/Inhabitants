@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { showAlert } from '@/src/components/ui/ThemedAlert';
 import {
   View,
   Text,
@@ -14,7 +15,6 @@ import {
   Share,
   FlatList,
   Dimensions,
-  Alert,
   PanResponder,
   Animated,
 } from 'react-native';
@@ -397,7 +397,7 @@ export function SpotDetailsModal({
   }
 
   function promptAddSessionMedia(checkInId: string, spotId: string) {
-    Alert.alert(
+    showAlert(
       'Add a photo or clip?',
       'Capture this session and tie it to your passport entry.',
       [
@@ -803,7 +803,7 @@ export function SpotDetailsModal({
                   onPress={async () => {
                     if (!spot) return;
                     if (alreadyCheckedInToday) {
-                      Alert.alert(
+                      showAlert(
                         'Check in again?',
                         "You already checked in here today. This will add another visit to your passport but won't post to your feed.",
                         [
@@ -831,7 +831,7 @@ export function SpotDetailsModal({
                       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                       setAlreadyCheckedInToday(true);
                       setVisitorCount((prev) => (prev === null ? 1 : prev + 1));
-                      Alert.alert(
+                      showAlert(
                         'Checked in!',
                         'Added to your passport and shared to your feed. Add a photo or clip from this session?',
                         [
