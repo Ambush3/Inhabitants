@@ -1,5 +1,24 @@
 export const changelog = [
   {
+    version: '1.10.0',
+    date: 'July 2026',
+    changes: [
+      'Satellite & Hybrid map views — tap the new layers button to switch',
+      'My Location button on the map now works on both Apple and Google Maps',
+      'Public events now appear as pins on the map — tap one to see the details',
+      'Cities — jump to major skate cities like LA, NYC, and Barcelona from Explore',
+      'Top Rated Nearby now includes skate parks and shops, with All / Spots / Parks / Shops filters',
+      'Tap an event host’s name to view their profile',
+      'Adding or removing a friend now asks you to confirm first',
+      'Editing an event’s location now updates its pin on the map right away',
+      'Alerts and toasts now match your selected theme, including dark mode',
+      'Duplicate spot protection — you can’t create a spot on top of an existing one',
+      'Bogus spots auto-hide once enough skaters flag them, plus a daily new-spot limit',
+      'Local Skate Parks / Shops now tell you when a search times out or finds nothing',
+      'Fixed a marker flicker when opening spots and various map polish',
+    ],
+  },
+  {
     version: '1.9.0',
     date: 'July 2026',
     changes: [
