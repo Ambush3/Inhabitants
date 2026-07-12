@@ -35,6 +35,7 @@ type Props = {
   topRated: TopRatedItem[];
   onLoadSkateparks: () => void;
   onLoadTopRated: () => void;
+  onOpenCities: () => void;
   onSelectSpot: (spot: Spot) => void;
   onDeleteSpot: (id: Spot) => void;
   onSignOut: () => void;
@@ -94,6 +95,7 @@ export function ExplorePanel({
   onLoadSkateparks,
   onLoadSkateShops,
   onLoadTopRated,
+  onOpenCities,
   onSelectSpot,
   onSignOut,
   onSearch,
@@ -1007,6 +1009,35 @@ export function ExplorePanel({
                     })()}
                   </View>
                 ) : null}
+
+                <Text
+                  style={{
+                    fontSize: 11,
+                    fontWeight: '600',
+                    color: c.subtext,
+                    marginTop: 8,
+                    marginBottom: 8,
+                    letterSpacing: 0.8,
+                  }}>
+                  GLOBAL
+                </Text>
+                <Pressable
+                  onPress={onOpenCities}
+                  style={{
+                    backgroundColor: c.tagBg,
+                    borderRadius: 8,
+                    padding: 12,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8,
+                    height: 56,
+                  }}>
+                  <View style={{ width: 32, alignItems: 'center' }}>
+                    <Ionicons name="earth" size={24} color={c.text} />
+                  </View>
+                  <Text style={{ color: c.text, fontWeight: '600' }}>Cities</Text>
+                </Pressable>
               </View>
             ) : null}
             {activeTab === 'myspots' ? (

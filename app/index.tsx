@@ -27,6 +27,7 @@ import { CreateSpotModal } from '@/src/components/CreateSpotModal';
 import { SpotDetailsModal, difficultyLabel } from '@/src/components/SpotDetailsModal';
 import { SkateShopDetailsModal } from '@/src/components/SkateShopDetailsModal';
 import { ExplorePanel } from '@/src/components/ExplorePanel';
+import { SkateCitiesModal } from '@/src/components/SkateCitiesModal';
 import { SettingsPanel } from '@/src/components/SettingsPanel';
 import { OnboardingScreen } from '@/src/components/onboarding/OnboardingScreen';
 import { ThemeBackdrop } from '@/src/components/ThemeBackdrop';
@@ -606,6 +607,7 @@ export default function Index() {
   const [spotCreatorBadge, setSpotCreatorBadge] = useState<'local' | 'regular' | 'ambassador' | null>(null);
 
   const [createEventOpen, setCreateEventOpen] = useState(false);
+  const [citiesOpen, setCitiesOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<SkateEvent | null>(null);
   const [pendingEventCoord, setPendingEventCoord] = useState<{ lat: number; lng: number } | null>(null);
   const [eventFilterOverride, setEventFilterOverride] = useState<
@@ -1774,6 +1776,10 @@ export default function Index() {
             }, 60000);
           })
         }
+        onOpenCities={() => {
+          setPanelOpen(false);
+          setCitiesOpen(true);
+        }}
         onSelectSpot={(s) => {
           if (actionSheetOpenRef.current) return;
           setPanelOpen(false);
@@ -2578,6 +2584,27 @@ export default function Index() {
         onFriendshipChange={() => {
           loadFriends();
           loadPendingRequests();
+        }}
+      />
+      <SkateCitiesModal
+        visible={citiesOpen}
+        onClose={() => setCitiesOpen(false)}
+        onSelectCity={(city) => {
+          setCitiesOpen(false);
+          setPanelOpen(false);
+          const region = {
+            latitude: city.latitude,
+            longitude: city.longitude,
+            latitudeDelta: city.latitudeDelta,
+            longitudeDelta: city.longitudeDelta,
+          };
+          mapRegionRef.current = region;
+          mapRef.current?.animateToRegion(region, 800);
+          toast.show(`Exploring ${city.name}`);
+          loadTopRatedSpotsInArea(region, 10);
+          setTimeout(() => {
+            clearTopRated();
+          }, 60000);
         }}
       />
       <CreateEventModal
