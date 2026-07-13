@@ -3,6 +3,8 @@ export const changelog = [
     version: '1.10.0',
     date: 'July 2026',
     changes: [
+      'Introducing Inhabitants Pro — unlock City Pages and unlimited photos & videos per spot, with a 7-day free trial',
+      'Manage your subscription anytime under Settings → Inhabitants Pro',
       'Satellite & Hybrid map views — tap the new layers button to switch',
       'My Location button on the map now works on both Apple and Google Maps',
       'Public events now appear as pins on the map — tap one to see the details',
