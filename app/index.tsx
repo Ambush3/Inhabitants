@@ -28,6 +28,8 @@ import { SpotDetailsModal, difficultyLabel } from '@/src/components/SpotDetailsM
 import { SkateShopDetailsModal } from '@/src/components/SkateShopDetailsModal';
 import { ExplorePanel } from '@/src/components/ExplorePanel';
 import { SkateCitiesModal } from '@/src/components/SkateCitiesModal';
+import { PaywallModal } from '@/src/components/PaywallModal';
+import { usePro } from '@/src/context/ProContext';
 import { SettingsPanel } from '@/src/components/SettingsPanel';
 import { OnboardingScreen } from '@/src/components/onboarding/OnboardingScreen';
 import { ThemeBackdrop } from '@/src/components/ThemeBackdrop';
@@ -608,6 +610,9 @@ export default function Index() {
 
   const [createEventOpen, setCreateEventOpen] = useState(false);
   const [citiesOpen, setCitiesOpen] = useState(false);
+  const [paywallOpen, setPaywallOpen] = useState(false);
+  const [paywallHeadline, setPaywallHeadline] = useState<string | undefined>(undefined);
+  const { isPro } = usePro();
   const [editingEvent, setEditingEvent] = useState<SkateEvent | null>(null);
   const [pendingEventCoord, setPendingEventCoord] = useState<{ lat: number; lng: number } | null>(null);
   const [eventFilterOverride, setEventFilterOverride] = useState<
@@ -1778,7 +1783,12 @@ export default function Index() {
         }
         onOpenCities={() => {
           setPanelOpen(false);
-          setCitiesOpen(true);
+          if (isPro) {
+            setCitiesOpen(true);
+          } else {
+            setPaywallHeadline('Unlock City Pages and everything in Pro.');
+            setPaywallOpen(true);
+          }
         }}
         onSelectSpot={(s) => {
           if (actionSheetOpenRef.current) return;
@@ -2585,6 +2595,11 @@ export default function Index() {
           loadFriends();
           loadPendingRequests();
         }}
+      />
+      <PaywallModal
+        visible={paywallOpen}
+        onClose={() => setPaywallOpen(false)}
+        headline={paywallHeadline}
       />
       <SkateCitiesModal
         visible={citiesOpen}
