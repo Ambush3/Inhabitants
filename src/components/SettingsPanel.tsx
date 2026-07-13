@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { showAlert, AlertHost } from '@/src/components/ui/ThemedAlert';
-import { View, Text, Modal, Pressable, Switch, ScrollView } from 'react-native';
+import { View, Text, Modal, Pressable, Switch, ScrollView, Linking } from 'react-native';
+import { usePro } from '@/src/context/ProContext';
+import { PaywallModal } from '@/src/components/PaywallModal';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -62,6 +64,17 @@ export function SettingsPanel({
   const { theme, themeId, themes } = useTheme();
   const { mapProvider, setMapProvider } = useMapProvider();
   const toast = useToast();
+  const { isPro, restore } = usePro();
+  const [proPaywallOpen, setProPaywallOpen] = useState(false);
+
+  async function handleRestore() {
+    try {
+      const ok = await restore();
+      toast.show(ok ? 'Purchases restored' : 'Nothing to restore');
+    } catch {
+      toast.error('Restore failed');
+    }
+  }
   const c = theme.colors;
   const currentThemeName = themes.find((t) => t.id === themeId)?.name ?? '';
 
@@ -229,6 +242,7 @@ export function SettingsPanel({
       <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       {visible ? <AlertHost /> : null}
       {visible ? <ToastHost /> : null}
+      <PaywallModal visible={proPaywallOpen} onClose={() => setProPaywallOpen(false)} />
         <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)' }} onPress={onClose}>
           <Pressable
             style={{
@@ -308,6 +322,51 @@ export function SettingsPanel({
               </View>
             )}
             <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
+              {session ? (
+                <>
+                  <SectionLabel label="INHABITANTS PRO" />
+                  {isPro ? (
+                    <>
+                      <View style={rowStyle}>
+                        <View style={rowLeftStyle}>
+                          <Ionicons name="star" size={20} color={c.accent} />
+                          <Text style={{ fontSize: 15, color: c.text }}>Pro — Active</Text>
+                        </View>
+                        <Ionicons name="checkmark-circle" size={20} color="#34C759" />
+                      </View>
+                      <Pressable
+                        style={rowStyle}
+                        onPress={() =>
+                          Linking.openURL('https://apps.apple.com/account/subscriptions')
+                        }>
+                        <View style={rowLeftStyle}>
+                          <Ionicons name="card-outline" size={20} color={c.text} />
+                          <Text style={{ fontSize: 15, color: c.text }}>Manage Subscription</Text>
+                        </View>
+                        <Ionicons name="chevron-forward" size={16} color={c.subtext} />
+                      </Pressable>
+                    </>
+                  ) : (
+                    <>
+                      <Pressable style={rowStyle} onPress={() => setProPaywallOpen(true)}>
+                        <View style={rowLeftStyle}>
+                          <Ionicons name="star-outline" size={20} color={c.accent} />
+                          <Text style={{ fontSize: 15, fontWeight: '600', color: c.text }}>
+                            Upgrade to Pro
+                          </Text>
+                        </View>
+                        <Ionicons name="chevron-forward" size={16} color={c.subtext} />
+                      </Pressable>
+                      <Pressable style={rowStyle} onPress={handleRestore}>
+                        <View style={rowLeftStyle}>
+                          <Ionicons name="refresh-outline" size={20} color={c.text} />
+                          <Text style={{ fontSize: 15, color: c.text }}>Restore Purchases</Text>
+                        </View>
+                      </Pressable>
+                    </>
+                  )}
+                </>
+              ) : null}
               {/* ── APPEARANCE ── */}
               <SectionLabel label="APPEARANCE" />
               <Pressable onPress={() => setThemePickerOpen(true)} style={rowStyle}>
