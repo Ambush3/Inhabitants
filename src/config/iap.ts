@@ -9,7 +9,7 @@ export const PRODUCT_IDS = {
 
 export const FREE_MEDIA_PER_SPOT = 5;
 
-export const TERMS_URL = 'https://inhabitants.app/terms';
-export const PRIVACY_URL = 'https://inhabitants.app/privacy';
+export const TERMS_URL = 'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/';
+export const PRIVACY_URL = 'https://www.termsfeed.com/live/0f374443-94bb-421d-90f4-214568206801';
 
 export const IAP_CONFIGURED = REVENUECAT_IOS_API_KEY.length > 0;
