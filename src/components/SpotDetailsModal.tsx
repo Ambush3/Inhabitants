@@ -1,5 +1,8 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { showAlert, AlertHost } from '@/src/components/ui/ThemedAlert';
+import { usePro } from '@/src/context/ProContext';
+import { PaywallModal } from '@/src/components/PaywallModal';
+import { FREE_MEDIA_PER_SPOT } from '@/src/config/iap';
 import {
   View,
   Text,
@@ -370,25 +373,34 @@ export function SpotDetailsModal({
   const { checkIn, checkingIn, getVisitorCount, hasCheckedInWithinCooldown } = useCheckIns();
   const { uploadMedia, uploading: uploadingSpotMedia } = useCheckInMedia();
   const sessionMedia = useCheckInMedia();
+  const { isPro } = usePro();
+  const [proPaywallOpen, setProPaywallOpen] = useState(false);
   const [sessionViewerMedia, setSessionViewerMedia] = useState<ViewerMedia | null>(null);
   const [mediaGrid, setMediaGrid] = useState(false);
 
   // Pick photos/videos and upload to a spot. checkInId links it to a passport
   // visit (optional); null = a standalone spot upload.
   async function pickAndUploadSpotMedia(spotId: string, checkInId: string | null) {
+    const mine = sessionMedia.media.filter((m) => m.user_id === currentUserId).length;
+    const remaining = FREE_MEDIA_PER_SPOT - mine;
+    if (!isPro && remaining <= 0) {
+      setProPaywallOpen(true);
+      return;
+    }
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') return;
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images', 'videos'],
       allowsMultipleSelection: true,
       quality: 1,
-      selectionLimit: 5,
+      selectionLimit: isPro ? 10 : remaining,
     });
     if (result.canceled) return;
-    const assets: PendingMedia[] = result.assets.map((a) => ({
+    let assets: PendingMedia[] = result.assets.map((a) => ({
       uri: a.uri,
       type: a.type === 'video' ? 'video' : 'image',
     }));
+    if (!isPro) assets = assets.slice(0, remaining);
     if (!assets.length) return;
     const res = await uploadMedia(spotId, checkInId, assets);
     await sessionMedia.loadMediaForSpot(spotId);
@@ -482,6 +494,11 @@ export function SpotDetailsModal({
       }}>
       {visible ? <AlertHost /> : null}
       {visible ? <ToastHost /> : null}
+      <PaywallModal
+        visible={proPaywallOpen}
+        onClose={() => setProPaywallOpen(false)}
+        headline="Upgrade for unlimited photos & videos."
+      />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1, justifyContent: 'flex-end' }}>

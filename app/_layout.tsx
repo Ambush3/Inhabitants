@@ -8,6 +8,7 @@ import { useAuth } from '@/src/hooks/useAuth';
 import { ThemeProvider, useTheme } from '@/src/context/ThemeContext';
 import { ToastProvider } from '@/src/context/ToastContext';
 import { MapProviderProvider } from '@/src/context/MapProviderContext';
+import { ProProvider } from '@/src/context/ProContext';
 import { ErrorBoundary } from '@/src/components/ErrorBoundary';
 import { AlertHost } from '@/src/components/ui/ThemedAlert';
 import { ToastHost } from '@/src/context/ToastContext';
@@ -151,9 +152,11 @@ function RootLayout() {
         <SafeAreaProvider>
           <ThemeProvider>
             <MapProviderProvider>
-              <ToastProvider>
-                <RootLayoutInner />
-              </ToastProvider>
+              <ProProvider>
+                <ToastProvider>
+                  <RootLayoutInner />
+                </ToastProvider>
+              </ProProvider>
             </MapProviderProvider>
           </ThemeProvider>
         </SafeAreaProvider>
