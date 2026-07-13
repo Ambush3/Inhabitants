@@ -71,7 +71,11 @@ export function ProProvider({ children }: { children: React.ReactNode }) {
       if (session?.user?.id) {
         Purchases.logIn(session.user.id).catch(() => {});
       } else {
-        Purchases.logOut().catch(() => {});
+        Purchases.getAppUserID()
+          .then((id) => {
+            if (!id.startsWith('$RCAnonymousID')) Purchases.logOut().catch(() => {});
+          })
+          .catch(() => {});
       }
     });
 
