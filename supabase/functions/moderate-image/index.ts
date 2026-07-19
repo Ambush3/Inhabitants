@@ -7,6 +7,8 @@ const supabase = createClient(
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 );
 
+const ALLOWED_TARGETS = new Set(['spot_images:spot-images', 'check_in_media:check-in-media']);
+
 Deno.serve(async (req) => {
     try {
         const {
@@ -58,6 +60,12 @@ Deno.serve(async (req) => {
         );
 
         if (flagged) {
+            if (!ALLOWED_TARGETS.has(`${table}:${bucket}`)) {
+                return new Response(
+                    JSON.stringify({ safe: false, reason: 'Unsupported moderation target' }),
+                    { status: 200 }
+                );
+            }
             // Remove every uploaded file tied to this row (e.g. video + its
             // thumbnail), then delete the row by its primary url.
             const deleteUrl = match_url || image_url;

@@ -1894,6 +1894,41 @@ export default function Index() {
               if (idx === 3) return;
               const picked = options[idx];
               if (picked === current) return;
+              if (picked === 'public') {
+                const publicDup = await findNearbyDuplicate(spot.lat, spot.lng, spot.name, {
+                  excludeId: spot.id,
+                  publicOnly: true,
+                });
+                if (publicDup) {
+                  showAlert(
+                    'Public spot already exists',
+                    `"${publicDup.name}" is already public here. Keep yours private or friends-only to avoid a duplicate, or view the public spot.`,
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      {
+                        text: 'View public spot',
+                        onPress: () => {
+                          setHighlightSpotId(publicDup.id);
+                          highlightSpotIdRef.current = publicDup.id;
+                          animateToSpotWithModalOffset(publicDup.lat, publicDup.lng);
+                          setTimeout(() => openSpotDetails(publicDup), 450);
+                        },
+                      },
+                      {
+                        text: 'Delete mine',
+                        style: 'destructive',
+                        onPress: () => {
+                          deleteSpotById(spot.id, async () => {
+                            await loadMySpots();
+                            await reload();
+                          });
+                        },
+                      },
+                    ]
+                  );
+                  return;
+                }
+              }
               await setSpotVisibility(spot, picked);
               await loadMySpots();
             }
@@ -2234,26 +2269,33 @@ export default function Index() {
           if (!pendingCoord) return;
           const duplicate = await findNearbyDuplicate(pendingCoord.lat, pendingCoord.lng, spotName);
           if (duplicate) {
-            showAlert(
-              'Spot already exists',
-              `"${duplicate.name}" is already here. View it instead of creating a duplicate.`,
-              [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                  text: 'View spot',
-                  onPress: () => {
-                    setTimeout(() => {
-                      closeCreateModal();
-                      setHighlightSpotId(duplicate.id);
-                      highlightSpotIdRef.current = duplicate.id;
-                      animateToSpotWithModalOffset(duplicate.lat, duplicate.lng);
-                      setTimeout(() => openSpotDetails(duplicate), 450);
-                    }, 300);
+            const dupIsPublic = !duplicate.is_private && !duplicate.friends_only;
+            const dupIsMine = duplicate.user_id === session?.user.id;
+            const creatingPublic = createSpotVisibility === 'public';
+            if (dupIsMine || (dupIsPublic && creatingPublic)) {
+              showAlert(
+                dupIsMine ? 'You already added this spot' : 'Public spot already exists',
+                dupIsMine
+                  ? `You already have "${duplicate.name}" here. View it instead of creating a duplicate.`
+                  : `"${duplicate.name}" is already a public spot here. Make yours private or friends-only to keep a personal copy, or view the public spot.`,
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  {
+                    text: 'View spot',
+                    onPress: () => {
+                      setTimeout(() => {
+                        closeCreateModal();
+                        setHighlightSpotId(duplicate.id);
+                        highlightSpotIdRef.current = duplicate.id;
+                        animateToSpotWithModalOffset(duplicate.lat, duplicate.lng);
+                        setTimeout(() => openSpotDetails(duplicate), 450);
+                      }, 300);
+                    },
                   },
-                },
-              ]
-            );
-            return;
+                ]
+              );
+              return;
+            }
           }
           const newSpot = await createSpotAt(
             pendingCoord.lat,
