@@ -2020,6 +2020,23 @@ export default function Index() {
       />
       {!detailsOpen && !placeDetailsOpen && !eventDetailsOpen ? (
         <>
+          <Text
+            onPress={() => Linking.openURL('https://www.openstreetmap.org/copyright')}
+            style={{
+              position: 'absolute',
+              bottom: insets.bottom + 44,
+              left: 10,
+              fontSize: 10,
+              color: c.text,
+              backgroundColor: c.surface,
+              opacity: 0.85,
+              paddingHorizontal: 6,
+              paddingVertical: 2,
+              borderRadius: 6,
+              overflow: 'hidden',
+            }}>
+            © OSM
+          </Text>
           <MapControls
             style={{ position: 'absolute', top: (headerHeight || insets.top + 56) + 8, left: 12, right: 12 }}
             search={mapSearch}
