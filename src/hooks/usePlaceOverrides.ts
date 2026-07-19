@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '@/src/libs/supabase';
+import { moderateText } from '@/src/libs/moderator/textModerator';
 
 export type PlaceOverride = {
     id: string;
@@ -45,6 +46,13 @@ export function usePlaceOverrides() {
             hours: fields.hours?.trim() || null,
             address: fields.address?.trim() || null,
         };
+
+        for (const value of [normalized.name, normalized.address, normalized.hours]) {
+            if (value) {
+                const check = moderateText(value);
+                if (!check.allowed) return check.reason ?? 'Inappropriate content.';
+            }
+        }
 
         if (Object.values(normalized).every((v) => v === null)) {
             const { error } = await supabase

@@ -116,6 +116,7 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
   const [editHours, setEditHours] = useState('');
   const [editAddress, setEditAddress] = useState('');
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     if (visible && place && session?.user.id) {
@@ -154,12 +155,14 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
     setEditWebsite(website ?? '');
     setEditHours(hours ?? '');
     setEditAddress(address ?? '');
+    setSaveError(null);
     setEditOpen(true);
   }
 
   async function handleSave() {
     if (!place || !session?.user.id) return;
     setSaving(true);
+    setSaveError(null);
     const err = await saveOverride(place.id, session.user.id, {
       name: editName,
       phone: editPhone,
@@ -168,7 +171,11 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
       address: editAddress,
     });
     setSaving(false);
-    if (!err) setEditOpen(false);
+    if (err) {
+      setSaveError(err);
+      return;
+    }
+    setEditOpen(false);
   }
 
   function handleDirections() {
@@ -607,6 +614,18 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
                 </View>
               ))}
             </ScrollView>
+
+            {saveError ? (
+              <Text
+                style={{
+                  color: c.danger,
+                  fontSize: 13,
+                  marginTop: 8,
+                  textAlign: 'center',
+                }}>
+                {saveError}
+              </Text>
+            ) : null}
 
             <View
               style={{

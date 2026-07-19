@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { supabase } from '@/src/libs/supabase';
 import { Spot } from '@/src/types';
+import { moderateText } from '@/src/libs/moderator/textModerator';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { decode } from 'base64-arraybuffer';
 import {
@@ -260,6 +261,12 @@ export function useCrews() {
   }): Promise<{ id: string | null; error: string | null }> {
     const userId = await getUserId();
     if (!userId) return { id: null, error: 'Not logged in' };
+    const nameCheck = moderateText(args.name.trim());
+    if (!nameCheck.allowed) return { id: null, error: nameCheck.reason ?? 'Inappropriate content.' };
+    if (args.description?.trim()) {
+      const descCheck = moderateText(args.description.trim());
+      if (!descCheck.allowed) return { id: null, error: descCheck.reason ?? 'Inappropriate content.' };
+    }
     const { data, error } = await supabase
       .from('crews')
       .insert({
@@ -284,6 +291,14 @@ export function useCrews() {
     crewId: string,
     patch: Partial<Pick<Crew, 'name' | 'description' | 'is_public' | 'avatar_url'>>
   ): Promise<string | null> {
+    if (patch.name != null) {
+      const nameCheck = moderateText(patch.name.trim());
+      if (!nameCheck.allowed) return nameCheck.reason ?? 'Inappropriate content.';
+    }
+    if (patch.description != null && patch.description.trim()) {
+      const descCheck = moderateText(patch.description.trim());
+      if (!descCheck.allowed) return descCheck.reason ?? 'Inappropriate content.';
+    }
     const { error } = await supabase.from('crews').update(patch).eq('id', crewId);
     if (error) return error.message;
     await loadMyCrews();
