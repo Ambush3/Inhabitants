@@ -10,7 +10,7 @@ type Preset = 'none' | 'done' | 'error';
 type ToastMessage = { id: number; title: string; preset: Preset; duration: number };
 
 let idSeq = 0;
-const hosts: Array<(m: ToastMessage) => void> = [];
+const hosts: Array<(m: ToastMessage | null) => void> = [];
 
 function emit(
   title: string,
@@ -39,6 +39,7 @@ const api = {
   success: (message: string, opts?: ToastOptions) => emit(message, 'done', 'success', opts),
   error: (message: string, opts?: ToastOptions) => emit(message, 'error', 'error', opts),
   info: (message: string, opts?: ToastOptions) => emit(message, 'none', 'none', opts),
+  hide: () => hosts[hosts.length - 1]?.(null),
 };
 
 export function ToastHost() {
@@ -50,7 +51,16 @@ export function ToastHost() {
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    const fn = (m: ToastMessage) => setToast(m);
+    const fn = (m: ToastMessage | null) => {
+      if (m === null) {
+        if (timer.current) clearTimeout(timer.current);
+        Animated.timing(anim, { toValue: 0, duration: 200, useNativeDriver: true }).start(({ finished }) => {
+          if (finished) setToast(null);
+        });
+      } else {
+        setToast(m);
+      }
+    };
     hosts.push(fn);
     return () => {
       const i = hosts.indexOf(fn);
@@ -63,11 +73,13 @@ export function ToastHost() {
     anim.setValue(0);
     Animated.timing(anim, { toValue: 1, duration: 200, useNativeDriver: true }).start();
     if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(() => {
-      Animated.timing(anim, { toValue: 0, duration: 200, useNativeDriver: true }).start(({ finished }) => {
-        if (finished) setToast(null);
-      });
-    }, toast.duration);
+    if (toast.duration > 0) {
+      timer.current = setTimeout(() => {
+        Animated.timing(anim, { toValue: 0, duration: 200, useNativeDriver: true }).start(({ finished }) => {
+          if (finished) setToast(null);
+        });
+      }, toast.duration);
+    }
     return () => {
       if (timer.current) clearTimeout(timer.current);
     };
