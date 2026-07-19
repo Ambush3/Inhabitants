@@ -143,6 +143,7 @@ const SpotMap = React.memo(
       showsUserLocation
       showsMyLocationButton={false}
       followsUserLocation={false}
+      onMarkerPress={onMarkerPress}
       onLongPress={onLongPress}>
       {pendingCoord ? (
         <Marker
@@ -797,20 +798,26 @@ export default function Index() {
     setCommentCount(0);
   }
 
-  function setPlacesWithAutoClear(updater: (prev: Place[]) => Place[]) {
+  const schedulePlacesClear = useCallback(() => {
     if (placesTimerRef.current) clearTimeout(placesTimerRef.current);
+    placesTimerRef.current = setTimeout(() => {
+      if (detailSheetOpenRef.current) {
+        schedulePlacesClear();
+      } else {
+        setPlaces([]);
+        placesTimerRef.current = null;
+      }
+    }, 30000);
+  }, [setPlaces]);
+
+  function setPlacesWithAutoClear(updater: (prev: Place[]) => Place[]) {
     setPlaces(updater);
-    const scheduleClear = () => {
-      placesTimerRef.current = setTimeout(() => {
-        if (detailSheetOpenRef.current) {
-          scheduleClear();
-        } else {
-          setPlaces([]);
-        }
-      }, 30000);
-    };
-    scheduleClear();
+    schedulePlacesClear();
   }
+
+  const resetPlacesTimer = useCallback(() => {
+    if (placesTimerRef.current) schedulePlacesClear();
+  }, [schedulePlacesClear]);
 
   const animateToSpotWithModalOffset = useCallback(
     (lat: number, lng: number, modalSize: 'full' | 'small' | 'medium' = 'full') => {
@@ -1960,6 +1967,7 @@ export default function Index() {
         friendIds={friendIds}
         pendingCoord={pendingCoord}
         initialRegion={initialRegion}
+        onMarkerPress={resetPlacesTimer}
         onPress={() => {
           if (suppressMapPressRef.current) {
             suppressMapPressRef.current = false;
