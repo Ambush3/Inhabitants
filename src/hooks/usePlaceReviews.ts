@@ -44,7 +44,7 @@ export function usePlaceReviews() {
                 lat: place.lat,
                 lng: place.lng,
                 type: place.type,
-            }, { onConflict: 'id' });
+            }, { onConflict: 'id', ignoreDuplicates: true });
 
         const { data, error } = await supabase
             .from('place_reviews')

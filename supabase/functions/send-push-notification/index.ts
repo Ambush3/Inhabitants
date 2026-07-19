@@ -29,7 +29,7 @@ async function isAllowed(userId: string, eventType: string): Promise<boolean> {
 
 Deno.serve(async (req) => {
     try {
-        const {
+        let {
             spot_id,
             addressee_id,
             addressee_ids,
@@ -44,6 +44,21 @@ Deno.serve(async (req) => {
             spot_name,
             feedback_post_id,
         } = await req.json();
+
+        const authToken = (req.headers.get('Authorization') ?? '').replace('Bearer ', '').trim();
+        if (authToken !== Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')) {
+            const { data: { user }, error: authErr } = await supabase.auth.getUser(authToken);
+            if (authErr || !user) {
+                return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+            }
+            actor_id = user.id;
+            const { data: prof } = await supabase
+                .from('profiles')
+                .select('username')
+                .eq('id', user.id)
+                .maybeSingle();
+            actor_username = prof?.username ?? actor_username ?? 'Someone';
+        }
 
         if (event_type === 'feedback_reply') {
             await supabase.from('notifications').insert({

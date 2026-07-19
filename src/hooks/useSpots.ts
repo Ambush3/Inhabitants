@@ -307,7 +307,12 @@ export function useSpots() {
     setMySpots((prev) => prev.map((s) => (s.id === id ? { ...s, ...fields } : s)));
   }
 
-  async function findNearbyDuplicate(lat: number, lng: number, name: string): Promise<Spot | null> {
+  async function findNearbyDuplicate(
+    lat: number,
+    lng: number,
+    name: string,
+    opts?: { excludeId?: string; publicOnly?: boolean }
+  ): Promise<Spot | null> {
     const target = normalizeSpotName(name);
     if (!target) return null;
 
@@ -322,6 +327,8 @@ export function useSpots() {
       .lte('lng', lng + delta);
 
     for (const s of (data ?? []) as Spot[]) {
+      if (opts?.excludeId && s.id === opts.excludeId) continue;
+      if (opts?.publicOnly && (s.is_private || s.friends_only)) continue;
       if (s.lat == null || s.lng == null) continue;
       if (haversineMeters(lat, lng, s.lat, s.lng) > DUPLICATE_RADIUS_METERS) continue;
       const existing = normalizeSpotName(s.name);
