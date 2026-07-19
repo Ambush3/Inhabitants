@@ -1,5 +1,17 @@
 export const changelog = [
   {
+    version: '1.11.0',
+    date: 'July 2026',
+    changes: [
+      'Nearby skate parks & shops now load faster and more reliably, with smarter caching',
+      'Skate park / shop pins stay on the map while you keep exploring — tap around and they won’t disappear on you',
+      'The “Searching…” indicator now stays up until results actually arrive',
+      'More content moderation — crew names, collections, trick logs, and place edits are now checked',
+      'Fixed a freeze when opening Local Skate Parks / Shops while signed out',
+      'Various stability fixes for popups, alerts, and toasts across the app',
+    ],
+  },
+  {
     version: '1.10.0',
     date: 'July 2026',
     changes: [
