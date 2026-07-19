@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '@/src/libs/supabase';
+import { moderateText } from '@/src/libs/moderator/textModerator';
 
 export type TrickLog = {
   id: string;
@@ -28,6 +29,8 @@ export function useTrickLog() {
     } = await supabase.auth.getUser();
     if (!user) return 'Not logged in';
     if (!trickName.trim()) return 'Trick name is required';
+    const nameCheck = moderateText(trickName.trim());
+    if (!nameCheck.allowed) return nameCheck.reason ?? 'Inappropriate content.';
 
     const { error } = await supabase.from('trick_logs').insert({
       user_id: user.id,

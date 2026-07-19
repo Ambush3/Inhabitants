@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '@/src/libs/supabase';
+import { moderateText } from '@/src/libs/moderator/textModerator';
 
 export type Collection = {
     id: string;
@@ -38,6 +39,12 @@ export function useCollections() {
     async function createCollection(name: string, description?: string, visibility: 'public' | 'friends' | 'private' = 'private'): Promise<string | null> {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return 'Not logged in';
+        const nameCheck = moderateText(name.trim());
+        if (!nameCheck.allowed) return nameCheck.reason ?? 'Inappropriate content.';
+        if (description?.trim()) {
+            const descCheck = moderateText(description.trim());
+            if (!descCheck.allowed) return descCheck.reason ?? 'Inappropriate content.';
+        }
         const { error } = await supabase
             .from('collections')
             .insert({ user_id: user.id, name: name.trim(), description: description?.trim() ?? null, visibility });
