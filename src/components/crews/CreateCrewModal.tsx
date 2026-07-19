@@ -14,7 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '@/src/context/ThemeContext';
-import { useToast } from '@/src/context/ToastContext';
+import { useToast, ToastHost } from '@/src/context/ToastContext';
 import { Crew } from '@/src/hooks/useCrews';
 
 type Props = {
@@ -264,6 +264,7 @@ export function CreateCrewModal({ visible, onClose, onSubmit, editCrew }: Props)
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+      {visible ? <ToastHost /> : null}
     </Modal>
   );
 }

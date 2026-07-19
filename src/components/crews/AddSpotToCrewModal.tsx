@@ -11,7 +11,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/src/context/ThemeContext';
-import { useToast } from '@/src/context/ToastContext';
+import { useToast, ToastHost } from '@/src/context/ToastContext';
 import { useCrews } from '@/src/hooks/useCrews';
 import { supabase } from '@/src/libs/supabase';
 
@@ -189,6 +189,7 @@ export function AddSpotToCrewModal({ visible, onClose, spotId }: Props) {
           </ScrollView>
         )}
       </View>
+      {visible ? <ToastHost /> : null}
     </Modal>
   );
 }

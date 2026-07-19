@@ -12,7 +12,7 @@ import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/src/context/ThemeContext';
-import { useToast } from '@/src/context/ToastContext';
+import { useToast, ToastHost } from '@/src/context/ToastContext';
 import { useCrews, Crew } from '@/src/hooks/useCrews';
 
 type Props = {
@@ -338,6 +338,7 @@ export function CrewsModal({ visible, onClose, onSelectCrew, onCreatePress, init
           </ScrollView>
         ) : null}
       </View>
+      {visible ? <ToastHost /> : null}
     </Modal>
   );
 }

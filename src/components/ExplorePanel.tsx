@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { showAlert } from '@/src/components/ui/ThemedAlert';
+import { showAlert, AlertHost } from '@/src/components/ui/ThemedAlert';
 import { View, Text, Modal, ScrollView, Pressable, TextInput } from 'react-native';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -2068,6 +2068,7 @@ export function ExplorePanel({
           </ThemeBackdrop>
         </Pressable>
       </Pressable>
+      {visible ? <AlertHost /> : null}
     </Modal>
   );
 }

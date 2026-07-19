@@ -14,7 +14,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/src/context/ThemeContext';
-import { useToast } from '@/src/context/ToastContext';
+import { useToast, ToastHost } from '@/src/context/ToastContext';
 import { useCollections, Collection } from '@/src/hooks/useCollections';
 
 type Props = {
@@ -208,6 +208,7 @@ export function CollectionsModal({ visible, onClose, spotId }: Props) {
                     </View>
                 </KeyboardAvoidingView>
             </View>
+            {visible ? <ToastHost /> : null}
         </Modal>
     );
 }
