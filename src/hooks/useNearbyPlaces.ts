@@ -1,5 +1,7 @@
 import  { useRef, useState } from 'react';
 import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { supabase } from '@/src/libs/supabase';
 import { Place } from '@/src/types';
 
 export type NearbyResult = {
@@ -12,6 +14,40 @@ const OVERPASS_ENDPOINTS = [
     'https://overpass.kumi.systems/api/interpreter',
     'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
 ];
+
+const CACHE_PREFIX = 'nearby_cache_v1';
+const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const EMPTY_TTL_MS = 24 * 60 * 60 * 1000;
+
+type CacheEntry = { ts: number; places: Place[] };
+
+function tileCacheKey(lat: number, lng: number, radiusMeters: number, type: string): string {
+    const round = (n: number) => (Math.round(n * 10) / 10).toFixed(1);
+    return `${CACHE_PREFIX}:${type}:${round(lat)}:${round(lng)}:${radiusMeters}`;
+}
+
+async function readTileCache(key: string): Promise<Place[] | null> {
+    try {
+        const raw = await AsyncStorage.getItem(key);
+        if (!raw) return null;
+        const entry = JSON.parse(raw) as CacheEntry;
+        const ttl = entry.places.length === 0 ? EMPTY_TTL_MS : CACHE_TTL_MS;
+        if (Date.now() - entry.ts > ttl) {
+            AsyncStorage.removeItem(key).catch(() => {});
+            return null;
+        }
+        return entry.places;
+    } catch {
+        return null;
+    }
+}
+
+async function writeTileCache(key: string, places: Place[]): Promise<void> {
+    try {
+        await AsyncStorage.setItem(key, JSON.stringify({ ts: Date.now(), places } as CacheEntry));
+    } catch {
+    }
+}
 
 export function useNearbyPlaces() {
     const [places, setPlaces] = useState<Place[]>([]);
@@ -39,8 +75,39 @@ export function useNearbyPlaces() {
             return { status: 'error', count: 0 };
         }
 
+        const emptyMessage = type === 'skatepark'
+            ? 'No skate parks found nearby. Try zooming out and searching again.'
+            : 'No skate shops found nearby. Try zooming out and searching again.';
+
         abortRef.current?.abort();
+        abortRef.current = null;
         setError(null);
+
+        const cacheKey = !name ? tileCacheKey(lat, lng, radiusMeters, type) : null;
+        if (cacheKey) {
+            const cached = await readTileCache(cacheKey);
+            if (cached) {
+                setError(cached.length === 0 ? emptyMessage : null);
+                if (onLoaded) onLoaded(cached); else setPlaces(cached);
+                setLoading(false);
+                return { status: cached.length === 0 ? 'empty' : 'ok', count: cached.length };
+            }
+        }
+
+        try {
+            const { data, error: fnError } = await supabase.functions.invoke('nearby-places', {
+                body: { lat, lng, radiusMeters, type, name },
+            });
+            if (!fnError && data && Array.isArray(data.places)) {
+                const proxyPlaces = data.places as Place[];
+                setError(proxyPlaces.length === 0 ? emptyMessage : null);
+                if (onLoaded) onLoaded(proxyPlaces); else setPlaces(proxyPlaces);
+                if (cacheKey) writeTileCache(cacheKey, proxyPlaces);
+                setLoading(false);
+                return { status: proxyPlaces.length === 0 ? 'empty' : 'ok', count: proxyPlaces.length };
+            }
+        } catch {
+        }
 
         const controller = new AbortController();
         abortRef.current = controller;
@@ -65,10 +132,6 @@ export function useNearbyPlaces() {
             );
             out center tags;
         `.trim();
-
-        const emptyMessage = type === 'skatepark'
-            ? 'No skate parks found nearby. Try zooming out and searching again.'
-            : 'No skate shops found nearby. Try zooming out and searching again.';
 
         let lastError: string | null = null;
         let outcome: NearbyResult = { status: 'error', count: 0 };
@@ -111,6 +174,7 @@ export function useNearbyPlaces() {
                 } else {
                     setPlaces(normalized)
                 }
+                if (cacheKey) writeTileCache(cacheKey, normalized);
                 lastError = null;
                 outcome = { status: normalized.length === 0 ? 'empty' : 'ok', count: normalized.length };
                 break;
@@ -127,24 +191,7 @@ export function useNearbyPlaces() {
         }
 
         if (lastError) {
-            try {
-                const googleResults = type === 'skatepark'
-                    ? await fetchFromGooglePlaces(lat, lng, radiusMeters, type)
-                    : [];
-                if (googleResults.length > 0) {
-                    setError(null);
-                    if (onLoaded) {
-                        onLoaded(googleResults);
-                    } else {
-                        setPlaces(googleResults);
-                    }
-                    outcome = { status: 'ok', count: googleResults.length };
-                } else {
-                    setError(lastError);
-                }
-            } catch {
-                setError(lastError);
-            }
+            setError(lastError);
         }
 
         clearTimeout(timeoutId);
@@ -153,39 +200,6 @@ export function useNearbyPlaces() {
             setLoading(false);
         }
         return outcome;
-    }
-
-    // Fetch from Google Places API as a fallback if Overpass API fails
-    async function fetchFromGooglePlaces(lat: number, lng: number, radiusMeters: number, type: 'skatepark' | 'skateshop'): Promise<Place[]> {
-        console.log('fetching from google places', lat, lng, radiusMeters);
-        const key = process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY;
-        if (!key) return [];
-
-        const keyword = type === 'skatepark' ? 'skate park' : 'skateboard shop';
-        const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=${radiusMeters}&keyword=${encodeURIComponent(keyword)}&key=${key}`;
-
-        const resp = await fetch(url);
-        if (!resp.ok) return [];
-
-        const json = await resp.json();
-
-        const skateKeywords = type === 'skatepark'
-            ? ['skate', 'skateboard', 'skatepark', 'skate park']
-            : ['skate', 'skateboard', 'skate shop'];
-
-        return (json.results ?? [])
-            .filter((el: any) => {
-                const name = (el.name ?? '').toLowerCase();
-                return skateKeywords.some(k => name.includes(k));
-            })
-            .map((el: any) => ({
-                id: `google-${el.place_id}`,
-                name: el.name,
-                type,
-                lat: el.geometry.location.lat,
-                lng: el.geometry.location.lng,
-                tags: {},
-            } as Place));
     }
 
     async function fetchPlaceById(placeId: string): Promise<Place | null> {
