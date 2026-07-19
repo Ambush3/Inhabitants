@@ -344,6 +344,7 @@ export default function Index() {
   const markerRefs = useRef<Record<string, MapMarker | null>>({});
 
   const placesTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchSeqRef = useRef(0);
   const detailSheetOpenRef = useRef(false);
 
   const highlightSpotIdRef = useRef<string | null>(null);
@@ -1705,7 +1706,8 @@ export default function Index() {
         onLoadSkateparks={() =>
           requireAuth(async () => {
             setPanelOpen(false);
-            toast.show('Searching…');
+            const token = ++searchSeqRef.current;
+            toast.show('Searching…', { duration: 0 });
             const communityParks = spots
               .filter((s) => s.spot_type === 'skatepark')
               .map((s) => ({
@@ -1726,8 +1728,9 @@ export default function Index() {
                 setPlacesWithAutoClear(() => [...communityParks, ...googleParks]);
               }
             );
+            if (searchSeqRef.current !== token) return;
             const total = communityParks.length + res.count;
-            if (total > 0) return;
+            if (total > 0) { toast.hide(); return; }
             if (res.status === 'timeout') toast.error('Timed out');
             else if (res.status === 'error') toast.error('Couldn’t search right now');
             else toast.show('No skate parks in this area');
@@ -1741,7 +1744,8 @@ export default function Index() {
         onLoadSkateShops={() =>
           requireAuth(async () => {
             setPanelOpen(false);
-            toast.show('Searching…');
+            const token = ++searchSeqRef.current;
+            toast.show('Searching…', { duration: 0 });
             const communityShops = spots
               .filter((s) => s.spot_type === 'skateshop')
               .map((s) => ({
@@ -1762,8 +1766,9 @@ export default function Index() {
                 setPlacesWithAutoClear(() => [...communityShops, ...googleShops]);
               }
             );
+            if (searchSeqRef.current !== token) return;
             const total = communityShops.length + res.count;
-            if (total > 0) return;
+            if (total > 0) { toast.hide(); return; }
             if (res.status === 'timeout') toast.error('Timed out');
             else if (res.status === 'error') toast.error('Couldn’t search right now');
             else toast.show('No skate shops in this area');
