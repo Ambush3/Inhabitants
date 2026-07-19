@@ -186,9 +186,7 @@ export function SettingsPanel({
 
     if (moderationResult?.safe === false) {
       await supabase.storage.from('avatars').remove([filename]);
-      toast.error(
-        'Your profile photo was flagged as inappropriate. Please choose a different image.'
-      );
+      toast.error('Your profile photo was flagged as inappropriate. Please choose a different image.');
       setAvatarLoading(false);
       return;
     }
@@ -240,9 +238,9 @@ export function SettingsPanel({
   return (
     <>
       <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      {visible ? <AlertHost /> : null}
-      {visible ? <ToastHost /> : null}
-      <PaywallModal visible={proPaywallOpen} onClose={() => setProPaywallOpen(false)} />
+        {visible ? <AlertHost /> : null}
+        {visible ? <ToastHost /> : null}
+        <PaywallModal visible={proPaywallOpen} onClose={() => setProPaywallOpen(false)} />
         <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)' }} onPress={onClose}>
           <Pressable
             style={{
@@ -256,330 +254,350 @@ export function SettingsPanel({
             }}
             onPress={() => { }}>
             <ThemeBackdrop color={c.panelBg} style={{ flex: 1, padding: 16, flexDirection: 'column' }}>
-            {/* Header */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
-              <Ionicons name="settings-outline" size={20} color={c.text} style={{ marginRight: 8 }} />
-              <Text style={{ fontSize: 18, fontWeight: '600', color: c.text }}>Settings</Text>
-            </View>
-            {/* Avatar */}
-            {session ? (
-              <View style={{ alignItems: 'center', marginBottom: 8 }}>
-                <Pressable onPress={handleAvatarUpload}>
-                  {avatarUrl ? (
-                    <Image
-                      source={{ uri: avatarUrl }}
-                      style={{ width: 72, height: 72, borderRadius: 36, marginBottom: 8 }}
-                    />
-                  ) : (
-                    <View
-                      style={{
-                        width: 72,
-                        height: 72,
-                        borderRadius: 36,
-                        backgroundColor: c.tagBg,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        marginBottom: 8,
-                      }}>
-                      <Ionicons name="person-outline" size={32} color={c.subtext} />
-                    </View>
-                  )}
-                </Pressable>
-                {username ? (
-                  <Text style={{ fontSize: 14, fontWeight: '600', color: c.text, marginBottom: 4 }}>
-                    @{username}
-                  </Text>
-                ) : null}
-                <Pressable onPress={handleAvatarUpload}>
-                  <Text style={{ fontSize: 13, color: c.accent }}>
-                    {avatarLoading ? 'Uploading...' : 'Change Photo'}
-                  </Text>
-                </Pressable>
+              {/* Header */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
+                <Ionicons name="settings-outline" size={20} color={c.text} style={{ marginRight: 8 }} />
+                <Text style={{ fontSize: 18, fontWeight: '600', color: c.text }}>Settings</Text>
               </View>
-            ) : (
-              <View style={{ alignItems: 'center', marginBottom: 16 }}>
-                <View
-                  style={{
-                    width: 72,
-                    height: 72,
-                    borderRadius: 36,
-                    backgroundColor: c.tagBg,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    marginBottom: 8,
-                  }}>
-                  <Ionicons name="person-outline" size={32} color={c.subtext} />
+              {/* Avatar */}
+              {session ? (
+                <View style={{ alignItems: 'center', marginBottom: 8 }}>
+                  <Pressable onPress={handleAvatarUpload}>
+                    {avatarUrl ? (
+                      <Image
+                        source={{ uri: avatarUrl }}
+                        style={{ width: 72, height: 72, borderRadius: 36, marginBottom: 8 }}
+                      />
+                    ) : (
+                      <View
+                        style={{
+                          width: 72,
+                          height: 72,
+                          borderRadius: 36,
+                          backgroundColor: c.tagBg,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          marginBottom: 8,
+                        }}>
+                        <Ionicons name="person-outline" size={32} color={c.subtext} />
+                      </View>
+                    )}
+                  </Pressable>
+                  {username ? (
+                    <Text
+                      style={{ fontSize: 14, fontWeight: '600', color: c.text, marginBottom: 4 }}>
+                      @{username}
+                    </Text>
+                  ) : null}
+                  <Pressable onPress={handleAvatarUpload}>
+                    <Text style={{ fontSize: 13, color: c.accent }}>
+                      {avatarLoading ? 'Uploading...' : 'Change Photo'}
+                    </Text>
+                  </Pressable>
                 </View>
+              ) : (
+                <View style={{ alignItems: 'center', marginBottom: 16 }}>
+                  <View
+                    style={{
+                      width: 72,
+                      height: 72,
+                      borderRadius: 36,
+                      backgroundColor: c.tagBg,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginBottom: 8,
+                    }}>
+                    <Ionicons name="person-outline" size={32} color={c.subtext} />
+                  </View>
+                  <Text
+                    style={{
+                      fontSize: 13,
+                      color: c.subtext,
+                      textAlign: 'center',
+                      paddingHorizontal: 8,
+                    }}>
+                    Sign in to manage your profile
+                  </Text>
+                </View>
+              )}
+              <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
+                {session ? (
+                  <>
+                    <SectionLabel label="INHABITANTS PRO" />
+                    {isPro ? (
+                      <>
+                        <View style={rowStyle}>
+                          <View style={rowLeftStyle}>
+                            <Ionicons name="star" size={20} color={c.accent} />
+                            <Text style={{ fontSize: 15, color: c.text }}>
+                              Pro — Active
+                            </Text>
+                          </View>
+                          <Ionicons name="checkmark-circle" size={20} color="#34C759" />
+                        </View>
+                        <Pressable
+                          style={rowStyle}
+                          onPress={() =>
+                            Linking.openURL('https://apps.apple.com/account/subscriptions')
+                          }>
+                          <View style={rowLeftStyle}>
+                            <Ionicons name="card-outline" size={20} color={c.text} />
+                            <Text style={{ fontSize: 15, color: c.text }}>
+                              Manage Subscription
+                            </Text>
+                          </View>
+                          <Ionicons name="chevron-forward" size={16} color={c.subtext} />
+                        </Pressable>
+                      </>
+                    ) : (
+                      <>
+                        <Pressable style={rowStyle} onPress={() => setProPaywallOpen(true)}>
+                          <View style={rowLeftStyle}>
+                            <Ionicons name="star-outline" size={20} color={c.accent} />
+                            <Text
+                              style={{ fontSize: 15, fontWeight: '600', color: c.text }}>
+                              Upgrade to Pro
+                            </Text>
+                          </View>
+                          <Ionicons name="chevron-forward" size={16} color={c.subtext} />
+                        </Pressable>
+                        <Pressable style={rowStyle} onPress={handleRestore}>
+                          <View style={rowLeftStyle}>
+                            <Ionicons name="refresh-outline" size={20} color={c.text} />
+                            <Text style={{ fontSize: 15, color: c.text }}>
+                              Restore Purchases
+                            </Text>
+                          </View>
+                        </Pressable>
+                      </>
+                    )}
+                  </>
+                ) : null}
+                {/* ── APPEARANCE ── */}
+                <SectionLabel label="APPEARANCE" />
+                <Pressable onPress={() => setThemePickerOpen(true)} style={rowStyle}>
+                  <View style={rowLeftStyle}>
+                    <Ionicons name="color-palette-outline" size={20} color={c.text} />
+                    <Text style={{ fontSize: 15, color: c.text }}>Themes</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Text style={{ fontSize: 13, color: c.subtext }}>{currentThemeName}</Text>
+                    <Ionicons name="chevron-forward" size={16} color={c.subtext} />
+                  </View>
+                </Pressable>
+
+                <View style={rowStyle}>
+                  <View style={rowLeftStyle}>
+                    <Ionicons name="map-outline" size={20} color={c.text} />
+                    <Text style={{ fontSize: 15, color: c.text }}>Map</Text>
+                  </View>
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      backgroundColor: c.tagBg,
+                      borderRadius: 8,
+                      padding: 2,
+                    }}>
+                    {(['apple', 'google'] as const).map((opt) => (
+                      <Pressable
+                        key={opt}
+                        onPress={() => setMapProvider(opt)}
+                        style={{
+                          paddingVertical: 5,
+                          paddingHorizontal: 12,
+                          borderRadius: 6,
+                          backgroundColor: mapProvider === opt ? c.accent : 'transparent',
+                        }}>
+                        <Text
+                          style={{
+                            fontSize: 13,
+                            fontWeight: '600',
+                            color: mapProvider === opt ? '#fff' : c.subtext,
+                          }}>
+                          {opt === 'apple' ? 'Apple' : 'Google'}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </View>
+
+                {/* ── PRIVACY & ACCOUNT ── */}
+                <SectionLabel label="PRIVACY & ACCOUNT" />
+                {!session ? (
+                  <Pressable
+                    onPress={() =>
+                      showAlert(
+                        'Sign in required',
+                        'Create a free account to manage privacy and account settings.',
+                        [{ text: 'OK' }]
+                      )
+                    }
+                    style={{ opacity: 0.5 }}>
+                    <View style={rowStyle}>
+                      <View style={rowLeftStyle}>
+                        <Ionicons name="location-outline" size={20} color={c.text} />
+                        <Text style={{ fontSize: 15, color: c.text }}>Public Check-ins</Text>
+                      </View>
+                      <Switch value={false} disabled />
+                    </View>
+                    <View style={rowStyle}>
+                      <View style={rowLeftStyle}>
+                        <Ionicons name="lock-closed-outline" size={20} color={c.text} />
+                        <Text style={{ fontSize: 15, color: c.text }}>Reset Password</Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={16} color={c.subtext} />
+                    </View>
+                    <View style={{ ...rowStyle, borderBottomWidth: 0 }}>
+                      <View style={rowLeftStyle}>
+                        <Ionicons name="trash-outline" size={20} color={c.danger} />
+                        <Text style={{ fontSize: 15, color: c.danger }}>Delete Account</Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={16} color={c.danger} />
+                    </View>
+                  </Pressable>
+                ) : (
+                  <>
+                    <View style={rowStyle}>
+                      <View style={rowLeftStyle}>
+                        <Ionicons name="location-outline" size={20} color={c.text} />
+                        <Text style={{ fontSize: 15, color: c.text }}>Public Check-ins</Text>
+                      </View>
+                      <Switch
+                        value={publicCheckIns}
+                        onValueChange={async (v) => {
+                          setPublicCheckIns(v);
+                          const {
+                            data: { user },
+                          } = await supabase.auth.getUser();
+                          if (user)
+                            await supabase
+                              .from('profiles')
+                              .update({ public_check_ins: v })
+                              .eq('id', user.id);
+                        }}
+                      />
+                    </View>
+                    <Pressable onPress={handleResetPassword} style={rowStyle}>
+                      <View style={rowLeftStyle}>
+                        <Ionicons name="lock-closed-outline" size={20} color={c.text} />
+                        <Text style={{ fontSize: 15, color: c.text }}>Reset Password</Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={16} color={c.subtext} />
+                    </Pressable>
+                    <Pressable
+                      onPress={handleDeleteAccount}
+                      style={{ ...rowStyle, borderBottomWidth: 0 }}>
+                      <View style={rowLeftStyle}>
+                        <Ionicons name="trash-outline" size={20} color={c.danger} />
+                        <Text style={{ fontSize: 15, color: c.danger }}>Delete Account</Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={16} color={c.danger} />
+                    </Pressable>
+                  </>
+                )}
+
+                {/* ── INFO ── */}
+                <SectionLabel label="INFO" />
+                <Pressable
+                  onPress={() => setNotifSectionOpen((p) => !p)}
+                  style={{ ...rowStyle, borderBottomWidth: notifSectionOpen ? 0 : 1 }}>
+                  <View style={rowLeftStyle}>
+                    <Ionicons name="notifications-outline" size={20} color={c.text} />
+                    <Text style={{ flex: 1, fontSize: 15, color: c.text }}>Notifications</Text>
+                  </View>
+                  <Ionicons
+                    name={notifSectionOpen ? 'chevron-up' : 'chevron-down'}
+                    size={16}
+                    color={c.subtext}
+                  />
+                </Pressable>
+                {notifSectionOpen ? (
+                  <View
+                    style={{
+                      paddingLeft: 30,
+                      paddingBottom: 8,
+                      borderBottomWidth: 1,
+                      borderColor: c.border,
+                    }}>
+                    {(
+                      [
+                        ['notify_review', 'Reviews'],
+                        ['notify_favorite', 'Saves'],
+                        ['notify_wishlist', 'Wishlists'],
+                        ['notify_condition', 'Conditions'],
+                        ['notify_friend_request', 'Friend Requests'],
+                        ['notify_friend_accepted', 'Friend Accepted'],
+                        ['notify_event_invite', 'Event Invites'],
+                        ['notify_event_reminder', 'Event Reminders'],
+                      ] as [keyof NotificationPrefs, string][]
+                    ).map(([key, label]) => (
+                      <View
+                        key={key}
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          paddingVertical: 8,
+                        }}>
+                        <Text style={{ fontSize: 14, color: c.text }}>{label}</Text>
+                        <Switch value={prefs[key]} onValueChange={(v) => updatePref(key, v)} />
+                      </View>
+                    ))}
+                  </View>
+                ) : null}
+                <Pressable
+                  onPress={() => {
+                    onClose();
+                    onShowOnboarding();
+                  }}
+                  style={rowStyle}>
+                  <View style={rowLeftStyle}>
+                    <Ionicons name="information-circle-outline" size={20} color={c.text} />
+                    <Text style={{ fontSize: 15, color: c.text }}>How to Use</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color={c.subtext} />
+                </Pressable>
+                <Pressable onPress={() => setFeedbackOpen(true)} style={rowStyle}>
+                  <View style={rowLeftStyle}>
+                    <Ionicons name="chatbubbles-outline" size={20} color={c.text} />
+                    <Text style={{ fontSize: 15, color: c.text }}>Feedback</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color={c.subtext} />
+                </Pressable>
+                <Pressable
+                  onPress={() => setChangelogOpen(true)}
+                  style={{ ...rowStyle, borderBottomWidth: 0 }}>
+                  <View style={rowLeftStyle}>
+                    <Ionicons name="sparkles-outline" size={20} color={c.text} />
+                    <Text style={{ fontSize: 15, color: c.text }}>{"What's New"}</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color={c.subtext} />
+                </Pressable>
+
                 <Text
                   style={{
-                    fontSize: 13,
-                    color: c.subtext,
                     textAlign: 'center',
-                    paddingHorizontal: 8,
+                    fontSize: 12,
+                    color: c.subtext,
+                    marginTop: 24,
                   }}>
-                  Sign in to manage your profile
+                  v{Application.nativeApplicationVersion} ({Application.nativeBuildVersion})
                 </Text>
-              </View>
-            )}
-            <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
-              {session ? (
-                <>
-                  <SectionLabel label="INHABITANTS PRO" />
-                  {isPro ? (
-                    <>
-                      <View style={rowStyle}>
-                        <View style={rowLeftStyle}>
-                          <Ionicons name="star" size={20} color={c.accent} />
-                          <Text style={{ fontSize: 15, color: c.text }}>Pro — Active</Text>
-                        </View>
-                        <Ionicons name="checkmark-circle" size={20} color="#34C759" />
-                      </View>
-                      <Pressable
-                        style={rowStyle}
-                        onPress={() =>
-                          Linking.openURL('https://apps.apple.com/account/subscriptions')
-                        }>
-                        <View style={rowLeftStyle}>
-                          <Ionicons name="card-outline" size={20} color={c.text} />
-                          <Text style={{ fontSize: 15, color: c.text }}>Manage Subscription</Text>
-                        </View>
-                        <Ionicons name="chevron-forward" size={16} color={c.subtext} />
-                      </Pressable>
-                    </>
-                  ) : (
-                    <>
-                      <Pressable style={rowStyle} onPress={() => setProPaywallOpen(true)}>
-                        <View style={rowLeftStyle}>
-                          <Ionicons name="star-outline" size={20} color={c.accent} />
-                          <Text style={{ fontSize: 15, fontWeight: '600', color: c.text }}>
-                            Upgrade to Pro
-                          </Text>
-                        </View>
-                        <Ionicons name="chevron-forward" size={16} color={c.subtext} />
-                      </Pressable>
-                      <Pressable style={rowStyle} onPress={handleRestore}>
-                        <View style={rowLeftStyle}>
-                          <Ionicons name="refresh-outline" size={20} color={c.text} />
-                          <Text style={{ fontSize: 15, color: c.text }}>Restore Purchases</Text>
-                        </View>
-                      </Pressable>
-                    </>
-                  )}
-                </>
-              ) : null}
-              {/* ── APPEARANCE ── */}
-              <SectionLabel label="APPEARANCE" />
-              <Pressable onPress={() => setThemePickerOpen(true)} style={rowStyle}>
-                <View style={rowLeftStyle}>
-                  <Ionicons name="color-palette-outline" size={20} color={c.text} />
-                  <Text style={{ fontSize: 15, color: c.text }}>Themes</Text>
-                </View>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <Text style={{ fontSize: 13, color: c.subtext }}>{currentThemeName}</Text>
-                  <Ionicons name="chevron-forward" size={16} color={c.subtext} />
-                </View>
-              </Pressable>
 
-              <View style={rowStyle}>
-                <View style={rowLeftStyle}>
-                  <Ionicons name="map-outline" size={20} color={c.text} />
-                  <Text style={{ fontSize: 15, color: c.text }}>Map</Text>
-                </View>
-                <View
+                <Text
+                  onPress={() => Linking.openURL('https://www.openstreetmap.org/copyright')}
                   style={{
-                    flexDirection: 'row',
-                    backgroundColor: c.tagBg,
-                    borderRadius: 8,
-                    padding: 2,
+                    textAlign: 'center',
+                    fontSize: 12,
+                    color: c.subtext,
+                    marginTop: 6,
+                    textDecorationLine: 'underline',
                   }}>
-                  {(['apple', 'google'] as const).map((opt) => (
-                    <Pressable
-                      key={opt}
-                      onPress={() => setMapProvider(opt)}
-                      style={{
-                        paddingVertical: 5,
-                        paddingHorizontal: 12,
-                        borderRadius: 6,
-                        backgroundColor: mapProvider === opt ? c.accent : 'transparent',
-                      }}>
-                      <Text
-                        style={{
-                          fontSize: 13,
-                          fontWeight: '600',
-                          color: mapProvider === opt ? '#fff' : c.subtext,
-                        }}>
-                        {opt === 'apple' ? 'Apple' : 'Google'}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-              </View>
+                  Map data from © OpenStreetMap contributors
+                </Text>
 
-              {/* ── PRIVACY & ACCOUNT ── */}
-              <SectionLabel label="PRIVACY & ACCOUNT" />
-              {!session ? (
-                <Pressable
-                  onPress={() =>
-                    showAlert(
-                      'Sign in required',
-                      'Create a free account to manage privacy and account settings.',
-                      [{ text: 'OK' }]
-                    )
-                  }
-                  style={{ opacity: 0.5 }}>
-                  <View style={rowStyle}>
-                    <View style={rowLeftStyle}>
-                      <Ionicons name="location-outline" size={20} color={c.text} />
-                      <Text style={{ fontSize: 15, color: c.text }}>Public Check-ins</Text>
-                    </View>
-                    <Switch value={false} disabled />
-                  </View>
-                  <View style={rowStyle}>
-                    <View style={rowLeftStyle}>
-                      <Ionicons name="lock-closed-outline" size={20} color={c.text} />
-                      <Text style={{ fontSize: 15, color: c.text }}>Reset Password</Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={16} color={c.subtext} />
-                  </View>
-                  <View style={{ ...rowStyle, borderBottomWidth: 0 }}>
-                    <View style={rowLeftStyle}>
-                      <Ionicons name="trash-outline" size={20} color={c.danger} />
-                      <Text style={{ fontSize: 15, color: c.danger }}>Delete Account</Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={16} color={c.danger} />
-                  </View>
-                </Pressable>
-              ) : (
-                <>
-                  <View style={rowStyle}>
-                    <View style={rowLeftStyle}>
-                      <Ionicons name="location-outline" size={20} color={c.text} />
-                      <Text style={{ fontSize: 15, color: c.text }}>Public Check-ins</Text>
-                    </View>
-                    <Switch
-                      value={publicCheckIns}
-                      onValueChange={async (v) => {
-                        setPublicCheckIns(v);
-                        const {
-                          data: { user },
-                        } = await supabase.auth.getUser();
-                        if (user)
-                          await supabase
-                            .from('profiles')
-                            .update({ public_check_ins: v })
-                            .eq('id', user.id);
-                      }}
-                    />
-                  </View>
-                  <Pressable onPress={handleResetPassword} style={rowStyle}>
-                    <View style={rowLeftStyle}>
-                      <Ionicons name="lock-closed-outline" size={20} color={c.text} />
-                      <Text style={{ fontSize: 15, color: c.text }}>Reset Password</Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={16} color={c.subtext} />
-                  </Pressable>
-                  <Pressable
-                    onPress={handleDeleteAccount}
-                    style={{ ...rowStyle, borderBottomWidth: 0 }}>
-                    <View style={rowLeftStyle}>
-                      <Ionicons name="trash-outline" size={20} color={c.danger} />
-                      <Text style={{ fontSize: 15, color: c.danger }}>Delete Account</Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={16} color={c.danger} />
-                  </Pressable>
-                </>
-              )}
-
-              {/* ── INFO ── */}
-              <SectionLabel label="INFO" />
-              <Pressable
-                onPress={() => setNotifSectionOpen((p) => !p)}
-                style={{ ...rowStyle, borderBottomWidth: notifSectionOpen ? 0 : 1 }}>
-                <View style={rowLeftStyle}>
-                  <Ionicons name="notifications-outline" size={20} color={c.text} />
-                  <Text style={{ flex: 1, fontSize: 15, color: c.text }}>Notifications</Text>
-                </View>
-                <Ionicons
-                  name={notifSectionOpen ? 'chevron-up' : 'chevron-down'}
-                  size={16}
-                  color={c.subtext}
-                />
-              </Pressable>
-              {notifSectionOpen ? (
-                <View
-                  style={{
-                    paddingLeft: 30,
-                    paddingBottom: 8,
-                    borderBottomWidth: 1,
-                    borderColor: c.border,
-                  }}>
-                  {(
-                    [
-                      ['notify_review', 'Reviews'],
-                      ['notify_favorite', 'Saves'],
-                      ['notify_wishlist', 'Wishlists'],
-                      ['notify_condition', 'Conditions'],
-                      ['notify_friend_request', 'Friend Requests'],
-                      ['notify_friend_accepted', 'Friend Accepted'],
-                      ['notify_event_invite', 'Event Invites'],
-                      ['notify_event_reminder', 'Event Reminders'],
-                    ] as [keyof NotificationPrefs, string][]
-                  ).map(([key, label]) => (
-                    <View
-                      key={key}
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        paddingVertical: 8,
-                      }}>
-                      <Text style={{ fontSize: 14, color: c.text }}>{label}</Text>
-                      <Switch value={prefs[key]} onValueChange={(v) => updatePref(key, v)} />
-                    </View>
-                  ))}
-                </View>
-              ) : null}
-              <Pressable
-                onPress={() => {
-                  onClose();
-                  onShowOnboarding();
-                }}
-                style={rowStyle}>
-                <View style={rowLeftStyle}>
-                  <Ionicons name="information-circle-outline" size={20} color={c.text} />
-                  <Text style={{ fontSize: 15, color: c.text }}>How to Use</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={16} color={c.subtext} />
-              </Pressable>
-              <Pressable onPress={() => setFeedbackOpen(true)} style={rowStyle}>
-                <View style={rowLeftStyle}>
-                  <Ionicons name="chatbubbles-outline" size={20} color={c.text} />
-                  <Text style={{ fontSize: 15, color: c.text }}>Feedback</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={16} color={c.subtext} />
-              </Pressable>
-              <Pressable
-                onPress={() => setChangelogOpen(true)}
-                style={{ ...rowStyle, borderBottomWidth: 0 }}>
-                <View style={rowLeftStyle}>
-                  <Ionicons name="sparkles-outline" size={20} color={c.text} />
-                  <Text style={{ fontSize: 15, color: c.text }}>{"What's New"}</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={16} color={c.subtext} />
-              </Pressable>
-
-              <Text
-                style={{
-                  textAlign: 'center',
-                  fontSize: 12,
-                  color: c.subtext,
-                  marginTop: 24,
-                }}>
-                v{Application.nativeApplicationVersion} ({Application.nativeBuildVersion})
-              </Text>
-
-              <View style={{ height: 32 }} />
-            </ScrollView>
+                <View style={{ height: 32 }} />
+              </ScrollView>
             </ThemeBackdrop>
             <ThemePickerModal visible={themePickerOpen} onClose={() => setThemePickerOpen(false)} />
             {/* Changelog modal */}
