@@ -1,6 +1,6 @@
 export const changelog = [
   {
-    version: '1.11.0',
+    version: '1.10.0',
     date: 'July 2026',
     changes: [
       'Nearby skate parks & shops now load faster and more reliably, with smarter caching',
@@ -11,12 +11,6 @@ export const changelog = [
       'What’s New now shows for everyone, including guests',
       'Your friends list now stays in sync when friendships change',
       'Various stability fixes for popups, alerts, and toasts across the app',
-    ],
-  },
-  {
-    version: '1.10.0',
-    date: 'July 2026',
-    changes: [
       'Introducing Inhabitants Pro — unlock City Pages and unlimited photos & videos per spot, with a 7-day free trial',
       'Manage your subscription anytime under Settings → Inhabitants Pro',
       'Satellite & Hybrid map views — tap the new layers button to switch',
