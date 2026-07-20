@@ -13,6 +13,7 @@ import {
   ActionSheetIOS,
   Linking,
   ActivityIndicator,
+  AppState,
 } from 'react-native';
 import { Image } from 'expo-image';
 import MapView, { Marker, Region, LongPressEvent, MapMarker, PROVIDER_GOOGLE } from 'react-native-maps';
@@ -586,7 +587,7 @@ export default function Index() {
     removeFromSearchResults,
   } = useSpots();
 
-  const { showWhatsNew, dismissWhatsNew } = useWhatsNew(!!session);
+  const { showWhatsNew, dismissWhatsNew } = useWhatsNew();
 
   const { deepLinkSpotId, deepLinkLat, deepLinkLng } = useLocalSearchParams<{
     deepLinkSpotId?: string;
@@ -1197,6 +1198,18 @@ export default function Index() {
     } else {
       setMyAvatarUrl(null);
     }
+  }, [session?.user.id]);
+
+  useEffect(() => {
+    if (!session?.user.id) return;
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        loadFriends();
+        loadPendingRequests();
+        loadNotifications();
+      }
+    });
+    return () => sub.remove();
   }, [session?.user.id]);
 
   useEffect(() => {
@@ -1890,10 +1903,11 @@ export default function Index() {
               cancelButtonIndex: 3,
             },
             async (idx) => {
-              actionSheetOpenRef.current = false;
-              if (idx === 3) return;
+              if (idx === 3 || options[idx] === current) {
+                actionSheetOpenRef.current = false;
+                return;
+              }
               const picked = options[idx];
-              if (picked === current) return;
               if (picked === 'public') {
                 const publicDup = await findNearbyDuplicate(spot.lat, spot.lng, spot.name, {
                   excludeId: spot.id,
@@ -1904,10 +1918,18 @@ export default function Index() {
                     'Public spot already exists',
                     `"${publicDup.name}" is already public here. Keep yours private or friends-only to avoid a duplicate, or view the public spot.`,
                     [
-                      { text: 'Cancel', style: 'cancel' },
+                      {
+                        text: 'Cancel',
+                        style: 'cancel',
+                        onPress: () => {
+                          actionSheetOpenRef.current = false;
+                        },
+                      },
                       {
                         text: 'View public spot',
                         onPress: () => {
+                          actionSheetOpenRef.current = false;
+                          setDetailsOpen(false);
                           setHighlightSpotId(publicDup.id);
                           highlightSpotIdRef.current = publicDup.id;
                           animateToSpotWithModalOffset(publicDup.lat, publicDup.lng);
@@ -1918,6 +1940,8 @@ export default function Index() {
                         text: 'Delete mine',
                         style: 'destructive',
                         onPress: () => {
+                          actionSheetOpenRef.current = false;
+                          setDetailsOpen(false);
                           deleteSpotById(spot.id, async () => {
                             await loadMySpots();
                             await reload();
@@ -1929,6 +1953,7 @@ export default function Index() {
                   return;
                 }
               }
+              actionSheetOpenRef.current = false;
               await setSpotVisibility(spot, picked);
               await loadMySpots();
             }

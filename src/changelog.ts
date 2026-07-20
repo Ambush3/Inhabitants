@@ -8,6 +8,8 @@ export const changelog = [
       'The “Searching…” indicator now stays up until results actually arrive',
       'More content moderation — crew names, collections, trick logs, and place edits are now checked',
       'Fixed a freeze when opening Local Skate Parks / Shops while signed out',
+      'What’s New now shows for everyone, including guests',
+      'Your friends list now stays in sync when friendships change',
       'Various stability fixes for popups, alerts, and toasts across the app',
     ],
   },

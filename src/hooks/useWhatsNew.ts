@@ -5,13 +5,12 @@ import { changelog } from '@/src/changelog';
 const STORAGE_KEY = 'last_seen_version';
 const LATEST_VERSION = changelog[0].version;
 
-export function useWhatsNew(isLoggedIn: boolean) {
+export function useWhatsNew() {
   const [showWhatsNew, setShowWhatsNew] = useState(false);
 
   useEffect(() => {
-    if (!isLoggedIn) return;
     checkVersion();
-  }, [isLoggedIn]);
+  }, []);
 
   async function checkVersion() {
     try {
