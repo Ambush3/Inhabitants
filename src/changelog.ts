@@ -1,5 +1,12 @@
 export const changelog = [
   {
+    version: '1.10.1',
+    date: 'July 2026',
+    changes: [
+      'Maps now use Apple Maps for a faster, more reliable experience — no more occasional blank map',
+    ],
+  },
+  {
     version: '1.10.0',
     date: 'July 2026',
     changes: [
