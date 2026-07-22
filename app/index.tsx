@@ -31,6 +31,7 @@ import { ExplorePanel } from '@/src/components/ExplorePanel';
 import { SkateCitiesModal } from '@/src/components/SkateCitiesModal';
 import { PaywallModal } from '@/src/components/PaywallModal';
 import { usePro } from '@/src/context/ProContext';
+import { useSplash } from '@/src/context/SplashContext';
 import { SettingsPanel } from '@/src/components/SettingsPanel';
 import { OnboardingScreen } from '@/src/components/onboarding/OnboardingScreen';
 import { ThemeBackdrop } from '@/src/components/ThemeBackdrop';
@@ -588,6 +589,7 @@ export default function Index() {
   } = useSpots();
 
   const { showWhatsNew, dismissWhatsNew } = useWhatsNew();
+  const { splashDone } = useSplash();
 
   const { deepLinkSpotId, deepLinkLat, deepLinkLng } = useLocalSearchParams<{
     deepLinkSpotId?: string;
@@ -2874,7 +2876,7 @@ export default function Index() {
           }, 350);
         }}
       />
-      <WhatsNewModal visible={showWhatsNew} onClose={dismissWhatsNew} />
+      <WhatsNewModal visible={showWhatsNew && splashDone} onClose={dismissWhatsNew} />
       <CrewsModal
         visible={crewsOpen}
         initialTab={crewsInitialTab}

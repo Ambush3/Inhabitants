@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Modal, Pressable } from 'react-native';
+import { View, Text, Modal, Pressable, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/src/context/ThemeContext';
 import { changelog } from '@/src/changelog';
@@ -9,14 +9,12 @@ type Props = {
   onClose: () => void;
 };
 
-const MAX_HIGHLIGHTS = 4;
-
 export function WhatsNewModal({ visible, onClose }: Props) {
   const { theme } = useTheme();
   const c = theme.colors;
 
   const latest = changelog[0];
-  const highlights = latest.changes.filter((c) => !c.startsWith('//')).slice(0, MAX_HIGHLIGHTS);
+  const highlights = latest.changes.filter((c) => !c.startsWith('//'));
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -34,6 +32,7 @@ export function WhatsNewModal({ visible, onClose }: Props) {
             borderRadius: 20,
             width: '100%',
             maxWidth: 360,
+            maxHeight: '85%',
             padding: 24,
             shadowColor: '#000',
             shadowOffset: { width: 0, height: 8 },
@@ -62,7 +61,10 @@ export function WhatsNewModal({ visible, onClose }: Props) {
             </Text>
           </View>
 
-          <View style={{ gap: 14, marginBottom: 24 }}>
+          <ScrollView
+            style={{ flexShrink: 1, marginBottom: 24 }}
+            contentContainerStyle={{ gap: 14 }}
+            showsVerticalScrollIndicator={true}>
             {highlights.map((item, i) => (
               <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
                 <View
@@ -82,7 +84,7 @@ export function WhatsNewModal({ visible, onClose }: Props) {
                 </Text>
               </View>
             ))}
-          </View>
+          </ScrollView>
 
           <Pressable
             onPress={onClose}
