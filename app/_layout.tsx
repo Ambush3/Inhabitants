@@ -26,6 +26,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { supabase } from '@/src/libs/supabase';
 import SplashScreen from '@/src/components/SplashScreen';
+import { SplashProvider, useSplash } from '@/src/context/SplashContext';
 import { initializeChottuLink } from 'react-native-chottulink-sdk';
 
 ExpoSplashScreen.preventAutoHideAsync();
@@ -36,7 +37,7 @@ function RootLayoutInner() {
   const { session, loading } = useAuth();
   const { darkMode } = useTheme();
   const pathname = usePathname();
-  const [splashDone, setSplashDone] = useState(false);
+  const { splashDone, setSplashDone } = useSplash();
 
   useEffect(() => {
     initializeChottuLink(CHOTTULINK_KEY);
@@ -154,7 +155,9 @@ function RootLayout() {
             <MapProviderProvider>
               <ProProvider>
                 <ToastProvider>
-                  <RootLayoutInner />
+                  <SplashProvider>
+                    <RootLayoutInner />
+                  </SplashProvider>
                 </ToastProvider>
               </ProProvider>
             </MapProviderProvider>
