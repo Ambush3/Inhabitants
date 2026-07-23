@@ -25,7 +25,22 @@ export function usePlaceFavorites() {
         setPlaceFavLoading(false);
         if (error) return;
 
-        const favs = data ?? [];
+        let favs = data ?? [];
+        const ids = favs.map((f: PlaceFavorite) => f.place_id);
+        if (ids.length > 0) {
+            const { data: overrides } = await supabase
+                .from('place_overrides')
+                .select('place_id, name')
+                .in('place_id', ids);
+            const nameById = new Map(
+                (overrides ?? [])
+                    .filter((o: { place_id: string; name: string | null }) => o.name)
+                    .map((o: { place_id: string; name: string }) => [o.place_id, o.name])
+            );
+            favs = favs.map((f: PlaceFavorite) =>
+                nameById.has(f.place_id) ? { ...f, place_name: nameById.get(f.place_id)! } : f
+            );
+        }
         setPlaceFavorites(favs);
         setPlaceFavoriteIds(new Set(favs.map((f: PlaceFavorite) => f.place_id)));
     }

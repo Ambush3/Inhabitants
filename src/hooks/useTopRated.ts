@@ -62,6 +62,15 @@ export function useTopRated() {
             const spotIds = spotsList.map(s => s.id);
             const placeIds = placesList.map(p => p.id);
 
+            const { data: placeOverrides } = placeIds.length > 0
+                ? await supabase.from('place_overrides').select('place_id, name').in('place_id', placeIds)
+                : { data: [] };
+            const overrideNameById = new Map(
+                (placeOverrides ?? [])
+                    .filter((o: { place_id: string; name: string | null }) => o.name)
+                    .map((o: { place_id: string; name: string }) => [o.place_id, o.name])
+            );
+
             const [{ data: spotReviews }, { data: placeReviews }] = await Promise.all([
                 spotIds.length > 0
                     ? supabase.from('reviews').select('spot_id,rating').in('spot_id', spotIds)
@@ -105,6 +114,7 @@ export function useTopRated() {
                     const avg = count ? a!.sum / count : 0;
                     return {
                         ...p,
+                        name: overrideNameById.get(p.id) ?? p.name,
                         spot_type: p.type as 'skatepark' | 'skateshop',
                         avg,
                         count,

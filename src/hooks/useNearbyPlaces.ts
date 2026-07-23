@@ -66,6 +66,26 @@ export function useNearbyPlaces() {
         return fetchPlaces(lat, lng, radiusMeters, 'skateshop', name, onLoaded);
     }
 
+    async function deliverPlaces(places: Place[], onLoaded?: (places: Place[]) => void): Promise<void> {
+        let merged = places;
+        if (places.length > 0) {
+            const ids = places.map((p) => p.id);
+            const { data } = await supabase
+                .from('place_overrides')
+                .select('place_id, name')
+                .in('place_id', ids);
+            const nameById = new Map(
+                (data ?? [])
+                    .filter((o: { place_id: string; name: string | null }) => o.name)
+                    .map((o: { place_id: string; name: string }) => [o.place_id, o.name])
+            );
+            if (nameById.size > 0) {
+                merged = places.map((p) => (nameById.has(p.id) ? { ...p, name: nameById.get(p.id)! } : p));
+            }
+        }
+        if (onLoaded) onLoaded(merged); else setPlaces(merged);
+    }
+
     async function fetchPlaces(lat: number, lng: number, radiusMeters: number, type: 'skatepark' | 'skateshop', name?: string, onLoaded?: (places: Place[]) => void): Promise<NearbyResult> {
         const setLoading = type === 'skatepark' ? setParksLoading : setShopsLoading;
         setLoading(true);
@@ -88,7 +108,7 @@ export function useNearbyPlaces() {
             const cached = await readTileCache(cacheKey);
             if (cached) {
                 setError(cached.length === 0 ? emptyMessage : null);
-                if (onLoaded) onLoaded(cached); else setPlaces(cached);
+                await deliverPlaces(cached, onLoaded);
                 setLoading(false);
                 return { status: cached.length === 0 ? 'empty' : 'ok', count: cached.length };
             }
@@ -101,8 +121,8 @@ export function useNearbyPlaces() {
             if (!fnError && data && Array.isArray(data.places)) {
                 const proxyPlaces = data.places as Place[];
                 setError(proxyPlaces.length === 0 ? emptyMessage : null);
-                if (onLoaded) onLoaded(proxyPlaces); else setPlaces(proxyPlaces);
                 if (cacheKey) writeTileCache(cacheKey, proxyPlaces);
+                await deliverPlaces(proxyPlaces, onLoaded);
                 setLoading(false);
                 return { status: proxyPlaces.length === 0 ? 'empty' : 'ok', count: proxyPlaces.length };
             }
@@ -169,12 +189,8 @@ export function useNearbyPlaces() {
                     .filter((p: Place | null): p is Place => p !== null);
 
                 setError(normalized.length === 0 ? emptyMessage : null);
-                if (onLoaded) {
-                    onLoaded(normalized)
-                } else {
-                    setPlaces(normalized)
-                }
                 if (cacheKey) writeTileCache(cacheKey, normalized);
+                await deliverPlaces(normalized, onLoaded);
                 lastError = null;
                 outcome = { status: normalized.length === 0 ? 'empty' : 'ok', count: normalized.length };
                 break;
@@ -205,6 +221,13 @@ export function useNearbyPlaces() {
     async function fetchPlaceById(placeId: string): Promise<Place | null> {
         const [type, id] = placeId.split('-') as ['node' | 'way' | 'relation', string];
 
+        const { data: ov } = await supabase
+            .from('place_overrides')
+            .select('name')
+            .eq('place_id', placeId)
+            .maybeSingle();
+        const overrideName = ov?.name ?? null;
+
         const query = `
         [out:json][timeout:15];
         ${type}(${id});
@@ -230,7 +253,7 @@ export function useNearbyPlaces() {
 
                 return {
                     id: placeId,
-                    name: el.tags?.name ?? 'Skate Location',
+                    name: overrideName ?? el.tags?.name ?? 'Skate Location',
                     type: (el.tags?.shop === 'skate' || el.tags?.shop === 'sports') ? 'skateshop' : 'skatepark',
                     lat: pLat,
                     lng: pLng,
