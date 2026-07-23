@@ -331,6 +331,15 @@ export function SpotDetailsModal({
     } else {
       setScrollEnabled(false);
       setShowConditionPicker(false);
+      setSelectedImageIndex(null);
+      setFlagModalOpen(false);
+      setEditOpen(false);
+      setProPaywallOpen(false);
+      setSessionViewerMedia(null);
+      setCollectionsOpen(false);
+      setAddToCrewOpen(false);
+      setCommentsOpen(false);
+      setTrickLogOpen(false);
     }
   }, [visible]);
 

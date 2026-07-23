@@ -60,6 +60,9 @@ export function FeedbackBoardModal({ visible, onClose, session, initialPostId }:
     if (visible) {
       supabase.auth.getUser().then(({ data }) => setCurrentUserId(data.user?.id ?? null));
       loadPosts(sort);
+    } else {
+      setComposeOpen(false);
+      setSelectedId(null);
     }
   }, [visible, sort]);
 
