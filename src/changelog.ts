@@ -1,5 +1,13 @@
 export const changelog = [
   {
+    version: '1.10.3',
+    date: 'July 2026',
+    changes: [
+      'Fixed rare freezes when closing certain screens',
+      'Small corrections to the How to Use guide',
+    ],
+  },
+  {
     version: '1.10.2',
     date: 'July 2026',
     changes: [
