@@ -180,6 +180,21 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
 
   function handleDirections() {
     if (!place) return;
+
+    const hasRealName = !!name && name !== 'Skate Park' && name !== 'Skate Shop';
+    const hasAddress = !!address && address.trim().length > 0;
+    const namedDest = hasRealName && hasAddress ? encodeURIComponent(`${name}, ${address}`) : null;
+
+    const appleUrl = namedDest
+      ? `maps://?daddr=${namedDest}`
+      : `maps://app?daddr=${place.lat},${place.lng}`;
+    const googleUrl = namedDest
+      ? `comgooglemaps://?daddr=${namedDest}&directionsmode=driving`
+      : `comgooglemaps://?daddr=${place.lat},${place.lng}&directionsmode=driving`;
+    const googleWebUrl = namedDest
+      ? `https://www.google.com/maps/dir/?api=1&destination=${namedDest}`
+      : `https://www.google.com/maps/dir/?api=1&destination=${place.lat},${place.lng}`;
+
     ActionSheetIOS.showActionSheetWithOptions(
       {
         options: ['Cancel', 'Open in Apple Maps', 'Open in Google Maps', 'Share Location'],
@@ -187,16 +202,13 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
       },
       async (buttonIndex) => {
         if (buttonIndex === 1) {
-          const encodedName = encodeURIComponent(place.name);
-          await Linking.openURL(`maps://app?q=${encodedName}&ll=${place.lat},${place.lng}`);
+          await Linking.openURL(appleUrl);
         } else if (buttonIndex === 2) {
-          const encodedName = encodeURIComponent(place.name);
-          const url = `comgooglemaps://?q=${encodedName}&center=${place.lat},${place.lng}`;
-          const canOpen = await Linking.canOpenURL(url);
+          const canOpen = await Linking.canOpenURL(googleUrl);
           if (canOpen) {
-            await Linking.openURL(url);
+            await Linking.openURL(googleUrl);
           } else {
-            await Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodedName}`);
+            await Linking.openURL(googleWebUrl);
           }
         } else if (buttonIndex === 3) {
           await Share.share({
