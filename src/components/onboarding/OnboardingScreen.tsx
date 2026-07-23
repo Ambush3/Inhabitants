@@ -9,7 +9,7 @@ const slides = [
   {
     id: '1',
     emoji: '🛹',
-    title: 'Welcome to Spots',
+    title: 'Welcome to Inhabitants',
     subtitle: 'The community-driven map for skaters. Find spots, parks, and shops near you.',
   },
   {
@@ -17,7 +17,7 @@ const slides = [
     emoji: '📍',
     title: 'Reading the Map',
     subtitle:
-      'Your spots show as gray pins. Friends appear in purple. Other skaters are cream. Green pins are skate parks and blue pins are skate shops.',
+      'Your spots show as yellow pins. Friends appear in purple. Other skaters are gray. Green pins are skate parks and blue pins are skate shops.',
   },
   {
     id: '3',
