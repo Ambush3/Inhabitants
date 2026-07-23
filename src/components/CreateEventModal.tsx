@@ -113,6 +113,10 @@ export function CreateEventModal({ visible, onClose, onSubmit, pendingCoord, spo
       setUserSearchResults([]);
       setSpotSearch('');
       setSelectedCrews(new Set());
+      setShowDatePicker(false);
+      setShowTimePicker(false);
+      setMapPickerOpen(false);
+      setSpotPickerOpen(false);
       crewMembersRef.current = {};
 
       const nextDefault = new Date();
