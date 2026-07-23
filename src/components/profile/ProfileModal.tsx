@@ -170,7 +170,13 @@ export function ProfileModal({
   }
 
   useEffect(() => {
-    if (!visible) exitSelection();
+    if (!visible) {
+      exitSelection();
+      setContactsOpen(false);
+      setSelectedPhones([]);
+      setEditOpen(false);
+      setViewer(null);
+    }
     loadCollections();
   }, [visible]);
 
