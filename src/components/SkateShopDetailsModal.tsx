@@ -566,6 +566,7 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
                   onChange: setEditName,
                   placeholder: 'Name Here',
                   keyboardType: 'default' as const,
+                  autoCapitalize: 'words' as const,
                 },
                 {
                   label: 'Phone',
@@ -573,6 +574,7 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
                   onChange: setEditPhone,
                   placeholder: 'e.g. +1 555 123 4567',
                   keyboardType: 'phone-pad' as const,
+                  autoCapitalize: 'none' as const,
                 },
                 {
                   label: 'Website',
@@ -580,6 +582,7 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
                   onChange: setEditWebsite,
                   placeholder: 'e.g. https://example.com',
                   keyboardType: 'url' as const,
+                  autoCapitalize: 'none' as const,
                 },
                 {
                   label: 'Hours',
@@ -587,6 +590,7 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
                   onChange: setEditHours,
                   placeholder: 'e.g. Mon-Fri 10am-6pm',
                   keyboardType: 'default' as const,
+                  autoCapitalize: 'words' as const,
                 },
                 {
                   label: 'Address',
@@ -594,6 +598,7 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
                   onChange: setEditAddress,
                   placeholder: 'e.g. 123 Main St, Portland',
                   keyboardType: 'default' as const,
+                  autoCapitalize: 'words' as const,
                 },
               ].map((field) => (
                 <View key={field.label} style={{ marginBottom: 12 }}>
@@ -612,7 +617,7 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
                     placeholder={field.placeholder}
                     placeholderTextColor={c.placeholder}
                     keyboardType={field.keyboardType}
-                    autoCapitalize="none"
+                    autoCapitalize={field.autoCapitalize}
                     style={{
                       borderWidth: 1,
                       borderColor: c.inputBorder,
