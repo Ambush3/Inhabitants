@@ -1,5 +1,12 @@
 export const changelog = [
   {
+    version: '1.10.2',
+    date: 'July 2026',
+    changes: [
+      'Directions to skate parks now route to the exact spot, even for parks that aren’t named yet',
+    ],
+  },
+  {
     version: '1.10.1',
     date: 'July 2026',
     changes: [
