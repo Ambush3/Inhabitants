@@ -469,7 +469,7 @@ export function SettingsPanel({
                     <Text style={{ flex: 1, fontSize: 15, color: c.text }}>Notifications</Text>
                   </View>
                   <Ionicons
-                    name={notifSectionOpen ? 'chevron-up' : 'chevron-down'}
+                    name={notifSectionOpen ? 'chevron-down' : 'chevron-forward'}
                     size={16}
                     color={c.subtext}
                   />
