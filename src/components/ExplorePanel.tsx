@@ -390,6 +390,8 @@ export function ExplorePanel({
           <ScrollView
             style={{ flex: 1 }}
             contentContainerStyle={{ padding: 16 }}
+            keyboardShouldPersistTaps="handled"
+            automaticallyAdjustKeyboardInsets={true}
             showsVerticalScrollIndicator={false}>
             {/* EXPLORE TAB */}
             {activeTab === 'explore' ? (

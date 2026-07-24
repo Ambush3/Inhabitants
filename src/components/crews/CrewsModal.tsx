@@ -247,6 +247,8 @@ export function CrewsModal({ visible, onClose, onSelectCrew, onCreatePress, init
               />
             </View>
             <ScrollView
+              keyboardShouldPersistTaps="handled"
+              automaticallyAdjustKeyboardInsets={true}
               refreshControl={
                 <RefreshControl
                   refreshing={loadingPublic}
