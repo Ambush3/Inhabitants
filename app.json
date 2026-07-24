@@ -9,7 +9,7 @@
         "userInterfaceStyle": "automatic",
         "newArchEnabled": true,
         "ios": {
-            "supportsTablet": true,
+            "supportsTablet": false,
             "associatedDomains": ["applinks:inhabitants.chottu.link"],
             "infoPlist": {
                 "NSLocationWhenInUseUsageDescription": "We use your location to center the map near you.",
