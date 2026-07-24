@@ -493,7 +493,10 @@ export function CrewDetailModal({ visible, onClose, crewId, onEdit, onSelectSpot
                   backgroundColor: c.surface,
                 }}
               />
-              <ScrollView style={{ marginTop: 8 }}>
+              <ScrollView
+                style={{ marginTop: 8 }}
+                keyboardShouldPersistTaps="handled"
+                automaticallyAdjustKeyboardInsets={true}>
                 {inviteResults.map((u) => (
                   <View
                     key={u.id}

@@ -254,7 +254,10 @@ export function ProfileModal({
           </Pressable>
         </View>
 
-        <ScrollView showsVerticalScrollIndicator={false}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          automaticallyAdjustKeyboardInsets={true}>
           {/* ── Avatar + name ── */}
           <View style={{ alignItems: 'center', paddingVertical: 28 }}>
             {avatarUrl ? (
