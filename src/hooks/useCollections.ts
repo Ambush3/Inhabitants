@@ -99,7 +99,7 @@ export function useCollections() {
             .from('collection_spots')
             .select('spot_id, spots(*)')
             .eq('collection_id', collectionId);
-        return (data ?? []).map((r: any) => r.spots);
+        return (data ?? []).map((r: any) => r.spots).filter(Boolean);
     }
 
     return {
