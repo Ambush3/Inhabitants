@@ -15,6 +15,8 @@ import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/src/libs/supabase';
 import { useTheme } from '@/src/context/ThemeContext';
+import { usePro } from '@/src/context/ProContext';
+import { CrownIcon } from '@/src/components/icons/CrownIcon';
 import { useToast, ToastHost } from '@/src/context/ToastContext';
 import { Spot } from '@/src/types';
 import { useFriendships, Friend } from '@/src/hooks/social/useFriendships';
@@ -70,6 +72,7 @@ export function ProfileModal({
   onDeleteTrickLog,
 }: Props) {
   const { theme } = useTheme();
+  const { isPro } = usePro();
   const toast = useToast();
   const c = theme.colors;
 
@@ -285,15 +288,17 @@ export function ProfileModal({
               </Text>
             ) : null}
             {username ? (
-              <Text
-                style={{
-                  fontSize: firstName || lastName ? 14 : 22,
-                  fontWeight: firstName || lastName ? '500' : '700',
-                  color: firstName || lastName ? c.subtext : c.text,
-                  marginBottom: 4,
-                }}>
-                @{username}
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                <Text
+                  style={{
+                    fontSize: firstName || lastName ? 14 : 22,
+                    fontWeight: firstName || lastName ? '500' : '700',
+                    color: firstName || lastName ? c.subtext : c.text,
+                  }}>
+                  @{username}
+                </Text>
+                {isPro ? <CrownIcon size={16} /> : null}
+              </View>
             ) : null}
             {joinDate ? (
               <Text style={{ fontSize: 13, color: c.subtext }}>

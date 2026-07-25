@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { showAlert, AlertHost } from '@/src/components/ui/ThemedAlert';
 import { View, Text, Modal, Pressable, Switch, ScrollView, Linking } from 'react-native';
 import { usePro } from '@/src/context/ProContext';
+import { CrownIcon } from '@/src/components/icons/CrownIcon';
 import { PaywallModal } from '@/src/components/PaywallModal';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -326,7 +327,7 @@ export function SettingsPanel({
                       <>
                         <View style={rowStyle}>
                           <View style={rowLeftStyle}>
-                            <Ionicons name="star" size={20} color={c.accent} />
+                            <CrownIcon size={20} />
                             <Text style={{ fontSize: 15, color: c.text }}>
                               Pro — Active
                             </Text>
