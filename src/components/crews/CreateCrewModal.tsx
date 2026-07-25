@@ -159,6 +159,7 @@ export function CreateCrewModal({ visible, onClose, onSubmit, editCrew }: Props)
               onChangeText={setName}
               placeholder="e.g. Sunset Skate Crew"
               placeholderTextColor={c.subtext}
+              autoCapitalize="words"
               maxLength={50}
               style={{
                 borderWidth: 1,
@@ -179,6 +180,7 @@ export function CreateCrewModal({ visible, onClose, onSubmit, editCrew }: Props)
               onChangeText={setDescription}
               placeholder=""
               placeholderTextColor={c.subtext}
+              autoCapitalize="sentences"
               multiline
               maxLength={500}
               style={{

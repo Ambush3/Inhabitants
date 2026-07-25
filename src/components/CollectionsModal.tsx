@@ -120,6 +120,7 @@ export function CollectionsModal({ visible, onClose, spotId }: Props) {
                                     onChangeText={setNewName}
                                     placeholder="Collection name..."
                                     placeholderTextColor={c.placeholder}
+                                    autoCapitalize="words"
                                     autoFocus
                                     style={{
                                         flex: 1,

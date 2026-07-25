@@ -317,7 +317,7 @@ export function CreateEventModal({ visible, onClose, onSubmit, pendingCoord, spo
               onChangeText={setTitle}
               placeholder="e.g. Downtown Session"
               placeholderTextColor={c.placeholder}
-              autoCapitalize="sentences"
+              autoCapitalize="words"
               autoCorrect
               style={{
                 borderWidth: 1,
@@ -355,7 +355,7 @@ export function CreateEventModal({ visible, onClose, onSubmit, pendingCoord, spo
               onChangeText={setLocationName}
               placeholder="Location name"
               placeholderTextColor={c.placeholder}
-              autoCapitalize="sentences"
+              autoCapitalize="words"
               style={{
                 borderWidth: 1,
                 borderColor: c.inputBorder,
