@@ -266,7 +266,7 @@ export function CreateSpotModal({
                   color: c.text,
                   backgroundColor: c.surface,
                 }}
-                autoCapitalize="sentences"
+                autoCapitalize="words"
               />
 
               <Text style={{ marginBottom: 6, color: c.text }}>Description (optional)</Text>
