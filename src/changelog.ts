@@ -1,5 +1,15 @@
 export const changelog = [
   {
+    version: '1.10.4',
+    date: 'July 2026',
+    changes: [
+      'Fixed the keyboard covering the box when searching or inviting friends',
+      'Fixed a crash when opening a list that contained a deleted spot',
+      'Names now auto-capitalize when creating spots, events, crews, and lists',
+      'Small polish and stability improvements',
+    ],
+  },
+  {
     version: '1.10.3',
     date: 'July 2026',
     changes: [
