@@ -757,6 +757,7 @@ export default function Index() {
 
   function closeDetailsModal() {
     const idToHide = highlightSpotIdRef.current;
+    const spotToCenter = selectedSpot;
 
     const pendingEdit = pendingSpotEditRef.current;
     if (pendingEdit) {
@@ -778,7 +779,8 @@ export default function Index() {
     setTimeout(() => {
       mapRef.current?.animateToRegion(
         {
-          ...mapRegionRef.current,
+          latitude: spotToCenter?.lat ?? mapRegionRef.current.latitude,
+          longitude: spotToCenter?.lng ?? mapRegionRef.current.longitude,
           latitudeDelta: 0.08,
           longitudeDelta: 0.08,
         },
@@ -2479,6 +2481,12 @@ export default function Index() {
           await toggleReviewFlag(reviewId, reason);
         }}
         onViewProfile={(userId) => {
+          if (userId === session?.user.id) {
+            reopenSpotDetailsOnProfileCloseRef.current = true;
+            setDetailsOpen(false);
+            setTimeout(() => setProfileOpen(true), 350);
+            return;
+          }
           if (publicProfileOpen) return;
           reopenSpotDetailsOnProfileCloseRef.current = true;
           setDetailsOpen(false);
@@ -2598,6 +2606,9 @@ export default function Index() {
           if (reopenCrewDetailOnProfileCloseRef.current) {
             reopenCrewDetailOnProfileCloseRef.current = false;
             setTimeout(() => setCrewDetailOpen(true), 350);
+          } else if (reopenSpotDetailsOnProfileCloseRef.current) {
+            reopenSpotDetailsOnProfileCloseRef.current = false;
+            setTimeout(() => setDetailsOpen(true), 350);
           }
         }}
         mySpots={mySpots}
