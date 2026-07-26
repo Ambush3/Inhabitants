@@ -30,7 +30,7 @@ export function SkateCitiesModal({ visible, onClose, onSelectCity }: Props) {
             <Ionicons name="close" size={24} color={c.text} />
           </Pressable>
           <Text style={{ flex: 1, textAlign: 'center', fontSize: 16, fontWeight: '700', color: c.text }}>
-            Cities
+            Skate Cities
           </Text>
           <View style={{ width: 32 }} />
         </View>
