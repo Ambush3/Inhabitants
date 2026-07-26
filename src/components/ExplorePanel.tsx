@@ -1038,7 +1038,7 @@ export function ExplorePanel({
                   <View style={{ width: 32, alignItems: 'center' }}>
                     <Ionicons name="earth" size={24} color={c.text} />
                   </View>
-                  <Text style={{ color: c.text, fontWeight: '600' }}>Cities</Text>
+                  <Text style={{ color: c.text, fontWeight: '600' }}>Skate Cities</Text>
                 </Pressable>
               </View>
             ) : null}
