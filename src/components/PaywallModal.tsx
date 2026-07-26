@@ -24,7 +24,6 @@ type Props = {
 
 const PRO_FEATURES = [
   'Unlimited photos & videos on every spot',
-  'City Pages — explore top skate cities',
   'Support an indie skate app',
 ];
 

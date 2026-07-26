@@ -11,6 +11,7 @@ import { useFriendships, FriendshipStatus } from '@/src/hooks/social/useFriendsh
 import { sendFriendRequestNotification } from '@/src/libs/sendPushNotification';
 import { useCheckInMedia } from '@/src/hooks/useCheckInMedia';
 import { SessionMediaStrip } from '@/src/components/SessionMediaStrip';
+import { CrownIcon } from '@/src/components/icons/CrownIcon';
 import { SessionMediaViewerModal, ViewerMedia } from '@/src/components/SessionMediaViewerModal';
 
 type PublicReview = {
@@ -45,6 +46,7 @@ export function PublicProfileModal({
 
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [username, setUsername] = useState<string | null>(null);
+  const [isProUser, setIsProUser] = useState(false);
   const [firstName, setFirstName] = useState<string | null>(null);
   const [lastName, setLastName] = useState<string | null>(null);
   const [joinDate, setJoinDate] = useState<string | null>(null);
@@ -82,7 +84,7 @@ export function PublicProfileModal({
       const [profileRes, spotsRes, reviewsRes, status] = await Promise.all([
         supabase
           .from('profiles')
-          .select('avatar_url, username, created_at, first_name, last_name, badge')
+          .select('avatar_url, username, created_at, first_name, last_name, badge, is_pro')
           .eq('id', userId)
           .single(),
         supabase
@@ -104,6 +106,7 @@ export function PublicProfileModal({
       setFirstName(profileRes.data?.first_name ?? null);
       setLastName(profileRes.data?.last_name ?? null);
       setBadge(profileRes.data?.badge ?? null);
+      setIsProUser(profileRes.data?.is_pro ?? false);
       setJoinDate(profileRes.data?.created_at ?? null);
       setPublicSpots((spotsRes.data as Spot[]) ?? []);
       setPublicReviews(
@@ -213,15 +216,17 @@ export function PublicProfileModal({
                 </Text>
               ) : null}
               {username ? (
-                <Text
-                  style={{
-                    fontSize: firstName || lastName ? 14 : 22,
-                    fontWeight: firstName || lastName ? '500' : '700',
-                    color: firstName || lastName ? c.subtext : c.text,
-                    marginBottom: 4,
-                  }}>
-                  @{username}
-                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                  <Text
+                    style={{
+                      fontSize: firstName || lastName ? 14 : 22,
+                      fontWeight: firstName || lastName ? '500' : '700',
+                      color: firstName || lastName ? c.subtext : c.text,
+                    }}>
+                    @{username}
+                  </Text>
+                  {isProUser ? <CrownIcon size={16} /> : null}
+                </View>
               ) : null}
               {joinDate ? (
                 <Text style={{ fontSize: 13, color: c.subtext }}>
