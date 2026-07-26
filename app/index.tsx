@@ -1810,12 +1810,7 @@ export default function Index() {
         }
         onOpenCities={() => {
           setPanelOpen(false);
-          if (isPro) {
-            setCitiesOpen(true);
-          } else {
-            setPaywallHeadline('Unlock City Pages and everything in Pro.');
-            setPaywallOpen(true);
-          }
+          setCitiesOpen(true);
         }}
         onSelectSpot={(s) => {
           if (actionSheetOpenRef.current) return;

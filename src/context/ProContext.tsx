@@ -85,6 +85,17 @@ export function ProProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  useEffect(() => {
+    if (loading) return;
+    (async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+      await supabase.from('profiles').update({ is_pro: isPro }).eq('id', user.id);
+    })();
+  }, [isPro, loading]);
+
   async function purchase(pkg: PurchasesPackage): Promise<boolean> {
     try {
       const { customerInfo } = await Purchases.purchasePackage(pkg);
