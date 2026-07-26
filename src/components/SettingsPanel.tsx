@@ -3,6 +3,7 @@ import { showAlert, AlertHost } from '@/src/components/ui/ThemedAlert';
 import { View, Text, Modal, Pressable, Switch, ScrollView, Linking } from 'react-native';
 import { usePro } from '@/src/context/ProContext';
 import { CrownIcon } from '@/src/components/icons/CrownIcon';
+import { CrownEmptyIcon } from '@/src/components/icons/CrownEmptyIcon';
 import { PaywallModal } from '@/src/components/PaywallModal';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -352,7 +353,7 @@ export function SettingsPanel({
                       <>
                         <Pressable style={rowStyle} onPress={() => setProPaywallOpen(true)}>
                           <View style={rowLeftStyle}>
-                            <Ionicons name="star-outline" size={20} color={c.accent} />
+                            <CrownEmptyIcon size={20} />
                             <Text
                               style={{ fontSize: 15, fontWeight: '600', color: c.text }}>
                               Upgrade to Pro
