@@ -14,6 +14,13 @@ export type SpotVisitorSummary = {
   unique_skater_count: number;
 };
 
+export type SpotVisitor = {
+  id: string;
+  username: string;
+  avatar_url: string | null;
+  last_visit: string;
+};
+
 export type PassportMedia = {
   id: string;
   url: string;
@@ -126,6 +133,40 @@ export function useCheckIns() {
     const unique = new Set(data.map((r) => r.user_id)).size;
     setVisitorCounts((prev) => ({ ...prev, [spotId]: unique }));
     return unique;
+  }, []);
+
+  const getSpotVisitors = useCallback(async (spotId: string): Promise<SpotVisitor[]> => {
+    const { data } = await supabase
+      .from('check_ins')
+      .select('user_id, checked_in_at')
+      .eq('spot_id', spotId)
+      .eq('is_private', false)
+      .order('checked_in_at', { ascending: false });
+    if (!data || data.length === 0) return [];
+
+    const seen = new Set<string>();
+    const ordered: { user_id: string; checked_in_at: string }[] = [];
+    for (const r of data as { user_id: string; checked_in_at: string }[]) {
+      if (!seen.has(r.user_id)) {
+        seen.add(r.user_id);
+        ordered.push(r);
+      }
+    }
+
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, username, avatar_url')
+      .in('id', ordered.map((o) => o.user_id));
+    const byId = new Map((profiles ?? []).map((p: any) => [p.id, p]));
+
+    return ordered
+      .filter((o) => byId.has(o.user_id))
+      .map((o) => ({
+        id: o.user_id,
+        username: byId.get(o.user_id)?.username ?? 'Someone',
+        avatar_url: byId.get(o.user_id)?.avatar_url ?? null,
+        last_visit: o.checked_in_at,
+      }));
   }, []);
 
   const getMyCheckInsForSpot = useCallback(async (spotId: string): Promise<CheckIn[]> => {
@@ -266,6 +307,7 @@ export function useCheckIns() {
     visitorCounts,
     checkIn,
     getVisitorCount,
+    getSpotVisitors,
     getMyCheckInsForSpot,
     loadPassport,
     togglePrivacy,
