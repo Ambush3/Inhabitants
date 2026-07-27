@@ -49,9 +49,12 @@ function RootLayoutInner() {
 
     const deepLinkSubscription = eventEmitter.addListener('ChottuLinkDeepLinkResolved', (data) => {
       if (!data?.url) return;
-      const match = data.url.match(/join\?ref=([a-f0-9-]+)/);
+      const match = data.url.match(/ref=([a-f0-9-]+)/);
       if (match?.[1]) {
         AsyncStorage.setItem('pending_referral_id', match[1]);
+        if (data.url.includes('view=profile')) {
+          AsyncStorage.setItem('pending_profile_id', match[1]);
+        }
       }
     });
 
@@ -104,6 +107,12 @@ function RootLayoutInner() {
 
     async function handleDeepLink(url: string) {
       if (handled) return;
+      if (url.includes('view=profile')) {
+        const refMatch = url.match(/ref=([a-f0-9-]+)/);
+        if (refMatch?.[1]) {
+          await AsyncStorage.setItem('pending_profile_id', refMatch[1]);
+        }
+      }
       if (url.includes('type=recovery') || url.includes('access_token')) {
         const params = new URLSearchParams(url.split('#')[1]);
         const accessToken = params.get('access_token');

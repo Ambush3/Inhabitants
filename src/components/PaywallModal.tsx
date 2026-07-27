@@ -1,14 +1,5 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  Modal,
-  ScrollView,
-  Pressable,
-  SafeAreaView,
-  ActivityIndicator,
-  Linking,
-} from 'react-native';
+import { View, Text, Modal, ScrollView, Pressable, SafeAreaView, ActivityIndicator, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { PurchasesPackage } from 'react-native-purchases';
 import { useTheme } from '@/src/context/ThemeContext';
@@ -24,6 +15,9 @@ type Props = {
 
 const PRO_FEATURES = [
   'Unlimited photos & videos on every spot',
+  'See who has skated your spots',
+  'Shareable Skate Passport card',
+  'Pro status on your profile',
   'Support an indie skate app',
 ];
 
@@ -142,14 +136,16 @@ export function PaywallModal({ visible, onClose, headline }: Props) {
             <Text style={{ color: c.accent, fontSize: 14, fontWeight: '600' }}>Restore Purchases</Text>
           </Pressable>
 
-          <Text style={{ color: c.subtext, fontSize: 11, lineHeight: 16, textAlign: 'center', marginTop: 20 }}>
-            7-day free trial, then the selected price. Subscriptions auto-renew unless canceled at least
-            24 hours before the end of the period. Manage or cancel anytime in your App Store account
-            settings.
+          <Text
+            style={{ color: c.subtext, fontSize: 11, lineHeight: 16, textAlign: 'center', marginTop: 20 }}>
+            7-day free trial, then the selected price. Subscriptions auto-renew unless canceled at least 24
+            hours before the end of the period. Manage or cancel anytime in your App Store account settings.
           </Text>
           <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 16, marginTop: 12 }}>
             <Pressable onPress={() => Linking.openURL(TERMS_URL)}>
-              <Text style={{ color: c.subtext, fontSize: 12, textDecorationLine: 'underline' }}>Terms</Text>
+              <Text style={{ color: c.subtext, fontSize: 12, textDecorationLine: 'underline' }}>
+                Terms
+              </Text>
             </Pressable>
             <Pressable onPress={() => Linking.openURL(PRIVACY_URL)}>
               <Text style={{ color: c.subtext, fontSize: 12, textDecorationLine: 'underline' }}>
