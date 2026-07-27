@@ -30,6 +30,13 @@ import { SkateShopDetailsModal } from '@/src/components/SkateShopDetailsModal';
 import { ExplorePanel } from '@/src/components/ExplorePanel';
 import { SkateCitiesModal } from '@/src/components/SkateCitiesModal';
 import { PaywallModal } from '@/src/components/PaywallModal';
+import {
+  MapFilterSheet,
+  MapFilters,
+  EMPTY_FILTERS,
+  spotMatchesFeatures,
+  countActiveFilters,
+} from '@/src/components/MapFilterSheet';
 import { usePro } from '@/src/context/ProContext';
 import { useSplash } from '@/src/context/SplashContext';
 import { SettingsPanel } from '@/src/components/SettingsPanel';
@@ -633,6 +640,11 @@ export default function Index() {
 
   const [difficultyFilter, setDifficultyFilter] = useState<Set<'beginner' | 'intermediate' | 'advanced'>>(new Set());
   const [ownershipFilter, setOwnershipFilter] = useState<Set<'mine' | 'friends' | 'community'>>(new Set());
+  const [advFilters, setAdvFilters] = useState<MapFilters>(EMPTY_FILTERS);
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
+  const [viewportRegion, setViewportRegion] = useState<Region | null>(null);
+  const [visitedSpotIds, setVisitedSpotIds] = useState<Set<string>>(new Set());
+  const [spotRatings, setSpotRatings] = useState<Record<string, number>>({});
   const [mapSearch, setMapSearch] = useState('');
   const [headerHeight, setHeaderHeight] = useState(0);
   const [bannerVisible, setBannerVisible] = useState(false);
@@ -681,6 +693,42 @@ export default function Index() {
       );
     }
 
+    if (advFilters.features.length > 0) {
+      list = list.filter((s) => spotMatchesFeatures(s.tags, advFilters.features));
+    }
+    if (advFilters.types.length > 0) {
+      list = list.filter((s) => advFilters.types.includes(s.spot_type));
+    }
+    if (advFilters.verifiedOnly) {
+      list = list.filter((s) => s.is_verified);
+    }
+    if (advFilters.ratings.length > 0) {
+      list = list.filter((s) => {
+        const avg = spotRatings[s.id];
+        return avg != null && advFilters.ratings.includes(Math.round(avg));
+      });
+    }
+    if (advFilters.visited !== 'all') {
+      const myId = session?.user?.id;
+      list = list.filter((s) => {
+        const visited = visitedSpotIds.has(s.id) || (!!myId && s.user_id === myId);
+        return advFilters.visited === 'visited' ? visited : !visited;
+      });
+    }
+
+    const region = viewportRegion ?? initialRegion;
+    if (region && !(region.latitude === 0 && region.longitude === 0)) {
+      const halfLat = region.latitudeDelta / 2;
+      const halfLng = region.longitudeDelta / 2;
+      const minLat = region.latitude - halfLat;
+      const maxLat = region.latitude + halfLat;
+      const minLng = region.longitude - halfLng;
+      const maxLng = region.longitude + halfLng;
+      list = list.filter(
+        (s) => s.lat >= minLat && s.lat <= maxLat && s.lng >= minLng && s.lng <= maxLng
+      );
+    }
+
     return list.filter((s) => s.lat && s.lng);
   }, [
     filteredSearchResults,
@@ -692,17 +740,68 @@ export default function Index() {
     mapSearch,
     session,
     friendIds,
+    advFilters,
+    visitedSpotIds,
+    spotRatings,
+    viewportRegion,
+    initialRegion,
   ]);
 
+  useEffect(() => {
+    const uid = session?.user?.id;
+    if (!uid) {
+      setVisitedSpotIds(new Set());
+      return;
+    }
+    supabase
+      .from('check_ins')
+      .select('spot_id')
+      .eq('user_id', uid)
+      .then(({ data }) => {
+        setVisitedSpotIds(new Set((data ?? []).map((r: any) => r.spot_id)));
+      });
+  }, [session?.user?.id]);
+
+  useEffect(() => {
+    if (!isOnline) return;
+    supabase
+      .from('reviews')
+      .select('spot_id, rating')
+      .then(({ data }) => {
+        if (!data) return;
+        const sums: Record<string, { total: number; count: number }> = {};
+        for (const r of data as any[]) {
+          if (!r.spot_id || r.rating == null) continue;
+          const e = sums[r.spot_id] ?? { total: 0, count: 0 };
+          e.total += r.rating;
+          e.count += 1;
+          sums[r.spot_id] = e;
+        }
+        const avgs: Record<string, number> = {};
+        for (const id in sums) avgs[id] = sums[id].total / sums[id].count;
+        setSpotRatings(avgs);
+      });
+  }, [isOnline, spots.length]);
+
   const visiblePlaces = useMemo(() => {
+    // OSM places (parks/shops) can't satisfy feature/rating/visited/verified filters — hide them when those are active.
+    if (
+      advFilters.features.length > 0 ||
+      advFilters.ratings.length > 0 ||
+      advFilters.visited !== 'all' ||
+      advFilters.verifiedOnly
+    ) {
+      return [];
+    }
     const spotIds = new Set(visibleSpots.map((s) => s.id));
     const seen = new Set<string>();
     return places.filter((p) => {
       if (spotIds.has(p.id) || seen.has(p.id)) return false;
+      if (advFilters.types.length > 0 && !advFilters.types.includes(p.type)) return false;
       seen.add(p.id);
       return true;
     });
-  }, [places, visibleSpots]);
+  }, [places, visibleSpots, advFilters]);
 
   const toggleOwnershipFilter = (key: 'mine' | 'friends' | 'community') =>
     setOwnershipFilter((prev) => {
@@ -2068,6 +2167,7 @@ export default function Index() {
         }}
         onRegionChangeComplete={(r: Region) => {
           mapRegionRef.current = r;
+          setViewportRegion(r);
           const shouldShow = r.latitudeDelta < 0.5;
           setMarkersVisible((prev) => (prev === shouldShow ? prev : shouldShow));
           if (regionWriteTimerRef.current) clearTimeout(regionWriteTimerRef.current);
@@ -2125,6 +2225,18 @@ export default function Index() {
             onToggleOwnership={toggleOwnershipFilter}
             difficultyFilter={difficultyFilter}
             onToggleDifficulty={toggleDifficultyFilter}
+            isPro={isPro}
+            activeFilterCount={countActiveFilters(advFilters)}
+            onOpenFilters={() =>
+              requireAuth(() => {
+                if (!isPro) {
+                  setPaywallHeadline('Unlock advanced filters and find exactly the spots you want.');
+                  setPaywallOpen(true);
+                  return;
+                }
+                setFilterSheetOpen(true);
+              })
+            }
           />
           <MapLegend
             style={{ position: 'absolute', top: (headerHeight || insets.top + 56) + 112, right: 12, alignItems: 'flex-end' }}
@@ -2726,6 +2838,13 @@ export default function Index() {
         visible={paywallOpen}
         onClose={() => setPaywallOpen(false)}
         headline={paywallHeadline}
+      />
+      <MapFilterSheet
+        visible={filterSheetOpen}
+        onClose={() => setFilterSheetOpen(false)}
+        filters={advFilters}
+        onChange={setAdvFilters}
+        resultCount={visibleSpots.length}
       />
       <SkateCitiesModal
         visible={citiesOpen}

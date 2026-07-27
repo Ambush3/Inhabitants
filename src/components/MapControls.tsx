@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TextInput, Pressable, ScrollView, StyleProp, ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/src/context/ThemeContext';
+import { CrownIcon } from '@/src/components/icons/CrownIcon';
 
 type Ownership = 'mine' | 'friends' | 'community';
 type Difficulty = 'beginner' | 'intermediate' | 'advanced';
@@ -13,6 +14,9 @@ type Props = {
   onToggleOwnership: (key: Ownership) => void;
   difficultyFilter: Set<Difficulty>;
   onToggleDifficulty: (key: Difficulty) => void;
+  onOpenFilters?: () => void;
+  activeFilterCount?: number;
+  isPro?: boolean;
   style?: StyleProp<ViewStyle>;
 };
 
@@ -35,6 +39,9 @@ export function MapControls({
   onToggleOwnership,
   difficultyFilter,
   onToggleDifficulty,
+  onOpenFilters,
+  activeFilterCount = 0,
+  isPro = false,
   style,
 }: Props) {
   const { theme } = useTheme();
@@ -101,6 +108,57 @@ export function MapControls({
         showsHorizontalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ paddingVertical: 8, paddingRight: 12 }}>
+        {onOpenFilters ? (
+          <>
+            <Pressable
+              onPress={onOpenFilters}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 5,
+                paddingVertical: 6,
+                paddingHorizontal: 12,
+                borderRadius: 16,
+                backgroundColor: activeFilterCount > 0 ? c.accent : c.surface,
+                borderWidth: 1,
+                borderColor: activeFilterCount > 0 ? c.accent : c.border,
+                marginRight: 8,
+              }}>
+              <Ionicons
+                name="options-outline"
+                size={15}
+                color={activeFilterCount > 0 ? '#fff' : c.text}
+              />
+              <Text
+                style={{
+                  fontSize: 13,
+                  fontWeight: '600',
+                  color: activeFilterCount > 0 ? '#fff' : c.text,
+                }}>
+                Filters
+              </Text>
+              {activeFilterCount > 0 ? (
+                <View
+                  style={{
+                    minWidth: 18,
+                    height: 18,
+                    borderRadius: 9,
+                    backgroundColor: '#fff',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    paddingHorizontal: 4,
+                  }}>
+                  <Text style={{ fontSize: 11, fontWeight: '800', color: c.accent }}>
+                    {activeFilterCount}
+                  </Text>
+                </View>
+              ) : !isPro ? (
+                <CrownIcon size={13} />
+              ) : null}
+            </Pressable>
+            <View style={{ width: 1, backgroundColor: c.border, marginRight: 8, marginVertical: 4 }} />
+          </>
+        ) : null}
         {OWNERSHIP.map((o) => (
           <Chip
             key={o.key}
