@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { showAlert, AlertHost } from '@/src/components/ui/ThemedAlert';
-import { View, Text, Modal, Pressable, Switch, ScrollView, Linking } from 'react-native';
+import { View, Text, Modal, Pressable, ScrollView, Linking } from 'react-native';
 import { usePro } from '@/src/context/ProContext';
 import { CrownIcon } from '@/src/components/icons/CrownIcon';
 import { CrownEmptyIcon } from '@/src/components/icons/CrownEmptyIcon';
@@ -46,6 +46,38 @@ function SectionLabel({ label }: { label: string }) {
       }}>
       {label}
     </Text>
+  );
+}
+
+function Toggle({
+  value,
+  onPress,
+  accent,
+  track,
+  disabled,
+}: {
+  value: boolean;
+  onPress: () => void;
+  accent: string;
+  track: string;
+  disabled?: boolean;
+}) {
+  return (
+    <Pressable
+      onPress={disabled ? undefined : onPress}
+      hitSlop={8}
+      style={{
+        width: 46,
+        height: 28,
+        borderRadius: 14,
+        backgroundColor: value ? accent : track,
+        padding: 2,
+        alignItems: value ? 'flex-end' : 'flex-start',
+        justifyContent: 'center',
+        opacity: disabled ? 0.5 : 1,
+      }}>
+      <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: '#fff' }} />
+    </Pressable>
   );
 }
 
@@ -241,18 +273,29 @@ export function SettingsPanel({
         {visible ? <AlertHost /> : null}
         {visible ? <ToastHost /> : null}
         <PaywallModal visible={proPaywallOpen} onClose={() => setProPaywallOpen(false)} />
-        <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)' }} onPress={onClose}>
+        <View style={{ flex: 1 }}>
           <Pressable
             style={{
               position: 'absolute',
+              top: 0,
+              left: 0,
               right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0,0,0,0.3)',
+            }}
+            onPress={onClose}
+          />
+          <View
+            style={{
+              position: 'absolute',
+              right: 0,
+              top: 0,
+              bottom: 0,
               paddingTop: insets.top,
               width: 280,
-              height: '100%',
               backgroundColor: 'transparent',
               flexDirection: 'column',
-            }}
-            onPress={() => { }}>
+            }}>
             <ThemeBackdrop color={c.panelBg} style={{ flex: 1, padding: 16, flexDirection: 'column' }}>
               {/* Header */}
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
@@ -403,7 +446,7 @@ export function SettingsPanel({
                         <Ionicons name="location-outline" size={20} color={c.text} />
                         <Text style={{ fontSize: 15, color: c.text }}>Public Check-ins</Text>
                       </View>
-                      <Switch value={false} disabled />
+                      <Toggle value={false} onPress={() => {}} accent={c.accent} track={c.border} disabled />
                     </View>
                     <View style={rowStyle}>
                       <View style={rowLeftStyle}>
@@ -427,9 +470,12 @@ export function SettingsPanel({
                         <Ionicons name="location-outline" size={20} color={c.text} />
                         <Text style={{ fontSize: 15, color: c.text }}>Public Check-ins</Text>
                       </View>
-                      <Switch
+                      <Toggle
                         value={publicCheckIns}
-                        onValueChange={async (v) => {
+                        accent={c.accent}
+                        track={c.border}
+                        onPress={async () => {
+                          const v = !publicCheckIns;
                           setPublicCheckIns(v);
                           const {
                             data: { user },
@@ -468,7 +514,7 @@ export function SettingsPanel({
                   style={{ ...rowStyle, borderBottomWidth: notifSectionOpen ? 0 : 1 }}>
                   <View style={rowLeftStyle}>
                     <Ionicons name="notifications-outline" size={20} color={c.text} />
-                    <Text style={{ flex: 1, fontSize: 15, color: c.text }}>Notifications</Text>
+                    <Text style={{ fontSize: 15, color: c.text }}>Notifications</Text>
                   </View>
                   <Ionicons
                     name={notifSectionOpen ? 'chevron-down' : 'chevron-forward'}
@@ -505,7 +551,12 @@ export function SettingsPanel({
                           paddingVertical: 8,
                         }}>
                         <Text style={{ fontSize: 14, color: c.text }}>{label}</Text>
-                        <Switch value={prefs[key]} onValueChange={(v) => updatePref(key, v)} />
+                        <Toggle
+                          value={prefs[key]}
+                          onPress={() => updatePref(key, !prefs[key])}
+                          accent={c.accent}
+                          track={c.border}
+                        />
                       </View>
                     ))}
                   </View>
@@ -632,8 +683,8 @@ export function SettingsPanel({
               session={session}
               initialPostId={initialFeedbackPostId}
             />
-          </Pressable>
-        </Pressable>
+          </View>
+        </View>
       </Modal>
     </>
   );

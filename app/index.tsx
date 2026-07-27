@@ -1205,6 +1205,27 @@ export default function Index() {
   }, [session?.user.id]);
 
   useEffect(() => {
+    if (!session?.user.id || !splashDone) return;
+    let cancelled = false;
+    AsyncStorage.getItem('pending_profile_id').then((id) => {
+      if (cancelled || !id) return;
+      AsyncStorage.removeItem('pending_profile_id');
+      setTimeout(() => {
+        if (cancelled) return;
+        if (id === session.user.id) {
+          setProfileOpen(true);
+        } else {
+          setPublicProfileUserId(id);
+          setPublicProfileOpen(true);
+        }
+      }, 300);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.user.id, splashDone]);
+
+  useEffect(() => {
     if (!session?.user.id) return;
     const sub = AppState.addEventListener('change', (state) => {
       if (state === 'active') {
