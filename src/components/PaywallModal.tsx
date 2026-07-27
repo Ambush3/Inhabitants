@@ -15,6 +15,7 @@ type Props = {
 
 const PRO_FEATURES = [
   'Unlimited photos & videos on every spot',
+  'Advanced map filters — feature, rating, visited & more',
   'See who has skated your spots',
   'Shareable Skate Passport card',
   'Pro status on your profile',
