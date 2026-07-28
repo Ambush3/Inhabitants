@@ -9,6 +9,7 @@ type Props = {
   avatarUrl: string | null;
   spotsVisited: number;
   totalCheckIns: number;
+  parksSkated?: number;
   longestStreak: number;
   mostSkatedSpot: string | null;
   profileUrl?: string | null;
@@ -38,6 +39,7 @@ export function PassportShareCard({
   avatarUrl,
   spotsVisited,
   totalCheckIns,
+  parksSkated,
   longestStreak,
   mostSkatedSpot,
   profileUrl,
@@ -70,7 +72,8 @@ export function PassportShareCard({
 
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 10 }}>
         <Stat label="Spots Skated" value={String(spotsVisited)} />
-        <Stat label="Check-ins" value={String(totalCheckIns)} />
+        <Stat label="Spot Check-ins" value={String(totalCheckIns)} />
+        {parksSkated != null ? <Stat label="Parks Skated" value={String(parksSkated)} /> : null}
         <Stat label="Longest Streak" value={`${longestStreak}d`} />
         <Stat label="Top Spot" value={mostSkatedSpot ?? '—'} small />
       </View>

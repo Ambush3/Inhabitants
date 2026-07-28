@@ -26,6 +26,7 @@ import { Spot } from '@/src/types';
 import { useFriendships, Friend } from '@/src/hooks/social/useFriendships';
 import { useCollections, Collection } from '@/src/hooks/useCollections';
 import { useCheckIns, PassportEntry } from '@/src/hooks/useCheckIns';
+import { usePlaceCheckIns } from '@/src/hooks/usePlaceCheckIns';
 import { MyMediaGrid } from '@/src/components/profile/MyMediaGrid';
 import { TrickLog } from '@/src/hooks/useTrickLog';
 import { sendFriendAcceptedNotification } from '@/src/libs/sendPushNotification';
@@ -124,6 +125,7 @@ export function ProfileModal({
 
   const { loadPassport, passportEntries, passportLoading, togglePrivacy, deleteCheckIn } = useCheckIns();
   const { activityData, loading: streakLoading, loadStreak } = useStreak();
+  const { parksSkated, load: loadPlaceCheckIns } = usePlaceCheckIns();
 
   const totalCheckIns = passportEntries.reduce((sum, e) => sum + e.visit_count, 0);
   const mostSkatedSpot =
@@ -255,6 +257,7 @@ export function ProfileModal({
     loadFriends();
     loadPassport();
     loadStreak();
+    loadPlaceCheckIns();
   }, [visible]);
 
 
@@ -276,6 +279,7 @@ export function ProfileModal({
           avatarUrl={avatarUrl}
           spotsVisited={passportEntries.length}
           totalCheckIns={totalCheckIns}
+          parksSkated={parksSkated}
           longestStreak={activityData.longestStreak}
           mostSkatedSpot={mostSkatedSpot}
           profileUrl={myId ? `https://inhabitants.chottu.link/join?ref=${myId}&view=profile` : null}
@@ -1267,7 +1271,22 @@ export function ProfileModal({
                               {passportEntries.reduce((sum, e) => sum + e.visit_count, 0)}
                             </Text>
                             <Text style={{ fontSize: 12, color: c.subtext, marginTop: 2 }}>
-                              Total Check-ins
+                              Spot Check-ins
+                            </Text>
+                          </View>
+                          <View
+                            style={{
+                              flex: 1,
+                              backgroundColor: c.tagBg,
+                              borderRadius: 10,
+                              padding: 12,
+                              alignItems: 'center',
+                            }}>
+                            <Text style={{ fontSize: 22, fontWeight: '700', color: c.text }}>
+                              {parksSkated}
+                            </Text>
+                            <Text style={{ fontSize: 12, color: c.subtext, marginTop: 2 }}>
+                              Parks Skated
                             </Text>
                           </View>
                         </View>
