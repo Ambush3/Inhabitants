@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
-import { View, Text, ScrollView } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { View, Text, LayoutChangeEvent, Dimensions } from 'react-native';
 import { useTheme } from '@/src/context/ThemeContext';
 import { ActivityData } from '@/src/hooks/useStreak';
 
@@ -7,6 +7,8 @@ type Props = {
   activityData: ActivityData;
   loading: boolean;
 };
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 function getColor(count: number, isDark: boolean): string {
   if (count === 0) return isDark ? '#3a3f47' : '#d0d7de';
@@ -16,9 +18,15 @@ function getColor(count: number, isDark: boolean): string {
   return '#216e39';
 }
 
+const GAP = 3;
+const CARD_PADDING = 14;
+// Fallback estimate before the card measures itself (window − card margins − card padding).
+const INITIAL_WIDTH = Dimensions.get('window').width - 16 * 2 - CARD_PADDING * 2;
+
 export function SkateActivityGraph({ activityData, loading }: Props) {
   const { theme, darkMode } = useTheme();
   const c = theme.colors;
+  const [gridWidth, setGridWidth] = useState(INITIAL_WIDTH);
 
   const weeks = useMemo(() => {
     const today = new Date();
@@ -40,8 +48,32 @@ export function SkateActivityGraph({ activityData, loading }: Props) {
     return result;
   }, []);
 
-  const CELL = 11;
-  const GAP = 3;
+  const numWeeks = weeks.length;
+  const cell = Math.max(6, Math.floor((gridWidth - GAP * (numWeeks - 1)) / numWeeks));
+  const colStride = cell + GAP;
+
+  // Month labels: mark the column where a new month begins.
+  const monthLabels = useMemo(() => {
+    const labels: { col: number; text: string }[] = [];
+    let lastMonth = -1;
+    weeks.forEach((week, wi) => {
+      const firstDay = week.find((d) => d != null);
+      if (!firstDay) return;
+      const m = new Date(firstDay).getMonth();
+      if (m !== lastMonth) {
+        labels.push({ col: wi, text: MONTHS[m] });
+        lastMonth = m;
+      }
+    });
+    return labels;
+  }, [weeks]);
+
+  function onGridLayout(e: LayoutChangeEvent) {
+    const w = e.nativeEvent.layout.width;
+    if (w > 0 && Math.abs(w - gridWidth) > 0.5) setGridWidth(w);
+  }
+
+  const todayStr = new Date().toLocaleDateString('en-CA');
 
   return (
     <View
@@ -50,13 +82,13 @@ export function SkateActivityGraph({ activityData, loading }: Props) {
         marginBottom: 20,
         backgroundColor: c.tagBg,
         borderRadius: 12,
-        padding: 14,
+        padding: CARD_PADDING,
       }}>
       <View
         style={{
           flexDirection: 'row',
           justifyContent: 'space-between',
-          marginBottom: 12,
+          marginBottom: 14,
         }}>
         <View style={{ alignItems: 'center' }}>
           <Text style={{ fontSize: 20, fontWeight: '700', color: '#34C759' }}>
@@ -78,19 +110,37 @@ export function SkateActivityGraph({ activityData, loading }: Props) {
         </View>
       </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+      <View onLayout={onGridLayout}>
+        {/* Month labels */}
+        <View style={{ height: 14, marginBottom: 2 }}>
+          {monthLabels.map((l) => (
+            <Text
+              key={`${l.col}-${l.text}`}
+              numberOfLines={1}
+              style={{
+                position: 'absolute',
+                left: l.col * colStride,
+                fontSize: 10,
+                color: c.subtext,
+              }}>
+              {l.text}
+            </Text>
+          ))}
+        </View>
+
+        {/* Grid */}
         <View style={{ flexDirection: 'row', gap: GAP }}>
           {weeks.map((week, wi) => (
             <View key={wi} style={{ flexDirection: 'column', gap: GAP }}>
               {week.map((day, di) => {
                 const count = day ? (activityData.grid.get(day) ?? 0) : 0;
-                const isToday = day === new Date().toLocaleDateString('en-CA');
+                const isToday = day === todayStr;
                 return (
                   <View
                     key={di}
                     style={{
-                      width: CELL,
-                      height: CELL,
+                      width: cell,
+                      height: cell,
                       borderRadius: 2,
                       backgroundColor: day ? getColor(count, darkMode) : 'transparent',
                       borderWidth: isToday ? 1 : 0,
@@ -102,14 +152,14 @@ export function SkateActivityGraph({ activityData, loading }: Props) {
             </View>
           ))}
         </View>
-      </ScrollView>
+      </View>
 
       <View
         style={{
           flexDirection: 'row',
           alignItems: 'center',
           gap: 4,
-          marginTop: 8,
+          marginTop: 10,
           justifyContent: 'flex-end',
         }}>
         <Text style={{ fontSize: 10, color: c.subtext }}>Less</Text>
@@ -117,8 +167,8 @@ export function SkateActivityGraph({ activityData, loading }: Props) {
           <View
             key={n}
             style={{
-              width: CELL,
-              height: CELL,
+              width: 11,
+              height: 11,
               borderRadius: 2,
               backgroundColor: getColor(n, darkMode),
             }}
