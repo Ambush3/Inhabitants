@@ -68,6 +68,7 @@ import { useTopRated } from '@/src/hooks/useTopRated';
 import { useAuth } from '@/src/hooks/useAuth';
 import { useFavorites } from '@/src/hooks/useFavorites';
 import { usePlaceFavorites } from '@/src/hooks/usePlaceFavorites';
+import { usePlaceCheckIns } from '@/src/hooks/usePlaceCheckIns';
 import { usePushNotifications } from '@/src/hooks/usePushNotifications';
 import { sendPushNotification } from '@/src/libs/sendPushNotification';
 import { useSpotFlags } from '@/src/hooks/flaggingSystem/useSpotFlags';
@@ -448,6 +449,12 @@ export default function Index() {
 
   const { placeFavorites, placeFavLoading, loadPlaceFavorites, togglePlaceFavorite, isPlaceFavorite } =
     usePlaceFavorites();
+  const {
+    load: loadPlaceCheckIns,
+    checkInPlace,
+    getPlaceCheckInState,
+    checkingIn: placeCheckingIn,
+  } = usePlaceCheckIns();
   const { images, uploading: imagesUploading, loadImages, uploadImages, deleteImage, clearImages } = useSpotImages();
   const { activeConditions, myConditions, loadConditions, toggleCondition, resetConditions } = useSpotConditions();
 
@@ -1146,6 +1153,7 @@ export default function Index() {
     reload();
     loadFavorites();
     loadPlaceFavorites();
+    loadPlaceCheckIns();
     loadMySpots();
     loadWishlist();
     loadFlags();
@@ -2747,6 +2755,22 @@ export default function Index() {
             }
             : null
         }
+        checkInState={selectedPlace ? getPlaceCheckInState(selectedPlace.id) : 'available'}
+        checkingIn={placeCheckingIn}
+        onCheckIn={async () => {
+          if (!selectedPlace) return;
+          const res = await checkInPlace(selectedPlace);
+          if (res.ok) {
+            await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            toast.show('Checked in — added to your parks skated');
+          } else if (res.reason === 'cooldown') {
+            toast.show('You checked in here recently');
+          } else if (res.reason === 'auth') {
+            toast.error('Sign in to check in');
+          } else {
+            toast.error('Couldn’t check in right now');
+          }
+        }}
       />
       <SettingsPanel
         session={session}
