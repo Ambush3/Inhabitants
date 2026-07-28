@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Modal, Pressable, ScrollView } from 'react-native';
+import { View, Text, Modal, Pressable, ScrollView, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/src/context/ThemeContext';
 import { CrownIcon } from '@/src/components/icons/CrownIcon';
@@ -60,17 +60,20 @@ export function MapFilterSheet({
   filters,
   onChange,
   resultCount,
+  loading = false,
 }: {
   visible: boolean;
   onClose: () => void;
   filters: MapFilters;
   onChange: (f: MapFilters) => void;
   resultCount: number;
+  loading?: boolean;
 }) {
   const { theme } = useTheme();
   const c = theme.colors;
 
   const activeCount = countActiveFilters(filters);
+  const placeOnly = filters.types.length > 0 && !filters.types.includes('spot');
 
   function toggleFeature(key: string) {
     onChange({
@@ -91,11 +94,16 @@ export function MapFilterSheet({
   }
 
   function toggleType(t: SpotType) {
+    const nextTypes = filters.types.includes(t)
+      ? filters.types.filter((x) => x !== t)
+      : [...filters.types, t];
+    const placeOnly = nextTypes.length > 0 && !nextTypes.includes('spot');
     onChange({
       ...filters,
-      types: filters.types.includes(t)
-        ? filters.types.filter((x) => x !== t)
-        : [...filters.types, t],
+      types: nextTypes,
+      ...(placeOnly
+        ? { features: [], ratings: [], visited: 'all', verifiedOnly: false }
+        : {}),
     });
   }
 
@@ -104,15 +112,18 @@ export function MapFilterSheet({
     active,
     onPress,
     icon,
+    disabled = false,
   }: {
     label: string;
     active: boolean;
     onPress: () => void;
     icon?: keyof typeof Ionicons.glyphMap;
+    disabled?: boolean;
   }) {
     return (
       <Pressable
-        onPress={onPress}
+        onPress={disabled ? undefined : onPress}
+        disabled={disabled}
         style={{
           flexDirection: 'row',
           alignItems: 'center',
@@ -120,6 +131,7 @@ export function MapFilterSheet({
           paddingHorizontal: 14,
           paddingVertical: 9,
           borderRadius: 20,
+          opacity: disabled ? 0.4 : 1,
           backgroundColor: active ? c.accent : c.tagBg,
           borderWidth: 1,
           borderColor: active ? c.accent : 'transparent',
@@ -137,10 +149,12 @@ export function MapFilterSheet({
   function Section({
     title,
     hint,
+    disabled = false,
     children,
   }: {
     title: string;
     hint?: string;
+    disabled?: boolean;
     children: React.ReactNode;
   }) {
     return (
@@ -150,7 +164,11 @@ export function MapFilterSheet({
             style={{ fontSize: 12, fontWeight: '700', color: c.subtext, letterSpacing: 0.6 }}>
             {title}
           </Text>
-          {hint ? (
+          {disabled ? (
+            <Text style={{ fontSize: 11, color: c.subtext, opacity: 0.8 }}>
+              (n/a for parks & shops)
+            </Text>
+          ) : hint ? (
             <Text style={{ fontSize: 11, color: c.subtext, opacity: 0.8 }}>({hint})</Text>
           ) : null}
         </View>
@@ -199,24 +217,26 @@ export function MapFilterSheet({
             style={{ paddingHorizontal: 20 }}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: 16 }}>
-            <Section title="FEATURE">
+            <Section title="FEATURE" disabled={placeOnly}>
               {FEATURES.map((f) => (
                 <Chip
                   key={f.key}
                   label={f.label}
                   active={filters.features.includes(f.key)}
                   onPress={() => toggleFeature(f.key)}
+                  disabled={placeOnly}
                 />
               ))}
             </Section>
 
-            <Section title="RATING">
+            <Section title="RATING" disabled={placeOnly}>
               {[1, 2, 3, 4, 5].map((r) => (
                 <Chip
                   key={r}
                   label={`${r}★`}
                   active={filters.ratings.includes(r)}
                   onPress={() => toggleRating(r)}
+                  disabled={placeOnly}
                 />
               ))}
             </Section>
@@ -238,7 +258,7 @@ export function MapFilterSheet({
               ))}
             </Section>
 
-            <Section title="VISITED">
+            <Section title="VISITED" disabled={placeOnly}>
               {(
                 [
                   ['all', 'All'],
@@ -251,16 +271,18 @@ export function MapFilterSheet({
                   label={label}
                   active={filters.visited === v}
                   onPress={() => onChange({ ...filters, visited: v })}
+                  disabled={placeOnly}
                 />
               ))}
             </Section>
 
-            <Section title="TRUST" hint="rated by 3+ skaters">
+            <Section title="TRUST" hint="rated by 3+ skaters" disabled={placeOnly}>
               <Chip
                 label="Verified only"
                 icon="shield-checkmark"
                 active={filters.verifiedOnly}
                 onPress={() => onChange({ ...filters, verifiedOnly: !filters.verifiedOnly })}
+                disabled={placeOnly}
               />
             </Section>
           </ScrollView>
@@ -286,13 +308,17 @@ export function MapFilterSheet({
               onPress={onClose}
               style={{
                 flex: 1,
+                flexDirection: 'row',
+                justifyContent: 'center',
+                gap: 8,
                 backgroundColor: c.accent,
                 borderRadius: 12,
                 paddingVertical: 14,
                 alignItems: 'center',
               }}>
+              {loading ? <ActivityIndicator size="small" color="#fff" /> : null}
               <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>
-                Show {resultCount} {resultCount === 1 ? 'spot' : 'spots'}
+                {loading ? 'Searching…' : `Show ${resultCount} ${resultCount === 1 ? 'spot' : 'spots'}`}
               </Text>
             </Pressable>
           </View>
