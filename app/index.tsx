@@ -784,12 +784,16 @@ export default function Index() {
   }, [isOnline, spots.length]);
 
   const visiblePlaces = useMemo(() => {
-    // OSM places (parks/shops) can't satisfy feature/rating/visited/verified filters — hide them when those are active.
+    // OSM places (parks/shops) have no feature/rating/visited/verified data.
+    // When a place type is explicitly selected, show those places by type — spot-only filters don't apply to them.
+    // When no place type is selected, hide places if any spot-only filter is active.
+    const hasPlaceType = advFilters.types.some((t) => t === 'skatepark' || t === 'skateshop');
     if (
-      advFilters.features.length > 0 ||
-      advFilters.ratings.length > 0 ||
-      advFilters.visited !== 'all' ||
-      advFilters.verifiedOnly
+      !hasPlaceType &&
+      (advFilters.features.length > 0 ||
+        advFilters.ratings.length > 0 ||
+        advFilters.visited !== 'all' ||
+        advFilters.verifiedOnly)
     ) {
       return [];
     }
@@ -923,6 +927,47 @@ export default function Index() {
   const resetPlacesTimer = useCallback(() => {
     if (placesTimerRef.current) schedulePlacesClear();
   }, [schedulePlacesClear]);
+
+  function mergePlaces(prev: Place[], added: Place[]): Place[] {
+    const ids = new Set(prev.map((p) => p.id));
+    return [...prev, ...added.filter((p) => !ids.has(p.id))];
+  }
+
+  async function autoLoadPlaceType(type: 'skatepark' | 'skateshop') {
+    const community = spots
+      .filter((s) => s.spot_type === type)
+      .map((s) => ({ id: s.id, name: s.name, type, lat: s.lat, lng: s.lng, tags: {} }));
+    if (community.length) setPlacesWithAutoClear((prev) => mergePlaces(prev, community));
+    const loader = type === 'skatepark' ? loadNearbySkateParks : loadNearbySkateShops;
+    await loader(
+      mapRegionRef.current.latitude,
+      mapRegionRef.current.longitude,
+      20000,
+      undefined,
+      (osm) => setPlacesWithAutoClear((prev) => mergePlaces(prev, osm))
+    );
+  }
+
+  function warmPlaceCache() {
+    const { latitude, longitude } = mapRegionRef.current;
+    loadNearbySkateParks(latitude, longitude, 20000, undefined, () => {});
+    loadNearbySkateShops(latitude, longitude, 20000, undefined, () => {});
+  }
+
+  const autoLoadedTypesRef = useRef<Set<'skatepark' | 'skateshop'>>(new Set());
+  useEffect(() => {
+    (['skatepark', 'skateshop'] as const).forEach((t) => {
+      if (advFilters.types.includes(t)) {
+        if (!autoLoadedTypesRef.current.has(t)) {
+          autoLoadedTypesRef.current.add(t);
+          autoLoadPlaceType(t);
+        }
+      } else {
+        autoLoadedTypesRef.current.delete(t);
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [advFilters.types]);
 
   const animateToSpotWithModalOffset = useCallback(
     (lat: number, lng: number, modalSize: 'full' | 'small' | 'medium' = 'full') => {
@@ -2234,6 +2279,7 @@ export default function Index() {
                   setPaywallOpen(true);
                   return;
                 }
+                warmPlaceCache();
                 setFilterSheetOpen(true);
               })
             }
@@ -2844,7 +2890,11 @@ export default function Index() {
         onClose={() => setFilterSheetOpen(false)}
         filters={advFilters}
         onChange={setAdvFilters}
-        resultCount={visibleSpots.length}
+        resultCount={visibleSpots.length + visiblePlaces.length}
+        loading={
+          (advFilters.types.includes('skatepark') && parksLoading) ||
+          (advFilters.types.includes('skateshop') && shopsLoading)
+        }
       />
       <SkateCitiesModal
         visible={citiesOpen}
