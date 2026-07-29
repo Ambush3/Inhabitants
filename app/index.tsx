@@ -30,6 +30,13 @@ import { SkateShopDetailsModal } from '@/src/components/SkateShopDetailsModal';
 import { ExplorePanel } from '@/src/components/ExplorePanel';
 import { SkateCitiesModal } from '@/src/components/SkateCitiesModal';
 import { PaywallModal } from '@/src/components/PaywallModal';
+import {
+  MapFilterSheet,
+  MapFilters,
+  EMPTY_FILTERS,
+  spotMatchesFeatures,
+  countActiveFilters,
+} from '@/src/components/MapFilterSheet';
 import { usePro } from '@/src/context/ProContext';
 import { useSplash } from '@/src/context/SplashContext';
 import { SettingsPanel } from '@/src/components/SettingsPanel';
@@ -61,6 +68,7 @@ import { useTopRated } from '@/src/hooks/useTopRated';
 import { useAuth } from '@/src/hooks/useAuth';
 import { useFavorites } from '@/src/hooks/useFavorites';
 import { usePlaceFavorites } from '@/src/hooks/usePlaceFavorites';
+import { usePlaceCheckIns } from '@/src/hooks/usePlaceCheckIns';
 import { usePushNotifications } from '@/src/hooks/usePushNotifications';
 import { sendPushNotification } from '@/src/libs/sendPushNotification';
 import { useSpotFlags } from '@/src/hooks/flaggingSystem/useSpotFlags';
@@ -441,6 +449,12 @@ export default function Index() {
 
   const { placeFavorites, placeFavLoading, loadPlaceFavorites, togglePlaceFavorite, isPlaceFavorite } =
     usePlaceFavorites();
+  const {
+    load: loadPlaceCheckIns,
+    checkInPlace,
+    getPlaceCheckInState,
+    checkingIn: placeCheckingIn,
+  } = usePlaceCheckIns();
   const { images, uploading: imagesUploading, loadImages, uploadImages, deleteImage, clearImages } = useSpotImages();
   const { activeConditions, myConditions, loadConditions, toggleCondition, resetConditions } = useSpotConditions();
 
@@ -633,6 +647,11 @@ export default function Index() {
 
   const [difficultyFilter, setDifficultyFilter] = useState<Set<'beginner' | 'intermediate' | 'advanced'>>(new Set());
   const [ownershipFilter, setOwnershipFilter] = useState<Set<'mine' | 'friends' | 'community'>>(new Set());
+  const [advFilters, setAdvFilters] = useState<MapFilters>(EMPTY_FILTERS);
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
+  const [viewportRegion, setViewportRegion] = useState<Region | null>(null);
+  const [visitedSpotIds, setVisitedSpotIds] = useState<Set<string>>(new Set());
+  const [spotRatings, setSpotRatings] = useState<Record<string, number>>({});
   const [mapSearch, setMapSearch] = useState('');
   const [headerHeight, setHeaderHeight] = useState(0);
   const [bannerVisible, setBannerVisible] = useState(false);
@@ -681,6 +700,42 @@ export default function Index() {
       );
     }
 
+    if (advFilters.features.length > 0) {
+      list = list.filter((s) => spotMatchesFeatures(s.tags, advFilters.features));
+    }
+    if (advFilters.types.length > 0) {
+      list = list.filter((s) => advFilters.types.includes(s.spot_type));
+    }
+    if (advFilters.verifiedOnly) {
+      list = list.filter((s) => s.is_verified);
+    }
+    if (advFilters.ratings.length > 0) {
+      list = list.filter((s) => {
+        const avg = spotRatings[s.id];
+        return avg != null && advFilters.ratings.includes(Math.round(avg));
+      });
+    }
+    if (advFilters.visited !== 'all') {
+      const myId = session?.user?.id;
+      list = list.filter((s) => {
+        const visited = visitedSpotIds.has(s.id) || (!!myId && s.user_id === myId);
+        return advFilters.visited === 'visited' ? visited : !visited;
+      });
+    }
+
+    const region = viewportRegion ?? initialRegion;
+    if (region && !(region.latitude === 0 && region.longitude === 0)) {
+      const halfLat = region.latitudeDelta / 2;
+      const halfLng = region.longitudeDelta / 2;
+      const minLat = region.latitude - halfLat;
+      const maxLat = region.latitude + halfLat;
+      const minLng = region.longitude - halfLng;
+      const maxLng = region.longitude + halfLng;
+      list = list.filter(
+        (s) => s.lat >= minLat && s.lat <= maxLat && s.lng >= minLng && s.lng <= maxLng
+      );
+    }
+
     return list.filter((s) => s.lat && s.lng);
   }, [
     filteredSearchResults,
@@ -692,17 +747,69 @@ export default function Index() {
     mapSearch,
     session,
     friendIds,
+    advFilters,
+    visitedSpotIds,
+    spotRatings,
+    viewportRegion,
+    initialRegion,
   ]);
 
+  useEffect(() => {
+    const uid = session?.user?.id;
+    if (!uid) {
+      setVisitedSpotIds(new Set());
+      return;
+    }
+    supabase
+      .from('check_ins')
+      .select('spot_id')
+      .eq('user_id', uid)
+      .then(({ data }) => {
+        setVisitedSpotIds(new Set((data ?? []).map((r: any) => r.spot_id)));
+      });
+  }, [session?.user?.id]);
+
+  useEffect(() => {
+    if (!isOnline) return;
+    supabase
+      .from('reviews')
+      .select('spot_id, rating')
+      .then(({ data }) => {
+        if (!data) return;
+        const sums: Record<string, { total: number; count: number }> = {};
+        for (const r of data as any[]) {
+          if (!r.spot_id || r.rating == null) continue;
+          const e = sums[r.spot_id] ?? { total: 0, count: 0 };
+          e.total += r.rating;
+          e.count += 1;
+          sums[r.spot_id] = e;
+        }
+        const avgs: Record<string, number> = {};
+        for (const id in sums) avgs[id] = sums[id].total / sums[id].count;
+        setSpotRatings(avgs);
+      });
+  }, [isOnline, spots.length]);
+
   const visiblePlaces = useMemo(() => {
+    const hasPlaceType = advFilters.types.some((t) => t === 'skatepark' || t === 'skateshop');
+    if (
+      !hasPlaceType &&
+      (advFilters.features.length > 0 ||
+        advFilters.ratings.length > 0 ||
+        advFilters.visited !== 'all' ||
+        advFilters.verifiedOnly)
+    ) {
+      return [];
+    }
     const spotIds = new Set(visibleSpots.map((s) => s.id));
     const seen = new Set<string>();
     return places.filter((p) => {
       if (spotIds.has(p.id) || seen.has(p.id)) return false;
+      if (advFilters.types.length > 0 && !advFilters.types.includes(p.type)) return false;
       seen.add(p.id);
       return true;
     });
-  }, [places, visibleSpots]);
+  }, [places, visibleSpots, advFilters]);
 
   const toggleOwnershipFilter = (key: 'mine' | 'friends' | 'community') =>
     setOwnershipFilter((prev) => {
@@ -757,6 +864,7 @@ export default function Index() {
 
   function closeDetailsModal() {
     const idToHide = highlightSpotIdRef.current;
+    const spotToCenter = selectedSpot;
 
     const pendingEdit = pendingSpotEditRef.current;
     if (pendingEdit) {
@@ -778,7 +886,8 @@ export default function Index() {
     setTimeout(() => {
       mapRef.current?.animateToRegion(
         {
-          ...mapRegionRef.current,
+          latitude: spotToCenter?.lat ?? mapRegionRef.current.latitude,
+          longitude: spotToCenter?.lng ?? mapRegionRef.current.longitude,
           latitudeDelta: 0.08,
           longitudeDelta: 0.08,
         },
@@ -822,6 +931,47 @@ export default function Index() {
   const resetPlacesTimer = useCallback(() => {
     if (placesTimerRef.current) schedulePlacesClear();
   }, [schedulePlacesClear]);
+
+  function mergePlaces(prev: Place[], added: Place[]): Place[] {
+    const ids = new Set(prev.map((p) => p.id));
+    return [...prev, ...added.filter((p) => !ids.has(p.id))];
+  }
+
+  async function autoLoadPlaceType(type: 'skatepark' | 'skateshop') {
+    const community = spots
+      .filter((s) => s.spot_type === type)
+      .map((s) => ({ id: s.id, name: s.name, type, lat: s.lat, lng: s.lng, tags: {} }));
+    if (community.length) setPlacesWithAutoClear((prev) => mergePlaces(prev, community));
+    const loader = type === 'skatepark' ? loadNearbySkateParks : loadNearbySkateShops;
+    await loader(
+      mapRegionRef.current.latitude,
+      mapRegionRef.current.longitude,
+      20000,
+      undefined,
+      (osm) => setPlacesWithAutoClear((prev) => mergePlaces(prev, osm))
+    );
+  }
+
+  function warmPlaceCache() {
+    const { latitude, longitude } = mapRegionRef.current;
+    loadNearbySkateParks(latitude, longitude, 20000, undefined, () => {});
+    loadNearbySkateShops(latitude, longitude, 20000, undefined, () => {});
+  }
+
+  const autoLoadedTypesRef = useRef<Set<'skatepark' | 'skateshop'>>(new Set());
+  useEffect(() => {
+    (['skatepark', 'skateshop'] as const).forEach((t) => {
+      if (advFilters.types.includes(t)) {
+        if (!autoLoadedTypesRef.current.has(t)) {
+          autoLoadedTypesRef.current.add(t);
+          autoLoadPlaceType(t);
+        }
+      } else {
+        autoLoadedTypesRef.current.delete(t);
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [advFilters.types]);
 
   const animateToSpotWithModalOffset = useCallback(
     (lat: number, lng: number, modalSize: 'full' | 'small' | 'medium' = 'full') => {
@@ -1000,6 +1150,7 @@ export default function Index() {
     reload();
     loadFavorites();
     loadPlaceFavorites();
+    loadPlaceCheckIns();
     loadMySpots();
     loadWishlist();
     loadFlags();
@@ -1201,6 +1352,27 @@ export default function Index() {
       setMyAvatarUrl(null);
     }
   }, [session?.user.id]);
+
+  useEffect(() => {
+    if (!session?.user.id || !splashDone) return;
+    let cancelled = false;
+    AsyncStorage.getItem('pending_profile_id').then((id) => {
+      if (cancelled || !id) return;
+      AsyncStorage.removeItem('pending_profile_id');
+      setTimeout(() => {
+        if (cancelled) return;
+        if (id === session.user.id) {
+          setProfileOpen(true);
+        } else {
+          setPublicProfileUserId(id);
+          setPublicProfileOpen(true);
+        }
+      }, 300);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.user.id, splashDone]);
 
   useEffect(() => {
     if (!session?.user.id) return;
@@ -2045,6 +2217,7 @@ export default function Index() {
         }}
         onRegionChangeComplete={(r: Region) => {
           mapRegionRef.current = r;
+          setViewportRegion(r);
           const shouldShow = r.latitudeDelta < 0.5;
           setMarkersVisible((prev) => (prev === shouldShow ? prev : shouldShow));
           if (regionWriteTimerRef.current) clearTimeout(regionWriteTimerRef.current);
@@ -2102,6 +2275,19 @@ export default function Index() {
             onToggleOwnership={toggleOwnershipFilter}
             difficultyFilter={difficultyFilter}
             onToggleDifficulty={toggleDifficultyFilter}
+            isPro={isPro}
+            activeFilterCount={countActiveFilters(advFilters)}
+            onOpenFilters={() =>
+              requireAuth(() => {
+                if (!isPro) {
+                  setPaywallHeadline('Unlock advanced filters and find exactly the spots you want.');
+                  setPaywallOpen(true);
+                  return;
+                }
+                warmPlaceCache();
+                setFilterSheetOpen(true);
+              })
+            }
           />
           <MapLegend
             style={{ position: 'absolute', top: (headerHeight || insets.top + 56) + 112, right: 12, alignItems: 'flex-end' }}
@@ -2479,6 +2665,12 @@ export default function Index() {
           await toggleReviewFlag(reviewId, reason);
         }}
         onViewProfile={(userId) => {
+          if (userId === session?.user.id) {
+            reopenSpotDetailsOnProfileCloseRef.current = true;
+            setDetailsOpen(false);
+            setTimeout(() => setProfileOpen(true), 350);
+            return;
+          }
           if (publicProfileOpen) return;
           reopenSpotDetailsOnProfileCloseRef.current = true;
           setDetailsOpen(false);
@@ -2560,6 +2752,22 @@ export default function Index() {
             }
             : null
         }
+        checkInState={selectedPlace ? getPlaceCheckInState(selectedPlace.id) : 'available'}
+        checkingIn={placeCheckingIn}
+        onCheckIn={async () => {
+          if (!selectedPlace) return;
+          const res = await checkInPlace(selectedPlace);
+          if (res.ok) {
+            await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            toast.show('Checked in — added to your parks skated');
+          } else if (res.reason === 'cooldown') {
+            toast.show('You checked in here recently');
+          } else if (res.reason === 'auth') {
+            toast.error('Sign in to check in');
+          } else {
+            toast.error('Couldn’t check in right now');
+          }
+        }}
       />
       <SettingsPanel
         session={session}
@@ -2598,6 +2806,9 @@ export default function Index() {
           if (reopenCrewDetailOnProfileCloseRef.current) {
             reopenCrewDetailOnProfileCloseRef.current = false;
             setTimeout(() => setCrewDetailOpen(true), 350);
+          } else if (reopenSpotDetailsOnProfileCloseRef.current) {
+            reopenSpotDetailsOnProfileCloseRef.current = false;
+            setTimeout(() => setDetailsOpen(true), 350);
           }
         }}
         mySpots={mySpots}
@@ -2694,6 +2905,17 @@ export default function Index() {
         visible={paywallOpen}
         onClose={() => setPaywallOpen(false)}
         headline={paywallHeadline}
+      />
+      <MapFilterSheet
+        visible={filterSheetOpen}
+        onClose={() => setFilterSheetOpen(false)}
+        filters={advFilters}
+        onChange={setAdvFilters}
+        resultCount={visibleSpots.length + visiblePlaces.length}
+        loading={
+          (advFilters.types.includes('skatepark') && parksLoading) ||
+          (advFilters.types.includes('skateshop') && shopsLoading)
+        }
       />
       <SkateCitiesModal
         visible={citiesOpen}

@@ -44,12 +44,14 @@ export function useInvite() {
     const Contacts = await import('expo-contacts');
 
     const perm = await Contacts.requestPermissionsAsync();
-    if (perm.status !== 'granted') return;
+    if (perm.status !== 'granted') return { contacts: [], limited: false };
 
-    if (Platform.OS === 'ios' && perm.accessPrivileges === 'limited') {
+    const limited = Platform.OS === 'ios' && perm.accessPrivileges === 'limited';
+
+    if (limited) {
       try {
         await Contacts.presentAccessPickerAsync();
-      } catch { }
+      } catch {}
     }
 
     const { data } = await Contacts.getContactsAsync({
@@ -58,15 +60,26 @@ export function useInvite() {
 
     const withPhone = (data ?? []).filter((c) => c.phoneNumbers && c.phoneNumbers.length > 0);
 
-    return withPhone;
+    return { contacts: withPhone, limited };
   }
 
-  async function sendSMSInvite(phoneNumbers: string[], userId: string) {
-    const SMS = await import('expo-sms');
-    const isAvailable = await SMS.isAvailableAsync();
-    if (!isAvailable) return;
-    const link = `https://inhabitants.chottu.link/join?ref=${userId}`;
-    await SMS.sendSMSAsync(phoneNumbers, `Join me on Inhabitants — the skate spot finder! Sign up here: ${link}`);
+  async function sendSMSInvite(
+    phoneNumbers: string[],
+    userId: string
+  ): Promise<'sent' | 'cancelled' | 'unavailable' | 'error'> {
+    try {
+      const SMS = await import('expo-sms');
+      const isAvailable = await SMS.isAvailableAsync();
+      if (!isAvailable) return 'unavailable';
+      const link = `https://inhabitants.chottu.link/join?ref=${userId}`;
+      const { result } = await SMS.sendSMSAsync(
+        phoneNumbers,
+        `Join me on Inhabitants — the skate spot finder! Sign up here: ${link}`
+      );
+      return result === 'sent' ? 'sent' : 'cancelled';
+    } catch {
+      return 'error';
+    }
   }
 
   return {

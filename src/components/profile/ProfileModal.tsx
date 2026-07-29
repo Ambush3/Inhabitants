@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { showAlert, AlertHost } from '@/src/components/ui/ThemedAlert';
 import {
   View,
@@ -10,7 +10,11 @@ import {
   SafeAreaView,
   KeyboardAvoidingView,
   Platform,
+  Share,
+  Linking,
 } from 'react-native';
+import { PassportShareCard } from '@/src/components/profile/PassportShareCard';
+import { PaywallModal } from '@/src/components/PaywallModal';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/src/libs/supabase';
@@ -22,13 +26,14 @@ import { Spot } from '@/src/types';
 import { useFriendships, Friend } from '@/src/hooks/social/useFriendships';
 import { useCollections, Collection } from '@/src/hooks/useCollections';
 import { useCheckIns, PassportEntry } from '@/src/hooks/useCheckIns';
+import { usePlaceCheckIns } from '@/src/hooks/usePlaceCheckIns';
 import { MyMediaGrid } from '@/src/components/profile/MyMediaGrid';
 import { TrickLog } from '@/src/hooks/useTrickLog';
 import { sendFriendAcceptedNotification } from '@/src/libs/sendPushNotification';
 import { useInvite } from '@/src/hooks/useInvite';
 import { moderateText } from '@/src/libs/moderator/textModerator';
 import { useStreak } from '@/src/hooks/useStreak';
-import { SkateActivityGraph } from '@/src/components/SkateActivityGraph';
+import { StreakCard } from '@/src/components/StreakCard';
 import { SessionMediaViewerModal, ViewerMedia } from '@/src/components/SessionMediaViewerModal';
 
 type MyReview = {
@@ -73,6 +78,9 @@ export function ProfileModal({
 }: Props) {
   const { theme } = useTheme();
   const { isPro } = usePro();
+  const [proPaywallOpen, setProPaywallOpen] = useState(false);
+  const [sharingPassport, setSharingPassport] = useState(false);
+  const shareCardRef = useRef<View>(null);
   const toast = useToast();
   const c = theme.colors;
 
@@ -117,6 +125,37 @@ export function ProfileModal({
 
   const { loadPassport, passportEntries, passportLoading, togglePrivacy, deleteCheckIn } = useCheckIns();
   const { activityData, loading: streakLoading, loadStreak } = useStreak();
+  const { parksSkated, load: loadPlaceCheckIns } = usePlaceCheckIns();
+
+  const totalCheckIns = passportEntries.reduce((sum, e) => sum + e.visit_count, 0);
+  const mostSkatedSpot =
+    passportEntries.reduce<PassportEntry | null>(
+      (best, e) => (!best || e.visit_count > best.visit_count ? e : best),
+      null
+    )?.spot_name ?? null;
+
+  async function handleSharePassport() {
+    if (!isPro) {
+      setProPaywallOpen(true);
+      return;
+    }
+    try {
+      setSharingPassport(true);
+      const { captureRef } = await import('react-native-view-shot');
+      const uri = await captureRef(shareCardRef, { format: 'png', quality: 1 });
+      const link = myId
+        ? `https://inhabitants.chottu.link/join?ref=${myId}&view=profile`
+        : 'https://inhabitants.chottu.link';
+      await Share.share({
+        message: link,
+        url: uri,
+      });
+    } catch {
+      toast.error('Could not create your passport card.');
+    } finally {
+      setSharingPassport(false);
+    }
+  }
 
   const [expandedPassportSpot, setExpandedPassportSpot] = useState<string | null>(null);
   const [myId, setMyId] = useState<string | null>(null);
@@ -126,6 +165,7 @@ export function ProfileModal({
   const [contacts, setContacts] = useState<any[]>([]);
   const [selectedPhones, setSelectedPhones] = useState<string[]>([]);
   const [contactsLoading, setContactsLoading] = useState(false);
+  const [contactsLimited, setContactsLimited] = useState(false);
   const [listsSubTab, setListsSubTab] = useState<'collections' | 'journal' | 'media'>('collections');
 
   const { shareInviteLink, inviteViaContacts, sendSMSInvite } = useInvite();
@@ -217,6 +257,7 @@ export function ProfileModal({
     loadFriends();
     loadPassport();
     loadStreak();
+    loadPlaceCheckIns();
   }, [visible]);
 
 
@@ -228,6 +269,22 @@ export function ProfileModal({
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
       {visible ? <AlertHost /> : null}
       {visible ? <ToastHost /> : null}
+      <PaywallModal visible={proPaywallOpen} onClose={() => setProPaywallOpen(false)} />
+      <View
+        ref={shareCardRef}
+        collapsable={false}
+        style={{ position: 'absolute', left: -9999, top: 0 }}>
+        <PassportShareCard
+          username={username}
+          avatarUrl={avatarUrl}
+          spotsVisited={passportEntries.length}
+          totalCheckIns={totalCheckIns}
+          parksSkated={parksSkated}
+          longestStreak={activityData.longestStreak}
+          mostSkatedSpot={mostSkatedSpot}
+          profileUrl={myId ? `https://inhabitants.chottu.link/join?ref=${myId}&view=profile` : null}
+        />
+      </View>
       <SafeAreaView style={{ flex: 1, backgroundColor: c.surface }}>
         {/* ── Header ── */}
         <View
@@ -649,7 +706,8 @@ export function ProfileModal({
                           onPress={async () => {
                             setContactsLoading(true);
                             const result = await inviteViaContacts();
-                            setContacts(result ?? []);
+                            setContacts(result?.contacts ?? []);
+                            setContactsLimited(result?.limited ?? false);
                             setContactsLoading(false);
                             setContactsOpen(true);
                           }}
@@ -1184,7 +1242,7 @@ export function ProfileModal({
                   ) : /* Passport */
                     activeTab === 'passport' ? (
                       <>
-                        <SkateActivityGraph activityData={activityData} loading={streakLoading} />
+                        <StreakCard activityData={activityData} loading={streakLoading} />
                         <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
                           <View
                             style={{
@@ -1213,10 +1271,46 @@ export function ProfileModal({
                               {passportEntries.reduce((sum, e) => sum + e.visit_count, 0)}
                             </Text>
                             <Text style={{ fontSize: 12, color: c.subtext, marginTop: 2 }}>
-                              Total Check-ins
+                              Spot Check-ins
+                            </Text>
+                          </View>
+                          <View
+                            style={{
+                              flex: 1,
+                              backgroundColor: c.tagBg,
+                              borderRadius: 10,
+                              padding: 12,
+                              alignItems: 'center',
+                            }}>
+                            <Text style={{ fontSize: 22, fontWeight: '700', color: c.text }}>
+                              {parksSkated}
+                            </Text>
+                            <Text style={{ fontSize: 12, color: c.subtext, marginTop: 2 }}>
+                              Parks Skated
                             </Text>
                           </View>
                         </View>
+
+                        <Pressable
+                          onPress={handleSharePassport}
+                          disabled={sharingPassport || passportEntries.length === 0}
+                          style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 8,
+                            backgroundColor: '#000',
+                            borderRadius: 12,
+                            paddingVertical: 12,
+                            marginBottom: 16,
+                            opacity: sharingPassport || passportEntries.length === 0 ? 0.5 : 1,
+                          }}>
+                          <Ionicons name="share-outline" size={16} color="#fff" />
+                          <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>
+                            {sharingPassport ? 'Preparing…' : 'Share My Passport'}
+                          </Text>
+                          <CrownIcon size={16} />
+                        </Pressable>
 
                         {passportLoading ? (
                           <Text style={{ color: c.subtext, textAlign: 'center', marginTop: 24 }}>
@@ -1587,14 +1681,21 @@ export function ProfileModal({
           </View>
         </KeyboardAvoidingView>
       </Modal>
-      <Modal
-        visible={contactsOpen}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setContactsOpen(false)}>
+      {contactsOpen ? (
         <Pressable
-          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' }}
-          onPress={() => setContactsOpen(false)}>
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.4)',
+            justifyContent: 'flex-end',
+          }}
+          onPress={() => {
+            setContactsOpen(false);
+            setSelectedPhones([]);
+          }}>
           <Pressable
             style={{
               backgroundColor: c.surface,
@@ -1620,6 +1721,26 @@ export function ProfileModal({
                 <Ionicons name="close" size={22} color={c.subtext} />
               </Pressable>
             </View>
+
+            {contactsLimited ? (
+              <Pressable
+                onPress={() => Linking.openSettings()}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 8,
+                  backgroundColor: c.tagBg,
+                  borderRadius: 10,
+                  padding: 12,
+                  marginBottom: 16,
+                }}>
+                <Ionicons name="information-circle-outline" size={18} color={c.subtext} />
+                <Text style={{ flex: 1, color: c.subtext, fontSize: 12, lineHeight: 17 }}>
+                  Only showing contacts you've shared. Tap here, then Contacts → Full Access to see everyone.
+                </Text>
+                <Ionicons name="chevron-forward" size={16} color={c.subtext} />
+              </Pressable>
+            ) : null}
 
             {contacts.length === 0 ? (
               <Text style={{ color: c.subtext, textAlign: 'center', marginTop: 24 }}>
@@ -1687,9 +1808,19 @@ export function ProfileModal({
                   data: { user },
                 } = await supabase.auth.getUser();
                 if (!user) return;
-                await sendSMSInvite(selectedPhones, user.id);
+                const count = selectedPhones.length;
+                const result = await sendSMSInvite(selectedPhones, user.id);
                 setContactsOpen(false);
                 setSelectedPhones([]);
+                if (result === 'sent') {
+                  toast.success(count > 1 ? `${count} invites sent!` : 'Invite sent!');
+                } else if (result === 'cancelled') {
+                  toast.error('Invite cancelled.');
+                } else if (result === 'unavailable') {
+                  toast.error('Texting not available on this device.');
+                } else {
+                  toast.error("Couldn't send your invite.");
+                }
               }}
               disabled={selectedPhones.length === 0}
               style={{
@@ -1711,7 +1842,7 @@ export function ProfileModal({
             </Pressable>
           </Pressable>
         </Pressable>
-      </Modal>
+      ) : null}
     </Modal>
   );
 }

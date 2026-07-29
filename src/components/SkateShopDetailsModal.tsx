@@ -22,6 +22,8 @@ import { useTheme } from '@/src/context/ThemeContext';
 import { usePlaceReviews } from '@/src/hooks/usePlaceReviews';
 import { usePlaceOverrides } from '@/src/hooks/usePlaceOverrides';
 import { useAuth } from '@/src/hooks/useAuth';
+import { showAlert, AlertHost } from '@/src/components/ui/ThemedAlert';
+import type { PlaceCheckInState } from '@/src/hooks/usePlaceCheckIns';
 
 const geocodeCache = new Map<string, string>();
 
@@ -47,9 +49,12 @@ type Props = {
   onToggleFavorite: () => void;
   isFavorite: boolean;
   userLocation?: { latitude: number; longitude: number } | null;
+  checkInState?: PlaceCheckInState;
+  checkingIn?: boolean;
+  onCheckIn?: () => void;
 };
 
-export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorite, isFavorite, userLocation }: Props) {
+export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorite, isFavorite, userLocation, checkInState = 'available', checkingIn = false, onCheckIn }: Props) {
   const { theme } = useTheme();
   const c = theme.colors;
   const [placeAddress, setPlaceAddress] = useState<string | null>(null);
@@ -225,6 +230,22 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
   async function handleWebsite() {
     if (!website) return;
     await Linking.openURL(website.startsWith('http') ? website : `https://${website}`);
+  }
+
+  function handleCheckInPress() {
+    if (!onCheckIn) return;
+    if (checkInState === 'confirm') {
+      showAlert(
+        'Check in again?',
+        'You already skated here earlier today. Log another check-in?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Check In Again', onPress: onCheckIn },
+        ]
+      );
+    } else {
+      onCheckIn();
+    }
   }
 
   async function handleSubmitRating(rating: number) {
@@ -467,6 +488,43 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
               </Text>
             ) : null}
 
+            {place?.type === 'skatepark' && onCheckIn ? (
+              <Pressable
+                onPress={checkInState === 'recent' || checkingIn ? undefined : handleCheckInPress}
+                disabled={checkInState === 'recent' || checkingIn}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  marginTop: 8,
+                  paddingVertical: 13,
+                  borderRadius: 12,
+                  backgroundColor: checkInState === 'recent' ? c.tagBg : '#34C759',
+                  opacity: checkingIn ? 0.6 : 1,
+                }}>
+                <Ionicons
+                  name={checkInState === 'recent' ? 'checkmark-circle' : 'location'}
+                  size={18}
+                  color={checkInState === 'recent' ? '#34C759' : '#fff'}
+                />
+                <Text
+                  style={{
+                    fontSize: 15,
+                    fontWeight: '700',
+                    color: checkInState === 'recent' ? c.text : '#fff',
+                  }}>
+                  {checkingIn
+                    ? 'Checking in…'
+                    : checkInState === 'recent'
+                      ? 'Skated'
+                      : checkInState === 'confirm'
+                        ? 'Check In Again'
+                        : 'Check In'}
+                </Text>
+              </Pressable>
+            ) : null}
+
             {/* Rating */}
             <View
               style={{
@@ -519,6 +577,8 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
           </ScrollView>
         </View>
       </View>
+
+      {visible ? <AlertHost /> : null}
 
       {/* Edit Modal */}
       <Modal visible={editOpen} transparent animationType="slide" onRequestClose={() => setEditOpen(false)}>
