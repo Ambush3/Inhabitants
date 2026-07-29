@@ -2,12 +2,11 @@ import { useState } from 'react';
 import { supabase } from '@/src/libs/supabase';
 
 export type SpotCondition =
-    | 'good_session'
     | 'needs_wax'
     | 'security'
     | 'wet'
-    | 'rough_surface'
-    | 'crowded';
+    | 'crowded'
+    | 'closed';
 
 export type ConditionReport = {
     id: string;
@@ -21,12 +20,6 @@ export const CONDITION_META: Record<
     SpotCondition,
     { label: string; icon: string; color: string; bg: string }
 > = {
-    good_session: {
-        label: 'Good Session',
-        icon: '✓',
-        color: '#1a7a1a',
-        bg: '#C8F5C8',
-    },
     needs_wax: {
         label: 'Needs Wax',
         icon: '🧈',
@@ -40,13 +33,13 @@ export const CONDITION_META: Record<
         bg: '#FFE0E0',
     },
     wet: { label: 'Wet', icon: '💧', color: '#0055cc', bg: '#DDEEFF' },
-    rough_surface: {
-        label: 'Rough Surface',
-        icon: '⚠',
-        color: '#cc5500',
-        bg: '#FFF0E0',
-    },
     crowded: { label: 'Crowded', icon: '👥', color: '#7700cc', bg: '#F0E0FF' },
+    closed: {
+        label: 'Closed',
+        icon: '🚧',
+        color: '#a05a00',
+        bg: '#FFEBCC',
+    },
 };
 
 export function useSpotConditions() {
@@ -68,9 +61,13 @@ export function useSpotConditions() {
             data: { user },
         } = await supabase.auth.getUser();
 
-        setConditions(data ?? []);
+        const known = (data ?? []).filter(
+            (r: ConditionReport) => r.condition in CONDITION_META
+        );
+
+        setConditions(known);
         setMyConditions(
-            (data ?? [])
+            known
                 .filter((r: ConditionReport) => r.user_id === user?.id)
                 .map((r: ConditionReport) => r.condition)
         );
