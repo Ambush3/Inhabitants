@@ -416,7 +416,6 @@ export function SettingsPanel({
                     )}
                   </>
                 ) : null}
-                {/* ── PREFERENCES ── */}
                 <SectionLabel label="PREFERENCES" />
                 <Pressable onPress={() => setThemePickerOpen(true)} style={rowStyle}>
                   <View style={rowLeftStyle}>
@@ -526,7 +525,6 @@ export function SettingsPanel({
                   </Pressable>
                 )}
 
-                {/* ── SUPPORT ── */}
                 <SectionLabel label="SUPPORT" />
                 <Pressable
                   onPress={() => {
@@ -557,7 +555,6 @@ export function SettingsPanel({
                   <Ionicons name="chevron-forward" size={16} color={c.subtext} />
                 </Pressable>
 
-                {/* ── ACCOUNT ── */}
                 <SectionLabel label="ACCOUNT" />
                 {session ? (
                   <>
