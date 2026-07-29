@@ -33,7 +33,7 @@ import { sendFriendAcceptedNotification } from '@/src/libs/sendPushNotification'
 import { useInvite } from '@/src/hooks/useInvite';
 import { moderateText } from '@/src/libs/moderator/textModerator';
 import { useStreak } from '@/src/hooks/useStreak';
-import { SkateActivityGraph } from '@/src/components/SkateActivityGraph';
+import { StreakCard } from '@/src/components/StreakCard';
 import { SessionMediaViewerModal, ViewerMedia } from '@/src/components/SessionMediaViewerModal';
 
 type MyReview = {
@@ -1242,7 +1242,7 @@ export function ProfileModal({
                   ) : /* Passport */
                     activeTab === 'passport' ? (
                       <>
-                        <SkateActivityGraph activityData={activityData} loading={streakLoading} />
+                        <StreakCard activityData={activityData} loading={streakLoading} />
                         <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
                           <View
                             style={{
