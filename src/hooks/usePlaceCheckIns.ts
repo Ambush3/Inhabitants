@@ -2,16 +2,13 @@ import { useState, useCallback } from 'react';
 import { supabase } from '@/src/libs/supabase';
 import { Place } from '@/src/types';
 
-const MIN_GAP_MS = 8 * 60 * 60 * 1000; // can't re-check-in within 8h
-const NORMAL_AFTER_MS = 24 * 60 * 60 * 1000; // after 24h the button returns to normal
+const MIN_GAP_MS = 8 * 60 * 60 * 1000;
+const NORMAL_AFTER_MS = 24 * 60 * 60 * 1000;
 
 export type PlaceCheckInResult =
   | { ok: true }
   | { ok: false; reason: 'auth' | 'cooldown' | 'error' };
 
-// 'available' = never visited OR ≥24h since last (normal Check In)
-// 'confirm'   = 8–24h since last (allowed, but confirm first)
-// 'recent'    = <8h since last (blocked, shows "Skated")
 export type PlaceCheckInState = 'available' | 'confirm' | 'recent';
 
 export function usePlaceCheckIns() {
@@ -76,7 +73,6 @@ export function usePlaceCheckIns() {
           priv = prof ? !prof.public_check_ins : false;
         }
 
-        // Promote the OSM place into the shared `places` row (same pattern as place_reviews).
         await supabase.from('places').upsert(
           { id: place.id, name: place.name, lat: place.lat, lng: place.lng, type: place.type },
           { onConflict: 'id', ignoreDuplicates: true }

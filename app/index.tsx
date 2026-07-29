@@ -791,9 +791,6 @@ export default function Index() {
   }, [isOnline, spots.length]);
 
   const visiblePlaces = useMemo(() => {
-    // OSM places (parks/shops) have no feature/rating/visited/verified data.
-    // When a place type is explicitly selected, show those places by type — spot-only filters don't apply to them.
-    // When no place type is selected, hide places if any spot-only filter is active.
     const hasPlaceType = advFilters.types.some((t) => t === 'skatepark' || t === 'skateshop');
     if (
       !hasPlaceType &&
