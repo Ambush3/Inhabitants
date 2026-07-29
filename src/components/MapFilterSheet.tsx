@@ -23,14 +23,19 @@ export const EMPTY_FILTERS: MapFilters = {
 };
 
 export const FEATURES: { key: string; label: string; match: string[] }[] = [
-  { key: 'stairs', label: 'Stairs', match: ['stair', 'step'] },
+  { key: 'stairs', label: 'Stairs', match: ['stair', 'step', 'set'] },
   { key: 'ledges', label: 'Ledges', match: ['ledge'] },
-  { key: 'rails', label: 'Rails', match: ['rail'] },
+  { key: 'rails', label: 'Rails', match: ['rail', 'handrail'] },
+  { key: 'hubba', label: 'Hubba', match: ['hubba'] },
   { key: 'gaps', label: 'Gaps', match: ['gap'] },
-  { key: 'banks', label: 'Banks', match: ['bank'] },
-  { key: 'manual', label: 'Manual pads', match: ['manual', 'manny'] },
-  { key: 'bowl', label: 'Bowl', match: ['bowl', 'pool'] },
-  { key: 'vert', label: 'Vert / Ramp', match: ['vert', 'ramp', 'halfpipe', 'mini'] },
+  { key: 'banks', label: 'Banks', match: ['bank', 'embankment'] },
+  { key: 'manual', label: 'Manual pads', match: ['manual', 'manny', 'mani'] },
+  { key: 'bowl', label: 'Bowl', match: ['bowl', 'pool', 'snake'] },
+  {
+    key: 'vert',
+    label: 'Vert / Ramp',
+    match: ['vert', 'ramp', 'pipe', 'halfpipe', 'quarter', 'mini', 'transition', 'tranny'],
+  },
   { key: 'flat', label: 'Flat', match: ['flat'] },
 ];
 
