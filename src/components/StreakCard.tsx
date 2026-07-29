@@ -43,7 +43,6 @@ export function StreakCard({ activityData, loading }: Props) {
         borderRadius: 14,
         padding: 16,
       }}>
-      {/* Streak headline */}
       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
         <FireStreakIcon size={46} lit={lit} color={c.subtext} />
         <View style={{ marginLeft: 10, flex: 1 }}>
@@ -68,7 +67,6 @@ export function StreakCard({ activityData, loading }: Props) {
         </View>
       </View>
 
-      {/* Last 7 days */}
       <View
         style={{
           flexDirection: 'row',
