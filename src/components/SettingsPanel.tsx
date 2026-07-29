@@ -416,8 +416,8 @@ export function SettingsPanel({
                     )}
                   </>
                 ) : null}
-                {/* ── APPEARANCE ── */}
-                <SectionLabel label="APPEARANCE" />
+                {/* ── PREFERENCES ── */}
+                <SectionLabel label="PREFERENCES" />
                 <Pressable onPress={() => setThemePickerOpen(true)} style={rowStyle}>
                   <View style={rowLeftStyle}>
                     <Ionicons name="color-palette-outline" size={20} color={c.text} />
@@ -428,44 +428,61 @@ export function SettingsPanel({
                     <Ionicons name="chevron-forward" size={16} color={c.subtext} />
                   </View>
                 </Pressable>
-
-                {/* ── PRIVACY & ACCOUNT ── */}
-                <SectionLabel label="PRIVACY & ACCOUNT" />
-                {!session ? (
-                  <Pressable
-                    onPress={() =>
-                      showAlert(
-                        'Sign in required',
-                        'Create a free account to manage privacy and account settings.',
-                        [{ text: 'OK' }]
-                      )
-                    }
-                    style={{ opacity: 0.5 }}>
-                    <View style={rowStyle}>
-                      <View style={rowLeftStyle}>
-                        <Ionicons name="location-outline" size={20} color={c.text} />
-                        <Text style={{ fontSize: 15, color: c.text }}>Public Check-ins</Text>
-                      </View>
-                      <Toggle value={false} onPress={() => {}} accent={c.accent} track={c.border} disabled />
-                    </View>
-                    <View style={rowStyle}>
-                      <View style={rowLeftStyle}>
-                        <Ionicons name="lock-closed-outline" size={20} color={c.text} />
-                        <Text style={{ fontSize: 15, color: c.text }}>Reset Password</Text>
-                      </View>
-                      <Ionicons name="chevron-forward" size={16} color={c.subtext} />
-                    </View>
-                    <View style={{ ...rowStyle, borderBottomWidth: 0 }}>
-                      <View style={rowLeftStyle}>
-                        <Ionicons name="trash-outline" size={20} color={c.danger} />
-                        <Text style={{ fontSize: 15, color: c.danger }}>Delete Account</Text>
-                      </View>
-                      <Ionicons name="chevron-forward" size={16} color={c.danger} />
-                    </View>
-                  </Pressable>
-                ) : (
+                {session ? (
                   <>
-                    <View style={rowStyle}>
+                    <Pressable
+                      onPress={() => setNotifSectionOpen((p) => !p)}
+                      style={{ ...rowStyle, borderBottomWidth: notifSectionOpen ? 0 : 1 }}>
+                      <View style={rowLeftStyle}>
+                        <Ionicons name="notifications-outline" size={20} color={c.text} />
+                        <Text style={{ fontSize: 15, color: c.text }}>Notifications</Text>
+                      </View>
+                      <Ionicons
+                        name={notifSectionOpen ? 'chevron-down' : 'chevron-forward'}
+                        size={16}
+                        color={c.subtext}
+                      />
+                    </Pressable>
+                    {notifSectionOpen ? (
+                      <View
+                        style={{
+                          paddingLeft: 30,
+                          paddingBottom: 8,
+                          borderBottomWidth: 1,
+                          borderColor: c.border,
+                        }}>
+                        {(
+                          [
+                            ['notify_review', 'Reviews'],
+                            ['notify_favorite', 'Saves'],
+                            ['notify_wishlist', 'Wishlists'],
+                            ['notify_condition', 'Conditions'],
+                            ['notify_friend_request', 'Friend Requests'],
+                            ['notify_friend_accepted', 'Friend Accepted'],
+                            ['notify_event_invite', 'Event Invites'],
+                            ['notify_event_reminder', 'Event Reminders'],
+                          ] as [keyof NotificationPrefs, string][]
+                        ).map(([key, label]) => (
+                          <View
+                            key={key}
+                            style={{
+                              flexDirection: 'row',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              paddingVertical: 8,
+                            }}>
+                            <Text style={{ fontSize: 14, color: c.text }}>{label}</Text>
+                            <Toggle
+                              value={prefs[key]}
+                              onPress={() => updatePref(key, !prefs[key])}
+                              accent={c.accent}
+                              track={c.border}
+                            />
+                          </View>
+                        ))}
+                      </View>
+                    ) : null}
+                    <View style={{ ...rowStyle, borderBottomWidth: 0 }}>
                       <View style={rowLeftStyle}>
                         <Ionicons name="location-outline" size={20} color={c.text} />
                         <Text style={{ fontSize: 15, color: c.text }}>Public Check-ins</Text>
@@ -488,79 +505,29 @@ export function SettingsPanel({
                         }}
                       />
                     </View>
-                    <Pressable onPress={handleResetPassword} style={rowStyle}>
-                      <View style={rowLeftStyle}>
-                        <Ionicons name="lock-closed-outline" size={20} color={c.text} />
-                        <Text style={{ fontSize: 15, color: c.text }}>Reset Password</Text>
-                      </View>
-                      <Ionicons name="chevron-forward" size={16} color={c.subtext} />
-                    </Pressable>
-                    <Pressable
-                      onPress={handleDeleteAccount}
-                      style={{ ...rowStyle, borderBottomWidth: 0 }}>
-                      <View style={rowLeftStyle}>
-                        <Ionicons name="trash-outline" size={20} color={c.danger} />
-                        <Text style={{ fontSize: 15, color: c.danger }}>Delete Account</Text>
-                      </View>
-                      <Ionicons name="chevron-forward" size={16} color={c.danger} />
-                    </Pressable>
                   </>
+                ) : (
+                  <Pressable
+                    onPress={() =>
+                      showAlert(
+                        'Sign in required',
+                        'Create a free account to manage notifications and check-in privacy.',
+                        [{ text: 'OK' }]
+                      )
+                    }
+                    style={{ opacity: 0.5 }}>
+                    <View style={{ ...rowStyle, borderBottomWidth: 0 }}>
+                      <View style={rowLeftStyle}>
+                        <Ionicons name="location-outline" size={20} color={c.text} />
+                        <Text style={{ fontSize: 15, color: c.text }}>Public Check-ins</Text>
+                      </View>
+                      <Toggle value={false} onPress={() => {}} accent={c.accent} track={c.border} disabled />
+                    </View>
+                  </Pressable>
                 )}
 
-                {/* ── INFO ── */}
-                <SectionLabel label="INFO" />
-                <Pressable
-                  onPress={() => setNotifSectionOpen((p) => !p)}
-                  style={{ ...rowStyle, borderBottomWidth: notifSectionOpen ? 0 : 1 }}>
-                  <View style={rowLeftStyle}>
-                    <Ionicons name="notifications-outline" size={20} color={c.text} />
-                    <Text style={{ fontSize: 15, color: c.text }}>Notifications</Text>
-                  </View>
-                  <Ionicons
-                    name={notifSectionOpen ? 'chevron-down' : 'chevron-forward'}
-                    size={16}
-                    color={c.subtext}
-                  />
-                </Pressable>
-                {notifSectionOpen ? (
-                  <View
-                    style={{
-                      paddingLeft: 30,
-                      paddingBottom: 8,
-                      borderBottomWidth: 1,
-                      borderColor: c.border,
-                    }}>
-                    {(
-                      [
-                        ['notify_review', 'Reviews'],
-                        ['notify_favorite', 'Saves'],
-                        ['notify_wishlist', 'Wishlists'],
-                        ['notify_condition', 'Conditions'],
-                        ['notify_friend_request', 'Friend Requests'],
-                        ['notify_friend_accepted', 'Friend Accepted'],
-                        ['notify_event_invite', 'Event Invites'],
-                        ['notify_event_reminder', 'Event Reminders'],
-                      ] as [keyof NotificationPrefs, string][]
-                    ).map(([key, label]) => (
-                      <View
-                        key={key}
-                        style={{
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          paddingVertical: 8,
-                        }}>
-                        <Text style={{ fontSize: 14, color: c.text }}>{label}</Text>
-                        <Toggle
-                          value={prefs[key]}
-                          onPress={() => updatePref(key, !prefs[key])}
-                          accent={c.accent}
-                          track={c.border}
-                        />
-                      </View>
-                    ))}
-                  </View>
-                ) : null}
+                {/* ── SUPPORT ── */}
+                <SectionLabel label="SUPPORT" />
                 <Pressable
                   onPress={() => {
                     onClose();
@@ -589,6 +556,54 @@ export function SettingsPanel({
                   </View>
                   <Ionicons name="chevron-forward" size={16} color={c.subtext} />
                 </Pressable>
+
+                {/* ── ACCOUNT ── */}
+                <SectionLabel label="ACCOUNT" />
+                {session ? (
+                  <>
+                    <Pressable onPress={handleResetPassword} style={rowStyle}>
+                      <View style={rowLeftStyle}>
+                        <Ionicons name="lock-closed-outline" size={20} color={c.text} />
+                        <Text style={{ fontSize: 15, color: c.text }}>Reset Password</Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={16} color={c.subtext} />
+                    </Pressable>
+                    <Pressable
+                      onPress={handleDeleteAccount}
+                      style={{ ...rowStyle, borderBottomWidth: 0 }}>
+                      <View style={rowLeftStyle}>
+                        <Ionicons name="trash-outline" size={20} color={c.danger} />
+                        <Text style={{ fontSize: 15, color: c.danger }}>Delete Account</Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={16} color={c.danger} />
+                    </Pressable>
+                  </>
+                ) : (
+                  <Pressable
+                    onPress={() =>
+                      showAlert(
+                        'Sign in required',
+                        'Create a free account to manage account settings.',
+                        [{ text: 'OK' }]
+                      )
+                    }
+                    style={{ opacity: 0.5 }}>
+                    <View style={rowStyle}>
+                      <View style={rowLeftStyle}>
+                        <Ionicons name="lock-closed-outline" size={20} color={c.text} />
+                        <Text style={{ fontSize: 15, color: c.text }}>Reset Password</Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={16} color={c.subtext} />
+                    </View>
+                    <View style={{ ...rowStyle, borderBottomWidth: 0 }}>
+                      <View style={rowLeftStyle}>
+                        <Ionicons name="trash-outline" size={20} color={c.danger} />
+                        <Text style={{ fontSize: 15, color: c.danger }}>Delete Account</Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={16} color={c.danger} />
+                    </View>
+                  </Pressable>
+                )}
 
                 <Text
                   style={{
