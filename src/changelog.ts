@@ -1,5 +1,17 @@
 export const changelog = [
   {
+    version: '1.11.0',
+    date: 'July 2026',
+    changes: [
+      'Pro: advanced map filters — feature, rating, visited & more',
+      'Pro: see who has skated your spots',
+      'Pro: share a branded Skate Passport card',
+      'Pro status now shows on your profile',
+      'Invite friends by text with clearer send confirmations',
+      'Fixed a crash when inviting contacts with limited access',
+    ],
+  },
+  {
     version: '1.10.4',
     date: 'July 2026',
     changes: [

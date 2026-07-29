@@ -31,7 +31,7 @@ import { useTheme } from '@/src/context/ThemeContext';
 import { useToast, ToastHost } from '@/src/context/ToastContext';
 
 import { CONDITION_META, SpotCondition } from '@/src/hooks/useSpotConditions';
-import { useCheckIns } from '@/src/hooks/useCheckIns';
+import { useCheckIns, SpotVisitor } from '@/src/hooks/useCheckIns';
 import { useCheckInMedia, PendingMedia } from '@/src/hooks/useCheckInMedia';
 import { SessionMediaStrip } from '@/src/components/SessionMediaStrip';
 import { SessionMediaViewerModal, ViewerMedia } from '@/src/components/SessionMediaViewerModal';
@@ -334,6 +334,7 @@ export function SpotDetailsModal({
       setSelectedImageIndex(null);
       setFlagModalOpen(false);
       setEditOpen(false);
+      setVisitorsOpen(false);
       setProPaywallOpen(false);
       setSessionViewerMedia(null);
       setCollectionsOpen(false);
@@ -379,7 +380,10 @@ export function SpotDetailsModal({
     setPendingImages([]);
   }
 
-  const { checkIn, checkingIn, getVisitorCount, hasCheckedInWithinCooldown } = useCheckIns();
+  const { checkIn, checkingIn, getVisitorCount, getSpotVisitors, hasCheckedInWithinCooldown } = useCheckIns();
+  const [visitorsOpen, setVisitorsOpen] = useState(false);
+  const [visitors, setVisitors] = useState<SpotVisitor[]>([]);
+  const [visitorsLoading, setVisitorsLoading] = useState(false);
   const { uploadMedia, uploading: uploadingSpotMedia } = useCheckInMedia();
   const sessionMedia = useCheckInMedia();
   const { isPro } = usePro();
@@ -508,6 +512,93 @@ export function SpotDetailsModal({
         onClose={() => setProPaywallOpen(false)}
         headline="Upgrade for unlimited photos & videos."
       />
+      <Modal
+        visible={visitorsOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setVisitorsOpen(false)}>
+        <Pressable
+          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' }}
+          onPress={() => setVisitorsOpen(false)}>
+          <Pressable
+            style={{
+              backgroundColor: c.surface,
+              borderTopLeftRadius: 20,
+              borderTopRightRadius: 20,
+              padding: 20,
+              maxHeight: '70%',
+            }}
+            onPress={() => {}}>
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: 16,
+              }}>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: c.text }}>
+                Who's skated here
+              </Text>
+              <Pressable onPress={() => setVisitorsOpen(false)}>
+                <Ionicons name="close" size={22} color={c.subtext} />
+              </Pressable>
+            </View>
+            {visitorsLoading ? (
+              <Text style={{ color: c.subtext, textAlign: 'center', marginVertical: 24 }}>
+                Loading…
+              </Text>
+            ) : visitors.length === 0 ? (
+              <Text style={{ color: c.subtext, textAlign: 'center', marginVertical: 24 }}>
+                No public check-ins yet.
+              </Text>
+            ) : (
+              <ScrollView showsVerticalScrollIndicator={false}>
+                {visitors.map((v) => (
+                  <Pressable
+                    key={v.id}
+                    onPress={() => {
+                      setVisitorsOpen(false);
+                      setTimeout(() => onViewProfile?.(v.id), 350);
+                    }}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      paddingVertical: 10,
+                      borderBottomWidth: 1,
+                      borderColor: c.border,
+                      gap: 12,
+                    }}>
+                    {v.avatar_url ? (
+                      <Image
+                        source={{ uri: v.avatar_url }}
+                        style={{ width: 38, height: 38, borderRadius: 19 }}
+                      />
+                    ) : (
+                      <View
+                        style={{
+                          width: 38,
+                          height: 38,
+                          borderRadius: 19,
+                          backgroundColor: c.tagBg,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}>
+                        <Ionicons name="person-outline" size={18} color={c.subtext} />
+                      </View>
+                    )}
+                    <Text style={{ flex: 1, fontWeight: '600', color: c.text, fontSize: 14 }}>
+                      @{v.username}
+                    </Text>
+                    <Text style={{ fontSize: 11, color: c.subtext }}>
+                      {new Date(v.last_visit).toLocaleDateString()}
+                    </Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1, justifyContent: 'flex-end' }}>
@@ -819,14 +910,32 @@ export function SpotDetailsModal({
             {/* ── Check-in card ── */}
             {!detailsLoading ? (
               <View style={[styles.ratingCard, { backgroundColor: c.tagBg, alignItems: 'center' }]}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
+                <Pressable
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}
+                  disabled={!visitorCount || visitorCount <= 0}
+                  onPress={async () => {
+                    if (!spot || !visitorCount || visitorCount <= 0) return;
+                    if (!isPro) {
+                      setProPaywallOpen(true);
+                      return;
+                    }
+                    setVisitors([]);
+                    setVisitorsLoading(true);
+                    setVisitorsOpen(true);
+                    const v = await getSpotVisitors(spot.id);
+                    setVisitors(v);
+                    setVisitorsLoading(false);
+                  }}>
                   <Ionicons name="people-outline" size={16} color={c.subtext} />
                   <Text style={{ fontSize: 13, color: c.subtext }}>
                     {visitorCount !== null && visitorCount > 0
                       ? `${visitorCount} ${visitorCount === 1 ? 'skater has' : 'skaters have'} visited`
                       : 'No check-ins yet'}
                   </Text>
-                </View>
+                  {visitorCount !== null && visitorCount > 0 ? (
+                    <Ionicons name="chevron-forward" size={14} color={c.subtext} />
+                  ) : null}
+                </Pressable>
                 <Pressable
                   onPress={async () => {
                     if (!spot) return;
