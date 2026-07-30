@@ -34,6 +34,8 @@ import { useInvite } from '@/src/hooks/useInvite';
 import { moderateText } from '@/src/libs/moderator/textModerator';
 import { useStreak } from '@/src/hooks/useStreak';
 import { StreakCard } from '@/src/components/StreakCard';
+import { PassportBadges } from '@/src/components/profile/PassportBadges';
+import { WeeklyRecapCard } from '@/src/components/profile/WeeklyRecapCard';
 import { SessionMediaViewerModal, ViewerMedia } from '@/src/components/SessionMediaViewerModal';
 
 type MyReview = {
@@ -81,6 +83,8 @@ export function ProfileModal({
   const [proPaywallOpen, setProPaywallOpen] = useState(false);
   const [sharingPassport, setSharingPassport] = useState(false);
   const shareCardRef = useRef<View>(null);
+  const [sharingRecap, setSharingRecap] = useState(false);
+  const shareRecapRef = useRef<View>(null);
   const toast = useToast();
   const c = theme.colors;
 
@@ -154,6 +158,45 @@ export function ProfileModal({
       toast.error('Could not create your passport card.');
     } finally {
       setSharingPassport(false);
+    }
+  }
+
+  const weekRecap = (() => {
+    const week: boolean[] = [];
+    let daysSkated = 0;
+    let weekCheckIns = 0;
+    const today = new Date();
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      const cnt = activityData.grid.get(d.toLocaleDateString('en-CA')) ?? 0;
+      week.push(cnt > 0);
+      if (cnt > 0) daysSkated++;
+      weekCheckIns += cnt;
+    }
+    const weekAgo = new Date(today);
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    const newSpots = mySpots.filter((s) => s.created_at && new Date(s.created_at) >= weekAgo).length;
+    return { week, daysSkated, weekCheckIns, newSpots };
+  })();
+
+  async function handleShareRecap() {
+    if (!isPro) {
+      setProPaywallOpen(true);
+      return;
+    }
+    try {
+      setSharingRecap(true);
+      const { captureRef } = await import('react-native-view-shot');
+      const uri = await captureRef(shareRecapRef, { format: 'png', quality: 1 });
+      const link = myId
+        ? `https://inhabitants.chottu.link/join?ref=${myId}&view=profile`
+        : 'https://inhabitants.chottu.link';
+      await Share.share({ message: link, url: uri });
+    } catch {
+      toast.error('Could not create your recap card.');
+    } finally {
+      setSharingRecap(false);
     }
   }
 
@@ -260,7 +303,6 @@ export function ProfileModal({
     loadPlaceCheckIns();
   }, [visible]);
 
-
   const myActualSpots = mySpots.filter((s) => s.spot_type === 'spot');
   const avgRatingGiven =
     myReviews.length === 0 ? null : myReviews.reduce((sum, r) => sum + r.rating, 0) / myReviews.length;
@@ -270,10 +312,7 @@ export function ProfileModal({
       {visible ? <AlertHost /> : null}
       {visible ? <ToastHost /> : null}
       <PaywallModal visible={proPaywallOpen} onClose={() => setProPaywallOpen(false)} />
-      <View
-        ref={shareCardRef}
-        collapsable={false}
-        style={{ position: 'absolute', left: -9999, top: 0 }}>
+      <View ref={shareCardRef} collapsable={false} style={{ position: 'absolute', left: -9999, top: 0 }}>
         <PassportShareCard
           username={username}
           avatarUrl={avatarUrl}
@@ -282,6 +321,17 @@ export function ProfileModal({
           parksSkated={parksSkated}
           longestStreak={activityData.longestStreak}
           mostSkatedSpot={mostSkatedSpot}
+          profileUrl={myId ? `https://inhabitants.chottu.link/join?ref=${myId}&view=profile` : null}
+        />
+      </View>
+      <View ref={shareRecapRef} collapsable={false} style={{ position: 'absolute', left: -9999, top: 0 }}>
+        <WeeklyRecapCard
+          username={username}
+          avatarUrl={avatarUrl}
+          daysSkated={weekRecap.daysSkated}
+          weekCheckIns={weekRecap.weekCheckIns}
+          newSpots={weekRecap.newSpots}
+          week={weekRecap.week}
           profileUrl={myId ? `https://inhabitants.chottu.link/join?ref=${myId}&view=profile` : null}
         />
       </View>
@@ -1291,6 +1341,12 @@ export function ProfileModal({
                           </View>
                         </View>
 
+                        <PassportBadges
+                          longestStreak={activityData.longestStreak}
+                          parksSkated={parksSkated}
+                          spotsVisited={passportEntries.length}
+                        />
+
                         <Pressable
                           onPress={handleSharePassport}
                           disabled={sharingPassport || passportEntries.length === 0}
@@ -1308,6 +1364,27 @@ export function ProfileModal({
                           <Ionicons name="share-outline" size={16} color="#fff" />
                           <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>
                             {sharingPassport ? 'Preparing…' : 'Share My Passport'}
+                          </Text>
+                          <CrownIcon size={16} />
+                        </Pressable>
+
+                        <Pressable
+                          onPress={handleShareRecap}
+                          disabled={sharingRecap || weekRecap.daysSkated === 0}
+                          style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 8,
+                            backgroundColor: '#000',
+                            borderRadius: 12,
+                            paddingVertical: 12,
+                            marginBottom: 16,
+                            opacity: sharingRecap || weekRecap.daysSkated === 0 ? 0.5 : 1,
+                          }}>
+                          <Ionicons name="calendar-outline" size={16} color="#fff" />
+                          <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>
+                            {sharingRecap ? 'Preparing…' : 'Share Weekly Recap'}
                           </Text>
                           <CrownIcon size={16} />
                         </Pressable>
@@ -1381,111 +1458,132 @@ export function ProfileModal({
                                   <View style={{ marginTop: 12, gap: 8 }}>
                                     {entry.visits.map((v) => (
                                       <View key={v.id} style={{ gap: 8 }}>
-                                      <View
-                                        style={{
-                                          flexDirection: 'row',
-                                          alignItems: 'center',
-                                          paddingLeft: 50,
-                                          gap: 8,
-                                        }}>
-                                        <Ionicons
-                                          name={
-                                            v.is_private
-                                              ? 'lock-closed-outline'
-                                              : 'earth-outline'
-                                          }
-                                          size={13}
-                                          color={c.subtext}
-                                        />
-                                        <Text
-                                          style={{ fontSize: 13, color: c.subtext, flex: 1 }}>
-                                          {new Date(v.checked_in_at).toLocaleDateString([], {
-                                            month: 'short',
-                                            day: 'numeric',
-                                            year: 'numeric',
-                                            hour: '2-digit',
-                                            minute: '2-digit',
-                                          })}
-                                        </Text>
-                                        <Pressable
-                                          onPress={() => togglePrivacy(v.id, !v.is_private)}>
-                                          <Text style={{ fontSize: 12, color: c.accent }}>
-                                            {v.is_private ? 'Make public' : 'Make private'}
-                                          </Text>
-                                        </Pressable>
-                                        <Pressable
-                                          onPress={() =>
-                                            showAlert('Delete check-in?', undefined, [
-                                              { text: 'Cancel', style: 'cancel' },
-                                              {
-                                                text: 'Delete',
-                                                style: 'destructive',
-                                                onPress: () => deleteCheckIn(v.id),
-                                              },
-                                            ])
-                                          }>
-                                          <Ionicons
-                                            name="trash-outline"
-                                            size={14}
-                                            color={c.danger}
-                                          />
-                                        </Pressable>
-                                      </View>
-                                      {v.media.length > 0 ? (
                                         <View
                                           style={{
                                             flexDirection: 'row',
-                                            flexWrap: 'wrap',
-                                            gap: 8,
+                                            alignItems: 'center',
                                             paddingLeft: 50,
+                                            gap: 8,
                                           }}>
-                                          {v.media.map((m, mi) => (
-                                            <Pressable
-                                              key={m.id}
-                                              onPress={() =>
-                                                setViewer({
-                                                  list: v.media.map((mm) => ({
-                                                    id: mm.id,
-                                                    url: mm.url,
-                                                    media_type: mm.media_type,
-                                                    thumbnail_url: mm.thumbnail_url,
-                                                  })),
-                                                  index: mi,
-                                                })
+                                          <Ionicons
+                                            name={
+                                              v.is_private
+                                                ? 'lock-closed-outline'
+                                                : 'earth-outline'
+                                            }
+                                            size={13}
+                                            color={c.subtext}
+                                          />
+                                          <Text
+                                            style={{
+                                              fontSize: 13,
+                                              color: c.subtext,
+                                              flex: 1,
+                                            }}>
+                                            {new Date(v.checked_in_at).toLocaleDateString(
+                                              [],
+                                              {
+                                                month: 'short',
+                                                day: 'numeric',
+                                                year: 'numeric',
+                                                hour: '2-digit',
+                                                minute: '2-digit',
                                               }
-                                              style={{
-                                                width: 64,
-                                                height: 64,
-                                                borderRadius: 8,
-                                                overflow: 'hidden',
-                                                backgroundColor: c.border,
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                              }}>
-                                              <Image
-                                                source={{
-                                                  uri:
-                                                    m.media_type === 'video'
-                                                      ? m.thumbnail_url ?? m.url
-                                                      : m.url,
-                                                }}
-                                                style={{ width: '100%', height: '100%' }}
-                                              />
-                                              {m.media_type === 'video' ? (
-                                                <View
-                                                  style={{
-                                                    position: 'absolute',
-                                                    backgroundColor: 'rgba(0,0,0,0.35)',
-                                                    borderRadius: 12,
-                                                    padding: 2,
-                                                  }}>
-                                                  <Ionicons name="play" size={16} color="#fff" />
-                                                </View>
-                                              ) : null}
-                                            </Pressable>
-                                          ))}
+                                            )}
+                                          </Text>
+                                          <Pressable
+                                            onPress={() =>
+                                              togglePrivacy(v.id, !v.is_private)
+                                            }>
+                                            <Text style={{ fontSize: 12, color: c.accent }}>
+                                              {v.is_private
+                                                ? 'Make public'
+                                                : 'Make private'}
+                                            </Text>
+                                          </Pressable>
+                                          <Pressable
+                                            onPress={() =>
+                                              showAlert('Delete check-in?', undefined, [
+                                                { text: 'Cancel', style: 'cancel' },
+                                                {
+                                                  text: 'Delete',
+                                                  style: 'destructive',
+                                                  onPress: () => deleteCheckIn(v.id),
+                                                },
+                                              ])
+                                            }>
+                                            <Ionicons
+                                              name="trash-outline"
+                                              size={14}
+                                              color={c.danger}
+                                            />
+                                          </Pressable>
                                         </View>
-                                      ) : null}
+                                        {v.media.length > 0 ? (
+                                          <View
+                                            style={{
+                                              flexDirection: 'row',
+                                              flexWrap: 'wrap',
+                                              gap: 8,
+                                              paddingLeft: 50,
+                                            }}>
+                                            {v.media.map((m, mi) => (
+                                              <Pressable
+                                                key={m.id}
+                                                onPress={() =>
+                                                  setViewer({
+                                                    list: v.media.map((mm) => ({
+                                                      id: mm.id,
+                                                      url: mm.url,
+                                                      media_type: mm.media_type,
+                                                      thumbnail_url:
+                                                        mm.thumbnail_url,
+                                                    })),
+                                                    index: mi,
+                                                  })
+                                                }
+                                                style={{
+                                                  width: 64,
+                                                  height: 64,
+                                                  borderRadius: 8,
+                                                  overflow: 'hidden',
+                                                  backgroundColor: c.border,
+                                                  alignItems: 'center',
+                                                  justifyContent: 'center',
+                                                }}>
+                                                <Image
+                                                  source={{
+                                                    uri:
+                                                      m.media_type === 'video'
+                                                        ? (m.thumbnail_url ??
+                                                          m.url)
+                                                        : m.url,
+                                                  }}
+                                                  style={{
+                                                    width: '100%',
+                                                    height: '100%',
+                                                  }}
+                                                />
+                                                {m.media_type === 'video' ? (
+                                                  <View
+                                                    style={{
+                                                      position: 'absolute',
+                                                      backgroundColor:
+                                                        'rgba(0,0,0,0.35)',
+                                                      borderRadius: 12,
+                                                      padding: 2,
+                                                    }}>
+                                                    <Ionicons
+                                                      name="play"
+                                                      size={16}
+                                                      color="#fff"
+                                                    />
+                                                  </View>
+                                                ) : null}
+                                              </Pressable>
+                                            ))}
+                                          </View>
+                                        ) : null}
                                       </View>
                                     ))}
                                   </View>
@@ -1736,7 +1834,8 @@ export function ProfileModal({
                 }}>
                 <Ionicons name="information-circle-outline" size={18} color={c.subtext} />
                 <Text style={{ flex: 1, color: c.subtext, fontSize: 12, lineHeight: 17 }}>
-                  Only showing contacts you've shared. Tap here, then Contacts → Full Access to see everyone.
+                  Only showing contacts you've shared. Tap here, then Contacts → Full Access to see
+                  everyone.
                 </Text>
                 <Ionicons name="chevron-forward" size={16} color={c.subtext} />
               </Pressable>
