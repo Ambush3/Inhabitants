@@ -246,6 +246,16 @@ export function ProfileModal({
     setSelectedFriendIds(new Set());
   }
 
+  function openSpotFromProfile(spotId: string) {
+    const spot = allSpots.find((s) => s.id === spotId);
+    if (spot) {
+      onSelectSpot(spot);
+      onClose();
+    } else {
+      toast.error("Couldn't open this spot on the map.");
+    }
+  }
+
   async function bulkRemoveSelected() {
     if (selectedFriendIds.size === 0) return;
     setBulkRemoving(true);
@@ -1189,7 +1199,8 @@ export function ProfileModal({
                               }, {});
                               return Object.entries(grouped).map(([spotId, { spotName, logs }]) => (
                                 <View key={spotId} style={{ marginBottom: 16 }}>
-                                  <View
+                                  <Pressable
+                                    onPress={() => openSpotFromProfile(spotId)}
                                     style={{
                                       flexDirection: 'row',
                                       alignItems: 'center',
@@ -1210,10 +1221,11 @@ export function ProfileModal({
                                       }}>
                                       {spotName}
                                     </Text>
+                                    <Ionicons name="chevron-forward" size={14} color={c.subtext} />
                                     <Text style={{ fontSize: 11, color: c.subtext }}>
                                       {logs.length} trick{logs.length !== 1 ? 's' : ''}
                                     </Text>
-                                  </View>
+                                  </Pressable>
                                   {logs.map((log) => (
                                     <View
                                       key={log.id}
@@ -1230,7 +1242,9 @@ export function ProfileModal({
                                         size={14}
                                         color="#34C759"
                                       />
-                                      <View style={{ flex: 1 }}>
+                                      <Pressable
+                                        style={{ flex: 1 }}
+                                        onPress={() => openSpotFromProfile(spotId)}>
                                         <Text
                                           style={{
                                             fontWeight: '600',
@@ -1254,7 +1268,7 @@ export function ProfileModal({
                                             }
                                           )}
                                         </Text>
-                                      </View>
+                                      </Pressable>
                                       <Pressable
                                         onPress={() =>
                                           showAlert(
