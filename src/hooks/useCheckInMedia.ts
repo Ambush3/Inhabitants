@@ -8,9 +8,10 @@ const BUCKET = 'check-in-media';
 
 export type CheckInMedia = {
   id: string;
-  check_in_id: string;
+  check_in_id: string | null;
   user_id: string;
-  spot_id: string;
+  spot_id: string | null;
+  place_id?: string | null;
   url: string;
   thumbnail_url?: string | null;
   media_type: 'image' | 'video';
@@ -49,6 +50,17 @@ export function useCheckInMedia() {
     setMedia((data ?? []) as CheckInMedia[]);
   }
 
+  // Public session media at an OSM place (skatepark/shop), keyed by place_id.
+  async function loadMediaForPlace(placeId: string) {
+    const { data, error } = await supabase
+      .from('check_in_media')
+      .select('*, profiles!check_in_media_user_id_fkey(username, avatar_url)')
+      .eq('place_id', placeId)
+      .order('created_at', { ascending: false });
+    if (error) return;
+    setMedia((data ?? []) as CheckInMedia[]);
+  }
+
   // Public session media by a user (RLS limits to non-private check-ins / own).
   async function loadMediaForUser(userId: string) {
     const { data, error } = await supabase
@@ -61,9 +73,10 @@ export function useCheckInMedia() {
   }
 
   async function uploadMedia(
-    spotId: string,
+    spotId: string | null,
     checkInId: string | null,
-    assets: PendingMedia[]
+    assets: PendingMedia[],
+    placeId?: string
   ): Promise<{ uploaded: number; error?: string }> {
     setUploading(true);
     const {
@@ -100,7 +113,8 @@ export function useCheckInMedia() {
           contentType = 'image/jpeg';
         }
 
-        const filename = `${user.id}/${checkInId ?? spotId}-${Date.now()}.${ext}`;
+        const pathKey = checkInId ?? spotId ?? placeId;
+        const filename = `${user.id}/${pathKey}-${Date.now()}.${ext}`;
 
         const { error: uploadError } = await supabase.storage
           .from(BUCKET)
@@ -126,7 +140,7 @@ export function useCheckInMedia() {
               base64: true,
             });
             if (compressed.base64) {
-              const thumbName = `${user.id}/${checkInId ?? spotId}-${Date.now()}-thumb.jpg`;
+              const thumbName = `${user.id}/${pathKey}-${Date.now()}-thumb.jpg`;
               const { error: thumbErr } = await supabase.storage
                 .from(BUCKET)
                 .upload(thumbName, decode(compressed.base64), {
@@ -146,6 +160,7 @@ export function useCheckInMedia() {
           check_in_id: checkInId,
           user_id: user.id,
           spot_id: spotId,
+          place_id: placeId ?? null,
           url: urlData.publicUrl,
           thumbnail_url: thumbnailUrl,
           media_type: asset.type,
@@ -202,6 +217,7 @@ export function useCheckInMedia() {
     uploading,
     loadMediaForCheckIn,
     loadMediaForSpot,
+    loadMediaForPlace,
     loadMediaForUser,
     uploadMedia,
     deleteMedia,

@@ -14,6 +14,7 @@ import {
   Keyboard,
   KeyboardAvoidingView,
   Platform,
+  Dimensions,
 } from 'react-native';
 import { Place } from '@/src/types';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,8 +23,15 @@ import { useTheme } from '@/src/context/ThemeContext';
 import { usePlaceReviews } from '@/src/hooks/usePlaceReviews';
 import { usePlaceOverrides } from '@/src/hooks/usePlaceOverrides';
 import { useAuth } from '@/src/hooks/useAuth';
+import { usePro } from '@/src/context/ProContext';
 import { showAlert, AlertHost } from '@/src/components/ui/ThemedAlert';
 import type { PlaceCheckInState } from '@/src/hooks/usePlaceCheckIns';
+import { useCheckInMedia, PendingMedia } from '@/src/hooks/useCheckInMedia';
+import { SessionMediaStrip } from '@/src/components/SessionMediaStrip';
+import { SessionMediaViewerModal, ViewerMedia } from '@/src/components/SessionMediaViewerModal';
+import { PaywallModal } from '@/src/components/PaywallModal';
+import { FREE_MEDIA_PER_SPOT } from '@/src/config/iap';
+import * as ImagePicker from 'expo-image-picker';
 
 const geocodeCache = new Map<string, string>();
 
@@ -51,7 +59,7 @@ type Props = {
   userLocation?: { latitude: number; longitude: number } | null;
   checkInState?: PlaceCheckInState;
   checkingIn?: boolean;
-  onCheckIn?: () => void;
+  onCheckIn?: () => Promise<boolean | void> | void;
 };
 
 export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorite, isFavorite, userLocation, checkInState = 'available', checkingIn = false, onCheckIn }: Props) {
@@ -101,6 +109,56 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
       ? haversineMiles(userLocation.latitude, userLocation.longitude, place.lat, place.lng)
       : null;
   const { session } = useAuth();
+  const { isPro } = usePro();
+  const placeMedia = useCheckInMedia();
+  const [proPaywallOpen, setProPaywallOpen] = useState(false);
+  const [mediaViewer, setMediaViewer] = useState<{ list: ViewerMedia[]; index: number } | null>(null);
+  const isPark = place?.type === 'skatepark';
+
+  useEffect(() => {
+    if (visible && place && isPark) {
+      placeMedia.loadMediaForPlace(place.id);
+    }
+    if (!visible) {
+      placeMedia.clearMedia();
+      setMediaViewer(null);
+    }
+  }, [visible, place?.id, isPark]);
+
+  async function pickAndUploadPlaceMedia() {
+    if (!place) return;
+    const mine = placeMedia.media.filter((m) => m.user_id === session?.user.id).length;
+    const remaining = FREE_MEDIA_PER_SPOT - mine;
+    if (!isPro && remaining <= 0) {
+      setProPaywallOpen(true);
+      return;
+    }
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') return;
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images', 'videos'],
+      allowsMultipleSelection: true,
+      quality: 1,
+      selectionLimit: isPro ? 10 : remaining,
+    });
+    if (result.canceled) return;
+    let assets: PendingMedia[] = result.assets.map((a) => ({
+      uri: a.uri,
+      type: a.type === 'video' ? 'video' : 'image',
+    }));
+    if (!isPro) assets = assets.slice(0, remaining);
+    if (!assets.length) return;
+    const res = await placeMedia.uploadMedia(null, null, assets, place.id);
+    await placeMedia.loadMediaForPlace(place.id);
+    if (res.error) showAlert('Upload failed', res.error, [{ text: 'OK' }]);
+  }
+
+  function promptAddPlaceMedia() {
+    showAlert('Add a photo or clip?', 'Show off your session at this park.', [
+      { text: 'Skip', style: 'cancel' },
+      { text: 'Add', onPress: pickAndUploadPlaceMedia },
+    ]);
+  }
 
   const {
     avgRating,
@@ -232,6 +290,12 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
     await Linking.openURL(website.startsWith('http') ? website : `https://${website}`);
   }
 
+  async function doCheckIn() {
+    if (!onCheckIn) return;
+    const ok = await onCheckIn();
+    if (ok) promptAddPlaceMedia();
+  }
+
   function handleCheckInPress() {
     if (!onCheckIn) return;
     if (checkInState === 'confirm') {
@@ -240,11 +304,11 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
         'You already skated here earlier today. Log another check-in?',
         [
           { text: 'Cancel', style: 'cancel' },
-          { text: 'Check In Again', onPress: onCheckIn },
+          { text: 'Check In Again', onPress: doCheckIn },
         ]
       );
     } else {
-      onCheckIn();
+      doCheckIn();
     }
   }
 
@@ -525,6 +589,60 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
               </Pressable>
             ) : null}
 
+            {isPark ? (
+              <View
+                style={{
+                  borderTopWidth: 1,
+                  borderColor: c.border,
+                  marginTop: 16,
+                  paddingTop: 16,
+                }}>
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    marginBottom: 10,
+                  }}>
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: c.text }}>
+                    Session Media
+                  </Text>
+                  <Pressable
+                    onPress={pickAndUploadPlaceMedia}
+                    disabled={placeMedia.uploading}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <Ionicons name="add-circle-outline" size={18} color={c.accent} />
+                    <Text style={{ fontSize: 13, color: c.accent, fontWeight: '600' }}>
+                      {placeMedia.uploading ? 'Uploading…' : 'Add'}
+                    </Text>
+                  </Pressable>
+                </View>
+                {placeMedia.media.length > 0 ? (
+                  <SessionMediaStrip
+                    media={placeMedia.media}
+                    showUploader
+                    grid
+                    size={Math.floor((Dimensions.get('window').width - 32 - 16) / 3)}
+                    onPressMedia={(m) =>
+                      setMediaViewer({
+                        list: placeMedia.media.map((mm) => ({
+                          id: mm.id,
+                          url: mm.url,
+                          media_type: mm.media_type,
+                          thumbnail_url: mm.thumbnail_url,
+                        })),
+                        index: placeMedia.media.findIndex((x) => x.id === m.id),
+                      })
+                    }
+                  />
+                ) : (
+                  <Text style={{ fontSize: 12, color: c.subtext }}>
+                    No clips yet. Be the first to post one.
+                  </Text>
+                )}
+              </View>
+            ) : null}
+
             {/* Rating */}
             <View
               style={{
@@ -579,6 +697,15 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
       </View>
 
       {visible ? <AlertHost /> : null}
+
+      <SessionMediaViewerModal
+        visible={mediaViewer !== null}
+        onClose={() => setMediaViewer(null)}
+        mediaList={mediaViewer?.list ?? []}
+        initialIndex={mediaViewer?.index ?? 0}
+        currentUserId={session?.user.id ?? null}
+      />
+      <PaywallModal visible={proPaywallOpen} onClose={() => setProPaywallOpen(false)} />
 
       {/* Edit Modal */}
       <Modal visible={editOpen} transparent animationType="slide" onRequestClose={() => setEditOpen(false)}>

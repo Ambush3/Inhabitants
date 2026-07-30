@@ -2754,11 +2754,12 @@ export default function Index() {
         checkInState={selectedPlace ? getPlaceCheckInState(selectedPlace.id) : 'available'}
         checkingIn={placeCheckingIn}
         onCheckIn={async () => {
-          if (!selectedPlace) return;
+          if (!selectedPlace) return false;
           const res = await checkInPlace(selectedPlace);
           if (res.ok) {
             await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             toast.show('Checked in — added to your parks skated');
+            return true;
           } else if (res.reason === 'cooldown') {
             toast.show('You checked in here recently');
           } else if (res.reason === 'auth') {
@@ -2766,6 +2767,7 @@ export default function Index() {
           } else {
             toast.error('Couldn’t check in right now');
           }
+          return false;
         }}
       />
       <SettingsPanel
