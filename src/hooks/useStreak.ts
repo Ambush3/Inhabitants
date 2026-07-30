@@ -28,17 +28,23 @@ export function useStreak() {
       const since = new Date();
       since.setDate(since.getDate() - 84);
 
-      const { data } = await supabase
-        .from('check_ins')
-        .select('checked_in_at')
-        .eq('user_id', user.id)
-        .gte('checked_in_at', since.toISOString())
-        .order('checked_in_at', { ascending: true });
+      const [{ data: spotData }, { data: parkData }] = await Promise.all([
+        supabase
+          .from('check_ins')
+          .select('checked_in_at')
+          .eq('user_id', user.id)
+          .gte('checked_in_at', since.toISOString()),
+        supabase
+          .from('place_check_ins')
+          .select('checked_in_at')
+          .eq('user_id', user.id)
+          .gte('checked_in_at', since.toISOString()),
+      ]);
 
-      if (!data) return;
+      const windowRows = [...(spotData ?? []), ...(parkData ?? [])];
 
       const grid = new Map<string, number>();
-      for (const row of data) {
+      for (const row of windowRows) {
         const dateKey = new Date(row.checked_in_at).toLocaleDateString('en-CA');
         grid.set(dateKey, (grid.get(dateKey) ?? 0) + 1);
       }
@@ -75,14 +81,13 @@ export function useStreak() {
         }
       }
 
-      const { data: allData } = await supabase
-        .from('check_ins')
-        .select('checked_in_at')
-        .eq('user_id', user.id)
-        .order('checked_in_at', { ascending: true });
+      const [{ data: allSpotData }, { data: allParkData }] = await Promise.all([
+        supabase.from('check_ins').select('checked_in_at').eq('user_id', user.id),
+        supabase.from('place_check_ins').select('checked_in_at').eq('user_id', user.id),
+      ]);
 
       const allDays = new Set<string>();
-      for (const row of allData ?? []) {
+      for (const row of [...(allSpotData ?? []), ...(allParkData ?? [])]) {
         allDays.add(new Date(row.checked_in_at).toLocaleDateString('en-CA'));
       }
 
