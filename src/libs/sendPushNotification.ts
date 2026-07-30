@@ -16,6 +16,21 @@ export async function sendPushNotification(
   });
 }
 
+export async function sendSpotClosedNotification(
+  spotId: string,
+  actorUsername: string,
+  actorId?: string
+) {
+  await supabase.functions.invoke('send-push-notification', {
+    body: {
+      spot_id: spotId,
+      event_type: 'spot_closed',
+      actor_username: actorUsername,
+      actor_id: actorId,
+    },
+  });
+}
+
 export async function sendFriendRequestNotification(addresseeId: string, actorUsername: string) {
   await supabase.functions.invoke('send-push-notification', {
     body: {

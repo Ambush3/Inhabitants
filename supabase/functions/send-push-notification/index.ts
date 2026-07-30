@@ -11,6 +11,7 @@ const PREF_COLUMN_BY_TYPE: Record<string, string | null> = {
     favorite: 'notify_favorite',
     wishlist: 'notify_wishlist',
     condition: 'notify_condition',
+    spot_closed: 'notify_condition',
     flag: 'notify_flag',
     image_removed: null,
     event_invite: 'notify_event_invite',
@@ -272,6 +273,96 @@ Deno.serve(async (req) => {
 
             const result = await response.json();
             return new Response(JSON.stringify(result), { status: 200 });
+        }
+
+        if (event_type === 'spot_closed') {
+            const { data: closedSpot } = await supabase
+                .from('spots')
+                .select('user_id, name, lat, lng')
+                .eq('id', spot_id)
+                .single();
+            if (!closedSpot) return new Response('Spot not found', { status: 404 });
+
+            const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString();
+            const { data: recentClosed } = await supabase
+                .from('notifications')
+                .select('id')
+                .eq('spot_id', spot_id)
+                .eq('type', 'spot_closed')
+                .gte('created_at', twelveHoursAgo)
+                .limit(1);
+            if (recentClosed && recentClosed.length > 0) {
+                return new Response(JSON.stringify({ debounced: true }), { status: 200 });
+            }
+
+            const [{ data: favs }, { data: wish }, { data: colSpots }] = await Promise.all([
+                supabase.from('favorites').select('user_id').eq('spot_id', spot_id),
+                supabase.from('wishlists').select('user_id').eq('spot_id', spot_id),
+                supabase.from('collection_spots').select('collection_id').eq('spot_id', spot_id),
+            ]);
+
+            let listOwners: string[] = [];
+            const colIds = [...new Set((colSpots ?? []).map((r: any) => r.collection_id))];
+            if (colIds.length > 0) {
+                const { data: cols } = await supabase
+                    .from('collections')
+                    .select('user_id')
+                    .in('id', colIds);
+                listOwners = (cols ?? []).map((r: any) => r.user_id);
+            }
+
+            const recipientSet = new Set<string>([
+                closedSpot.user_id,
+                ...(favs ?? []).map((r: any) => r.user_id),
+                ...(wish ?? []).map((r: any) => r.user_id),
+                ...listOwners,
+            ]);
+            recipientSet.delete(actor_id);
+            let recipients = [...recipientSet].filter(Boolean);
+
+            const gated: string[] = [];
+            for (const rid of recipients) {
+                if (await isAllowed(rid, 'spot_closed')) gated.push(rid);
+            }
+            recipients = gated;
+            if (recipients.length === 0) return new Response(JSON.stringify({ noop: true }), { status: 200 });
+
+            const rows = recipients.map((rid) => ({
+                user_id: rid,
+                type: 'spot_closed',
+                actor_id: actor_id ?? null,
+                actor_username: actor_username ?? null,
+                spot_id,
+                spot_name: closedSpot.name,
+            }));
+            await supabase.from('notifications').insert(rows);
+
+            const { data: tokenRows } = await supabase
+                .from('push_tokens')
+                .select('token')
+                .in('user_id', recipients);
+            const tokens = (tokenRows ?? []).map((r: any) => r.token).filter(Boolean);
+            if (tokens.length > 0) {
+                const messages = tokens.map((t: string) => ({
+                    to: t,
+                    title: '🚧 Spot Closed',
+                    body: `${actor_username} reported "${closedSpot.name}" as closed or under construction`,
+                    sound: 'default',
+                    data: {
+                        url: `inhabitants://?deepLinkSpotId=${spot_id}&deepLinkLat=${closedSpot.lat}&deepLinkLng=${closedSpot.lng}`,
+                    },
+                }));
+                await fetch('https://exp.host/--/api/v2/push/send', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Accept: 'application/json',
+                        'Accept-Encoding': 'gzip, deflate',
+                    },
+                    body: JSON.stringify(messages),
+                });
+            }
+            return new Response(JSON.stringify({ inserted: recipients.length }), { status: 200 });
         }
 
         const { data: spot } = await supabase
