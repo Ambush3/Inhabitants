@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { showAlert } from '@/src/components/ui/ThemedAlert';
-import { View, Text, Pressable } from 'react-native';
+import { View, Text, Pressable, Dimensions } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/src/context/ThemeContext';
@@ -18,6 +18,7 @@ export function MyMediaGrid({ userId, onViewProfile }: Props) {
   const toast = useToast();
   const c = theme.colors;
   const media = useCheckInMedia();
+  const tileSize = Math.floor((Dimensions.get('window').width - 32 - 16) / 3);
   const [viewerMedia, setViewerMedia] = useState<ViewerMedia | null>(null);
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -90,7 +91,7 @@ export function MyMediaGrid({ userId, onViewProfile }: Props) {
         </Text>
       )}
 
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-start' }}>
         {media.media.map((m) => {
           const selected = selectedIds.has(m.id);
           const uri = m.media_type === 'video' ? m.thumbnail_url ?? m.url : m.url;
@@ -107,8 +108,8 @@ export function MyMediaGrid({ userId, onViewProfile }: Props) {
                 }}
                 delayLongPress={300}
                 style={{
-                  width: 104,
-                  height: 104,
+                  width: tileSize,
+                  height: tileSize,
                   borderRadius: 10,
                   overflow: 'hidden',
                   backgroundColor: c.border,
