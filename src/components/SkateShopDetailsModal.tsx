@@ -30,7 +30,7 @@ import { useCheckInMedia, PendingMedia } from '@/src/hooks/useCheckInMedia';
 import { SessionMediaStrip } from '@/src/components/SessionMediaStrip';
 import { SessionMediaViewerModal, ViewerMedia } from '@/src/components/SessionMediaViewerModal';
 import { PaywallModal } from '@/src/components/PaywallModal';
-import { FREE_MEDIA_PER_SPOT } from '@/src/config/iap';
+import { FREE_MEDIA_PER_SPOT, MAX_VIDEO_DURATION_SEC } from '@/src/config/iap';
 import * as ImagePicker from 'expo-image-picker';
 
 const geocodeCache = new Map<string, string>();
@@ -139,6 +139,7 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
       mediaTypes: ['images', 'videos'],
       allowsMultipleSelection: true,
       quality: 1,
+      videoMaxDuration: MAX_VIDEO_DURATION_SEC,
       selectionLimit: isPro ? 10 : remaining,
     });
     if (result.canceled) return;

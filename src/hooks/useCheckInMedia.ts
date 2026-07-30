@@ -3,6 +3,7 @@ import { supabase } from '@/src/libs/supabase';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import * as VideoThumbnails from 'expo-video-thumbnails';
 import { decode } from 'base64-arraybuffer';
+import { MAX_VIDEO_MB } from '@/src/config/iap';
 
 const BUCKET = 'check-in-media';
 
@@ -99,6 +100,10 @@ export function useCheckInMedia() {
         if (asset.type === 'video') {
           const res = await fetch(asset.uri);
           bytes = await res.arrayBuffer();
+          if (bytes.byteLength > MAX_VIDEO_MB * 1024 * 1024) {
+            firstError = firstError ?? `Videos must be under ${MAX_VIDEO_MB}MB.`;
+            continue;
+          }
           ext = 'mp4';
           contentType = 'video/mp4';
         } else {

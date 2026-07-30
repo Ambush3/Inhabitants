@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { showAlert, AlertHost } from '@/src/components/ui/ThemedAlert';
 import { usePro } from '@/src/context/ProContext';
 import { PaywallModal } from '@/src/components/PaywallModal';
-import { FREE_MEDIA_PER_SPOT } from '@/src/config/iap';
+import { FREE_MEDIA_PER_SPOT, MAX_VIDEO_DURATION_SEC } from '@/src/config/iap';
 import {
   View,
   Text,
@@ -406,6 +406,7 @@ export function SpotDetailsModal({
       mediaTypes: ['images', 'videos'],
       allowsMultipleSelection: true,
       quality: 1,
+      videoMaxDuration: MAX_VIDEO_DURATION_SEC,
       selectionLimit: isPro ? 10 : remaining,
     });
     if (result.canceled) return;

@@ -22,6 +22,15 @@ export function MyMediaGrid({ userId, onViewProfile }: Props) {
   const [viewerMedia, setViewerMedia] = useState<ViewerMedia | null>(null);
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [typeFilter, setTypeFilter] = useState<'all' | 'image' | 'video'>('all');
+  const [sourceFilter, setSourceFilter] = useState<'all' | 'spot' | 'park'>('all');
+
+  const hasParkMedia = media.media.some((m) => !!m.place_id);
+  const filtered = media.media.filter(
+    (m) =>
+      (typeFilter === 'all' || m.media_type === typeFilter) &&
+      (sourceFilter === 'all' || (sourceFilter === 'park' ? !!m.place_id : !m.place_id))
+  );
 
   useEffect(() => {
     if (userId) media.loadMediaForUser(userId);
@@ -91,8 +100,69 @@ export function MyMediaGrid({ userId, onViewProfile }: Props) {
         </Text>
       )}
 
+      {!selectMode ? (
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+          {(
+            [
+              ['all', 'All'],
+              ['image', 'Photos'],
+              ['video', 'Videos'],
+            ] as ['all' | 'image' | 'video', string][]
+          ).map(([key, label]) => {
+            const active = typeFilter === key;
+            return (
+              <Pressable
+                key={key}
+                onPress={() => setTypeFilter(key)}
+                style={{
+                  paddingHorizontal: 12,
+                  paddingVertical: 6,
+                  borderRadius: 16,
+                  backgroundColor: active ? c.accent : c.tagBg,
+                }}>
+                <Text style={{ fontSize: 12, fontWeight: '600', color: active ? '#fff' : c.text }}>
+                  {label}
+                </Text>
+              </Pressable>
+            );
+          })}
+          {hasParkMedia
+            ? (
+                [
+                  ['spot', 'Spots'],
+                  ['park', 'Parks'],
+                ] as ['spot' | 'park', string][]
+              ).map(([key, label]) => {
+                const active = sourceFilter === key;
+                return (
+                  <Pressable
+                    key={key}
+                    onPress={() => setSourceFilter(active ? 'all' : key)}
+                    style={{
+                      paddingHorizontal: 12,
+                      paddingVertical: 6,
+                      borderRadius: 16,
+                      backgroundColor: active ? c.accent : c.tagBg,
+                    }}>
+                    <Text
+                      style={{ fontSize: 12, fontWeight: '600', color: active ? '#fff' : c.text }}>
+                      {label}
+                    </Text>
+                  </Pressable>
+                );
+              })
+            : null}
+        </View>
+      ) : null}
+
+      {filtered.length === 0 ? (
+        <Text style={{ color: c.subtext, fontSize: 13, textAlign: 'center', marginTop: 16 }}>
+          No media match this filter.
+        </Text>
+      ) : null}
+
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-start' }}>
-        {media.media.map((m) => {
+        {filtered.map((m) => {
           const selected = selectedIds.has(m.id);
           const uri = m.media_type === 'video' ? m.thumbnail_url ?? m.url : m.url;
           return (
@@ -173,13 +243,13 @@ export function MyMediaGrid({ userId, onViewProfile }: Props) {
       <SessionMediaViewerModal
         visible={viewerMedia !== null}
         onClose={() => setViewerMedia(null)}
-        mediaList={media.media.map((m) => ({
+        mediaList={filtered.map((m) => ({
           id: m.id,
           url: m.url,
           media_type: m.media_type,
           thumbnail_url: m.thumbnail_url,
         }))}
-        initialIndex={Math.max(0, media.media.findIndex((m) => m.id === viewerMedia?.id))}
+        initialIndex={Math.max(0, filtered.findIndex((m) => m.id === viewerMedia?.id))}
         currentUserId={userId}
         onViewProfile={onViewProfile}
       />
