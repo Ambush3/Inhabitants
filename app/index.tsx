@@ -70,7 +70,7 @@ import { useFavorites } from '@/src/hooks/useFavorites';
 import { usePlaceFavorites } from '@/src/hooks/usePlaceFavorites';
 import { usePlaceCheckIns } from '@/src/hooks/usePlaceCheckIns';
 import { usePushNotifications } from '@/src/hooks/usePushNotifications';
-import { sendPushNotification } from '@/src/libs/sendPushNotification';
+import { sendPushNotification, sendSpotClosedNotification } from '@/src/libs/sendPushNotification';
 import { useSpotFlags } from '@/src/hooks/flaggingSystem/useSpotFlags';
 import { useReviewFlags } from '@/src/hooks/flaggingSystem/useReviewFlags';
 import { useEvents, SkateEvent } from '@/src/hooks/useEvents';
@@ -2641,10 +2641,14 @@ export default function Index() {
         myConditions={myConditions}
         onToggleCondition={async (condition) => {
           if (!selectedSpot) return;
+          const wasActive = myConditions.includes(condition);
           await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
           await toggleCondition(selectedSpot.id, condition);
-          if (selectedSpot.user_id !== session?.user.id) {
-            const username = await getMyUsername();
+          if (wasActive) return;
+          const username = await getMyUsername();
+          if (condition === 'closed') {
+            await sendSpotClosedNotification(selectedSpot.id, username, session?.user.id);
+          } else if (selectedSpot.user_id !== session?.user.id) {
             await sendPushNotification(selectedSpot.id, 'condition', username, session?.user.id);
           }
         }}
@@ -2679,12 +2683,7 @@ export default function Index() {
             setPublicProfileOpen(true);
           }, 350);
         }}
-        onConditionDone={async () => {
-          if (selectedSpot && selectedSpot.user_id !== session?.user.id) {
-            const username = await getMyUsername();
-            await sendPushNotification(selectedSpot.id, 'condition', username, session?.user.id);
-          }
-        }}
+        onConditionDone={() => {}}
         userLocation={
           userLocationRef.current
             ? {

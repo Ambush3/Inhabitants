@@ -152,6 +152,8 @@ export function ExplorePanel({
         return `${actor} wishlisted "${spot}"`;
       case 'condition':
         return `${actor} reported a condition at "${spot}"`;
+      case 'spot_closed':
+        return `${actor} reported "${spot}" as closed`;
       case 'flag':
         return `"${spot}" was flagged`;
       case 'image_removed':

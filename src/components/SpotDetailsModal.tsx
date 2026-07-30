@@ -1210,6 +1210,9 @@ export function SpotDetailsModal({
                           style={[
                             styles.chip,
                             {
+                              flexBasis: '31%',
+                              flexGrow: 0,
+                              justifyContent: 'center',
                               backgroundColor: isActive ? meta.bg : c.tagBg,
                               borderWidth: 1,
                               borderColor: isMine ? meta.color : 'transparent',
