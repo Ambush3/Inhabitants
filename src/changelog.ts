@@ -1,5 +1,20 @@
 export const changelog = [
   {
+    version: '1.12.0',
+    date: 'August 2026',
+    changes: [
+      'Check in at skate parks — they now count toward your Passport',
+      'Skate streaks: keep the flame alive with a new activity card',
+      'Earn milestone badges for streaks, parks, and spots',
+      'Share a Weekly Recap card of your sessions',
+      'Post photos & clips at skate parks — like and comment on them',
+      'Get notified when a spot you saved is reported closed',
+      'Advanced filters now pull in nearby parks & shops automatically',
+      'Filter your media by photos, videos, spots, or parks',
+      'Redesigned Settings and cleaner spot conditions',
+    ],
+  },
+  {
     version: '1.11.0',
     date: 'July 2026',
     changes: [
