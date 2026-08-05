@@ -145,7 +145,7 @@ export function SettingsPanel({
     if (visible) loadAvatar();
   }, [visible]);
 
-  async function handleResetPassword() {
+  async function sendResetPassword() {
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -159,6 +159,17 @@ export function SettingsPanel({
       setResetSent(true);
       toast.success('Check your inbox for a password reset link.');
     }
+  }
+
+  function handleResetPassword() {
+    showAlert(
+      'Reset password?',
+      "We'll email you a link to set a new password.",
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Send Link', onPress: sendResetPassword },
+      ]
+    );
   }
 
   async function handleAvatarUpload() {
