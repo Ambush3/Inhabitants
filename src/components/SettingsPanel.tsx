@@ -203,11 +203,6 @@ export function SettingsPanel({
     }
 
     const filename = `${user.id}.jpg`;
-    await supabase.storage.from('avatars').upload(filename, decode(compressed.base64), {
-      contentType: 'image/jpeg',
-      upsert: true,
-    });
-
     const { error: uploadError } = await supabase.storage
       .from('avatars')
       .upload(filename, decode(compressed.base64), {
