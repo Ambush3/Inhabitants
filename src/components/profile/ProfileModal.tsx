@@ -176,7 +176,9 @@ export function ProfileModal({
     }
     const weekAgo = new Date(today);
     weekAgo.setDate(weekAgo.getDate() - 7);
-    const newSpots = mySpots.filter((s) => s.created_at && new Date(s.created_at) >= weekAgo).length;
+    const newSpots = mySpots.filter(
+      (s) => s.spot_type === 'spot' && s.created_at && new Date(s.created_at) >= weekAgo
+    ).length;
     return { week, daysSkated, weekCheckIns, newSpots };
   })();
 
