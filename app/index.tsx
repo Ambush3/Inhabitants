@@ -1912,6 +1912,7 @@ export default function Index() {
               20000,
               undefined,
               (googleParks) => {
+                if (searchSeqRef.current !== token) return;
                 setPlacesWithAutoClear(() => [...communityParks, ...googleParks]);
               }
             );
@@ -1950,6 +1951,7 @@ export default function Index() {
               20000,
               undefined,
               (googleShops) => {
+                if (searchSeqRef.current !== token) return;
                 setPlacesWithAutoClear(() => [...communityShops, ...googleShops]);
               }
             );
