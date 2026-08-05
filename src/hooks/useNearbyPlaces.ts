@@ -56,7 +56,7 @@ export function useNearbyPlaces() {
     const [parksLoading, setParksLoading] = useState(false);
     const [shopsLoading, setShopsLoading] = useState(false);
 
-    const abortRef = useRef<AbortController | null>(null);
+    const abortRef = useRef<Record<string, AbortController | null>>({});
 
     async function loadNearbySkateParks(lat: number, lng: number, radiusMeters = 8000, name?: string, onLoaded?: (places: Place[]) => void): Promise<NearbyResult> {
         return fetchPlaces(lat, lng, radiusMeters, 'skatepark', name, onLoaded);
@@ -99,8 +99,8 @@ export function useNearbyPlaces() {
             ? 'No skate parks found nearby. Try zooming out and searching again.'
             : 'No skate shops found nearby. Try zooming out and searching again.';
 
-        abortRef.current?.abort();
-        abortRef.current = null;
+        abortRef.current[type]?.abort();
+        abortRef.current[type] = null;
         setError(null);
 
         const cacheKey = !name ? tileCacheKey(lat, lng, radiusMeters, type) : null;
@@ -130,7 +130,7 @@ export function useNearbyPlaces() {
         }
 
         const controller = new AbortController();
-        abortRef.current = controller;
+        abortRef.current[type] = controller;
         const timeoutId = setTimeout(() => controller.abort(), 15000);
 
         const nameFilter = name ? `["name"~"${name}",i]` : '';
@@ -211,8 +211,8 @@ export function useNearbyPlaces() {
         }
 
         clearTimeout(timeoutId);
-        if (abortRef.current === controller) {
-            abortRef.current = null;
+        if (abortRef.current[type] === controller) {
+            abortRef.current[type] = null;
             setLoading(false);
         }
         return outcome;

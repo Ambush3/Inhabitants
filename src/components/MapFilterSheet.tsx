@@ -99,9 +99,14 @@ export function MapFilterSheet({
   }
 
   function toggleType(t: SpotType) {
-    const nextTypes = filters.types.includes(t)
-      ? filters.types.filter((x) => x !== t)
-      : [...filters.types, t];
+    let nextTypes: SpotType[];
+    if (filters.types.includes(t)) {
+      nextTypes = filters.types.filter((x) => x !== t);
+    } else if (t === 'skatepark' || t === 'skateshop') {
+      nextTypes = [...filters.types.filter((x) => x !== 'skatepark' && x !== 'skateshop'), t];
+    } else {
+      nextTypes = [...filters.types, t];
+    }
     const placeOnly = nextTypes.length > 0 && !nextTypes.includes('spot');
     onChange({
       ...filters,
