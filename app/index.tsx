@@ -954,8 +954,12 @@ export default function Index() {
 
   function warmPlaceCache() {
     const { latitude, longitude } = mapRegionRef.current;
-    loadNearbySkateParks(latitude, longitude, 20000, undefined, () => {});
-    loadNearbySkateShops(latitude, longitude, 20000, undefined, () => {});
+    if (!advFilters.types.includes('skatepark')) {
+      loadNearbySkateParks(latitude, longitude, 20000, undefined, () => {});
+    }
+    if (!advFilters.types.includes('skateshop')) {
+      loadNearbySkateShops(latitude, longitude, 20000, undefined, () => {});
+    }
   }
 
   const autoLoadedTypesRef = useRef<Set<'skatepark' | 'skateshop'>>(new Set());

@@ -13,6 +13,8 @@ Deno.serve(async (req) => {
     try {
         const {
             image_url,
+            image_base64,
+            check_only,
             match_url,
             spot_id,
             user_id,
@@ -20,14 +22,19 @@ Deno.serve(async (req) => {
             table = 'spot_images',
         } = await req.json();
 
-        const imageRes = await fetch(image_url);
-        const imageBuffer = await imageRes.arrayBuffer();
-        const uint8Array = new Uint8Array(imageBuffer);
-        let binary = '';
-        for (let i = 0; i < uint8Array.length; i++) {
-            binary += String.fromCharCode(uint8Array[i]);
+        let base64Image: string;
+        if (image_base64) {
+            base64Image = image_base64;
+        } else {
+            const imageRes = await fetch(image_url);
+            const imageBuffer = await imageRes.arrayBuffer();
+            const uint8Array = new Uint8Array(imageBuffer);
+            let binary = '';
+            for (let i = 0; i < uint8Array.length; i++) {
+                binary += String.fromCharCode(uint8Array[i]);
+            }
+            base64Image = btoa(binary);
         }
-        const base64Image = btoa(binary);
 
         const visionKey = Deno.env.get('GOOGLE_VISION_API_KEY');
         const response = await fetch(
@@ -60,6 +67,9 @@ Deno.serve(async (req) => {
         );
 
         if (flagged) {
+            if (check_only) {
+                return new Response(JSON.stringify({ safe: false }), { status: 200 });
+            }
             if (!ALLOWED_TARGETS.has(`${table}:${bucket}`)) {
                 return new Response(
                     JSON.stringify({ safe: false, reason: 'Unsupported moderation target' }),
