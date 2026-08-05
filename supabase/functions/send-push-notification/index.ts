@@ -227,16 +227,19 @@ Deno.serve(async (req) => {
                 sound: 'default',
                 data: { url: `inhabitants://?openCrewId=${crew_id ?? ''}` },
             }));
-            const response = await fetch('https://exp.host/--/api/v2/push/send', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Accept: 'application/json',
-                    'Accept-Encoding': 'gzip, deflate',
-                },
-                body: JSON.stringify(messages),
-            });
-            const result = await response.json();
+            let result: unknown = { sent: 0 };
+            for (let i = 0; i < messages.length; i += 100) {
+                const response = await fetch('https://exp.host/--/api/v2/push/send', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Accept: 'application/json',
+                        'Accept-Encoding': 'gzip, deflate',
+                    },
+                    body: JSON.stringify(messages.slice(i, i + 100)),
+                });
+                result = await response.json();
+            }
             return new Response(JSON.stringify(result), { status: 200 });
         }
 
