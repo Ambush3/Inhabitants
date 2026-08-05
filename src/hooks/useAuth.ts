@@ -91,7 +91,9 @@ export function useAuth() {
 
   async function updatePassword(newPassword: string): Promise<string | null> {
     const { error } = await supabase.auth.updateUser({ password: newPassword });
-    return error?.message ?? null;
+    if (error) return error.message;
+    await supabase.auth.signOut({ scope: 'others' });
+    return null;
   }
 
   async function resetPassword(email: string): Promise<string | null> {
