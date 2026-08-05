@@ -93,107 +93,135 @@ export function useCheckInMedia() {
 
     for (const asset of assets) {
       try {
-        let bytes: ArrayBuffer;
-        let ext: string;
-        let contentType: string;
+        const pathKey = checkInId ?? spotId ?? placeId;
 
-        if (asset.type === 'video') {
-          const res = await fetch(asset.uri);
-          bytes = await res.arrayBuffer();
-          if (bytes.byteLength > MAX_VIDEO_MB * 1024 * 1024) {
-            firstError = firstError ?? `Videos must be under ${MAX_VIDEO_MB}MB.`;
-            continue;
-          }
-          ext = 'mp4';
-          contentType = 'video/mp4';
-        } else {
+        if (asset.type === 'image') {
           const compressed = await manipulateAsync(
             asset.uri,
             [{ resize: { width: 1080 } }],
             { compress: 0.7, format: SaveFormat.JPEG, base64: true }
           );
           if (!compressed.base64) continue;
-          bytes = decode(compressed.base64);
-          ext = 'jpg';
-          contentType = 'image/jpeg';
-        }
 
-        const pathKey = checkInId ?? spotId ?? placeId;
-        const filename = `${user.id}/${pathKey}-${Date.now()}.${ext}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from(BUCKET)
-          .upload(filename, bytes, { contentType, upsert: false });
-        if (uploadError) {
-          console.log('[uploadMedia] storage error:', uploadError.message);
-          firstError = firstError ?? `Storage: ${uploadError.message}`;
-          continue;
-        }
-
-        const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(filename);
-
-        // For videos, extract a poster frame and upload it as the thumbnail.
-        let thumbnailUrl: string | null = null;
-        if (asset.type === 'video') {
-          try {
-            const { uri: thumbUri } = await VideoThumbnails.getThumbnailAsync(asset.uri, {
-              time: 0,
-            });
-            const compressed = await manipulateAsync(thumbUri, [{ resize: { width: 1080 } }], {
-              compress: 0.7,
-              format: SaveFormat.JPEG,
-              base64: true,
-            });
-            if (compressed.base64) {
-              const thumbName = `${user.id}/${pathKey}-${Date.now()}-thumb.jpg`;
-              const { error: thumbErr } = await supabase.storage
-                .from(BUCKET)
-                .upload(thumbName, decode(compressed.base64), {
-                  contentType: 'image/jpeg',
-                  upsert: false,
-                });
-              if (!thumbErr) {
-                thumbnailUrl = supabase.storage.from(BUCKET).getPublicUrl(thumbName).data.publicUrl;
-              }
-            }
-          } catch (e) {
-            console.log('[uploadMedia] thumbnail error:', e);
-          }
-        }
-
-        const { error: insertError } = await supabase.from('check_in_media').insert({
-          check_in_id: checkInId,
-          user_id: user.id,
-          spot_id: spotId,
-          place_id: placeId ?? null,
-          url: urlData.publicUrl,
-          thumbnail_url: thumbnailUrl,
-          media_type: asset.type,
-          is_public: true,
-        });
-        if (insertError) {
-          console.log('[uploadMedia] insert error:', insertError.message);
-          firstError = firstError ?? `Insert: ${insertError.message}`;
-          continue;
-        }
-        uploaded += 1;
-
-        // Moderate the visible frame: the photo itself, or a video's thumbnail.
-        // moderate-image deletes the flagged row + file by url, so point it at
-        // the row's primary url (it matches on check_in_media.url).
-        const moderationImageUrl = asset.type === 'image' ? urlData.publicUrl : thumbnailUrl;
-        if (moderationImageUrl) {
-          await supabase.functions.invoke('moderate-image', {
-            body: {
-              image_url: moderationImageUrl,
-              // row is identified/deleted by its primary url (the mp4 for videos)
-              match_url: urlData.publicUrl,
-              spot_id: spotId,
-              user_id: user.id,
-              bucket: BUCKET,
-              table: 'check_in_media',
-            },
+          const { data: mod } = await supabase.functions.invoke('moderate-image', {
+            body: { image_base64: compressed.base64, check_only: true },
           });
+          if (mod?.safe === false) {
+            firstError = firstError ?? 'This photo was flagged as inappropriate.';
+            continue;
+          }
+
+          const filename = `${user.id}/${pathKey}-${Date.now()}.jpg`;
+          const { error: uploadError } = await supabase.storage
+            .from(BUCKET)
+            .upload(filename, decode(compressed.base64), {
+              contentType: 'image/jpeg',
+              upsert: false,
+            });
+          if (uploadError) {
+            firstError = firstError ?? `Storage: ${uploadError.message}`;
+            continue;
+          }
+          const url = supabase.storage.from(BUCKET).getPublicUrl(filename).data.publicUrl;
+
+          const { error: insertError } = await supabase.from('check_in_media').insert({
+            check_in_id: checkInId,
+            user_id: user.id,
+            spot_id: spotId,
+            place_id: placeId ?? null,
+            url,
+            thumbnail_url: null,
+            media_type: 'image',
+            is_public: true,
+          });
+          if (insertError) {
+            await supabase.storage.from(BUCKET).remove([filename]);
+            firstError = firstError ?? `Insert: ${insertError.message}`;
+            continue;
+          }
+          uploaded += 1;
+        } else {
+          const res = await fetch(asset.uri);
+          const bytes = await res.arrayBuffer();
+          if (bytes.byteLength > MAX_VIDEO_MB * 1024 * 1024) {
+            firstError = firstError ?? `Videos must be under ${MAX_VIDEO_MB}MB.`;
+            continue;
+          }
+
+          const filename = `${user.id}/${pathKey}-${Date.now()}.mp4`;
+          const { error: uploadError } = await supabase.storage
+            .from(BUCKET)
+            .upload(filename, bytes, { contentType: 'video/mp4', upsert: false });
+          if (uploadError) {
+            firstError = firstError ?? `Storage: ${uploadError.message}`;
+            continue;
+          }
+          const url = supabase.storage.from(BUCKET).getPublicUrl(filename).data.publicUrl;
+
+          const frameBase64s: string[] = [];
+          for (const t of [0, 2000, 5000, 10000]) {
+            try {
+              const { uri: fUri } = await VideoThumbnails.getThumbnailAsync(asset.uri, { time: t });
+              const comp = await manipulateAsync(fUri, [{ resize: { width: 1080 } }], {
+                compress: 0.7,
+                format: SaveFormat.JPEG,
+                base64: true,
+              });
+              if (comp.base64) frameBase64s.push(comp.base64);
+            } catch {}
+          }
+
+          if (frameBase64s.length === 0) {
+            await supabase.storage.from(BUCKET).remove([filename]);
+            firstError = firstError ?? 'Could not process this video. Try a different clip.';
+            continue;
+          }
+
+          let flagged = false;
+          for (const b64 of frameBase64s) {
+            const { data: mod } = await supabase.functions.invoke('moderate-image', {
+              body: { image_base64: b64, check_only: true },
+            });
+            if (mod?.safe === false) {
+              flagged = true;
+              break;
+            }
+          }
+          if (flagged) {
+            await supabase.storage.from(BUCKET).remove([filename]);
+            firstError = firstError ?? 'This video was flagged as inappropriate.';
+            continue;
+          }
+
+          let thumbnailUrl: string | null = null;
+          const thumbName = `${user.id}/${pathKey}-${Date.now()}-thumb.jpg`;
+          const { error: thumbErr } = await supabase.storage
+            .from(BUCKET)
+            .upload(thumbName, decode(frameBase64s[0]), {
+              contentType: 'image/jpeg',
+              upsert: false,
+            });
+          if (!thumbErr) {
+            thumbnailUrl = supabase.storage.from(BUCKET).getPublicUrl(thumbName).data.publicUrl;
+          }
+
+          const { error: insertError } = await supabase.from('check_in_media').insert({
+            check_in_id: checkInId,
+            user_id: user.id,
+            spot_id: spotId,
+            place_id: placeId ?? null,
+            url,
+            thumbnail_url: thumbnailUrl,
+            media_type: 'video',
+            is_public: true,
+          });
+          if (insertError) {
+            await supabase.storage.from(BUCKET).remove([filename]);
+            if (thumbnailUrl) await supabase.storage.from(BUCKET).remove([thumbName]);
+            firstError = firstError ?? `Insert: ${insertError.message}`;
+            continue;
+          }
+          uploaded += 1;
         }
       } catch (e: any) {
         console.log('uploadMedia exception:', e);
