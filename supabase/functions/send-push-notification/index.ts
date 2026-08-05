@@ -352,15 +352,17 @@ Deno.serve(async (req) => {
                         url: `inhabitants://?deepLinkSpotId=${spot_id}&deepLinkLat=${closedSpot.lat}&deepLinkLng=${closedSpot.lng}`,
                     },
                 }));
-                await fetch('https://exp.host/--/api/v2/push/send', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        Accept: 'application/json',
-                        'Accept-Encoding': 'gzip, deflate',
-                    },
-                    body: JSON.stringify(messages),
-                });
+                for (let i = 0; i < messages.length; i += 100) {
+                    await fetch('https://exp.host/--/api/v2/push/send', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Accept: 'application/json',
+                            'Accept-Encoding': 'gzip, deflate',
+                        },
+                        body: JSON.stringify(messages.slice(i, i + 100)),
+                    });
+                }
             }
             return new Response(JSON.stringify({ inserted: recipients.length }), { status: 200 });
         }
