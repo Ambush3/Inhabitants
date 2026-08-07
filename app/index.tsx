@@ -561,6 +561,7 @@ export default function Index() {
   const [showOnboarding, setShowOnboarding] = useState(false);
 
   const [spotType, setSpotType] = useState<'spot' | 'skatepark' | 'skateshop'>('spot');
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const [detailsLoading, setDetailsLoading] = useState(false);
 
@@ -1345,15 +1346,17 @@ export default function Index() {
       loadNotifications();
       supabase
         .from('profiles')
-        .select('avatar_url, is_vetted')
+        .select('avatar_url, is_vetted, is_admin')
         .eq('id', session.user.id)
         .single()
         .then(({ data }) => {
           setMyAvatarUrl(data?.avatar_url ?? null);
           setIsVetted(data?.is_vetted ?? false);
+          setIsAdmin(data?.is_admin ?? false);
         });
     } else {
       setMyAvatarUrl(null);
+      setIsAdmin(false);
     }
   }, [session?.user.id]);
 
@@ -2565,6 +2568,7 @@ export default function Index() {
         onAddImage={(uri) => setPendingImages((prev) => (prev.includes(uri) ? prev : [...prev, uri]))}
         onRemoveImage={(uri) => setPendingImages((prev) => prev.filter((u) => u !== uri))}
         spotType={spotType}
+        isAdmin={isAdmin}
         onChangeSpotType={(v) => {
           setSpotType(v);
           if (v !== 'spot') setCreateSpotVisibility('public');
