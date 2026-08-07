@@ -206,12 +206,12 @@ export function useNearbyPlaces() {
             }
         }
 
-        if (lastError) {
+        clearTimeout(timeoutId);
+        const isCurrent = abortRef.current[type] === controller;
+        if (lastError && isCurrent) {
             setError(lastError);
         }
-
-        clearTimeout(timeoutId);
-        if (abortRef.current[type] === controller) {
+        if (isCurrent) {
             abortRef.current[type] = null;
             setLoading(false);
         }
