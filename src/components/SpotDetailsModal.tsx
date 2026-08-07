@@ -129,7 +129,13 @@ type Props = {
   userLocation?: { latitude: number; longitude: number } | null;
   spotId: string | null;
   friendIds?: Set<string>;
-  onUpdateSpot: (spotId: string, name: string, description: string, tags: string[]) => Promise<string | null>;
+  onUpdateSpot: (
+    spotId: string,
+    name: string,
+    description: string,
+    tags: string[],
+    details?: { address?: string; phone?: string; website?: string; hours?: string }
+  ) => Promise<string | null>;
   creatorBadge?: 'local' | 'regular' | 'ambassador' | null;
   onLogTrickSubmit: (trickName: string, loggedAt: Date) => Promise<string | null>;
   onOpenTrickLog?: () => void;
@@ -218,6 +224,10 @@ export function SpotDetailsModal({
   const [editTags, setEditTags] = useState<string[]>([]);
   const [editTagInput, setEditTagInput] = useState('');
   const [editSaving, setEditSaving] = useState(false);
+  const [editAddress, setEditAddress] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editWebsite, setEditWebsite] = useState('');
+  const [editHours, setEditHours] = useState('');
 
   useEffect(() => {
     if (!spot || !visible) {
@@ -287,6 +297,67 @@ export function SpotDetailsModal({
       },
     })
   ).current;
+
+  const isPlaceType = spot?.spot_type === 'skatepark' || spot?.spot_type === 'skateshop';
+  const isShop = spot?.spot_type === 'skateshop';
+
+  const editFieldStyle = {
+    borderWidth: 1,
+    borderColor: c.inputBorder,
+    borderRadius: 10,
+    padding: 12,
+    fontSize: 15,
+    color: c.text,
+    backgroundColor: c.surface,
+  } as const;
+
+  async function handlePhone() {
+    if (spot?.phone) await Linking.openURL(`tel:${spot.phone}`);
+  }
+
+  async function handleWebsite() {
+    const website = spot?.website;
+    if (!website) return;
+    await Linking.openURL(website.startsWith('http') ? website : `https://${website}`);
+  }
+
+  function openShopEditModal() {
+    setEditName(spot?.name ?? '');
+    setEditDesc(spot?.description ?? '');
+    setEditTags(spot?.tags ?? []);
+    setEditAddress(spot?.address ?? '');
+    setEditPhone(spot?.phone ?? '');
+    setEditWebsite(spot?.website ?? '');
+    setEditHours(spot?.hours ?? '');
+    setEditOpen(true);
+  }
+
+  function handleShopShareSheet() {
+    if (!spot) return;
+    ActionSheetIOS.showActionSheetWithOptions(
+      {
+        options: ['Cancel', 'Open in Apple Maps', 'Open in Google Maps', 'Share'],
+        cancelButtonIndex: 0,
+      },
+      async (buttonIndex) => {
+        if (buttonIndex === 1) {
+          await Linking.openURL(`maps://app?daddr=${spot.lat},${spot.lng}`);
+        } else if (buttonIndex === 2) {
+          const url = `comgooglemaps://?daddr=${spot.lat},${spot.lng}&directionsmode=driving`;
+          const canOpen = await Linking.canOpenURL(url);
+          if (canOpen) {
+            await Linking.openURL(url);
+          } else {
+            await Linking.openURL(
+              `https://www.google.com/maps/dir/?api=1&destination=${spot.lat},${spot.lng}`
+            );
+          }
+        } else if (buttonIndex === 3) {
+          await handleShare();
+        }
+      }
+    );
+  }
 
   function handleDirections() {
     if (!spot) return;
@@ -631,7 +702,79 @@ export function SpotDetailsModal({
               </View>
             ) : null}
 
+            {/* ── Shop identity ── */}
+            {isShop ? (
+              <View style={{ marginBottom: 12 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                  <Image
+                    source={require('@/assets/pin-images/skate-shop.png')}
+                    style={{ width: 20, height: 20, tintColor: c.text }}
+                  />
+                  <Text
+                    style={{
+                      fontSize: 18,
+                      fontWeight: '600',
+                      marginLeft: 8,
+                      flex: 1,
+                      color: c.text,
+                    }}
+                    numberOfLines={2}>
+                    {spot?.name ?? 'Skate Shop'}
+                  </Text>
+                  {isOwner ? (
+                    <Pressable
+                      onPress={() => {
+                        openShopEditModal();
+                      }}
+                      style={{ padding: 4, marginRight: 4 }}>
+                      <Ionicons name="settings-outline" size={22} color={c.subtext} />
+                    </Pressable>
+                  ) : null}
+                  <Pressable onPress={handleShopShareSheet} style={{ padding: 4 }}>
+                    <Ionicons name="share-outline" size={22} color={c.accent} />
+                  </Pressable>
+                  <Pressable onPress={onToggleFavorite} style={{ padding: 4 }}>
+                    <Ionicons
+                      name={isFavorite ? 'bookmark' : 'bookmark-outline'}
+                      size={22}
+                      color={isFavorite ? 'red' : c.subtext}
+                    />
+                  </Pressable>
+                </View>
+
+                {spotAddress || distanceMiles !== null ? (
+                  <View style={styles.metaRow}>
+                    <Ionicons name="location-outline" size={12} color={c.subtext} />
+                    <Text style={{ fontSize: 12, color: c.subtext }} numberOfLines={1}>
+                      {spotAddress ? (
+                        <Text style={{ color: c.text, fontWeight: '600' }}>{spotAddress}</Text>
+                      ) : null}
+                      {spotAddress && distanceMiles !== null ? ' · ' : ''}
+                      {distanceMiles !== null ? `${formatDistance(distanceMiles)} away` : ''}
+                    </Text>
+                  </View>
+                ) : null}
+
+                <View
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 }}>
+                  <Text style={{ fontSize: 12, opacity: 0.5, color: c.text }}>Skate Shop</Text>
+                  {reviews.length > 0 ? (
+                    <>
+                      <Text style={{ fontSize: 12, opacity: 0.3, color: c.text }}>·</Text>
+                      <Text style={{ fontSize: 12, color: '#FFB800', fontWeight: '600' }}>
+                        {avgRating.toFixed(1)} ★
+                      </Text>
+                      <Text style={{ fontSize: 12, opacity: 0.5, color: c.text }}>
+                        ({reviews.length})
+                      </Text>
+                    </>
+                  ) : null}
+                </View>
+              </View>
+            ) : null}
+
             {/* ── Spot identity ── */}
+            {!isShop ? (
             <View style={{ marginBottom: 12 }}>
               <View style={styles.spotHeaderRow}>
                 <View style={{ flex: 1, minWidth: 0 }}>
@@ -742,9 +885,87 @@ export function SpotDetailsModal({
                 </Pressable>
               </View>
             </View>
+            ) : null}
+
+            {isPlaceType && (spot?.address || spot?.phone || spot?.website || spot?.hours) ? (
+              <View style={{ marginBottom: 4 }}>
+                {spot?.address ? (
+                  <View style={styles.detailRow}>
+                    <Ionicons name="location-outline" size={18} color={c.subtext} />
+                    <Text style={{ flex: 1, opacity: 0.8, color: c.text }}>{spot.address}</Text>
+                  </View>
+                ) : null}
+                {spot?.phone ? (
+                  <Pressable onPress={handlePhone} style={styles.detailRow}>
+                    <Ionicons name="call-outline" size={18} color={c.accent} />
+                    <Text style={{ color: c.accent }}>{spot.phone}</Text>
+                  </Pressable>
+                ) : null}
+                {spot?.website ? (
+                  <Pressable onPress={handleWebsite} style={styles.detailRow}>
+                    <Ionicons name="globe-outline" size={18} color={c.accent} />
+                    <Text style={{ color: c.accent }} numberOfLines={1}>
+                      {spot.website}
+                    </Text>
+                  </Pressable>
+                ) : null}
+                {spot?.hours ? (
+                  <View style={[styles.detailRow, { alignItems: 'flex-start' }]}>
+                    <Ionicons name="time-outline" size={18} color={c.subtext} />
+                    <Text style={{ flex: 1, opacity: 0.8, color: c.text }}>{spot.hours}</Text>
+                  </View>
+                ) : null}
+              </View>
+            ) : null}
+
+            {/* ── Shop rating ── */}
+            {isShop ? (
+              <View
+                style={{
+                  borderTopWidth: 1,
+                  borderColor: c.border,
+                  marginTop: 8,
+                  paddingTop: 16,
+                  marginBottom: 8,
+                }}>
+                <Text
+                  style={{
+                    fontSize: 13,
+                    fontWeight: '600',
+                    color: c.text,
+                    marginBottom: 10,
+                  }}>
+                  {existingReviewId ? 'Your Rating' : 'Rate this shop'}
+                </Text>
+                <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <Pressable
+                      key={star}
+                      onPress={() => {
+                        onChangeRating(star);
+                        onSubmitReview(star);
+                      }}>
+                      <Ionicons
+                        name={star <= newRating ? 'star' : 'star-outline'}
+                        size={28}
+                        color={star <= newRating ? '#FFB800' : c.subtext}
+                      />
+                    </Pressable>
+                  ))}
+                  {existingReviewId ? (
+                    <Pressable
+                      onPress={() => onDeleteReview(existingReviewId)}
+                      hitSlop={8}
+                      style={{ marginLeft: 8 }}>
+                      <Ionicons name="trash-outline" size={20} color={c.danger} />
+                    </Pressable>
+                  ) : null}
+                </View>
+              </View>
+            ) : null}
 
             {/* ── Unified rating card ── */}
-            {detailsLoading ? (
+            {isShop ? null : detailsLoading ? (
               <View style={[styles.ratingCard, { backgroundColor: c.tagBg }]}>
                 <SkeletonBar width={30} height={16} />
                 <SkeletonBar width={80} height={14} />
@@ -909,7 +1130,7 @@ export function SpotDetailsModal({
             ) : null}
 
             {/* ── Check-in card ── */}
-            {!detailsLoading ? (
+            {!detailsLoading && !isShop ? (
               <View style={[styles.ratingCard, { backgroundColor: c.tagBg, alignItems: 'center' }]}>
                 <Pressable
                   style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}
@@ -1016,6 +1237,7 @@ export function SpotDetailsModal({
             ) : null}
 
             {/* ── Action toolbar ── */}
+            {!isShop ? (
             <View style={styles.actionsToolbar}>
               <Pressable
                 onPress={onToggleFavorite}
@@ -1073,9 +1295,10 @@ export function SpotDetailsModal({
                 <Text style={[styles.actionLabel, { color: c.accent }]}>Directions</Text>
               </Pressable>
             </View>
+            ) : null}
 
             {/* ── Photos & Videos (any user) ── */}
-            {visible ? (
+            {visible && !isShop ? (
               <View style={{ marginBottom: 14 }}>
                 <View style={[styles.divider, { backgroundColor: c.border }]} />
                 <View style={styles.sectionHeader}>
@@ -1489,6 +1712,104 @@ export function SpotDetailsModal({
                 gap: 12,
               }}
               onPress={() => { }}>
+              {isShop ? (
+                <>
+                  <View style={{ gap: 2 }}>
+                    <Text style={{ fontWeight: '700', fontSize: 18, color: c.text }}>
+                      Edit Details
+                    </Text>
+                    <Text style={{ fontSize: 13, color: c.subtext }}>{spot?.name}</Text>
+                  </View>
+
+                  <Text style={[styles.editLabel, { color: c.text }]}>NAME</Text>
+                  <TextInput
+                    value={editName}
+                    onChangeText={setEditName}
+                    autoCapitalize="words"
+                    style={editFieldStyle}
+                  />
+
+                  <Text style={[styles.editLabel, { color: c.text }]}>PHONE</Text>
+                  <TextInput
+                    value={editPhone}
+                    onChangeText={setEditPhone}
+                    placeholder="e.g. +1 616-742-2660"
+                    placeholderTextColor={c.placeholder}
+                    keyboardType="phone-pad"
+                    autoCapitalize="none"
+                    style={editFieldStyle}
+                  />
+
+                  <Text style={[styles.editLabel, { color: c.text }]}>WEBSITE</Text>
+                  <TextInput
+                    value={editWebsite}
+                    onChangeText={setEditWebsite}
+                    placeholder="e.g. https://thepremierstore.com"
+                    placeholderTextColor={c.placeholder}
+                    keyboardType="url"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    style={editFieldStyle}
+                  />
+
+                  <Text style={[styles.editLabel, { color: c.text }]}>HOURS</Text>
+                  <TextInput
+                    value={editHours}
+                    onChangeText={setEditHours}
+                    placeholder="e.g. Mon-Fri 10am-6pm"
+                    placeholderTextColor={c.placeholder}
+                    autoCapitalize="none"
+                    style={editFieldStyle}
+                  />
+
+                  <Text style={[styles.editLabel, { color: c.text }]}>ADDRESS</Text>
+                  <TextInput
+                    value={editAddress}
+                    onChangeText={setEditAddress}
+                    placeholder="e.g. 10 Weston Street Southeast, Grand Rapids"
+                    placeholderTextColor={c.placeholder}
+                    autoCapitalize="words"
+                    style={editFieldStyle}
+                  />
+
+                  <View style={{ flexDirection: 'row', gap: 12, marginTop: 4 }}>
+                    <Pressable
+                      onPress={() => setEditOpen(false)}
+                      style={[styles.footerBtn, { borderColor: c.border, flex: 1 }]}>
+                      <Text style={{ fontWeight: '600', fontSize: 15, color: c.subtext }}>
+                        Cancel
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={async () => {
+                        setEditSaving(true);
+                        const err = await onUpdateSpot(spot!.id, editName, editDesc, editTags, {
+                          address: editAddress,
+                          phone: editPhone,
+                          website: editWebsite,
+                          hours: editHours,
+                        });
+                        setEditSaving(false);
+                        if (err) toast.error(err);
+                        else setEditOpen(false);
+                      }}
+                      disabled={editSaving || !editName.trim()}
+                      style={{
+                        flex: 1,
+                        backgroundColor: c.text,
+                        borderRadius: 10,
+                        padding: 13,
+                        alignItems: 'center',
+                        opacity: editSaving || !editName.trim() ? 0.4 : 1,
+                      }}>
+                      <Text style={{ color: c.surface, fontWeight: '700', fontSize: 15 }}>
+                        {editSaving ? 'Saving...' : 'Save'}
+                      </Text>
+                    </Pressable>
+                  </View>
+                </>
+              ) : (
+                <>
               <Text style={{ fontWeight: '700', fontSize: 16, color: c.text }}>Edit Spot</Text>
               <Text style={{ fontSize: 13, color: c.subtext }}>Name</Text>
               <TextInput
@@ -1616,6 +1937,8 @@ export function SpotDetailsModal({
                   {editSaving ? 'Saving...' : 'Save Changes'}
                 </Text>
               </Pressable>
+                </>
+              )}
             </Pressable>
           </KeyboardAvoidingView>
         </Pressable>
@@ -1625,6 +1948,19 @@ export function SpotDetailsModal({
 }
 
 const styles = StyleSheet.create({
+  editLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.6,
+    opacity: 0.5,
+    marginBottom: -6,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 12,
+  },
   sheet: {
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
