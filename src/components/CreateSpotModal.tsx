@@ -45,6 +45,14 @@ type Props = {
   spotType: 'spot' | 'skatepark' | 'skateshop';
   onChangeSpotType: (v: 'spot' | 'skatepark' | 'skateshop') => void;
   isAdmin?: boolean;
+  spotAddress: string;
+  onChangeAddress: (v: string) => void;
+  spotPhone: string;
+  onChangePhone: (v: string) => void;
+  spotWebsite: string;
+  onChangeWebsite: (v: string) => void;
+  spotHours: string;
+  onChangeHours: (v: string) => void;
 };
 
 export function CreateSpotModal({
@@ -72,6 +80,14 @@ export function CreateSpotModal({
   spotType,
   onChangeSpotType,
   isAdmin = false,
+  spotAddress,
+  onChangeAddress,
+  spotPhone,
+  onChangePhone,
+  spotWebsite,
+  onChangeWebsite,
+  spotHours,
+  onChangeHours,
 }: Props) {
   const { theme } = useTheme();
   const c = theme.colors;
@@ -106,6 +122,18 @@ export function CreateSpotModal({
     skatepark: 'Add skate park',
     skateshop: 'Add skate shop',
   }[spotType];
+
+  const isPlaceType = spotType === 'skatepark' || spotType === 'skateshop';
+
+  const detailInputStyle = {
+    borderWidth: 1,
+    borderColor: c.inputBorder,
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 12,
+    color: c.text,
+    backgroundColor: c.surface,
+  } as const;
 
   useEffect(() => {
     if (!visible) setTagInput('');
@@ -337,6 +365,53 @@ export function CreateSpotModal({
                   backgroundColor: c.surface,
                 }}
               />
+
+              {isPlaceType ? (
+                <>
+                  <Text style={{ marginBottom: 6, color: c.text }}>Address (optional)</Text>
+                  <TextInput
+                    value={spotAddress}
+                    onChangeText={onChangeAddress}
+                    placeholder="e.g. 10 Weston Street Southeast, Grand Rapids"
+                    placeholderTextColor={c.placeholder}
+                    autoCapitalize="words"
+                    style={detailInputStyle}
+                  />
+
+                  <Text style={{ marginBottom: 6, color: c.text }}>Phone (optional)</Text>
+                  <TextInput
+                    value={spotPhone}
+                    onChangeText={onChangePhone}
+                    placeholder="e.g. +1 616-742-2660"
+                    placeholderTextColor={c.placeholder}
+                    keyboardType="phone-pad"
+                    autoCapitalize="none"
+                    style={detailInputStyle}
+                  />
+
+                  <Text style={{ marginBottom: 6, color: c.text }}>Website (optional)</Text>
+                  <TextInput
+                    value={spotWebsite}
+                    onChangeText={onChangeWebsite}
+                    placeholder="e.g. https://thepremierstore.com"
+                    placeholderTextColor={c.placeholder}
+                    keyboardType="url"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    style={detailInputStyle}
+                  />
+
+                  <Text style={{ marginBottom: 6, color: c.text }}>Hours (optional)</Text>
+                  <TextInput
+                    value={spotHours}
+                    onChangeText={onChangeHours}
+                    placeholder="e.g. Mon-Sat 11am-7pm, Sun 12-5pm"
+                    placeholderTextColor={c.placeholder}
+                    autoCapitalize="none"
+                    style={detailInputStyle}
+                  />
+                </>
+              ) : null}
 
               <Text style={{ marginBottom: 6, color: c.text }}>Tags (optional)</Text>
               <View

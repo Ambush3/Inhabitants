@@ -99,6 +99,10 @@ const DEFAULT_REGION: Region = {
   longitudeDelta: 0.15,
 };
 
+function rendersAsSpotMarker(spot: { id: string; spot_type?: string }, highlightSpotId: string | null) {
+  return spot.spot_type !== 'skateshop' || spot.id === highlightSpotId;
+}
+
 const SpotMap = React.memo(
   ({
     mapRef,
@@ -187,6 +191,7 @@ const SpotMap = React.memo(
           (s: any) =>
             s.lat != null &&
             s.lng != null &&
+            rendersAsSpotMarker(s, highlightSpotId) &&
             (s.spot_type === 'spot' ||
               s.spot_type === 'skatepark' ||
               s.spot_type === 'skateshop' ||
@@ -254,7 +259,8 @@ const SpotMap = React.memo(
                 setHighlightSpotId(s.id);
                 highlightSpotIdRef.current = s.id;
                 animateToSpotWithModalOffset(s.lat, s.lng, 'small');
-                openSpotPreview(s);
+                if (s.spot_type === 'skateshop') openSpotDetails(s);
+                else openSpotPreview(s);
               }}
             />
           ) : null
@@ -563,6 +569,11 @@ export default function Index() {
   const [spotType, setSpotType] = useState<'spot' | 'skatepark' | 'skateshop'>('spot');
   const [isAdmin, setIsAdmin] = useState(false);
 
+  const [spotAddress, setSpotAddress] = useState('');
+  const [spotPhone, setSpotPhone] = useState('');
+  const [spotWebsite, setSpotWebsite] = useState('');
+  const [spotHours, setSpotHours] = useState('');
+
   const [detailsLoading, setDetailsLoading] = useState(false);
 
   const [profileOpen, setProfileOpen] = useState(false);
@@ -802,7 +813,9 @@ export default function Index() {
     ) {
       return [];
     }
-    const spotIds = new Set(visibleSpots.map((s) => s.id));
+    const spotIds = new Set(
+      visibleSpots.filter((s) => rendersAsSpotMarker(s, highlightSpotId)).map((s) => s.id)
+    );
     const seen = new Set<string>();
     return places.filter((p) => {
       if (spotIds.has(p.id) || seen.has(p.id)) return false;
@@ -810,7 +823,7 @@ export default function Index() {
       seen.add(p.id);
       return true;
     });
-  }, [places, visibleSpots, advFilters]);
+  }, [places, visibleSpots, advFilters, highlightSpotId]);
 
   const toggleOwnershipFilter = (key: 'mine' | 'friends' | 'community') =>
     setOwnershipFilter((prev) => {
@@ -861,6 +874,10 @@ export default function Index() {
     setCreateSpotVisibility('public');
     setSpotComment('');
     setSpotType('spot');
+    setSpotAddress('');
+    setSpotPhone('');
+    setSpotWebsite('');
+    setSpotHours('');
   }
 
   function closeDetailsModal() {
@@ -2522,7 +2539,13 @@ export default function Index() {
             spotRating,
             spotTags,
             createSpotVisibility,
-            spotType
+            spotType,
+            {
+              address: spotAddress,
+              phone: spotPhone,
+              website: spotWebsite,
+              hours: spotHours,
+            }
           );
           if (newSpot) {
             await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -2569,6 +2592,14 @@ export default function Index() {
         onRemoveImage={(uri) => setPendingImages((prev) => prev.filter((u) => u !== uri))}
         spotType={spotType}
         isAdmin={isAdmin}
+        spotAddress={spotAddress}
+        onChangeAddress={setSpotAddress}
+        spotPhone={spotPhone}
+        onChangePhone={setSpotPhone}
+        spotWebsite={spotWebsite}
+        onChangeWebsite={setSpotWebsite}
+        spotHours={spotHours}
+        onChangeHours={setSpotHours}
         onChangeSpotType={(v) => {
           setSpotType(v);
           if (v !== 'spot') setCreateSpotVisibility('public');
@@ -2705,15 +2736,29 @@ export default function Index() {
         spotId={selectedSpot?.id ?? null}
         commentCount={commentCount}
         friendIds={friendIds}
-        onUpdateSpot={async (spotId, name, description, tags) => {
-          const err = await updateSpot(spotId, name, description, tags, true);
+        onUpdateSpot={async (spotId, name, description, tags, details) => {
+          const err = await updateSpot(spotId, name, description, tags, true, details);
           if (!err) {
             const normalizedDesc = description.trim() || null;
+            const normalizedDetails = details
+              ? {
+                address: details.address?.trim() || null,
+                phone: details.phone?.trim() || null,
+                website: details.website?.trim() || null,
+                hours: details.hours?.trim() || null,
+              }
+              : null;
             setSelectedSpot((prev) =>
               prev && prev.id === spotId
-                ? { ...prev, name, description: normalizedDesc, tags }
+                ? { ...prev, name, description: normalizedDesc, tags, ...(normalizedDetails ?? {}) }
                 : prev
             );
+            patchSpotLocal(spotId, {
+              name,
+              description: normalizedDesc,
+              tags,
+              ...(normalizedDetails ?? {}),
+            });
             pendingSpotEditRef.current = { id: spotId, name, description: normalizedDesc, tags };
           }
           return err;

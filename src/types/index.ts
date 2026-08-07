@@ -16,6 +16,10 @@ export type Spot = {
   closure_report_count?: number;
   avg_difficulty: number | null;
   difficulty_vote_count: number;
+  address: string | null;
+  phone: string | null;
+  website: string | null;
+  hours: string | null;
 };
 
 export type Review = {

@@ -92,7 +92,8 @@ export function useSpots() {
     initialRating?: number,
     tags: string[] = [],
     visibility: SpotVisibility = 'public',
-    spotType: 'spot' | 'skatepark' | 'skateshop' = 'spot'
+    spotType: 'spot' | 'skatepark' | 'skateshop' = 'spot',
+    details?: { address?: string; phone?: string; website?: string; hours?: string }
   ): Promise<Spot | undefined> {
     setError(null);
 
@@ -161,6 +162,24 @@ export function useSpots() {
       }
     }
 
+    const isPlaceType = spotType === 'skatepark' || spotType === 'skateshop';
+    const placeDetails = {
+      address: isPlaceType ? details?.address?.trim() || null : null,
+      phone: isPlaceType ? details?.phone?.trim() || null : null,
+      website: isPlaceType ? details?.website?.trim() || null : null,
+      hours: isPlaceType ? details?.hours?.trim() || null : null,
+    };
+
+    for (const value of [placeDetails.address, placeDetails.hours]) {
+      if (value) {
+        const check = moderateText(value);
+        if (!check.allowed) {
+          setError(check.reason ?? 'Inappropriate content.');
+          return;
+        }
+      }
+    }
+
     const flags = visibilityFlags(visibility);
     const { data: spotData, error: spotErr } = await supabase
       .from('spots')
@@ -174,6 +193,7 @@ export function useSpots() {
         is_private: flags.is_private,
         friends_only: flags.friends_only,
         spot_type: spotType,
+        ...placeDetails,
       })
       .select()
       .single();
@@ -259,7 +279,8 @@ export function useSpots() {
     name: string,
     description: string,
     tags: string[],
-    skipStateUpdate = false
+    skipStateUpdate = false,
+    details?: { address?: string; phone?: string; website?: string; hours?: string }
   ): Promise<string | null> {
     const trimmedName = name.trim();
     if (!trimmedName) return 'Name is required';
@@ -277,28 +298,38 @@ export function useSpots() {
       if (!tagCheck.allowed) return 'One or more tags contain inappropriate content.';
     }
 
-    const { error } = await supabase
-      .from('spots')
-      .update({
-        name: trimmedName,
-        description: description.trim() || null,
-        tags,
-      })
-      .eq('id', spotId);
+    const placeDetails = details
+      ? {
+        address: details.address?.trim() || null,
+        phone: details.phone?.trim() || null,
+        website: details.website?.trim() || null,
+        hours: details.hours?.trim() || null,
+      }
+      : null;
+
+    if (placeDetails) {
+      for (const value of [placeDetails.address, placeDetails.hours]) {
+        if (value) {
+          const check = moderateText(value);
+          if (!check.allowed) return check.reason ?? 'Inappropriate content.';
+        }
+      }
+    }
+
+    const patch = {
+      name: trimmedName,
+      description: description.trim() || null,
+      tags,
+      ...(placeDetails ?? {}),
+    };
+
+    const { error } = await supabase.from('spots').update(patch).eq('id', spotId);
 
     if (error) return error.message;
 
     if (!skipStateUpdate) {
-      setSpots((prev) =>
-        prev.map((s) =>
-          s.id === spotId ? { ...s, name: trimmedName, description: description.trim() || null, tags } : s
-        )
-      );
-      setMySpots((prev) =>
-        prev.map((s) =>
-          s.id === spotId ? { ...s, name: trimmedName, description: description.trim() || null, tags } : s
-        )
-      );
+      setSpots((prev) => prev.map((s) => (s.id === spotId ? { ...s, ...patch } : s)));
+      setMySpots((prev) => prev.map((s) => (s.id === spotId ? { ...s, ...patch } : s)));
     }
     return null;
   }
