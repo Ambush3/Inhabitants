@@ -44,6 +44,7 @@ type Props = {
   onChangeComment: (v: string) => void;
   spotType: 'spot' | 'skatepark' | 'skateshop';
   onChangeSpotType: (v: 'spot' | 'skatepark' | 'skateshop') => void;
+  isAdmin?: boolean;
 };
 
 export function CreateSpotModal({
@@ -70,6 +71,7 @@ export function CreateSpotModal({
   onChangeComment,
   spotType,
   onChangeSpotType,
+  isAdmin = false,
 }: Props) {
   const { theme } = useTheme();
   const c = theme.colors;
@@ -217,6 +219,48 @@ export function CreateSpotModal({
                   </View>
                 ) : null}
               </View>
+
+              {isAdmin ? (
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    backgroundColor: c.tagBg,
+                    borderRadius: 8,
+                    padding: 2,
+                    marginBottom: 12,
+                  }}>
+                  {(
+                    [
+                      ['spot', 'Spot'],
+                      ['skatepark', 'Park'],
+                      ['skateshop', 'Shop'],
+                    ] as ['spot' | 'skatepark' | 'skateshop', string][]
+                  ).map(([v, label]) => {
+                    const active = spotType === v;
+                    return (
+                      <Pressable
+                        key={v}
+                        onPress={() => onChangeSpotType(v)}
+                        style={{
+                          flex: 1,
+                          alignItems: 'center',
+                          paddingVertical: 7,
+                          borderRadius: 6,
+                          backgroundColor: active ? c.surface : 'transparent',
+                        }}>
+                        <Text
+                          style={{
+                            fontSize: 13,
+                            fontWeight: '600',
+                            color: active ? c.text : c.subtext,
+                          }}>
+                          {label}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              ) : null}
 
               {pendingCoord ? (
                 <Text style={{ marginBottom: 12, color: c.subtext }}>
