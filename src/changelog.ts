@@ -1,5 +1,15 @@
 export const changelog = [
   {
+    version: '1.12.1',
+    date: 'August 2026',
+    changes: [
+      'Skate shops now show address, phone, website, and hours',
+      'Stronger checks on uploaded photos and videos',
+      'Add reset password prompt when clicking on reset password in Settings Panel',
+      'Bugfix for when a local skate shop and local skate park search happen at the same time, and time out',
+    ],
+  },
+  {
     version: '1.12.0',
     date: 'August 2026',
     changes: [
