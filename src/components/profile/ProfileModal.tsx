@@ -22,7 +22,7 @@ import { useTheme } from '@/src/context/ThemeContext';
 import { usePro } from '@/src/context/ProContext';
 import { CrownIcon } from '@/src/components/icons/CrownIcon';
 import { useToast, ToastHost } from '@/src/context/ToastContext';
-import { Spot } from '@/src/types';
+import { Place, Spot } from '@/src/types';
 import { useFriendships, Friend } from '@/src/hooks/social/useFriendships';
 import { useCollections, Collection } from '@/src/hooks/useCollections';
 import { useCheckIns, PassportEntry } from '@/src/hooks/useCheckIns';
@@ -54,6 +54,7 @@ type Props = {
   myReviews: MyReview[];
   onLoadMyReviews: () => Promise<void>;
   onSelectSpot: (spot: Spot) => void;
+  onSelectPlace?: (place: Place) => void;
   allSpots: Spot[];
   onSignOut: () => void;
   onViewProfile?: (userId: string) => void;
@@ -71,6 +72,7 @@ export function ProfileModal({
   myReviews,
   onLoadMyReviews,
   onSelectSpot,
+  onSelectPlace,
   allSpots,
   onSignOut,
   onViewProfile,
@@ -129,7 +131,14 @@ export function ProfileModal({
 
   const { loadPassport, passportEntries, passportLoading, togglePrivacy, deleteCheckIn } = useCheckIns();
   const { activityData, loading: streakLoading, loadStreak } = useStreak();
-  const { parksSkated, load: loadPlaceCheckIns } = usePlaceCheckIns();
+  const {
+    parksSkated,
+    load: loadPlaceCheckIns,
+    parkEntries,
+    parkEntriesLoading,
+    loadParkEntries,
+  } = usePlaceCheckIns();
+  const [passportFilter, setPassportFilter] = useState<'spots' | 'parks'>('spots');
 
   const totalCheckIns = passportEntries.reduce((sum, e) => sum + e.visit_count, 0);
   const mostSkatedSpot =
@@ -313,6 +322,8 @@ export function ProfileModal({
     loadPassport();
     loadStreak();
     loadPlaceCheckIns();
+    loadParkEntries();
+    setPassportFilter('spots');
   }, [visible]);
 
   const myActualSpots = mySpots.filter((s) => s.spot_type === 'spot');
@@ -1310,13 +1321,16 @@ export function ProfileModal({
                       <>
                         <StreakCard activityData={activityData} loading={streakLoading} />
                         <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
-                          <View
+                          <Pressable
+                            onPress={() => setPassportFilter('spots')}
                             style={{
                               flex: 1,
                               backgroundColor: c.tagBg,
                               borderRadius: 10,
                               padding: 12,
                               alignItems: 'center',
+                              borderWidth: 2,
+                              borderColor: passportFilter === 'spots' ? c.accent : 'transparent',
                             }}>
                             <Text style={{ fontSize: 22, fontWeight: '700', color: c.text }}>
                               {passportEntries.length}
@@ -1324,7 +1338,7 @@ export function ProfileModal({
                             <Text style={{ fontSize: 12, color: c.subtext, marginTop: 2 }}>
                               Spots Visited
                             </Text>
-                          </View>
+                          </Pressable>
                           <View
                             style={{
                               flex: 1,
@@ -1332,6 +1346,8 @@ export function ProfileModal({
                               borderRadius: 10,
                               padding: 12,
                               alignItems: 'center',
+                              borderWidth: 2,
+                              borderColor: 'transparent',
                             }}>
                             <Text style={{ fontSize: 22, fontWeight: '700', color: c.text }}>
                               {passportEntries.reduce((sum, e) => sum + e.visit_count, 0)}
@@ -1340,13 +1356,16 @@ export function ProfileModal({
                               Spot Check-ins
                             </Text>
                           </View>
-                          <View
+                          <Pressable
+                            onPress={() => setPassportFilter('parks')}
                             style={{
                               flex: 1,
                               backgroundColor: c.tagBg,
                               borderRadius: 10,
                               padding: 12,
                               alignItems: 'center',
+                              borderWidth: 2,
+                              borderColor: passportFilter === 'parks' ? c.accent : 'transparent',
                             }}>
                             <Text style={{ fontSize: 22, fontWeight: '700', color: c.text }}>
                               {parksSkated}
@@ -1354,7 +1373,7 @@ export function ProfileModal({
                             <Text style={{ fontSize: 12, color: c.subtext, marginTop: 2 }}>
                               Parks Skated
                             </Text>
-                          </View>
+                          </Pressable>
                         </View>
 
                         <PassportBadges
@@ -1405,7 +1424,81 @@ export function ProfileModal({
                           <CrownIcon size={16} />
                         </Pressable>
 
-                        {passportLoading ? (
+                        {passportFilter === 'parks' ? (
+                          parkEntriesLoading ? (
+                            <Text style={{ color: c.subtext, textAlign: 'center', marginTop: 24 }}>
+                              Loading...
+                            </Text>
+                          ) : parkEntries.length === 0 ? (
+                            <Text
+                              style={{
+                                color: c.subtext,
+                                fontSize: 14,
+                                textAlign: 'center',
+                                marginTop: 24,
+                              }}>
+                              No parks skated yet. Check in at a skate park!
+                            </Text>
+                          ) : (
+                            parkEntries.map((entry) => (
+                              <Pressable
+                                key={entry.place_id}
+                                onPress={() => {
+                                  if (entry.lat == null || entry.lng == null) {
+                                    toast.error("Couldn't open this park on the map.");
+                                    return;
+                                  }
+                                  onSelectPlace?.({
+                                    id: entry.place_id,
+                                    name: entry.name,
+                                    lat: entry.lat,
+                                    lng: entry.lng,
+                                    type: entry.type,
+                                    tags: {},
+                                  });
+                                  onClose();
+                                }}
+                                style={{
+                                  borderBottomWidth: 1,
+                                  borderColor: c.border,
+                                  paddingVertical: 14,
+                                }}>
+                                <View
+                                  style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                                  <View
+                                    style={{
+                                      width: 40,
+                                      height: 40,
+                                      borderRadius: 10,
+                                      backgroundColor: 'rgba(52,199,89,0.12)',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                    }}>
+                                    <Image
+                                      source={require('@/assets/pin-images/skatepark-ramp.png')}
+                                      style={{ width: 20, height: 20, tintColor: '#34C759' }}
+                                    />
+                                  </View>
+                                  <View style={{ flex: 1 }}>
+                                    <Text
+                                      style={{ fontSize: 15, fontWeight: '600', color: c.text }}
+                                      numberOfLines={1}>
+                                      {entry.name}
+                                    </Text>
+                                    <Text style={{ fontSize: 13, color: c.subtext, marginTop: 2 }}>
+                                      {entry.visit_count} visit{entry.visit_count !== 1 ? 's' : ''} ·
+                                      Last {new Date(entry.last_visit).toLocaleDateString('en-US', {
+                                        month: 'short',
+                                        day: 'numeric',
+                                        year: 'numeric',
+                                      })}
+                                    </Text>
+                                  </View>
+                                </View>
+                              </Pressable>
+                            ))
+                          )
+                        ) : passportLoading ? (
                           <Text style={{ color: c.subtext, textAlign: 'center', marginTop: 24 }}>
                             Loading...
                           </Text>
