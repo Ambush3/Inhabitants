@@ -83,6 +83,7 @@ import { useToast } from '@/src/context/ToastContext';
 
 import { Ionicons } from '@expo/vector-icons';
 import { Place, Spot } from '@/src/types';
+import { haversineMeters } from '@/src/libs/distance';
 import { useWishlist } from '@/src/hooks/useWishlist';
 import { useFriendships } from '@/src/hooks/social/useFriendships';
 import { useNotifications } from '@/src/hooks/useNotifications';
@@ -955,10 +956,21 @@ export default function Index() {
     return [...prev, ...added.filter((p) => !ids.has(p.id))];
   }
 
-  async function autoLoadPlaceType(type: 'skatepark' | 'skateshop') {
-    const community = spots
-      .filter((s) => s.spot_type === type)
+  function communityPlacesNear(type: 'skatepark' | 'skateshop', radiusMeters: number): Place[] {
+    const { latitude, longitude } = mapRegionRef.current;
+    return spots
+      .filter(
+        (s) =>
+          s.spot_type === type &&
+          s.lat != null &&
+          s.lng != null &&
+          haversineMeters(latitude, longitude, s.lat, s.lng) <= radiusMeters
+      )
       .map((s) => ({ id: s.id, name: s.name, type, lat: s.lat, lng: s.lng, tags: {} }));
+  }
+
+  async function autoLoadPlaceType(type: 'skatepark' | 'skateshop') {
+    const community = communityPlacesNear(type, 20000);
     if (community.length) setPlacesWithAutoClear((prev) => mergePlaces(prev, community));
     const loader = type === 'skatepark' ? loadNearbySkateParks : loadNearbySkateShops;
     await loader(
@@ -1919,16 +1931,7 @@ export default function Index() {
             setPanelOpen(false);
             const token = ++searchSeqRef.current;
             toast.show('Searching…', { duration: 0 });
-            const communityParks = spots
-              .filter((s) => s.spot_type === 'skatepark')
-              .map((s) => ({
-                id: s.id,
-                name: s.name,
-                type: 'skatepark' as const,
-                lat: s.lat,
-                lng: s.lng,
-                tags: {},
-              }));
+            const communityParks = communityPlacesNear('skatepark', 20000);
             setPlacesWithAutoClear(() => communityParks);
             const res = await loadNearbySkateParks(
               mapRegionRef.current.latitude,
@@ -1958,16 +1961,7 @@ export default function Index() {
             setPanelOpen(false);
             const token = ++searchSeqRef.current;
             toast.show('Searching…', { duration: 0 });
-            const communityShops = spots
-              .filter((s) => s.spot_type === 'skateshop')
-              .map((s) => ({
-                id: s.id,
-                name: s.name,
-                type: 'skateshop' as const,
-                lat: s.lat,
-                lng: s.lng,
-                tags: {},
-              }));
+            const communityShops = communityPlacesNear('skateshop', 20000);
             setPlacesWithAutoClear(() => communityShops);
             const res = await loadNearbySkateShops(
               mapRegionRef.current.latitude,

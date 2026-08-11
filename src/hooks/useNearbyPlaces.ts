@@ -11,9 +11,12 @@ export type NearbyResult = {
 
 const OVERPASS_ENDPOINTS = [
     'https://overpass-api.de/api/interpreter',
-    'https://overpass.kumi.systems/api/interpreter',
     'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
+    'https://overpass.kumi.systems/api/interpreter',
 ];
+
+const PROXY_TIMEOUT_MS = 6000;
+const OVERPASS_TIMEOUT_MS = 8000;
 
 const CACHE_PREFIX = 'nearby_cache_v1';
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -114,9 +117,12 @@ export function useNearbyPlaces() {
             }
         }
 
+        const proxyController = new AbortController();
+        const proxyTimeoutId = setTimeout(() => proxyController.abort(), PROXY_TIMEOUT_MS);
         try {
             const { data, error: fnError } = await supabase.functions.invoke('nearby-places', {
                 body: { lat, lng, radiusMeters, type, name },
+                signal: proxyController.signal,
             });
             if (!fnError && data && Array.isArray(data.places)) {
                 const proxyPlaces = data.places as Place[];
@@ -127,11 +133,13 @@ export function useNearbyPlaces() {
                 return { status: proxyPlaces.length === 0 ? 'empty' : 'ok', count: proxyPlaces.length };
             }
         } catch {
+        } finally {
+            clearTimeout(proxyTimeoutId);
         }
 
         const controller = new AbortController();
         abortRef.current[type] = controller;
-        const timeoutId = setTimeout(() => controller.abort(), 15000);
+        const timeoutId = setTimeout(() => controller.abort(), OVERPASS_TIMEOUT_MS);
 
         const nameFilter = name ? `["name"~"${name}",i]` : '';
 
