@@ -2848,6 +2848,19 @@ export default function Index() {
         </View>
       ) : null}
       <ProfileModal
+        onSelectPlace={async (p) => {
+          setProfileOpen(false);
+          setSelectedPlaceId(p.id);
+          setSelectedPlace(p);
+          setPlaceDetailsOpen(true);
+          setPlacesWithAutoClear((prev) => (prev.some((x) => x.id === p.id) ? prev : [...prev, p]));
+          animateToSpotWithModalOffset(p.lat, p.lng, 'small');
+          const full = await fetchPlaceById(p.id);
+          if (full) {
+            setSelectedPlace(full);
+            setPlacesWithAutoClear((prev) => prev.map((x) => (x.id === full.id ? full : x)));
+          }
+        }}
         visible={profileOpen}
         onClose={() => {
           setProfileOpen(false);
