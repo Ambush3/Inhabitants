@@ -242,34 +242,44 @@ export function useNearbyPlaces() {
         out center tags;
     `.trim();
 
-        for (const endpoint of OVERPASS_ENDPOINTS) {
-            try {
-                const resp = await fetch(endpoint, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
-                    body: `data=${encodeURIComponent(query)}`,
-                });
-                if (!resp.ok) continue;
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), OVERPASS_TIMEOUT_MS);
 
-                const json = await resp.json();
-                const el = json.elements?.[0];
-                if (!el) return null;
+        try {
+            for (const endpoint of OVERPASS_ENDPOINTS) {
+                if (controller.signal.aborted) break;
+                try {
+                    const resp = await fetch(endpoint, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+                        body: `data=${encodeURIComponent(query)}`,
+                        signal: controller.signal,
+                    });
+                    if (!resp.ok) continue;
 
-                const pLat = el.lat ?? el.center?.lat;
-                const pLng = el.lon ?? el.center?.lon;
-                if (typeof pLat !== 'number' || typeof pLng !== 'number') return null;
+                    const json = await resp.json();
+                    const el = json.elements?.[0];
+                    if (!el) return null;
 
-                return {
-                    id: placeId,
-                    name: overrideName ?? el.tags?.name ?? 'Skate Location',
-                    type: (el.tags?.shop === 'skate' || el.tags?.shop === 'sports') ? 'skateshop' : 'skatepark',
-                    lat: pLat,
-                    lng: pLng,
-                    tags: el.tags ?? {},
-                } as Place;
-            } catch {
-                continue;
+                    const pLat = el.lat ?? el.center?.lat;
+                    const pLng = el.lon ?? el.center?.lon;
+                    if (typeof pLat !== 'number' || typeof pLng !== 'number') return null;
+
+                    return {
+                        id: placeId,
+                        name: overrideName ?? el.tags?.name ?? 'Skate Location',
+                        type: (el.tags?.shop === 'skate' || el.tags?.shop === 'sports') ? 'skateshop' : 'skatepark',
+                        lat: pLat,
+                        lng: pLng,
+                        tags: el.tags ?? {},
+                    } as Place;
+                } catch (e: any) {
+                    if (e?.name === 'AbortError') break;
+                    continue;
+                }
             }
+        } finally {
+            clearTimeout(timeoutId);
         }
         return null;
     }
