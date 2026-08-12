@@ -4,9 +4,16 @@ export const changelog = [
     date: 'August 2026',
     changes: [
       'Skate shops now show address, phone, website, and hours',
+      'Tap a skate shop to open its details right away',
+      'Rate a skate shop straight from its details',
+      'Shops now show up when you search Local Skate Shops or save one, instead of always sitting on the map',
+      'See which parks you’ve skated in your Passport — tap one to open it on the map',
+      'Badges now show what’s coming next, with progress toward each one',
+      'Sharing your Passport or Weekly Recap is now one Share button',
+      'Nearby searches give up faster instead of hanging',
+      'Fixed missing “no results” and timeout messages when searching parks and shops',
       'Stronger checks on uploaded photos and videos',
       'Add reset password prompt when clicking on reset password in Settings Panel',
-      'Bugfix for when a local skate shop and local skate park search happen at the same time, and time out',
     ],
   },
   {
