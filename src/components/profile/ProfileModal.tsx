@@ -1428,6 +1428,20 @@ export function ProfileModal({
                           );
                         })()}
 
+                        <Text
+                          style={{
+                            fontSize: 11,
+                            fontWeight: '700',
+                            letterSpacing: 0.6,
+                            color: c.subtext,
+                            textTransform: 'uppercase',
+                            marginBottom: 4,
+                          }}>
+                          {passportFilter === 'parks'
+                            ? `Parks skated (${parkEntries.length})`
+                            : `Spots visited (${passportEntries.length})`}
+                        </Text>
+
                         {passportFilter === 'parks' ? (
                           parkEntriesLoading ? (
                             <Text style={{ color: c.subtext, textAlign: 'center', marginTop: 24 }}>
