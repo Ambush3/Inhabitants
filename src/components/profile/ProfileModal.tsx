@@ -12,6 +12,7 @@ import {
   Platform,
   Share,
   Linking,
+  ActionSheetIOS,
 } from 'react-native';
 import { PassportShareCard } from '@/src/components/profile/PassportShareCard';
 import { PaywallModal } from '@/src/components/PaywallModal';
@@ -1382,47 +1383,50 @@ export function ProfileModal({
                           spotsVisited={passportEntries.length}
                         />
 
-                        <Pressable
-                          onPress={handleSharePassport}
-                          disabled={sharingPassport || passportEntries.length === 0}
-                          style={{
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: 8,
-                            backgroundColor: '#000',
-                            borderRadius: 12,
-                            paddingVertical: 12,
-                            marginBottom: 16,
-                            opacity: sharingPassport || passportEntries.length === 0 ? 0.5 : 1,
-                          }}>
-                          <Ionicons name="share-outline" size={16} color="#fff" />
-                          <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>
-                            {sharingPassport ? 'Preparing…' : 'Share My Passport'}
-                          </Text>
-                          <CrownIcon size={16} />
-                        </Pressable>
-
-                        <Pressable
-                          onPress={handleShareRecap}
-                          disabled={sharingRecap || weekRecap.daysSkated === 0}
-                          style={{
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: 8,
-                            backgroundColor: '#000',
-                            borderRadius: 12,
-                            paddingVertical: 12,
-                            marginBottom: 16,
-                            opacity: sharingRecap || weekRecap.daysSkated === 0 ? 0.5 : 1,
-                          }}>
-                          <Ionicons name="calendar-outline" size={16} color="#fff" />
-                          <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>
-                            {sharingRecap ? 'Preparing…' : 'Share Weekly Recap'}
-                          </Text>
-                          <CrownIcon size={16} />
-                        </Pressable>
+                        {(() => {
+                          const passportReady = passportEntries.length > 0;
+                          const recapReady = weekRecap.daysSkated > 0;
+                          const busy = sharingPassport || sharingRecap;
+                          const disabled = busy || (!passportReady && !recapReady);
+                          const disabledIndices: number[] = [];
+                          if (!passportReady) disabledIndices.push(1);
+                          if (!recapReady) disabledIndices.push(2);
+                          return (
+                            <Pressable
+                              onPress={() =>
+                                ActionSheetIOS.showActionSheetWithOptions(
+                                  {
+                                    title: 'Share',
+                                    options: ['Cancel', 'My Passport', 'Weekly Recap'],
+                                    cancelButtonIndex: 0,
+                                    disabledButtonIndices: disabledIndices,
+                                  },
+                                  (index) => {
+                                    if (index === 1) handleSharePassport();
+                                    if (index === 2) handleShareRecap();
+                                  }
+                                )
+                              }
+                              disabled={disabled}
+                              style={{
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: 8,
+                                backgroundColor: '#000',
+                                borderRadius: 12,
+                                paddingVertical: 12,
+                                marginBottom: 16,
+                                opacity: disabled ? 0.5 : 1,
+                              }}>
+                              <Ionicons name="share-outline" size={16} color="#fff" />
+                              <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>
+                                {busy ? 'Preparing…' : 'Share'}
+                              </Text>
+                              <CrownIcon size={16} />
+                            </Pressable>
+                          );
+                        })()}
 
                         {passportFilter === 'parks' ? (
                           parkEntriesLoading ? (
