@@ -56,23 +56,36 @@ export function PassportBadges({
   }
 
   return (
-    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
-      {earned.map((t) => (
-        <View
-          key={t.label}
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 6,
-            paddingHorizontal: 12,
-            paddingVertical: 8,
-            borderRadius: 20,
-            backgroundColor: c.tagBg,
-          }}>
-          <Text style={{ fontSize: 14 }}>{t.icon}</Text>
-          <Text style={{ fontSize: 13, fontWeight: '700', color: c.text }}>{t.label}</Text>
-        </View>
-      ))}
+    <View style={{ marginBottom: 16 }}>
+      <Text
+        style={{
+          fontSize: 11,
+          fontWeight: '700',
+          letterSpacing: 0.6,
+          color: c.subtext,
+          textTransform: 'uppercase',
+          marginBottom: 8,
+        }}>
+        Badges earned
+      </Text>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+        {earned.map((t) => (
+          <View
+            key={t.label}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 6,
+              paddingHorizontal: 12,
+              paddingVertical: 8,
+              borderRadius: 20,
+              backgroundColor: c.tagBg,
+            }}>
+            <Text style={{ fontSize: 14 }}>{t.icon}</Text>
+            <Text style={{ fontSize: 13, fontWeight: '700', color: c.text }}>{t.label}</Text>
+          </View>
+        ))}
+      </View>
     </View>
   );
 }
