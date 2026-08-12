@@ -29,6 +29,10 @@ function highest(tiers: Tier[], value: number): Tier | null {
   return tiers.find((t) => value >= t.threshold) ?? null;
 }
 
+function nextLocked(tiers: Tier[], value: number): Tier | null {
+  return [...tiers].reverse().find((t) => value < t.threshold) ?? null;
+}
+
 export function PassportBadges({
   longestStreak,
   parksSkated,
@@ -47,13 +51,11 @@ export function PassportBadges({
     highest(SPOT_TIERS, spotsVisited),
   ].filter((t): t is Tier => t != null);
 
-  if (earned.length === 0) {
-    return (
-      <Text style={{ fontSize: 12, color: c.subtext, marginBottom: 16, textAlign: 'center' }}>
-        Keep skating to earn badges.
-      </Text>
-    );
-  }
+  const locked = [
+    { tier: nextLocked(STREAK_TIERS, longestStreak), value: longestStreak },
+    { tier: nextLocked(PARK_TIERS, parksSkated), value: parksSkated },
+    { tier: nextLocked(SPOT_TIERS, spotsVisited), value: spotsVisited },
+  ].filter((l): l is { tier: Tier; value: number } => l.tier != null);
 
   return (
     <View style={{ marginBottom: 16 }}>
@@ -66,7 +68,7 @@ export function PassportBadges({
           textTransform: 'uppercase',
           marginBottom: 8,
         }}>
-        Badges earned
+        Badges
       </Text>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
         {earned.map((t) => (
@@ -83,6 +85,28 @@ export function PassportBadges({
             }}>
             <Text style={{ fontSize: 14 }}>{t.icon}</Text>
             <Text style={{ fontSize: 13, fontWeight: '700', color: c.text }}>{t.label}</Text>
+          </View>
+        ))}
+        {locked.map(({ tier, value }) => (
+          <View
+            key={`locked-${tier.label}`}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 6,
+              paddingHorizontal: 12,
+              paddingVertical: 8,
+              borderRadius: 20,
+              borderWidth: 1,
+              borderStyle: 'dashed',
+              borderColor: c.border,
+              opacity: 0.55,
+            }}>
+            <Text style={{ fontSize: 14 }}>{tier.icon}</Text>
+            <Text style={{ fontSize: 13, fontWeight: '700', color: c.subtext }}>{tier.label}</Text>
+            <Text style={{ fontSize: 11, fontWeight: '600', color: c.subtext }}>
+              {value}/{tier.threshold}
+            </Text>
           </View>
         ))}
       </View>
