@@ -15,7 +15,7 @@ const OVERPASS_ENDPOINTS = [
     'https://overpass.kumi.systems/api/interpreter',
 ];
 
-const PROXY_TIMEOUT_MS = 6000;
+const PROXY_TIMEOUT_MS = 40000;
 const OVERPASS_TIMEOUT_MS = 8000;
 
 const CACHE_PREFIX = 'nearby_cache_v1';
