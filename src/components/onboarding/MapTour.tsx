@@ -44,7 +44,7 @@ export function MapTour({ visible, targets, onFinish }: Props) {
       rect: targets.menu,
       round: false,
       title: 'Explore',
-      body: 'Find nearby skate parks and shops, plus your lists, crews, friends and profile.',
+      body: 'Your lists, crews, friends, events and profile. Nearby parks and shops are the chips above the map.',
     },
     {
       key: 'settings',
