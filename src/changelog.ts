@@ -1,5 +1,17 @@
 export const changelog = [
   {
+    version: '1.13.0',
+    date: 'August 2026',
+    changes: [
+      'Find nearby skate parks and shops straight from the map with the new Parks and Shops buttons',
+      'Parks and shops now stay on the map until you switch them off',
+      'Filters are open to everyone — filter by who added a spot and by difficulty',
+      'A quick tour on your first launch shows you how to add a spot and where everything lives',
+      'Replay the tour anytime from Settings',
+      'Map key now sits alongside the filter buttons',
+    ],
+  },
+  {
     version: '1.12.1',
     date: 'August 2026',
     changes: [
