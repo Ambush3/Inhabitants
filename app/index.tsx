@@ -828,11 +828,16 @@ export default function Index() {
     const seen = new Set<string>();
     return places.filter((p) => {
       if (spotIds.has(p.id) || seen.has(p.id)) return false;
-      if (advFilters.types.length > 0 && !advFilters.types.includes(p.type)) return false;
+      if (
+        advFilters.types.length > 0 &&
+        !advFilters.types.includes(p.type) &&
+        !activePlaceTypes.has(p.type)
+      )
+        return false;
       seen.add(p.id);
       return true;
     });
-  }, [places, visibleSpots, advFilters, highlightSpotId]);
+  }, [places, visibleSpots, advFilters, highlightSpotId, activePlaceTypes]);
 
   const toggleOwnershipFilter = (key: 'mine' | 'friends' | 'community') =>
     setOwnershipFilter((prev) => {
