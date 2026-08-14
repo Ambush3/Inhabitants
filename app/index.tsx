@@ -101,6 +101,8 @@ const DEFAULT_REGION: Region = {
   longitudeDelta: 0.15,
 };
 
+const PLACE_RELOAD_METERS = 10000;
+
 function rendersAsSpotMarker(spot: { id: string; spot_type?: string }, highlightSpotId: string | null) {
   return spot.spot_type !== 'skateshop' || spot.id === highlightSpotId;
 }
@@ -450,6 +452,7 @@ export default function Index() {
     loadNearbySkateParks,
     loadNearbySkateShops,
     fetchPlaceById,
+    searchKnownPlaces,
   } = useNearbyPlaces();
   const { topRated, topLoading, error: topRatedError, loadTopRatedSpotsInArea, clearTopRated } = useTopRated();
 
@@ -572,6 +575,10 @@ export default function Index() {
   const settingsBtnRef = useRef<View>(null);
   const [activePlaceTypes, setActivePlaceTypes] = useState<Set<PlaceType>>(new Set());
   const placesPinnedRef = useRef(false);
+  const lastPlaceLoadRef = useRef<{ lat: number; lng: number } | null>(null);
+  const searchPinnedRef = useRef(false);
+  const [searchingPlaces, setSearchingPlaces] = useState(false);
+  const regionPlaceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [tourVisible, setTourVisible] = useState(false);
   const [tourTargets, setTourTargets] = useState<TourTargets>({ menu: null, settings: null });
 
@@ -825,8 +832,13 @@ export default function Index() {
     const spotIds = new Set(
       visibleSpots.filter((s) => rendersAsSpotMarker(s, highlightSpotId)).map((s) => s.id)
     );
+    const placeWords = mapSearch.trim().toLowerCase().split(/\s+/).filter(Boolean);
     const seen = new Set<string>();
     return places.filter((p) => {
+      if (placeWords.length > 0) {
+        const n = p.name?.toLowerCase() ?? '';
+        if (!placeWords.every((w) => n.includes(w))) return false;
+      }
       if (spotIds.has(p.id) || seen.has(p.id)) return false;
       if (
         advFilters.types.length > 0 &&
@@ -837,7 +849,7 @@ export default function Index() {
       seen.add(p.id);
       return true;
     });
-  }, [places, visibleSpots, advFilters, highlightSpotId, activePlaceTypes]);
+  }, [places, visibleSpots, advFilters, highlightSpotId, activePlaceTypes, mapSearch]);
 
   const toggleOwnershipFilter = (key: 'mine' | 'friends' | 'community') =>
     setOwnershipFilter((prev) => {
@@ -983,25 +995,15 @@ export default function Index() {
       .map((s) => ({ id: s.id, name: s.name, type, lat: s.lat, lng: s.lng, tags: {} }));
   }
 
-  async function togglePlaceType(type: PlaceType) {
-    const turningOn = !activePlaceTypes.has(type);
-    setActivePlaceTypes((prev) => {
-      const next = new Set(prev);
-      if (turningOn) next.add(type);
-      else next.delete(type);
-      placesPinnedRef.current = next.size > 0;
-      return next;
-    });
-
-    if (!turningOn) {
-      setPlaces((prev) => prev.filter((p) => p.type !== type));
-      return;
-    }
-
+  async function loadPlacesForRegion(type: PlaceType, quiet = false) {
     if (placesTimerRef.current) {
       clearTimeout(placesTimerRef.current);
       placesTimerRef.current = null;
     }
+    lastPlaceLoadRef.current = {
+      lat: mapRegionRef.current.latitude,
+      lng: mapRegionRef.current.longitude,
+    };
 
     const community = communityPlacesNear(type, 20000);
     if (community.length) setPlaces((prev) => mergePlaces(prev, community));
@@ -1015,23 +1017,111 @@ export default function Index() {
       (osm) => setPlaces((prev) => mergePlaces(prev, osm))
     );
 
-    if (community.length + res.count > 0) return;
+    if (quiet || community.length + res.count > 0) return;
     if (res.status === 'timeout') toast.error('Timed out');
     else if (res.status === 'error') toast.error('Couldn’t search right now');
     else toast.show(type === 'skatepark' ? 'No skate parks in this area' : 'No skate shops in this area');
   }
 
-  async function autoLoadPlaceType(type: 'skatepark' | 'skateshop') {
-    const community = communityPlacesNear(type, 20000);
-    if (community.length) setPlacesWithAutoClear((prev) => mergePlaces(prev, community));
-    const loader = type === 'skatepark' ? loadNearbySkateParks : loadNearbySkateShops;
-    await loader(
-      mapRegionRef.current.latitude,
-      mapRegionRef.current.longitude,
-      20000,
-      undefined,
-      (osm) => setPlacesWithAutoClear((prev) => mergePlaces(prev, osm))
+  async function setPlaceTypeActive(type: PlaceType, on: boolean) {
+    setActivePlaceTypes((prev) => {
+      if (prev.has(type) === on) return prev;
+      const next = new Set(prev);
+      if (on) next.add(type);
+      else next.delete(type);
+      placesPinnedRef.current = next.size > 0 || searchPinnedRef.current;
+      return next;
+    });
+
+    if (!on) {
+      setPlaces((prev) => prev.filter((p) => p.type !== type));
+      return;
+    }
+    await loadPlacesForRegion(type);
+  }
+
+  function togglePlaceType(type: PlaceType) {
+    return setPlaceTypeActive(type, !activePlaceTypes.has(type));
+  }
+
+  async function searchPlacesByName() {
+    const q = mapSearch.trim();
+    if (!q) return;
+    if (placesTimerRef.current) {
+      clearTimeout(placesTimerRef.current);
+      placesTimerRef.current = null;
+    }
+    const { latitude, longitude } = mapRegionRef.current;
+    const found: Place[] = [];
+    toast.show('Searching…', { duration: 0 });
+
+    setSearchingPlaces(true);
+    searchPinnedRef.current = true;
+    placesPinnedRef.current = true;
+
+    try {
+    const known = await searchKnownPlaces(q);
+    if (known.length > 0) {
+      found.push(...known);
+      setPlaces((prev) => mergePlaces(prev, known));
+    }
+
+    await Promise.all(
+      (['skatepark', 'skateshop'] as const).map((type) => {
+        const loader = type === 'skatepark' ? loadNearbySkateParks : loadNearbySkateShops;
+        return loader(latitude, longitude, 50000, q, (osm) => {
+          if (osm.length === 0) return;
+          found.push(...osm.filter((p) => !found.some((f) => f.id === p.id)));
+          setPlaces((prev) => mergePlaces(prev, osm));
+        });
+      })
     );
+
+    const words = q.toLowerCase().split(/\s+/).filter(Boolean);
+    const matchingSpots = spots.filter((s) => {
+      const hay = `${s.name ?? ''} ${(s.tags ?? []).join(' ')}`.toLowerCase();
+      return words.every((w) => hay.includes(w));
+    });
+    const uniquePlaces = found.filter((p) => !matchingSpots.some((s) => s.id === p.id));
+    const total = matchingSpots.length + uniquePlaces.length;
+
+    if (total === 0) {
+      toast.show(`Nothing matching “${q}”`);
+      return;
+    }
+
+    if (total === 1) {
+      toast.hide();
+      if (matchingSpots.length === 1) {
+        const spot = matchingSpots[0];
+        setHighlightSpotId(spot.id);
+        highlightSpotIdRef.current = spot.id;
+        animateToSpotWithModalOffset(spot.lat, spot.lng);
+        setTimeout(() => openSpotDetails(spot), 450);
+        return;
+      }
+      const place = uniquePlaces[0];
+      setSelectedPlaceId(place.id);
+      setSelectedPlace(place);
+      animateToSpotWithModalOffset(place.lat, place.lng, 'small');
+      setPlaceDetailsOpen(true);
+      const full = await fetchPlaceById(place.id);
+      if (full) setSelectedPlace(full);
+      return;
+    }
+
+    const all = [...matchingSpots.map((s) => ({ lat: s.lat, lng: s.lng })), ...uniquePlaces];
+    const nearest = all.reduce((best, p) =>
+      haversineMeters(latitude, longitude, p.lat, p.lng) <
+      haversineMeters(latitude, longitude, best.lat, best.lng)
+        ? p
+        : best
+    );
+    toast.show(`${total} results for “${q}”`);
+    animateToSpotWithModalOffset(nearest.lat, nearest.lng, 'small');
+    } finally {
+      setSearchingPlaces(false);
+    }
   }
 
   function warmPlaceCache() {
@@ -1044,17 +1134,9 @@ export default function Index() {
     }
   }
 
-  const autoLoadedTypesRef = useRef<Set<'skatepark' | 'skateshop'>>(new Set());
   useEffect(() => {
     (['skatepark', 'skateshop'] as const).forEach((t) => {
-      if (advFilters.types.includes(t)) {
-        if (!autoLoadedTypesRef.current.has(t)) {
-          autoLoadedTypesRef.current.add(t);
-          autoLoadPlaceType(t);
-        }
-      } else {
-        autoLoadedTypesRef.current.delete(t);
-      }
+      if (advFilters.types.includes(t) && !activePlaceTypes.has(t)) setPlaceTypeActive(t, true);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [advFilters.types]);
@@ -2278,6 +2360,18 @@ export default function Index() {
           regionWriteTimerRef.current = setTimeout(() => {
             AsyncStorage.setItem('cached_last_map_region', JSON.stringify(r)).catch(() => { });
           }, 1000);
+
+          if (activePlaceTypes.size > 0) {
+            if (regionPlaceTimerRef.current) clearTimeout(regionPlaceTimerRef.current);
+            regionPlaceTimerRef.current = setTimeout(() => {
+              const last = lastPlaceLoadRef.current;
+              const moved =
+                !last ||
+                haversineMeters(last.lat, last.lng, r.latitude, r.longitude) > PLACE_RELOAD_METERS;
+              if (!moved) return;
+              activePlaceTypes.forEach((t) => loadPlacesForRegion(t, true));
+            }, 900);
+          }
         }}
         onLongPress={onLongPress}
         markerRefs={markerRefs}
@@ -2324,11 +2418,19 @@ export default function Index() {
           <MapControls
             style={{ position: 'absolute', top: (headerHeight || insets.top + 56) + 8, left: 12, right: 12 }}
             search={mapSearch}
-            onSearchChange={setMapSearch}
+            onSearchChange={(t) => {
+              setMapSearch(t);
+              if (!t.trim() && searchPinnedRef.current) {
+                searchPinnedRef.current = false;
+                placesPinnedRef.current = activePlaceTypes.size > 0;
+                if (!placesPinnedRef.current) schedulePlacesClear();
+              }
+            }}
             placeTypes={activePlaceTypes}
             onTogglePlaceType={(t) => requireAuth(() => togglePlaceType(t))}
-            parksLoading={parksLoading}
-            shopsLoading={shopsLoading}
+            onSubmitSearch={() => requireAuth(() => searchPlacesByName())}
+            parksLoading={parksLoading && !searchingPlaces}
+            shopsLoading={shopsLoading && !searchingPlaces}
             activeFilterCount={
               countActiveFilters(advFilters) + ownershipFilter.size + difficultyFilter.size
             }

@@ -20,6 +20,7 @@ type Props = {
   style?: StyleProp<ViewStyle>;
   placeTypes: Set<PlaceType>;
   onTogglePlaceType: (key: PlaceType) => void;
+  onSubmitSearch?: () => void;
   parksLoading?: boolean;
   shopsLoading?: boolean;
 };
@@ -39,6 +40,7 @@ export function MapControls({
   style,
   placeTypes,
   onTogglePlaceType,
+  onSubmitSearch,
   parksLoading = false,
   shopsLoading = false,
 }: Props) {
@@ -107,6 +109,7 @@ export function MapControls({
           style={{ flex: 1, fontSize: 15, color: c.text, padding: 0 }}
           autoCorrect={false}
           returnKeyType="search"
+          onSubmitEditing={onSubmitSearch}
         />
         {search.length > 0 ? (
           <Pressable onPress={() => onSearchChange('')} hitSlop={8}>
