@@ -1,57 +1,68 @@
 import React from 'react';
-import { View, Text, TextInput, Pressable, ScrollView, StyleProp, ViewStyle } from 'react-native';
+import {
+  View,
+  Text,
+  TextInput,
+  Pressable,
+  ScrollView,
+  StyleProp,
+  ViewStyle,
+  ActivityIndicator,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/src/context/ThemeContext';
-import { CrownIcon } from '@/src/components/icons/CrownIcon';
-
-type Ownership = 'mine' | 'friends' | 'community';
-type Difficulty = 'beginner' | 'intermediate' | 'advanced';
 
 type Props = {
   search: string;
   onSearchChange: (text: string) => void;
-  ownershipFilter: Set<Ownership>;
-  onToggleOwnership: (key: Ownership) => void;
-  difficultyFilter: Set<Difficulty>;
-  onToggleDifficulty: (key: Difficulty) => void;
   onOpenFilters?: () => void;
   activeFilterCount?: number;
-  isPro?: boolean;
   style?: StyleProp<ViewStyle>;
+  placeTypes: Set<PlaceType>;
+  onTogglePlaceType: (key: PlaceType) => void;
+  parksLoading?: boolean;
+  shopsLoading?: boolean;
 };
 
-const OWNERSHIP: { key: Ownership; label: string }[] = [
-  { key: 'mine', label: 'Mine' },
-  { key: 'friends', label: 'Friends' },
-  { key: 'community', label: 'Community' },
-];
+export type PlaceType = 'skatepark' | 'skateshop';
 
-const DIFFICULTY: { key: Difficulty; label: string }[] = [
-  { key: 'beginner', label: 'Beginner' },
-  { key: 'intermediate', label: 'Intermediate' },
-  { key: 'advanced', label: 'Advanced' },
+const PLACE_TYPES: { key: PlaceType; label: string }[] = [
+  { key: 'skatepark', label: 'Parks' },
+  { key: 'skateshop', label: 'Shops' },
 ];
 
 export function MapControls({
   search,
   onSearchChange,
-  ownershipFilter,
-  onToggleOwnership,
-  difficultyFilter,
-  onToggleDifficulty,
   onOpenFilters,
   activeFilterCount = 0,
-  isPro = false,
   style,
+  placeTypes,
+  onTogglePlaceType,
+  parksLoading = false,
+  shopsLoading = false,
 }: Props) {
   const { theme } = useTheme();
   const c = theme.colors;
 
-  function Chip({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
+  function Chip({
+    label,
+    active,
+    onPress,
+    loading,
+  }: {
+    label: string;
+    active: boolean;
+    onPress: () => void;
+    loading?: boolean;
+  }) {
     return (
       <Pressable
         onPress={onPress}
         style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 6,
           paddingVertical: 6,
           paddingHorizontal: 12,
           borderRadius: 16,
@@ -63,6 +74,7 @@ export function MapControls({
         <Text style={{ fontSize: 13, fontWeight: '600', color: active ? '#ffffff' : c.text }}>
           {label}
         </Text>
+        {loading ? <ActivityIndicator size="small" color={active ? '#ffffff' : c.subtext} /> : null}
       </Pressable>
     );
   }
@@ -107,7 +119,7 @@ export function MapControls({
         horizontal
         showsHorizontalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{ paddingVertical: 8, paddingRight: 12 }}>
+        contentContainerStyle={{ paddingVertical: 8, paddingRight: 88 }}>
         {onOpenFilters ? (
           <>
             <Pressable
@@ -152,28 +164,17 @@ export function MapControls({
                     {activeFilterCount}
                   </Text>
                 </View>
-              ) : !isPro ? (
-                <CrownIcon size={13} />
               ) : null}
             </Pressable>
-            <View style={{ width: 1, backgroundColor: c.border, marginRight: 8, marginVertical: 4 }} />
           </>
         ) : null}
-        {OWNERSHIP.map((o) => (
+        {PLACE_TYPES.map((p) => (
           <Chip
-            key={o.key}
-            label={o.label}
-            active={ownershipFilter.has(o.key)}
-            onPress={() => onToggleOwnership(o.key)}
-          />
-        ))}
-        <View style={{ width: 1, backgroundColor: c.border, marginRight: 8, marginVertical: 4 }} />
-        {DIFFICULTY.map((d) => (
-          <Chip
-            key={d.key}
-            label={d.label}
-            active={difficultyFilter.has(d.key)}
-            onPress={() => onToggleDifficulty(d.key)}
+            key={p.key}
+            label={p.label}
+            active={placeTypes.has(p.key)}
+            loading={p.key === 'skatepark' ? parksLoading : shopsLoading}
+            onPress={() => onTogglePlaceType(p.key)}
           />
         ))}
       </ScrollView>
