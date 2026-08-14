@@ -1060,65 +1060,65 @@ export default function Index() {
     placesPinnedRef.current = true;
 
     try {
-    const known = await searchKnownPlaces(q);
-    if (known.length > 0) {
-      found.push(...known);
-      setPlaces((prev) => mergePlaces(prev, known));
-    }
+      const known = await searchKnownPlaces(q);
+      if (known.length > 0) {
+        found.push(...known);
+        setPlaces((prev) => mergePlaces(prev, known));
+      }
 
-    await Promise.all(
-      (['skatepark', 'skateshop'] as const).map((type) => {
-        const loader = type === 'skatepark' ? loadNearbySkateParks : loadNearbySkateShops;
-        return loader(latitude, longitude, 50000, q, (osm) => {
-          if (osm.length === 0) return;
-          found.push(...osm.filter((p) => !found.some((f) => f.id === p.id)));
-          setPlaces((prev) => mergePlaces(prev, osm));
-        });
-      })
-    );
+      await Promise.all(
+        (['skatepark', 'skateshop'] as const).map((type) => {
+          const loader = type === 'skatepark' ? loadNearbySkateParks : loadNearbySkateShops;
+          return loader(latitude, longitude, 50000, q, (osm) => {
+            if (osm.length === 0) return;
+            found.push(...osm.filter((p) => !found.some((f) => f.id === p.id)));
+            setPlaces((prev) => mergePlaces(prev, osm));
+          });
+        })
+      );
 
-    const words = q.toLowerCase().split(/\s+/).filter(Boolean);
-    const matchingSpots = spots.filter((s) => {
-      const hay = `${s.name ?? ''} ${(s.tags ?? []).join(' ')}`.toLowerCase();
-      return words.every((w) => hay.includes(w));
-    });
-    const uniquePlaces = found.filter((p) => !matchingSpots.some((s) => s.id === p.id));
-    const total = matchingSpots.length + uniquePlaces.length;
+      const words = q.toLowerCase().split(/\s+/).filter(Boolean);
+      const matchingSpots = spots.filter((s) => {
+        const hay = `${s.name ?? ''} ${(s.tags ?? []).join(' ')}`.toLowerCase();
+        return words.every((w) => hay.includes(w));
+      });
+      const uniquePlaces = found.filter((p) => !matchingSpots.some((s) => s.id === p.id));
+      const total = matchingSpots.length + uniquePlaces.length;
 
-    if (total === 0) {
-      toast.show(`Nothing matching “${q}”`);
-      return;
-    }
-
-    if (total === 1) {
-      toast.hide();
-      if (matchingSpots.length === 1) {
-        const spot = matchingSpots[0];
-        setHighlightSpotId(spot.id);
-        highlightSpotIdRef.current = spot.id;
-        animateToSpotWithModalOffset(spot.lat, spot.lng);
-        setTimeout(() => openSpotDetails(spot), 450);
+      if (total === 0) {
+        toast.show(`Nothing matching “${q}”`);
         return;
       }
-      const place = uniquePlaces[0];
-      setSelectedPlaceId(place.id);
-      setSelectedPlace(place);
-      animateToSpotWithModalOffset(place.lat, place.lng, 'small');
-      setPlaceDetailsOpen(true);
-      const full = await fetchPlaceById(place.id);
-      if (full) setSelectedPlace(full);
-      return;
-    }
 
-    const all = [...matchingSpots.map((s) => ({ lat: s.lat, lng: s.lng })), ...uniquePlaces];
-    const nearest = all.reduce((best, p) =>
-      haversineMeters(latitude, longitude, p.lat, p.lng) <
-      haversineMeters(latitude, longitude, best.lat, best.lng)
-        ? p
-        : best
-    );
-    toast.show(`${total} results for “${q}”`);
-    animateToSpotWithModalOffset(nearest.lat, nearest.lng, 'small');
+      if (total === 1) {
+        toast.hide();
+        if (matchingSpots.length === 1) {
+          const spot = matchingSpots[0];
+          setHighlightSpotId(spot.id);
+          highlightSpotIdRef.current = spot.id;
+          animateToSpotWithModalOffset(spot.lat, spot.lng);
+          setTimeout(() => openSpotDetails(spot), 450);
+          return;
+        }
+        const place = uniquePlaces[0];
+        setSelectedPlaceId(place.id);
+        setSelectedPlace(place);
+        animateToSpotWithModalOffset(place.lat, place.lng, 'small');
+        setPlaceDetailsOpen(true);
+        const full = await fetchPlaceById(place.id);
+        if (full) setSelectedPlace(full);
+        return;
+      }
+
+      const all = [...matchingSpots.map((s) => ({ lat: s.lat, lng: s.lng })), ...uniquePlaces];
+      const nearest = all.reduce((best, p) =>
+        haversineMeters(latitude, longitude, p.lat, p.lng) <
+        haversineMeters(latitude, longitude, best.lat, best.lng)
+          ? p
+          : best
+      );
+      toast.show(`${total} results for “${q}”`);
+      animateToSpotWithModalOffset(nearest.lat, nearest.lng, 'small');
     } finally {
       setSearchingPlaces(false);
     }
