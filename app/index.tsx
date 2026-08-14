@@ -41,6 +41,7 @@ import { usePro } from '@/src/context/ProContext';
 import { useSplash } from '@/src/context/SplashContext';
 import { SettingsPanel } from '@/src/components/SettingsPanel';
 import { OnboardingScreen } from '@/src/components/onboarding/OnboardingScreen';
+import { MapTour, TourTargets } from '@/src/components/onboarding/MapTour';
 import { ThemeBackdrop } from '@/src/components/ThemeBackdrop';
 import { ProfileModal } from '@/src/components/profile/ProfileModal';
 import { PublicProfileModal } from '@/src/components/profile/PublicProfileModal';
@@ -48,7 +49,7 @@ import { MySpotMarker } from '@/src/components/SpotMarkers/MySpotMarker';
 import { OtherUsersSpotMarkers } from '@/src/components/SpotMarkers/OtherUsersSpotMarkers';
 import { TrackedMarker } from '@/src/components/SpotMarkers/TrackedMarker';
 import { MapLegend } from '@/src/components/MapLegend';
-import { MapControls } from '@/src/components/MapControls';
+import { MapControls, PlaceType } from '@/src/components/MapControls';
 import { DARK_MAP_STYLE, LIGHT_MAP_STYLE } from '@/src/constants/darkMapStyle';
 import { CreateEventModal } from '@/src/components/CreateEventModal';
 import { EventDetailsModal } from '@/src/components/EventDetailsModal';
@@ -567,6 +568,13 @@ export default function Index() {
 
   const [showOnboarding, setShowOnboarding] = useState(false);
 
+  const menuBtnRef = useRef<View>(null);
+  const settingsBtnRef = useRef<View>(null);
+  const [activePlaceTypes, setActivePlaceTypes] = useState<Set<PlaceType>>(new Set());
+  const placesPinnedRef = useRef(false);
+  const [tourVisible, setTourVisible] = useState(false);
+  const [tourTargets, setTourTargets] = useState<TourTargets>({ menu: null, settings: null });
+
   const [spotType, setSpotType] = useState<'spot' | 'skatepark' | 'skateshop'>('spot');
   const [isAdmin, setIsAdmin] = useState(false);
 
@@ -931,9 +939,10 @@ export default function Index() {
   }
 
   const schedulePlacesClear = useCallback(() => {
+    if (placesPinnedRef.current) return;
     if (placesTimerRef.current) clearTimeout(placesTimerRef.current);
     placesTimerRef.current = setTimeout(() => {
-      if (detailSheetOpenRef.current) {
+      if (placesPinnedRef.current || detailSheetOpenRef.current) {
         schedulePlacesClear();
       } else {
         setPlaces([]);
@@ -967,6 +976,44 @@ export default function Index() {
           haversineMeters(latitude, longitude, s.lat, s.lng) <= radiusMeters
       )
       .map((s) => ({ id: s.id, name: s.name, type, lat: s.lat, lng: s.lng, tags: {} }));
+  }
+
+  async function togglePlaceType(type: PlaceType) {
+    const turningOn = !activePlaceTypes.has(type);
+    setActivePlaceTypes((prev) => {
+      const next = new Set(prev);
+      if (turningOn) next.add(type);
+      else next.delete(type);
+      placesPinnedRef.current = next.size > 0;
+      return next;
+    });
+
+    if (!turningOn) {
+      setPlaces((prev) => prev.filter((p) => p.type !== type));
+      return;
+    }
+
+    if (placesTimerRef.current) {
+      clearTimeout(placesTimerRef.current);
+      placesTimerRef.current = null;
+    }
+
+    const community = communityPlacesNear(type, 20000);
+    if (community.length) setPlaces((prev) => mergePlaces(prev, community));
+
+    const loader = type === 'skatepark' ? loadNearbySkateParks : loadNearbySkateShops;
+    const res = await loader(
+      mapRegionRef.current.latitude,
+      mapRegionRef.current.longitude,
+      20000,
+      undefined,
+      (osm) => setPlaces((prev) => mergePlaces(prev, osm))
+    );
+
+    if (community.length + res.count > 0) return;
+    if (res.status === 'timeout') toast.error('Timed out');
+    else if (res.status === 'error') toast.error('Couldn’t search right now');
+    else toast.show(type === 'skatepark' ? 'No skate parks in this area' : 'No skate shops in this area');
   }
 
   async function autoLoadPlaceType(type: 'skatepark' | 'skateshop') {
@@ -1444,6 +1491,40 @@ export default function Index() {
     };
   }, [session?.user.id]);
 
+  const startMapTour = useCallback(() => {
+    const measure = (ref: React.RefObject<View | null>) =>
+      new Promise<{ x: number; y: number; width: number; height: number } | null>((resolve) => {
+        if (!ref.current) return resolve(null);
+        ref.current.measureInWindow((x, y, width, height) =>
+          resolve(width && height ? { x, y, width, height } : null)
+        );
+      });
+    Promise.all([measure(menuBtnRef), measure(settingsBtnRef)]).then(([menu, settings]) => {
+      setTourTargets({ menu, settings });
+      setTourVisible(true);
+    });
+  }, []);
+
+  useEffect(() => {
+    const userId = session?.user.id;
+    if (!userId) return;
+    let cancelled = false;
+    const storageKey = `map_tour_seen_v1:${userId}`;
+
+    (async () => {
+      const seen = await AsyncStorage.getItem(storageKey);
+      if (seen || cancelled) return;
+      setTimeout(() => {
+        if (cancelled) return;
+        startMapTour();
+      }, 1200);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.user.id]);
+
   useEffect(() => {
     if (!session?.user.id) return;
     const handler = () => {
@@ -1748,7 +1829,7 @@ export default function Index() {
           borderColor: c.border,
           backgroundColor: 'transparent',
         }}>
-        <Pressable onPress={() => setPanelOpen(true)} style={{ padding: 8 }}>
+        <Pressable ref={menuBtnRef} onPress={() => setPanelOpen(true)} style={{ padding: 8 }}>
           <Ionicons name="menu" size={24} color={c.text} />
           {pendingReceived.length + unreadActivityCount + unreadInviteCount + unreadRsvpCount > 0 ? (
             <View
@@ -1803,7 +1884,7 @@ export default function Index() {
               <Ionicons name="refresh" size={20} color={refreshing ? c.accent : c.text} />
             </Animated.View>
           </Pressable>
-          <Pressable onPress={() => setSettingsOpen(true)} style={{ padding: 8 }}>
+          <Pressable ref={settingsBtnRef} onPress={() => setSettingsOpen(true)} style={{ padding: 8 }}>
             <Ionicons name="settings-outline" size={24} color={c.text} />
           </Pressable>
         </View>
@@ -1920,67 +2001,15 @@ export default function Index() {
           setPanelOpen(false);
           setCrewsOpen(true);
         }}
-        parksLoading={parksLoading}
-        shopsLoading={shopsLoading}
         topLoading={topLoading}
         topRated={topRated}
         mySpots={mySpots}
         mySpotsLoading={mySpotsLoading}
-        onLoadSkateparks={() =>
-          requireAuth(async () => {
-            setPanelOpen(false);
-            const token = ++searchSeqRef.current;
-            toast.show('Searching…', { duration: 0 });
-            const communityParks = communityPlacesNear('skatepark', 20000);
-            setPlacesWithAutoClear(() => communityParks);
-            const res = await loadNearbySkateParks(
-              mapRegionRef.current.latitude,
-              mapRegionRef.current.longitude,
-              20000,
-              undefined,
-              (googleParks) => {
-                if (searchSeqRef.current !== token) return;
-                setPlacesWithAutoClear(() => [...communityParks, ...googleParks]);
-              }
-            );
-            if (searchSeqRef.current !== token) return;
-            const total = communityParks.length + res.count;
-            if (total > 0) { toast.hide(); return; }
-            if (res.status === 'timeout') toast.error('Timed out');
-            else if (res.status === 'error') toast.error('Couldn’t search right now');
-            else toast.show('No skate parks in this area');
-          })
-        }
         onOpenProfile={() => {
           setPanelOpen(false);
           loadAllTrickLogs();
           setProfileOpen(true);
         }}
-        onLoadSkateShops={() =>
-          requireAuth(async () => {
-            setPanelOpen(false);
-            const token = ++searchSeqRef.current;
-            toast.show('Searching…', { duration: 0 });
-            const communityShops = communityPlacesNear('skateshop', 20000);
-            setPlacesWithAutoClear(() => communityShops);
-            const res = await loadNearbySkateShops(
-              mapRegionRef.current.latitude,
-              mapRegionRef.current.longitude,
-              20000,
-              undefined,
-              (googleShops) => {
-                if (searchSeqRef.current !== token) return;
-                setPlacesWithAutoClear(() => [...communityShops, ...googleShops]);
-              }
-            );
-            if (searchSeqRef.current !== token) return;
-            const total = communityShops.length + res.count;
-            if (total > 0) { toast.hide(); return; }
-            if (res.status === 'timeout') toast.error('Timed out');
-            else if (res.status === 'error') toast.error('Couldn’t search right now');
-            else toast.show('No skate shops in this area');
-          })
-        }
         onLoadTopRated={() =>
           requireAuth(async () => {
             const topSpot = await loadTopRatedSpotsInArea(mapRegionRef.current, 10);
@@ -2274,8 +2303,8 @@ export default function Index() {
             onPress={() => Linking.openURL('https://www.openstreetmap.org/copyright')}
             style={{
               position: 'absolute',
-              bottom: insets.bottom + 44,
-              left: 10,
+              bottom: insets.bottom + 18,
+              left: 6,
               fontSize: 10,
               color: c.text,
               backgroundColor: c.surface,
@@ -2291,26 +2320,22 @@ export default function Index() {
             style={{ position: 'absolute', top: (headerHeight || insets.top + 56) + 8, left: 12, right: 12 }}
             search={mapSearch}
             onSearchChange={setMapSearch}
-            ownershipFilter={ownershipFilter}
-            onToggleOwnership={toggleOwnershipFilter}
-            difficultyFilter={difficultyFilter}
-            onToggleDifficulty={toggleDifficultyFilter}
-            isPro={isPro}
-            activeFilterCount={countActiveFilters(advFilters)}
+            placeTypes={activePlaceTypes}
+            onTogglePlaceType={(t) => requireAuth(() => togglePlaceType(t))}
+            parksLoading={parksLoading}
+            shopsLoading={shopsLoading}
+            activeFilterCount={
+              countActiveFilters(advFilters) + ownershipFilter.size + difficultyFilter.size
+            }
             onOpenFilters={() =>
               requireAuth(() => {
-                if (!isPro) {
-                  setPaywallHeadline('Unlock advanced filters and find exactly the spots you want.');
-                  setPaywallOpen(true);
-                  return;
-                }
-                warmPlaceCache();
+                if (isPro) warmPlaceCache();
                 setFilterSheetOpen(true);
               })
             }
           />
           <MapLegend
-            style={{ position: 'absolute', top: (headerHeight || insets.top + 56) + 112, right: 12, alignItems: 'flex-end' }}
+            style={{ position: 'absolute', top: (headerHeight || insets.top + 56) + 55, right: 12, alignItems: 'flex-end' }}
           />
           <Pressable
             onPress={recenterToUser}
@@ -2833,6 +2858,7 @@ export default function Index() {
           setPendingFeedbackPostId(null);
         }}
         onShowOnboarding={() => setShowOnboarding(true)}
+        onReplayTour={() => setTimeout(startMapTour, 350)}
       />
       {showOnboarding ? (
         <View
@@ -2847,6 +2873,16 @@ export default function Index() {
           <OnboardingScreen onFinish={() => setShowOnboarding(false)} />
         </View>
       ) : null}
+      <MapTour
+        visible={tourVisible}
+        targets={tourTargets}
+        onFinish={async () => {
+          setTourVisible(false);
+          if (session?.user.id) {
+            await AsyncStorage.setItem(`map_tour_seen_v1:${session.user.id}`, '1');
+          }
+        }}
+      />
       <ProfileModal
         onSelectPlace={async (p) => {
           setProfileOpen(false);
@@ -2979,6 +3015,16 @@ export default function Index() {
           (advFilters.types.includes('skatepark') && parksLoading) ||
           (advFilters.types.includes('skateshop') && shopsLoading)
         }
+        isPro={isPro}
+        onRequestPro={() => {
+          setFilterSheetOpen(false);
+          setPaywallHeadline('Unlock advanced filters and find exactly the spots you want.');
+          setTimeout(() => setPaywallOpen(true), 300);
+        }}
+        ownershipFilter={ownershipFilter}
+        onToggleOwnership={toggleOwnershipFilter}
+        difficultyFilter={difficultyFilter}
+        onToggleDifficulty={toggleDifficultyFilter}
       />
       <SkateCitiesModal
         visible={citiesOpen}

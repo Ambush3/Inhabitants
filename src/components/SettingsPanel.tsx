@@ -28,6 +28,7 @@ type Props = {
   onClose: () => void;
   onSignOut: () => void;
   onShowOnboarding: () => void;
+  onReplayTour: () => void;
   session: Session | null;
   initialFeedbackPostId?: string | null;
 };
@@ -86,6 +87,7 @@ export function SettingsPanel({
   onClose,
   onSignOut,
   onShowOnboarding,
+  onReplayTour,
   session,
   initialFeedbackPostId,
 }: Props) {
@@ -541,6 +543,18 @@ export function SettingsPanel({
                   <View style={rowLeftStyle}>
                     <Ionicons name="information-circle-outline" size={20} color={c.text} />
                     <Text style={{ fontSize: 15, color: c.text }}>How to Use</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color={c.subtext} />
+                </Pressable>
+                <Pressable
+                  onPress={() => {
+                    onClose();
+                    onReplayTour();
+                  }}
+                  style={rowStyle}>
+                  <View style={rowLeftStyle}>
+                    <Ionicons name="compass-outline" size={20} color={c.text} />
+                    <Text style={{ fontSize: 15, color: c.text }}>Replay Tour</Text>
                   </View>
                   <Ionicons name="chevron-forward" size={16} color={c.subtext} />
                 </Pressable>
