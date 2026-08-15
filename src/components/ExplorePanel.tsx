@@ -33,7 +33,6 @@ type Props = {
   onClose: () => void;
   topLoading: boolean;
   topRated: TopRatedItem[];
-  onLoadSkateparks: () => void;
   onLoadTopRated: () => void;
   onOpenCities: () => void;
   onSelectSpot: (spot: Spot) => void;
@@ -47,9 +46,6 @@ type Props = {
   searchResults: Spot[];
   favorites: Spot[];
   favLoading: boolean;
-  onLoadSkateShops: () => void;
-  parksLoading: boolean;
-  shopsLoading: boolean;
   placeFavorites: PlaceFavorite[];
   placeFavLoading: boolean;
   onSelectPlace: (place: Place) => void;
@@ -88,12 +84,8 @@ type Tab = 'explore' | 'myspots' | 'favorites' | 'feed' | 'events';
 export function ExplorePanel({
   visible,
   onClose,
-  parksLoading,
-  shopsLoading,
   topLoading,
   topRated,
-  onLoadSkateparks,
-  onLoadSkateShops,
   onLoadTopRated,
   onOpenCities,
   onSelectSpot,
@@ -774,76 +766,6 @@ export function ExplorePanel({
                   }}>
                   NEARBY
                 </Text>
-                <Pressable
-                  onPress={onLoadSkateparks}
-                  disabled={parksLoading}
-                  style={{
-                    backgroundColor: c.tagBg,
-                    borderRadius: 8,
-                    padding: 12,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 8,
-                    height: 56,
-                    opacity: parksLoading ? 0.6 : 1,
-                    marginBottom: 10,
-                  }}>
-                  <View
-                    style={{
-                      width: 32,
-                      alignItems: 'center',
-                    }}>
-                    <Image
-                      source={require('@/assets/pin-images/skatepark-ramp.png')}
-                      style={{ width: 25, height: 30 }}
-                      tintColor={c.text}
-                    />
-                  </View>
-                  <Text
-                    style={{
-                      color: c.text,
-                      fontWeight: '600',
-                    }}>
-                    {parksLoading ? 'Searching...' : 'Local Skate Parks'}
-                  </Text>
-                </Pressable>
-
-                <Pressable
-                  onPress={onLoadSkateShops}
-                  disabled={shopsLoading}
-                  style={{
-                    backgroundColor: c.tagBg,
-                    borderRadius: 8,
-                    padding: 12,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 8,
-                    height: 56,
-                    opacity: shopsLoading ? 0.6 : 1,
-                    marginBottom: 10,
-                  }}>
-                  <View
-                    style={{
-                      width: 32,
-                      alignItems: 'center',
-                    }}>
-                    <Image
-                      source={require('@/assets/pin-images/skate-shop.png')}
-                      style={{ width: 24, height: 24 }}
-                      tintColor={c.text}
-                    />
-                  </View>
-                  <Text
-                    style={{
-                      color: c.text,
-                      fontWeight: '600',
-                    }}>
-                    {shopsLoading ? 'Searching...' : 'Local Skate Shops'}
-                  </Text>
-                </Pressable>
-
                 <Pressable
                   onPress={() => {
                     setTopRatedSearched(true);

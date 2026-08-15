@@ -24,6 +24,14 @@ const EMPTY_TTL_MS = 24 * 60 * 60 * 1000;
 
 type CacheEntry = { ts: number; places: Place[] };
 
+function buildNameFilter(name?: string): string {
+    const words = (name ?? '').trim().split(/\s+/).filter(Boolean).slice(0, 5);
+    if (words.length === 0) return '';
+    return words
+        .map((w) => `["name"~"${w.replace(/[\\"^$.*+?()[\]{}|]/g, '\\$&')}",i]`)
+        .join('');
+}
+
 function tileCacheKey(lat: number, lng: number, radiusMeters: number, type: string): string {
     const round = (n: number) => (Math.round(n * 10) / 10).toFixed(1);
     return `${CACHE_PREFIX}:${type}:${round(lat)}:${round(lng)}:${radiusMeters}`;
@@ -117,31 +125,33 @@ export function useNearbyPlaces() {
             }
         }
 
-        const proxyController = new AbortController();
-        const proxyTimeoutId = setTimeout(() => proxyController.abort(), PROXY_TIMEOUT_MS);
-        try {
-            const { data, error: fnError } = await supabase.functions.invoke('nearby-places', {
-                body: { lat, lng, radiusMeters, type, name },
-                signal: proxyController.signal,
-            });
-            if (!fnError && data && Array.isArray(data.places)) {
-                const proxyPlaces = data.places as Place[];
-                setError(proxyPlaces.length === 0 ? emptyMessage : null);
-                if (cacheKey) writeTileCache(cacheKey, proxyPlaces);
-                await deliverPlaces(proxyPlaces, onLoaded);
-                setLoading(false);
-                return { status: proxyPlaces.length === 0 ? 'empty' : 'ok', count: proxyPlaces.length };
+        if (!name) {
+            const proxyController = new AbortController();
+            const proxyTimeoutId = setTimeout(() => proxyController.abort(), PROXY_TIMEOUT_MS);
+            try {
+                const { data, error: fnError } = await supabase.functions.invoke('nearby-places', {
+                    body: { lat, lng, radiusMeters, type },
+                    signal: proxyController.signal,
+                });
+                if (!fnError && data && Array.isArray(data.places)) {
+                    const proxyPlaces = data.places as Place[];
+                    setError(proxyPlaces.length === 0 ? emptyMessage : null);
+                    if (cacheKey) writeTileCache(cacheKey, proxyPlaces);
+                    await deliverPlaces(proxyPlaces, onLoaded);
+                    setLoading(false);
+                    return { status: proxyPlaces.length === 0 ? 'empty' : 'ok', count: proxyPlaces.length };
+                }
+            } catch {
+            } finally {
+                clearTimeout(proxyTimeoutId);
             }
-        } catch {
-        } finally {
-            clearTimeout(proxyTimeoutId);
         }
 
         const controller = new AbortController();
         abortRef.current[type] = controller;
         const timeoutId = setTimeout(() => controller.abort(), OVERPASS_TIMEOUT_MS);
 
-        const nameFilter = name ? `["name"~"${name}",i]` : '';
+        const nameFilter = buildNameFilter(name);
 
         const query = type === 'skatepark' ? `
             [out:json][timeout:25];
@@ -226,6 +236,47 @@ export function useNearbyPlaces() {
         return outcome;
     }
 
+    async function searchKnownPlaces(query: string): Promise<Place[]> {
+        const words = query.trim().split(/\s+/).filter(Boolean).slice(0, 5);
+        if (words.length === 0) return [];
+
+        let placeQuery = supabase.from('places').select('id, name, lat, lng, type');
+        let overrideQuery = supabase.from('place_overrides').select('place_id, name');
+        for (const w of words) {
+            placeQuery = placeQuery.ilike('name', `%${w}%`);
+            overrideQuery = overrideQuery.ilike('name', `%${w}%`);
+        }
+
+        const [placeResult, overrideResult] = await Promise.all([
+            placeQuery.limit(25),
+            overrideQuery.limit(25),
+        ]);
+
+        const overrides = (overrideResult.data ?? []) as { place_id: string; name: string }[];
+        const byId = new Map<string, Place>();
+        for (const p of (placeResult.data ?? []) as any[]) {
+            byId.set(p.id, { id: p.id, name: p.name, lat: p.lat, lng: p.lng, type: p.type, tags: {} });
+        }
+
+        const missingIds = overrides.map((o) => o.place_id).filter((id) => !byId.has(id));
+        if (missingIds.length > 0) {
+            const { data } = await supabase
+                .from('places')
+                .select('id, name, lat, lng, type')
+                .in('id', missingIds);
+            for (const p of (data ?? []) as any[]) {
+                byId.set(p.id, { id: p.id, name: p.name, lat: p.lat, lng: p.lng, type: p.type, tags: {} });
+            }
+        }
+
+        for (const o of overrides) {
+            const existing = byId.get(o.place_id);
+            if (existing) byId.set(o.place_id, { ...existing, name: o.name });
+        }
+
+        return [...byId.values()].filter((p) => p.lat != null && p.lng != null);
+    }
+
     async function fetchPlaceById(placeId: string): Promise<Place | null> {
         const [type, id] = placeId.split('-') as ['node' | 'way' | 'relation', string];
 
@@ -284,5 +335,5 @@ export function useNearbyPlaces() {
         return null;
     }
 
-    return { places, setPlaces, parksLoading, shopsLoading, error, loadNearbySkateParks, loadNearbySkateShops, fetchPlaceById };
+    return { places, setPlaces, parksLoading, shopsLoading, error, loadNearbySkateParks, loadNearbySkateShops, fetchPlaceById, searchKnownPlaces };
 }

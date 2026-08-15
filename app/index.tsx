@@ -41,6 +41,7 @@ import { usePro } from '@/src/context/ProContext';
 import { useSplash } from '@/src/context/SplashContext';
 import { SettingsPanel } from '@/src/components/SettingsPanel';
 import { OnboardingScreen } from '@/src/components/onboarding/OnboardingScreen';
+import { MapTour, TourTargets } from '@/src/components/onboarding/MapTour';
 import { ThemeBackdrop } from '@/src/components/ThemeBackdrop';
 import { ProfileModal } from '@/src/components/profile/ProfileModal';
 import { PublicProfileModal } from '@/src/components/profile/PublicProfileModal';
@@ -48,7 +49,7 @@ import { MySpotMarker } from '@/src/components/SpotMarkers/MySpotMarker';
 import { OtherUsersSpotMarkers } from '@/src/components/SpotMarkers/OtherUsersSpotMarkers';
 import { TrackedMarker } from '@/src/components/SpotMarkers/TrackedMarker';
 import { MapLegend } from '@/src/components/MapLegend';
-import { MapControls } from '@/src/components/MapControls';
+import { MapControls, PlaceType } from '@/src/components/MapControls';
 import { DARK_MAP_STYLE, LIGHT_MAP_STYLE } from '@/src/constants/darkMapStyle';
 import { CreateEventModal } from '@/src/components/CreateEventModal';
 import { EventDetailsModal } from '@/src/components/EventDetailsModal';
@@ -99,6 +100,8 @@ const DEFAULT_REGION: Region = {
   latitudeDelta: 0.15,
   longitudeDelta: 0.15,
 };
+
+const PLACE_RELOAD_METERS = 10000;
 
 function rendersAsSpotMarker(spot: { id: string; spot_type?: string }, highlightSpotId: string | null) {
   return spot.spot_type !== 'skateshop' || spot.id === highlightSpotId;
@@ -449,6 +452,7 @@ export default function Index() {
     loadNearbySkateParks,
     loadNearbySkateShops,
     fetchPlaceById,
+    searchKnownPlaces,
   } = useNearbyPlaces();
   const { topRated, topLoading, error: topRatedError, loadTopRatedSpotsInArea, clearTopRated } = useTopRated();
 
@@ -566,6 +570,17 @@ export default function Index() {
   const [refreshing, setRefreshing] = useState(false);
 
   const [showOnboarding, setShowOnboarding] = useState(false);
+
+  const menuBtnRef = useRef<View>(null);
+  const settingsBtnRef = useRef<View>(null);
+  const [activePlaceTypes, setActivePlaceTypes] = useState<Set<PlaceType>>(new Set());
+  const placesPinnedRef = useRef(false);
+  const lastPlaceLoadRef = useRef<{ lat: number; lng: number } | null>(null);
+  const searchPinnedRef = useRef(false);
+  const [searchingPlaces, setSearchingPlaces] = useState(false);
+  const regionPlaceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [tourVisible, setTourVisible] = useState(false);
+  const [tourTargets, setTourTargets] = useState<TourTargets>({ menu: null, settings: null });
 
   const [spotType, setSpotType] = useState<'spot' | 'skatepark' | 'skateshop'>('spot');
   const [isAdmin, setIsAdmin] = useState(false);
@@ -817,14 +832,24 @@ export default function Index() {
     const spotIds = new Set(
       visibleSpots.filter((s) => rendersAsSpotMarker(s, highlightSpotId)).map((s) => s.id)
     );
+    const placeWords = mapSearch.trim().toLowerCase().split(/\s+/).filter(Boolean);
     const seen = new Set<string>();
     return places.filter((p) => {
+      if (placeWords.length > 0) {
+        const n = p.name?.toLowerCase() ?? '';
+        if (!placeWords.every((w) => n.includes(w))) return false;
+      }
       if (spotIds.has(p.id) || seen.has(p.id)) return false;
-      if (advFilters.types.length > 0 && !advFilters.types.includes(p.type)) return false;
+      if (
+        advFilters.types.length > 0 &&
+        !advFilters.types.includes(p.type) &&
+        !activePlaceTypes.has(p.type)
+      )
+        return false;
       seen.add(p.id);
       return true;
     });
-  }, [places, visibleSpots, advFilters, highlightSpotId]);
+  }, [places, visibleSpots, advFilters, highlightSpotId, activePlaceTypes, mapSearch]);
 
   const toggleOwnershipFilter = (key: 'mine' | 'friends' | 'community') =>
     setOwnershipFilter((prev) => {
@@ -931,9 +956,10 @@ export default function Index() {
   }
 
   const schedulePlacesClear = useCallback(() => {
+    if (placesPinnedRef.current) return;
     if (placesTimerRef.current) clearTimeout(placesTimerRef.current);
     placesTimerRef.current = setTimeout(() => {
-      if (detailSheetOpenRef.current) {
+      if (placesPinnedRef.current || detailSheetOpenRef.current) {
         schedulePlacesClear();
       } else {
         setPlaces([]);
@@ -969,17 +995,133 @@ export default function Index() {
       .map((s) => ({ id: s.id, name: s.name, type, lat: s.lat, lng: s.lng, tags: {} }));
   }
 
-  async function autoLoadPlaceType(type: 'skatepark' | 'skateshop') {
+  async function loadPlacesForRegion(type: PlaceType, quiet = false) {
+    if (placesTimerRef.current) {
+      clearTimeout(placesTimerRef.current);
+      placesTimerRef.current = null;
+    }
+    lastPlaceLoadRef.current = {
+      lat: mapRegionRef.current.latitude,
+      lng: mapRegionRef.current.longitude,
+    };
+
     const community = communityPlacesNear(type, 20000);
-    if (community.length) setPlacesWithAutoClear((prev) => mergePlaces(prev, community));
+    if (community.length) setPlaces((prev) => mergePlaces(prev, community));
+
     const loader = type === 'skatepark' ? loadNearbySkateParks : loadNearbySkateShops;
-    await loader(
+    const res = await loader(
       mapRegionRef.current.latitude,
       mapRegionRef.current.longitude,
       20000,
       undefined,
-      (osm) => setPlacesWithAutoClear((prev) => mergePlaces(prev, osm))
+      (osm) => setPlaces((prev) => mergePlaces(prev, osm))
     );
+
+    if (quiet || community.length + res.count > 0) return;
+    if (res.status === 'timeout') toast.error('Timed out');
+    else if (res.status === 'error') toast.error('Couldn’t search right now');
+    else toast.show(type === 'skatepark' ? 'No skate parks in this area' : 'No skate shops in this area');
+  }
+
+  async function setPlaceTypeActive(type: PlaceType, on: boolean) {
+    setActivePlaceTypes((prev) => {
+      if (prev.has(type) === on) return prev;
+      const next = new Set(prev);
+      if (on) next.add(type);
+      else next.delete(type);
+      placesPinnedRef.current = next.size > 0 || searchPinnedRef.current;
+      return next;
+    });
+
+    if (!on) {
+      setPlaces((prev) => prev.filter((p) => p.type !== type));
+      return;
+    }
+    await loadPlacesForRegion(type);
+  }
+
+  function togglePlaceType(type: PlaceType) {
+    return setPlaceTypeActive(type, !activePlaceTypes.has(type));
+  }
+
+  async function searchPlacesByName() {
+    const q = mapSearch.trim();
+    if (!q) return;
+    if (placesTimerRef.current) {
+      clearTimeout(placesTimerRef.current);
+      placesTimerRef.current = null;
+    }
+    const { latitude, longitude } = mapRegionRef.current;
+    const found: Place[] = [];
+    toast.show('Searching…', { duration: 0 });
+
+    setSearchingPlaces(true);
+    searchPinnedRef.current = true;
+    placesPinnedRef.current = true;
+
+    try {
+      const known = await searchKnownPlaces(q);
+      if (known.length > 0) {
+        found.push(...known);
+        setPlaces((prev) => mergePlaces(prev, known));
+      }
+
+      await Promise.all(
+        (['skatepark', 'skateshop'] as const).map((type) => {
+          const loader = type === 'skatepark' ? loadNearbySkateParks : loadNearbySkateShops;
+          return loader(latitude, longitude, 50000, q, (osm) => {
+            if (osm.length === 0) return;
+            found.push(...osm.filter((p) => !found.some((f) => f.id === p.id)));
+            setPlaces((prev) => mergePlaces(prev, osm));
+          });
+        })
+      );
+
+      const words = q.toLowerCase().split(/\s+/).filter(Boolean);
+      const matchingSpots = spots.filter((s) => {
+        const hay = `${s.name ?? ''} ${(s.tags ?? []).join(' ')}`.toLowerCase();
+        return words.every((w) => hay.includes(w));
+      });
+      const uniquePlaces = found.filter((p) => !matchingSpots.some((s) => s.id === p.id));
+      const total = matchingSpots.length + uniquePlaces.length;
+
+      if (total === 0) {
+        toast.show(`Nothing matching “${q}”`);
+        return;
+      }
+
+      if (total === 1) {
+        toast.hide();
+        if (matchingSpots.length === 1) {
+          const spot = matchingSpots[0];
+          setHighlightSpotId(spot.id);
+          highlightSpotIdRef.current = spot.id;
+          animateToSpotWithModalOffset(spot.lat, spot.lng);
+          setTimeout(() => openSpotDetails(spot), 450);
+          return;
+        }
+        const place = uniquePlaces[0];
+        setSelectedPlaceId(place.id);
+        setSelectedPlace(place);
+        animateToSpotWithModalOffset(place.lat, place.lng, 'small');
+        setPlaceDetailsOpen(true);
+        const full = await fetchPlaceById(place.id);
+        if (full) setSelectedPlace(full);
+        return;
+      }
+
+      const all = [...matchingSpots.map((s) => ({ lat: s.lat, lng: s.lng })), ...uniquePlaces];
+      const nearest = all.reduce((best, p) =>
+        haversineMeters(latitude, longitude, p.lat, p.lng) <
+        haversineMeters(latitude, longitude, best.lat, best.lng)
+          ? p
+          : best
+      );
+      toast.show(`${total} results for “${q}”`);
+      animateToSpotWithModalOffset(nearest.lat, nearest.lng, 'small');
+    } finally {
+      setSearchingPlaces(false);
+    }
   }
 
   function warmPlaceCache() {
@@ -992,17 +1134,9 @@ export default function Index() {
     }
   }
 
-  const autoLoadedTypesRef = useRef<Set<'skatepark' | 'skateshop'>>(new Set());
   useEffect(() => {
     (['skatepark', 'skateshop'] as const).forEach((t) => {
-      if (advFilters.types.includes(t)) {
-        if (!autoLoadedTypesRef.current.has(t)) {
-          autoLoadedTypesRef.current.add(t);
-          autoLoadPlaceType(t);
-        }
-      } else {
-        autoLoadedTypesRef.current.delete(t);
-      }
+      if (advFilters.types.includes(t) && !activePlaceTypes.has(t)) setPlaceTypeActive(t, true);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [advFilters.types]);
@@ -1444,6 +1578,40 @@ export default function Index() {
     };
   }, [session?.user.id]);
 
+  const startMapTour = useCallback(() => {
+    const measure = (ref: React.RefObject<View | null>) =>
+      new Promise<{ x: number; y: number; width: number; height: number } | null>((resolve) => {
+        if (!ref.current) return resolve(null);
+        ref.current.measureInWindow((x, y, width, height) =>
+          resolve(width && height ? { x, y, width, height } : null)
+        );
+      });
+    Promise.all([measure(menuBtnRef), measure(settingsBtnRef)]).then(([menu, settings]) => {
+      setTourTargets({ menu, settings });
+      setTourVisible(true);
+    });
+  }, []);
+
+  useEffect(() => {
+    const userId = session?.user.id;
+    if (!userId) return;
+    let cancelled = false;
+    const storageKey = `map_tour_seen_v1:${userId}`;
+
+    (async () => {
+      const seen = await AsyncStorage.getItem(storageKey);
+      if (seen || cancelled) return;
+      setTimeout(() => {
+        if (cancelled) return;
+        startMapTour();
+      }, 1200);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.user.id]);
+
   useEffect(() => {
     if (!session?.user.id) return;
     const handler = () => {
@@ -1748,7 +1916,7 @@ export default function Index() {
           borderColor: c.border,
           backgroundColor: 'transparent',
         }}>
-        <Pressable onPress={() => setPanelOpen(true)} style={{ padding: 8 }}>
+        <Pressable ref={menuBtnRef} onPress={() => setPanelOpen(true)} style={{ padding: 8 }}>
           <Ionicons name="menu" size={24} color={c.text} />
           {pendingReceived.length + unreadActivityCount + unreadInviteCount + unreadRsvpCount > 0 ? (
             <View
@@ -1803,7 +1971,7 @@ export default function Index() {
               <Ionicons name="refresh" size={20} color={refreshing ? c.accent : c.text} />
             </Animated.View>
           </Pressable>
-          <Pressable onPress={() => setSettingsOpen(true)} style={{ padding: 8 }}>
+          <Pressable ref={settingsBtnRef} onPress={() => setSettingsOpen(true)} style={{ padding: 8 }}>
             <Ionicons name="settings-outline" size={24} color={c.text} />
           </Pressable>
         </View>
@@ -1920,67 +2088,15 @@ export default function Index() {
           setPanelOpen(false);
           setCrewsOpen(true);
         }}
-        parksLoading={parksLoading}
-        shopsLoading={shopsLoading}
         topLoading={topLoading}
         topRated={topRated}
         mySpots={mySpots}
         mySpotsLoading={mySpotsLoading}
-        onLoadSkateparks={() =>
-          requireAuth(async () => {
-            setPanelOpen(false);
-            const token = ++searchSeqRef.current;
-            toast.show('Searching…', { duration: 0 });
-            const communityParks = communityPlacesNear('skatepark', 20000);
-            setPlacesWithAutoClear(() => communityParks);
-            const res = await loadNearbySkateParks(
-              mapRegionRef.current.latitude,
-              mapRegionRef.current.longitude,
-              20000,
-              undefined,
-              (googleParks) => {
-                if (searchSeqRef.current !== token) return;
-                setPlacesWithAutoClear(() => [...communityParks, ...googleParks]);
-              }
-            );
-            if (searchSeqRef.current !== token) return;
-            const total = communityParks.length + res.count;
-            if (total > 0) { toast.hide(); return; }
-            if (res.status === 'timeout') toast.error('Timed out');
-            else if (res.status === 'error') toast.error('Couldn’t search right now');
-            else toast.show('No skate parks in this area');
-          })
-        }
         onOpenProfile={() => {
           setPanelOpen(false);
           loadAllTrickLogs();
           setProfileOpen(true);
         }}
-        onLoadSkateShops={() =>
-          requireAuth(async () => {
-            setPanelOpen(false);
-            const token = ++searchSeqRef.current;
-            toast.show('Searching…', { duration: 0 });
-            const communityShops = communityPlacesNear('skateshop', 20000);
-            setPlacesWithAutoClear(() => communityShops);
-            const res = await loadNearbySkateShops(
-              mapRegionRef.current.latitude,
-              mapRegionRef.current.longitude,
-              20000,
-              undefined,
-              (googleShops) => {
-                if (searchSeqRef.current !== token) return;
-                setPlacesWithAutoClear(() => [...communityShops, ...googleShops]);
-              }
-            );
-            if (searchSeqRef.current !== token) return;
-            const total = communityShops.length + res.count;
-            if (total > 0) { toast.hide(); return; }
-            if (res.status === 'timeout') toast.error('Timed out');
-            else if (res.status === 'error') toast.error('Couldn’t search right now');
-            else toast.show('No skate shops in this area');
-          })
-        }
         onLoadTopRated={() =>
           requireAuth(async () => {
             const topSpot = await loadTopRatedSpotsInArea(mapRegionRef.current, 10);
@@ -2244,6 +2360,18 @@ export default function Index() {
           regionWriteTimerRef.current = setTimeout(() => {
             AsyncStorage.setItem('cached_last_map_region', JSON.stringify(r)).catch(() => { });
           }, 1000);
+
+          if (activePlaceTypes.size > 0) {
+            if (regionPlaceTimerRef.current) clearTimeout(regionPlaceTimerRef.current);
+            regionPlaceTimerRef.current = setTimeout(() => {
+              const last = lastPlaceLoadRef.current;
+              const moved =
+                !last ||
+                haversineMeters(last.lat, last.lng, r.latitude, r.longitude) > PLACE_RELOAD_METERS;
+              if (!moved) return;
+              activePlaceTypes.forEach((t) => loadPlacesForRegion(t, true));
+            }, 900);
+          }
         }}
         onLongPress={onLongPress}
         markerRefs={markerRefs}
@@ -2274,8 +2402,8 @@ export default function Index() {
             onPress={() => Linking.openURL('https://www.openstreetmap.org/copyright')}
             style={{
               position: 'absolute',
-              bottom: insets.bottom + 44,
-              left: 10,
+              bottom: insets.bottom + 18,
+              left: 6,
               fontSize: 10,
               color: c.text,
               backgroundColor: c.surface,
@@ -2290,27 +2418,31 @@ export default function Index() {
           <MapControls
             style={{ position: 'absolute', top: (headerHeight || insets.top + 56) + 8, left: 12, right: 12 }}
             search={mapSearch}
-            onSearchChange={setMapSearch}
-            ownershipFilter={ownershipFilter}
-            onToggleOwnership={toggleOwnershipFilter}
-            difficultyFilter={difficultyFilter}
-            onToggleDifficulty={toggleDifficultyFilter}
-            isPro={isPro}
-            activeFilterCount={countActiveFilters(advFilters)}
+            onSearchChange={(t) => {
+              setMapSearch(t);
+              if (!t.trim() && searchPinnedRef.current) {
+                searchPinnedRef.current = false;
+                placesPinnedRef.current = activePlaceTypes.size > 0;
+                if (!placesPinnedRef.current) schedulePlacesClear();
+              }
+            }}
+            placeTypes={activePlaceTypes}
+            onTogglePlaceType={(t) => requireAuth(() => togglePlaceType(t))}
+            onSubmitSearch={() => requireAuth(() => searchPlacesByName())}
+            parksLoading={parksLoading && !searchingPlaces}
+            shopsLoading={shopsLoading && !searchingPlaces}
+            activeFilterCount={
+              countActiveFilters(advFilters) + ownershipFilter.size + difficultyFilter.size
+            }
             onOpenFilters={() =>
               requireAuth(() => {
-                if (!isPro) {
-                  setPaywallHeadline('Unlock advanced filters and find exactly the spots you want.');
-                  setPaywallOpen(true);
-                  return;
-                }
-                warmPlaceCache();
+                if (isPro) warmPlaceCache();
                 setFilterSheetOpen(true);
               })
             }
           />
           <MapLegend
-            style={{ position: 'absolute', top: (headerHeight || insets.top + 56) + 112, right: 12, alignItems: 'flex-end' }}
+            style={{ position: 'absolute', top: (headerHeight || insets.top + 56) + 55, right: 12, alignItems: 'flex-end' }}
           />
           <Pressable
             onPress={recenterToUser}
@@ -2833,6 +2965,7 @@ export default function Index() {
           setPendingFeedbackPostId(null);
         }}
         onShowOnboarding={() => setShowOnboarding(true)}
+        onReplayTour={() => setTimeout(startMapTour, 350)}
       />
       {showOnboarding ? (
         <View
@@ -2847,6 +2980,16 @@ export default function Index() {
           <OnboardingScreen onFinish={() => setShowOnboarding(false)} />
         </View>
       ) : null}
+      <MapTour
+        visible={tourVisible}
+        targets={tourTargets}
+        onFinish={async () => {
+          setTourVisible(false);
+          if (session?.user.id) {
+            await AsyncStorage.setItem(`map_tour_seen_v1:${session.user.id}`, '1');
+          }
+        }}
+      />
       <ProfileModal
         onSelectPlace={async (p) => {
           setProfileOpen(false);
@@ -2979,6 +3122,16 @@ export default function Index() {
           (advFilters.types.includes('skatepark') && parksLoading) ||
           (advFilters.types.includes('skateshop') && shopsLoading)
         }
+        isPro={isPro}
+        onRequestPro={() => {
+          setFilterSheetOpen(false);
+          setPaywallHeadline('Unlock advanced filters and find exactly the spots you want.');
+          setTimeout(() => setPaywallOpen(true), 300);
+        }}
+        ownershipFilter={ownershipFilter}
+        onToggleOwnership={toggleOwnershipFilter}
+        difficultyFilter={difficultyFilter}
+        onToggleDifficulty={toggleDifficultyFilter}
       />
       <SkateCitiesModal
         visible={citiesOpen}

@@ -59,6 +59,21 @@ export function countActiveFilters(f: MapFilters): number {
   );
 }
 
+export type Ownership = 'mine' | 'friends' | 'community';
+export type Difficulty = 'beginner' | 'intermediate' | 'advanced';
+
+const OWNERSHIP: { key: Ownership; label: string }[] = [
+  { key: 'mine', label: 'Mine' },
+  { key: 'friends', label: 'Friends' },
+  { key: 'community', label: 'Community' },
+];
+
+const DIFFICULTY: { key: Difficulty; label: string }[] = [
+  { key: 'beginner', label: 'Beginner' },
+  { key: 'intermediate', label: 'Intermediate' },
+  { key: 'advanced', label: 'Advanced' },
+];
+
 export function MapFilterSheet({
   visible,
   onClose,
@@ -66,6 +81,12 @@ export function MapFilterSheet({
   onChange,
   resultCount,
   loading = false,
+  isPro = false,
+  onRequestPro,
+  ownershipFilter,
+  onToggleOwnership,
+  difficultyFilter,
+  onToggleDifficulty,
 }: {
   visible: boolean;
   onClose: () => void;
@@ -73,6 +94,12 @@ export function MapFilterSheet({
   onChange: (f: MapFilters) => void;
   resultCount: number;
   loading?: boolean;
+  isPro?: boolean;
+  onRequestPro?: () => void;
+  ownershipFilter: Set<Ownership>;
+  onToggleOwnership: (key: Ownership) => void;
+  difficultyFilter: Set<Difficulty>;
+  onToggleDifficulty: (key: Difficulty) => void;
 }) {
   const { theme } = useTheme();
   const c = theme.colors;
@@ -160,20 +187,24 @@ export function MapFilterSheet({
     title,
     hint,
     disabled = false,
+    pro = false,
     children,
   }: {
     title: string;
     hint?: string;
     disabled?: boolean;
+    pro?: boolean;
     children: React.ReactNode;
   }) {
+    const locked = pro && !isPro;
     return (
       <View style={{ marginBottom: 22 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6, marginBottom: 10 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 }}>
           <Text
             style={{ fontSize: 12, fontWeight: '700', color: c.subtext, letterSpacing: 0.6 }}>
             {title}
           </Text>
+          {locked ? <CrownIcon size={13} /> : null}
           {disabled ? (
             <Text style={{ fontSize: 11, color: c.subtext, opacity: 0.8 }}>
               (n/a for parks & shops)
@@ -182,7 +213,15 @@ export function MapFilterSheet({
             <Text style={{ fontSize: 11, color: c.subtext, opacity: 0.8 }}>({hint})</Text>
           ) : null}
         </View>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>{children}</View>
+        {locked ? (
+          <Pressable onPress={onRequestPro}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, opacity: 0.45 }} pointerEvents="none">
+              {children}
+            </View>
+          </Pressable>
+        ) : (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>{children}</View>
+        )}
       </View>
     );
   }
@@ -214,10 +253,7 @@ export function MapFilterSheet({
               paddingHorizontal: 20,
               marginBottom: 16,
             }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
-              <CrownIcon size={18} />
-              <Text style={{ fontSize: 18, fontWeight: '800', color: c.text }}>Filters</Text>
-            </View>
+            <Text style={{ fontSize: 18, fontWeight: '800', color: c.text }}>Filters</Text>
             <Pressable onPress={onClose}>
               <Ionicons name="close" size={24} color={c.subtext} />
             </Pressable>
@@ -227,7 +263,30 @@ export function MapFilterSheet({
             style={{ paddingHorizontal: 20 }}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: 16 }}>
-            <Section title="FEATURE" disabled={placeOnly}>
+            <Section title="SHOW">
+              {OWNERSHIP.map((o) => (
+                <Chip
+                  key={o.key}
+                  label={o.label}
+                  active={ownershipFilter.has(o.key)}
+                  onPress={() => onToggleOwnership(o.key)}
+                />
+              ))}
+            </Section>
+
+            <Section title="DIFFICULTY" disabled={placeOnly}>
+              {DIFFICULTY.map((d) => (
+                <Chip
+                  key={d.key}
+                  label={d.label}
+                  active={difficultyFilter.has(d.key)}
+                  onPress={() => onToggleDifficulty(d.key)}
+                  disabled={placeOnly}
+                />
+              ))}
+            </Section>
+
+            <Section title="FEATURE" disabled={placeOnly} pro>
               {FEATURES.map((f) => (
                 <Chip
                   key={f.key}
@@ -239,7 +298,7 @@ export function MapFilterSheet({
               ))}
             </Section>
 
-            <Section title="RATING" disabled={placeOnly}>
+            <Section title="RATING" disabled={placeOnly} pro>
               {[1, 2, 3, 4, 5].map((r) => (
                 <Chip
                   key={r}
@@ -251,7 +310,7 @@ export function MapFilterSheet({
               ))}
             </Section>
 
-            <Section title="TYPE">
+            <Section title="TYPE" pro>
               {(
                 [
                   ['spot', 'Skate Spot'],
@@ -268,7 +327,7 @@ export function MapFilterSheet({
               ))}
             </Section>
 
-            <Section title="VISITED" disabled={placeOnly}>
+            <Section title="VISITED" disabled={placeOnly} pro>
               {(
                 [
                   ['all', 'All'],
@@ -286,7 +345,7 @@ export function MapFilterSheet({
               ))}
             </Section>
 
-            <Section title="TRUST" hint="rated by 3+ skaters" disabled={placeOnly}>
+            <Section title="TRUST" hint="rated by 3+ skaters" disabled={placeOnly} pro>
               <Chip
                 label="Verified only"
                 icon="shield-checkmark"
