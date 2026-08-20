@@ -32,6 +32,8 @@ import { useToast, ToastHost } from '@/src/context/ToastContext';
 
 import { CONDITION_META, SpotCondition } from '@/src/hooks/useSpotConditions';
 import { useCheckIns, SpotVisitor } from '@/src/hooks/useCheckIns';
+import { useCheckInTags } from '@/src/hooks/useCheckInTags';
+import { SkatedWithModal } from '@/src/components/SkatedWithModal';
 import { useCheckInMedia, PendingMedia } from '@/src/hooks/useCheckInMedia';
 import { SessionMediaStrip } from '@/src/components/SessionMediaStrip';
 import { SessionMediaViewerModal, ViewerMedia } from '@/src/components/SessionMediaViewerModal';
@@ -451,7 +453,17 @@ export function SpotDetailsModal({
     setPendingImages([]);
   }
 
-  const { checkIn, checkingIn, getVisitorCount, getSpotVisitors, hasCheckedInWithinCooldown } = useCheckIns();
+  const {
+    checkIn,
+    checkingIn,
+    getVisitorCount,
+    getSpotVisitors,
+    hasCheckedInWithinCooldown,
+    getLastCheckInSummary,
+    undoCheckIn,
+  } = useCheckIns();
+  const { tagSkaters, tagging } = useCheckInTags();
+  const [skatedWithCheckInId, setSkatedWithCheckInId] = useState<string | null>(null);
   const [visitorsOpen, setVisitorsOpen] = useState(false);
   const [visitors, setVisitors] = useState<SpotVisitor[]>([]);
   const [visitorsLoading, setVisitorsLoading] = useState(false);
@@ -493,12 +505,51 @@ export function SpotDetailsModal({
     else toast.success(`${res.uploaded} item${res.uploaded === 1 ? '' : 's'} added.`);
   }
 
+  async function runUndoCheckIn(checkInId: string, spotId: string) {
+    const result = await undoCheckIn(checkInId);
+    if (!result.success) {
+      showAlert('Could not undo', result.error);
+      return;
+    }
+    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setAlreadyCheckedInToday(await hasCheckedInWithinCooldown(spotId));
+    setVisitorCount(await getVisitorCount(spotId));
+    await sessionMedia.loadMediaForSpot(spotId);
+  }
+
+  async function confirmUndoCheckIn(spotId: string) {
+    const summary = await getLastCheckInSummary(spotId);
+    if (!summary) {
+      showAlert('Nothing to undo', 'No check-in found for this spot.');
+      return;
+    }
+
+    const mediaWarning =
+      summary.mediaCount > 0
+        ? ` This also deletes ${summary.mediaCount} photo${summary.mediaCount === 1 ? '' : 's'} or clip${summary.mediaCount === 1 ? '' : 's'} from that session.`
+        : '';
+
+    showAlert(
+      'Undo check-in?',
+      `Your most recent visit here will be removed from your passport.${mediaWarning} This can't be undone.`,
+      [
+        { text: 'Keep It', style: 'cancel' },
+        {
+          text: 'Undo Check-In',
+          style: 'destructive',
+          onPress: () => runUndoCheckIn(summary.id, spotId),
+        },
+      ]
+    );
+  }
+
   function promptAddSessionMedia(checkInId: string, spotId: string) {
     showAlert(
       'Add a photo or clip?',
       'Capture this session and tie it to your passport entry.',
       [
         { text: 'Skip', style: 'cancel' },
+        { text: 'Tag Who You Skated With', onPress: () => setSkatedWithCheckInId(checkInId) },
         { text: 'Add', onPress: () => pickAndUploadSpotMedia(spotId, checkInId) },
       ]
     );
@@ -1164,9 +1215,14 @@ export function SpotDetailsModal({
                     if (alreadyCheckedInToday) {
                       showAlert(
                         'Check in again?',
-                        "You already checked in here today. This will add another visit to your passport but won't post to your feed.",
+                        'You already checked in here today. This adds another visit to your passport.',
                         [
                           { text: 'Cancel', style: 'cancel' },
+                          {
+                            text: 'Undo Last Check-In',
+                            style: 'destructive',
+                            onPress: () => confirmUndoCheckIn(spot.id),
+                          },
                           {
                             text: 'Check In Again',
                             onPress: async () => {
@@ -1192,15 +1248,28 @@ export function SpotDetailsModal({
                       setVisitorCount((prev) => (prev === null ? 1 : prev + 1));
                       showAlert(
                         'Checked in!',
-                        'Added to your passport and shared to your feed. Add a photo or clip from this session?',
+                        'Added to your passport and shared to your feed.',
                         [
-                          { text: 'Skip', style: 'cancel' },
+                          { text: 'Done', style: 'cancel' },
+                          {
+                            text: 'Tag Who You Skated With',
+                            onPress: () => {
+                              if (result.checkInId) setSkatedWithCheckInId(result.checkInId);
+                            },
+                          },
                           {
                             text: 'Add Photo/Clip',
                             onPress: () => {
                               if (result.checkInId) {
                                 pickAndUploadSpotMedia(spot.id, result.checkInId);
                               }
+                            },
+                          },
+                          {
+                            text: 'Undo Check-In',
+                            style: 'destructive',
+                            onPress: () => {
+                              if (result.checkInId) runUndoCheckIn(result.checkInId, spot.id);
                             },
                           },
                         ]
@@ -1593,6 +1662,21 @@ export function SpotDetailsModal({
         onClose={() => setTrickLogOpen(false)}
         onLogTrick={onLogTrickSubmit}
         onDeleteTrickLog={onDeleteTrickLog}
+      />
+      <SkatedWithModal
+        visible={!!skatedWithCheckInId}
+        saving={tagging}
+        onClose={() => setSkatedWithCheckInId(null)}
+        onConfirm={async (userIds) => {
+          if (!skatedWithCheckInId || !spot) return;
+          const result = await tagSkaters(skatedWithCheckInId, spot.id, userIds);
+          setSkatedWithCheckInId(null);
+          if (!result.success) {
+            showAlert('Could not tag friends', result.error);
+            return;
+          }
+          await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        }}
       />
       {/* ── Flag modal ── */}
       <Modal

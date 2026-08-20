@@ -10,6 +10,7 @@ export type NotificationPrefs = {
   notify_friend_accepted: boolean;
   notify_event_invite: boolean;
   notify_event_reminder: boolean;
+  notify_skated_with: boolean;
 };
 
 const DEFAULTS: NotificationPrefs = {
@@ -21,6 +22,7 @@ const DEFAULTS: NotificationPrefs = {
   notify_friend_accepted: true,
   notify_event_invite: true,
   notify_event_reminder: true,
+  notify_skated_with: true,
 };
 
 export function useNotificationPreferences() {
@@ -48,6 +50,7 @@ export function useNotificationPreferences() {
         notify_friend_accepted: data.notify_friend_accepted,
         notify_event_invite: data.notify_event_invite ?? true,
         notify_event_reminder: data.notify_event_reminder ?? true,
+        notify_skated_with: data.notify_skated_with ?? true,
       });
     } else {
       setPrefs(DEFAULTS);
