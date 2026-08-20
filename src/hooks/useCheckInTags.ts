@@ -13,39 +13,58 @@ export const MAX_TAGS_PER_CHECK_IN = 10;
 export function useCheckInTags() {
   const [tagging, setTagging] = useState(false);
 
-  const tagSkaters = useCallback(
+  const setTags = useCallback(
     async (
       checkInId: string,
       spotId: string,
-      userIds: string[]
+      nextUserIds: string[]
     ): Promise<{ success: boolean; error?: string }> => {
-      if (userIds.length === 0) return { success: true };
-
       const {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) return { success: false, error: 'Not authenticated' };
 
-      const ids = userIds.slice(0, MAX_TAGS_PER_CHECK_IN);
+      const { data: existingRows } = await supabase
+        .from('check_in_tags')
+        .select('tagged_user_id')
+        .eq('check_in_id', checkInId);
+
+      const existing = new Set((existingRows ?? []).map((r: any) => r.tagged_user_id));
+      const next = new Set(nextUserIds.slice(0, MAX_TAGS_PER_CHECK_IN));
+
+      const added = [...next].filter((id) => !existing.has(id));
+      const removed = [...existing].filter((id) => !next.has(id));
 
       setTagging(true);
       try {
-        const { error } = await supabase.from('check_in_tags').insert(
-          ids.map((id) => ({
-            check_in_id: checkInId,
-            tagged_user_id: id,
-            tagged_by: user.id,
-          }))
-        );
-        if (error) return { success: false, error: error.message };
+        if (removed.length > 0) {
+          const { error } = await supabase
+            .from('check_in_tags')
+            .delete()
+            .eq('check_in_id', checkInId)
+            .in('tagged_user_id', removed);
+          if (error) return { success: false, error: error.message };
+        }
 
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('username')
-          .eq('id', user.id)
-          .maybeSingle();
+        if (added.length > 0) {
+          const { error } = await supabase.from('check_in_tags').insert(
+            added.map((id) => ({
+              check_in_id: checkInId,
+              tagged_user_id: id,
+              tagged_by: user.id,
+            }))
+          );
+          if (error) return { success: false, error: error.message };
 
-        await sendSkatedWithNotification(spotId, ids, profile?.username ?? 'Someone', user.id);
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('username')
+            .eq('id', user.id)
+            .maybeSingle();
+
+          await sendSkatedWithNotification(spotId, added, profile?.username ?? 'Someone', user.id);
+        }
+
         return { success: true };
       } catch (e: any) {
         return { success: false, error: e.message };
@@ -99,5 +118,5 @@ export function useCheckInTags() {
     []
   );
 
-  return { tagging, tagSkaters, getTagsForCheckIns, removeTag };
+  return { tagging, setTags, getTagsForCheckIns, removeTag };
 }
