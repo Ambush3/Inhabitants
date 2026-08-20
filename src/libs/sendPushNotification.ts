@@ -115,6 +115,24 @@ export async function sendCrewSpotAddedNotification(
   });
 }
 
+export async function sendSkatedWithNotification(
+  spotId: string,
+  addresseeIds: string[],
+  actorUsername: string,
+  actorId: string
+) {
+  if (addresseeIds.length === 0) return;
+  await supabase.functions.invoke('send-push-notification', {
+    body: {
+      spot_id: spotId,
+      addressee_ids: addresseeIds,
+      event_type: 'skated_with',
+      actor_username: actorUsername,
+      actor_id: actorId,
+    },
+  });
+}
+
 export async function sendEventInviteNotification(
   inviteeId: string,
   actorUsername: string,

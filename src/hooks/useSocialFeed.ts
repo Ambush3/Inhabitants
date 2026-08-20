@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { supabase } from '@/src/libs/supabase';
 import { Spot } from '@/src/types';
 
+const CHECK_IN_FEED_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+
 export type FeedActor = {
   id: string;
   username: string | null;
@@ -174,7 +176,17 @@ export function useSocialFeed() {
         comment: r.comment,
       }));
 
-    const checkInItems: FeedItem[] = checkInRows
+    const lastShownByUserSpot = new Map<string, number>();
+    const dedupedCheckInRows = checkInRows.filter((c) => {
+      const key = `${c.user_id}-${c.spot_id}`;
+      const at = new Date(c.checked_in_at).getTime();
+      const lastShown = lastShownByUserSpot.get(key);
+      if (lastShown !== undefined && lastShown - at < CHECK_IN_FEED_COOLDOWN_MS) return false;
+      lastShownByUserSpot.set(key, at);
+      return true;
+    });
+
+    const checkInItems: FeedItem[] = dedupedCheckInRows
       .filter((c) => c.spots && !c.spots.is_flagged && profileMap.has(c.user_id))
       .map((c) => ({
         kind: 'check_in',
