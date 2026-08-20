@@ -19,25 +19,28 @@ export function SkatedWithModal({
   onClose,
   onConfirm,
   saving = false,
+  initialSelected,
 }: {
   visible: boolean;
   onClose: () => void;
   onConfirm: (userIds: string[]) => void;
   saving?: boolean;
+  initialSelected?: string[];
 }) {
   const { theme } = useTheme();
   const c = theme.colors;
   const { friends, loading, loadFriends } = useFriendships();
   const [selected, setSelected] = useState<string[]>([]);
   const [query, setQuery] = useState('');
+  const initialKey = (initialSelected ?? []).join(',');
 
   useEffect(() => {
     if (visible) {
-      setSelected([]);
+      setSelected(initialSelected ?? []);
       setQuery('');
       loadFriends();
     }
-  }, [visible]);
+  }, [visible, initialKey]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -46,6 +49,18 @@ export function SkatedWithModal({
   }, [friends, query]);
 
   const atLimit = selected.length >= MAX_TAGS_PER_CHECK_IN;
+  const changed = [...selected].sort().join(',') !== [...(initialSelected ?? [])].sort().join(',');
+  const isEditing = (initialSelected ?? []).length > 0;
+
+  const confirmLabel = !changed
+    ? isEditing
+      ? 'Save'
+      : 'Tag friends'
+    : selected.length === 0
+      ? 'Remove all tags'
+      : isEditing
+        ? `Save ${selected.length}`
+        : `Tag ${selected.length}`;
 
   function toggle(id: string) {
     setSelected((prev) =>
@@ -188,14 +203,16 @@ export function SkatedWithModal({
               borderTopColor: c.tagBg,
             }}>
             <Pressable onPress={onClose} disabled={saving}>
-              <Text style={{ fontSize: 15, fontWeight: '600', color: c.subtext }}>Skip</Text>
+              <Text style={{ fontSize: 15, fontWeight: '600', color: c.subtext }}>
+                {isEditing ? 'Cancel' : 'Skip'}
+              </Text>
             </Pressable>
             <Pressable
               onPress={() => onConfirm(selected)}
-              disabled={selected.length === 0 || saving}
+              disabled={!changed || saving}
               style={{
                 flex: 1,
-                backgroundColor: selected.length === 0 ? c.tagBg : c.accent,
+                backgroundColor: !changed ? c.tagBg : c.accent,
                 borderRadius: 14,
                 paddingVertical: 14,
                 alignItems: 'center',
@@ -207,9 +224,9 @@ export function SkatedWithModal({
                   style={{
                     fontSize: 16,
                     fontWeight: '700',
-                    color: selected.length === 0 ? c.subtext : '#fff',
+                    color: !changed ? c.subtext : '#fff',
                   }}>
-                  {selected.length === 0 ? 'Tag friends' : `Tag ${selected.length}`}
+                  {confirmLabel}
                 </Text>
               )}
             </Pressable>
