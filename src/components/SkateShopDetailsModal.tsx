@@ -25,7 +25,9 @@ import { usePlaceOverrides } from '@/src/hooks/usePlaceOverrides';
 import { useAuth } from '@/src/hooks/useAuth';
 import { usePro } from '@/src/context/ProContext';
 import { showAlert, AlertHost } from '@/src/components/ui/ThemedAlert';
-import type { PlaceCheckInState } from '@/src/hooks/usePlaceCheckIns';
+import { usePlaceCheckIns, type PlaceCheckInState } from '@/src/hooks/usePlaceCheckIns';
+import { useCheckInTags, TaggedSkater } from '@/src/hooks/useCheckInTags';
+import { SkatedWithModal } from '@/src/components/SkatedWithModal';
 import { useCheckInMedia, PendingMedia } from '@/src/hooks/useCheckInMedia';
 import { SessionMediaStrip } from '@/src/components/SessionMediaStrip';
 import { SessionMediaViewerModal, ViewerMedia } from '@/src/components/SessionMediaViewerModal';
@@ -59,10 +61,11 @@ type Props = {
   userLocation?: { latitude: number; longitude: number } | null;
   checkInState?: PlaceCheckInState;
   checkingIn?: boolean;
-  onCheckIn?: () => Promise<boolean | void> | void;
+  onCheckIn?: () => Promise<string | null>;
+  onUndoCheckIn?: (checkInId: string) => Promise<boolean>;
 };
 
-export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorite, isFavorite, userLocation, checkInState = 'available', checkingIn = false, onCheckIn }: Props) {
+export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorite, isFavorite, userLocation, checkInState = 'available', checkingIn = false, onCheckIn, onUndoCheckIn }: Props) {
   const { theme } = useTheme();
   const c = theme.colors;
   const [placeAddress, setPlaceAddress] = useState<string | null>(null);
@@ -115,13 +118,33 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
   const [mediaViewer, setMediaViewer] = useState<{ list: ViewerMedia[]; index: number } | null>(null);
   const isPark = place?.type === 'skatepark';
 
+  const { setTags, getTagsForCheckIns, tagging } = useCheckInTags('place');
+  const { getLastPlaceCheckIn } = usePlaceCheckIns();
+  const [skatedWithCheckInId, setSkatedWithCheckInId] = useState<string | null>(null);
+  const [myLastCheckInId, setMyLastCheckInId] = useState<string | null>(null);
+  const [myTags, setMyTags] = useState<TaggedSkater[]>([]);
+
+  async function loadMyTagsForPlace(placeId: string) {
+    const lastId = await getLastPlaceCheckIn(placeId);
+    setMyLastCheckInId(lastId);
+    if (!lastId) {
+      setMyTags([]);
+      return;
+    }
+    const byCheckIn = await getTagsForCheckIns([lastId]);
+    setMyTags(byCheckIn[lastId] ?? []);
+  }
+
   useEffect(() => {
     if (visible && place && isPark) {
       placeMedia.loadMediaForPlace(place.id);
+      loadMyTagsForPlace(place.id);
     }
     if (!visible) {
       placeMedia.clearMedia();
       setMediaViewer(null);
+      setMyLastCheckInId(null);
+      setMyTags([]);
     }
   }, [visible, place?.id, isPark]);
 
@@ -152,13 +175,6 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
     const res = await placeMedia.uploadMedia(null, null, assets, place.id);
     await placeMedia.loadMediaForPlace(place.id);
     if (res.error) showAlert('Upload failed', res.error, [{ text: 'OK' }]);
-  }
-
-  function promptAddPlaceMedia() {
-    showAlert('Add a photo or clip?', 'Show off your session at this park.', [
-      { text: 'Skip', style: 'cancel' },
-      { text: 'Add', onPress: pickAndUploadPlaceMedia },
-    ]);
   }
 
   const {
@@ -293,18 +309,78 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
 
   async function doCheckIn() {
     if (!onCheckIn) return;
-    const ok = await onCheckIn();
-    if (ok) promptAddPlaceMedia();
+    const newCheckInId = await onCheckIn();
+    if (!newCheckInId) return;
+    setMyLastCheckInId(newCheckInId);
+    setMyTags([]);
+    showAlert('Checked in!', 'Added to your parks skated.', [
+      { text: 'Done', style: 'cancel' },
+      { text: 'Tag Who You Skated With', onPress: () => setSkatedWithCheckInId(newCheckInId) },
+      { text: 'Add Photo/Clip', onPress: pickAndUploadPlaceMedia },
+      {
+        text: 'Undo Check-In',
+        style: 'destructive',
+        onPress: () => runUndoCheckIn(newCheckInId),
+      },
+    ]);
+  }
+
+  async function runUndoCheckIn(checkInId: string) {
+    if (!onUndoCheckIn || !place) return;
+    const ok = await onUndoCheckIn(checkInId);
+    if (!ok) return;
+    await loadMyTagsForPlace(place.id);
+  }
+
+  function confirmUndoCheckIn() {
+    if (!myLastCheckInId) {
+      showAlert('Nothing to undo', 'No check-in found for this park.');
+      return;
+    }
+    showAlert(
+      'Undo check-in?',
+      "Your most recent visit here will be removed from your parks skated. Any clips you posted stay on the park. This can't be undone.",
+      [
+        { text: 'Keep It', style: 'cancel' },
+        {
+          text: 'Undo Check-In',
+          style: 'destructive',
+          onPress: () => runUndoCheckIn(myLastCheckInId),
+        },
+      ]
+    );
   }
 
   function handleCheckInPress() {
     if (!onCheckIn) return;
-    if (checkInState === 'confirm') {
+    if (checkInState === 'recent') {
+      showAlert('You skated here recently', 'You already checked in here in the last few hours.', [
+        { text: 'OK', style: 'cancel' },
+        ...(onUndoCheckIn && myLastCheckInId
+          ? [
+              {
+                text: 'Undo Check-In',
+                style: 'destructive' as const,
+                onPress: confirmUndoCheckIn,
+              },
+            ]
+          : []),
+      ]);
+    } else if (checkInState === 'confirm') {
       showAlert(
         'Check in again?',
         'You already skated here earlier today. Log another check-in?',
         [
           { text: 'Cancel', style: 'cancel' },
+          ...(onUndoCheckIn && myLastCheckInId
+            ? [
+                {
+                  text: 'Undo Last Check-In',
+                  style: 'destructive' as const,
+                  onPress: confirmUndoCheckIn,
+                },
+              ]
+            : []),
           { text: 'Check In Again', onPress: doCheckIn },
         ]
       );
@@ -555,8 +631,8 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
 
             {place?.type === 'skatepark' && onCheckIn ? (
               <Pressable
-                onPress={checkInState === 'recent' || checkingIn ? undefined : handleCheckInPress}
-                disabled={checkInState === 'recent' || checkingIn}
+                onPress={checkingIn ? undefined : handleCheckInPress}
+                disabled={checkingIn}
                 style={{
                   flexDirection: 'row',
                   alignItems: 'center',
@@ -587,6 +663,66 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
                         ? 'Check In Again'
                         : 'Check In'}
                 </Text>
+              </Pressable>
+            ) : null}
+
+            {isPark && myLastCheckInId ? (
+              <Pressable
+                onPress={() => setSkatedWithCheckInId(myLastCheckInId)}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 10,
+                  backgroundColor: c.tagBg,
+                  borderRadius: 12,
+                  paddingHorizontal: 14,
+                  paddingVertical: 12,
+                  marginTop: 8,
+                }}>
+                <Ionicons name="people" size={16} color={c.subtext} />
+                {myTags.length === 0 ? (
+                  <Text style={{ flex: 1, fontSize: 13, fontWeight: '600', color: c.subtext }}>
+                    Skated with…
+                  </Text>
+                ) : (
+                  <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <View style={{ flexDirection: 'row' }}>
+                      {myTags.slice(0, 4).map((t, i) => (
+                        <View
+                          key={t.id}
+                          style={{
+                            width: 24,
+                            height: 24,
+                            borderRadius: 12,
+                            marginLeft: i === 0 ? 0 : -8,
+                            borderWidth: 1.5,
+                            borderColor: c.surface,
+                            backgroundColor: c.surface,
+                            overflow: 'hidden',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}>
+                          {t.avatar_url ? (
+                            <Image
+                              source={{ uri: t.avatar_url }}
+                              style={{ width: '100%', height: '100%' }}
+                            />
+                          ) : (
+                            <Ionicons name="person" size={12} color={c.subtext} />
+                          )}
+                        </View>
+                      ))}
+                    </View>
+                    <Text
+                      numberOfLines={1}
+                      style={{ flex: 1, fontSize: 13, fontWeight: '600', color: c.text }}>
+                      {myTags.length === 1
+                        ? `@${myTags[0].username}`
+                        : `@${myTags[0].username} +${myTags.length - 1}`}
+                    </Text>
+                  </View>
+                )}
+                <Ionicons name="chevron-forward" size={14} color={c.subtext} />
               </Pressable>
             ) : null}
 
@@ -707,6 +843,28 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
         currentUserId={session?.user.id ?? null}
       />
       <PaywallModal visible={proPaywallOpen} onClose={() => setProPaywallOpen(false)} />
+      <SkatedWithModal
+        visible={!!skatedWithCheckInId}
+        saving={tagging}
+        initialSelected={
+          skatedWithCheckInId === myLastCheckInId ? myTags.map((t) => t.id) : undefined
+        }
+        onClose={() => setSkatedWithCheckInId(null)}
+        onConfirm={async (userIds) => {
+          if (!skatedWithCheckInId || !place) return;
+          const result = await setTags(
+            skatedWithCheckInId,
+            { placeName: place.name },
+            userIds
+          );
+          setSkatedWithCheckInId(null);
+          if (!result.success) {
+            showAlert('Could not save tags', result.error);
+            return;
+          }
+          await loadMyTagsForPlace(place.id);
+        }}
+      />
 
       {/* Edit Modal */}
       <Modal visible={editOpen} transparent animationType="slide" onRequestClose={() => setEditOpen(false)}>

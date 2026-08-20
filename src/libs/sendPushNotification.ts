@@ -116,7 +116,7 @@ export async function sendCrewSpotAddedNotification(
 }
 
 export async function sendSkatedWithNotification(
-  spotId: string,
+  target: { spotId?: string; placeName?: string },
   addresseeIds: string[],
   actorUsername: string,
   actorId: string
@@ -124,7 +124,8 @@ export async function sendSkatedWithNotification(
   if (addresseeIds.length === 0) return;
   await supabase.functions.invoke('send-push-notification', {
     body: {
-      spot_id: spotId,
+      spot_id: target.spotId ?? null,
+      spot_name: target.placeName ?? null,
       addressee_ids: addresseeIds,
       event_type: 'skated_with',
       actor_username: actorUsername,
