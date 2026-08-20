@@ -10,13 +10,21 @@ export type TaggedSkater = {
 
 export const MAX_TAGS_PER_CHECK_IN = 10;
 
-export function useCheckInTags() {
+export type CheckInKind = 'spot' | 'place';
+
+const TAG_TABLE: Record<CheckInKind, { table: string; fk: string }> = {
+  spot: { table: 'check_in_tags', fk: 'check_in_id' },
+  place: { table: 'place_check_in_tags', fk: 'place_check_in_id' },
+};
+
+export function useCheckInTags(kind: CheckInKind = 'spot') {
   const [tagging, setTagging] = useState(false);
+  const { table, fk } = TAG_TABLE[kind];
 
   const setTags = useCallback(
     async (
       checkInId: string,
-      spotId: string,
+      target: { spotId?: string; placeName?: string },
       nextUserIds: string[]
     ): Promise<{ success: boolean; error?: string }> => {
       const {
@@ -25,9 +33,9 @@ export function useCheckInTags() {
       if (!user) return { success: false, error: 'Not authenticated' };
 
       const { data: existingRows } = await supabase
-        .from('check_in_tags')
+        .from(table)
         .select('tagged_user_id')
-        .eq('check_in_id', checkInId);
+        .eq(fk, checkInId);
 
       const existing = new Set((existingRows ?? []).map((r: any) => r.tagged_user_id));
       const next = new Set(nextUserIds.slice(0, MAX_TAGS_PER_CHECK_IN));
@@ -39,17 +47,17 @@ export function useCheckInTags() {
       try {
         if (removed.length > 0) {
           const { error } = await supabase
-            .from('check_in_tags')
+            .from(table)
             .delete()
-            .eq('check_in_id', checkInId)
+            .eq(fk, checkInId)
             .in('tagged_user_id', removed);
           if (error) return { success: false, error: error.message };
         }
 
         if (added.length > 0) {
-          const { error } = await supabase.from('check_in_tags').insert(
+          const { error } = await supabase.from(table).insert(
             added.map((id) => ({
-              check_in_id: checkInId,
+              [fk]: checkInId,
               tagged_user_id: id,
               tagged_by: user.id,
             }))
@@ -62,7 +70,12 @@ export function useCheckInTags() {
             .eq('id', user.id)
             .maybeSingle();
 
-          await sendSkatedWithNotification(spotId, added, profile?.username ?? 'Someone', user.id);
+          await sendSkatedWithNotification(
+            { spotId: target.spotId, placeName: target.placeName },
+            added,
+            profile?.username ?? 'Someone',
+            user.id
+          );
         }
 
         return { success: true };
@@ -72,7 +85,7 @@ export function useCheckInTags() {
         setTagging(false);
       }
     },
-    []
+    [table, fk]
   );
 
   const getTagsForCheckIns = useCallback(
@@ -80,9 +93,9 @@ export function useCheckInTags() {
       if (checkInIds.length === 0) return {};
 
       const { data } = await supabase
-        .from('check_in_tags')
-        .select('check_in_id, tagged_user_id')
-        .in('check_in_id', checkInIds);
+        .from(table)
+        .select(`${fk}, tagged_user_id`)
+        .in(fk, checkInIds);
       if (!data || data.length === 0) return {};
 
       const { data: profiles } = await supabase
@@ -92,10 +105,10 @@ export function useCheckInTags() {
       const byId = new Map((profiles ?? []).map((p: any) => [p.id, p]));
 
       const result: Record<string, TaggedSkater[]> = {};
-      for (const row of data as { check_in_id: string; tagged_user_id: string }[]) {
+      for (const row of data as any[]) {
         const profile = byId.get(row.tagged_user_id);
         if (!profile) continue;
-        (result[row.check_in_id] ??= []).push({
+        (result[row[fk]] ??= []).push({
           id: profile.id,
           username: profile.username,
           avatar_url: profile.avatar_url ?? null,
@@ -103,19 +116,19 @@ export function useCheckInTags() {
       }
       return result;
     },
-    []
+    [table, fk]
   );
 
   const removeTag = useCallback(
     async (checkInId: string, taggedUserId: string): Promise<boolean> => {
       const { error } = await supabase
-        .from('check_in_tags')
+        .from(table)
         .delete()
-        .eq('check_in_id', checkInId)
+        .eq(fk, checkInId)
         .eq('tagged_user_id', taggedUserId);
       return !error;
     },
-    []
+    [table, fk]
   );
 
   return { tagging, setTags, getTagsForCheckIns, removeTag };

@@ -284,11 +284,13 @@ Deno.serve(async (req) => {
             if (recipients.length === 0)
                 return new Response(JSON.stringify({ noop: true }), { status: 200 });
 
-            const { data: taggedSpot } = await supabase
-                .from('spots')
-                .select('name, lat, lng')
-                .eq('id', spot_id)
-                .maybeSingle();
+            const { data: taggedSpot } = spot_id
+                ? await supabase
+                    .from('spots')
+                    .select('name, lat, lng')
+                    .eq('id', spot_id)
+                    .maybeSingle()
+                : { data: null };
             const taggedSpotName = taggedSpot?.name ?? spot_name ?? 'a spot';
 
             const allowed: string[] = [];
@@ -324,9 +326,11 @@ Deno.serve(async (req) => {
                 title: '🛹 Skated Together',
                 body: `${actor_username} tagged you at "${taggedSpotName}"`,
                 sound: 'default',
-                data: {
-                    url: `inhabitants://?deepLinkSpotId=${spot_id}&deepLinkLat=${taggedSpot?.lat}&deepLinkLng=${taggedSpot?.lng}`,
-                },
+                data: taggedSpot
+                    ? {
+                        url: `inhabitants://?deepLinkSpotId=${spot_id}&deepLinkLat=${taggedSpot.lat}&deepLinkLng=${taggedSpot.lng}`,
+                    }
+                    : {},
             }));
             let taggedResult: unknown = { sent: 0 };
             for (let i = 0; i < messages.length; i += 100) {

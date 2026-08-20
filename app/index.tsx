@@ -464,6 +464,7 @@ export default function Index() {
     load: loadPlaceCheckIns,
     checkInPlace,
     getPlaceCheckInState,
+    undoPlaceCheckIn,
     checkingIn: placeCheckingIn,
   } = usePlaceCheckIns();
   const { images, uploading: imagesUploading, loadImages, uploadImages, deleteImage, clearImages } = useSpotImages();
@@ -2935,12 +2936,11 @@ export default function Index() {
         checkInState={selectedPlace ? getPlaceCheckInState(selectedPlace.id) : 'available'}
         checkingIn={placeCheckingIn}
         onCheckIn={async () => {
-          if (!selectedPlace) return false;
+          if (!selectedPlace) return null;
           const res = await checkInPlace(selectedPlace);
           if (res.ok) {
             await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            toast.show('Checked in — added to your parks skated');
-            return true;
+            return res.checkInId;
           } else if (res.reason === 'cooldown') {
             toast.show('You checked in here recently');
           } else if (res.reason === 'auth') {
@@ -2948,7 +2948,18 @@ export default function Index() {
           } else {
             toast.error('Couldn’t check in right now');
           }
-          return false;
+          return null;
+        }}
+        onUndoCheckIn={async (checkInId) => {
+          if (!selectedPlace) return false;
+          const res = await undoPlaceCheckIn(checkInId, selectedPlace.id);
+          if (!res.ok) {
+            toast.error('Couldn’t undo check-in');
+            return false;
+          }
+          await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          toast.show('Check-in removed');
+          return true;
         }}
       />
       <SettingsPanel

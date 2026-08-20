@@ -1766,7 +1766,7 @@ export function SpotDetailsModal({
         onClose={() => setSkatedWithCheckInId(null)}
         onConfirm={async (userIds) => {
           if (!skatedWithCheckInId || !spot) return;
-          const result = await setTags(skatedWithCheckInId, spot.id, userIds);
+          const result = await setTags(skatedWithCheckInId, { spotId: spot.id }, userIds);
           setSkatedWithCheckInId(null);
           if (!result.success) {
             showAlert('Could not save tags', result.error);
