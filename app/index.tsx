@@ -1128,16 +1128,26 @@ export default function Index() {
   function warmPlaceCache() {
     const { latitude, longitude } = mapRegionRef.current;
     if (!advFilters.types.includes('skatepark')) {
-      loadNearbySkateParks(latitude, longitude, 20000, undefined, () => {});
+      loadNearbySkateParks(latitude, longitude, 20000, undefined, () => {}, true);
     }
     if (!advFilters.types.includes('skateshop')) {
-      loadNearbySkateShops(latitude, longitude, 20000, undefined, () => {});
+      loadNearbySkateShops(latitude, longitude, 20000, undefined, () => {}, true);
     }
   }
 
+  const prevFilterPlaceTypesRef = useRef<MapFilters['types']>([]);
+
   useEffect(() => {
+    const prev = prevFilterPlaceTypesRef.current;
+    prevFilterPlaceTypesRef.current = advFilters.types;
+
     (['skatepark', 'skateshop'] as const).forEach((t) => {
-      if (advFilters.types.includes(t) && !activePlaceTypes.has(t)) setPlaceTypeActive(t, true);
+      const inNext = advFilters.types.includes(t);
+      if (inNext && !activePlaceTypes.has(t)) {
+        setPlaceTypeActive(t, true);
+      } else if (!inNext && prev.includes(t) && activePlaceTypes.has(t)) {
+        setPlaceTypeActive(t, false);
+      }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [advFilters.types]);
