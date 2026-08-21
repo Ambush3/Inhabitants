@@ -69,12 +69,12 @@ export function useNearbyPlaces() {
 
     const abortRef = useRef<Record<string, AbortController | null>>({});
 
-    async function loadNearbySkateParks(lat: number, lng: number, radiusMeters = 8000, name?: string, onLoaded?: (places: Place[]) => void): Promise<NearbyResult> {
-        return fetchPlaces(lat, lng, radiusMeters, 'skatepark', name, onLoaded);
+    async function loadNearbySkateParks(lat: number, lng: number, radiusMeters = 8000, name?: string, onLoaded?: (places: Place[]) => void, silent = false): Promise<NearbyResult> {
+        return fetchPlaces(lat, lng, radiusMeters, 'skatepark', name, onLoaded, silent);
     }
 
-    async function loadNearbySkateShops(lat: number, lng: number, radiusMeters = 8000, name?: string, onLoaded?: (places: Place[]) => void): Promise<NearbyResult> {
-        return fetchPlaces(lat, lng, radiusMeters, 'skateshop', name, onLoaded);
+    async function loadNearbySkateShops(lat: number, lng: number, radiusMeters = 8000, name?: string, onLoaded?: (places: Place[]) => void, silent = false): Promise<NearbyResult> {
+        return fetchPlaces(lat, lng, radiusMeters, 'skateshop', name, onLoaded, silent);
     }
 
     async function deliverPlaces(places: Place[], onLoaded?: (places: Place[]) => void): Promise<void> {
@@ -97,8 +97,10 @@ export function useNearbyPlaces() {
         if (onLoaded) onLoaded(merged); else setPlaces(merged);
     }
 
-    async function fetchPlaces(lat: number, lng: number, radiusMeters: number, type: 'skatepark' | 'skateshop', name?: string, onLoaded?: (places: Place[]) => void): Promise<NearbyResult> {
-        const setLoading = type === 'skatepark' ? setParksLoading : setShopsLoading;
+    async function fetchPlaces(lat: number, lng: number, radiusMeters: number, type: 'skatepark' | 'skateshop', name?: string, onLoaded?: (places: Place[]) => void, silent = false): Promise<NearbyResult> {
+        const setLoading = silent
+            ? () => { }
+            : type === 'skatepark' ? setParksLoading : setShopsLoading;
         setLoading(true);
         if (Platform.OS === 'web') {
             setError('Nearby search is native-only for now.');
