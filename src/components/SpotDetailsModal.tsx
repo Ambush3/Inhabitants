@@ -32,6 +32,8 @@ import { useToast, ToastHost } from '@/src/context/ToastContext';
 
 import { CONDITION_META, SpotCondition } from '@/src/hooks/useSpotConditions';
 import { useCheckIns, SpotVisitor } from '@/src/hooks/useCheckIns';
+import { useCheckInTags, TaggedSkater } from '@/src/hooks/useCheckInTags';
+import { SkatedWithModal } from '@/src/components/SkatedWithModal';
 import { useCheckInMedia, PendingMedia } from '@/src/hooks/useCheckInMedia';
 import { SessionMediaStrip } from '@/src/components/SessionMediaStrip';
 import { SessionMediaViewerModal, ViewerMedia } from '@/src/components/SessionMediaViewerModal';
@@ -420,6 +422,7 @@ export function SpotDetailsModal({
     getVisitorCount(spot.id).then(setVisitorCount);
     hasCheckedInWithinCooldown(spot.id).then(setAlreadyCheckedInToday);
     sessionMedia.loadMediaForSpot(spot.id);
+    loadMyTagsForSpot(spot.id);
   }, [spot?.id, visible]);
 
   function handleFlag() {
@@ -451,7 +454,19 @@ export function SpotDetailsModal({
     setPendingImages([]);
   }
 
-  const { checkIn, checkingIn, getVisitorCount, getSpotVisitors, hasCheckedInWithinCooldown } = useCheckIns();
+  const {
+    checkIn,
+    checkingIn,
+    getVisitorCount,
+    getSpotVisitors,
+    hasCheckedInWithinCooldown,
+    getLastCheckInSummary,
+    undoCheckIn,
+  } = useCheckIns();
+  const { setTags, getTagsForCheckIns, tagging } = useCheckInTags();
+  const [skatedWithCheckInId, setSkatedWithCheckInId] = useState<string | null>(null);
+  const [myLastCheckInId, setMyLastCheckInId] = useState<string | null>(null);
+  const [myTags, setMyTags] = useState<TaggedSkater[]>([]);
   const [visitorsOpen, setVisitorsOpen] = useState(false);
   const [visitors, setVisitors] = useState<SpotVisitor[]>([]);
   const [visitorsLoading, setVisitorsLoading] = useState(false);
@@ -493,12 +508,63 @@ export function SpotDetailsModal({
     else toast.success(`${res.uploaded} item${res.uploaded === 1 ? '' : 's'} added.`);
   }
 
+  async function loadMyTagsForSpot(spotId: string) {
+    const summary = await getLastCheckInSummary(spotId);
+    setMyLastCheckInId(summary?.id ?? null);
+    if (!summary) {
+      setMyTags([]);
+      return;
+    }
+    const byCheckIn = await getTagsForCheckIns([summary.id]);
+    setMyTags(byCheckIn[summary.id] ?? []);
+  }
+
+  async function runUndoCheckIn(checkInId: string, spotId: string) {
+    const result = await undoCheckIn(checkInId);
+    if (!result.success) {
+      showAlert('Could not undo', result.error);
+      return;
+    }
+    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setAlreadyCheckedInToday(await hasCheckedInWithinCooldown(spotId));
+    setVisitorCount(await getVisitorCount(spotId));
+    await sessionMedia.loadMediaForSpot(spotId);
+    await loadMyTagsForSpot(spotId);
+  }
+
+  async function confirmUndoCheckIn(spotId: string) {
+    const summary = await getLastCheckInSummary(spotId);
+    if (!summary) {
+      showAlert('Nothing to undo', 'No check-in found for this spot.');
+      return;
+    }
+
+    const mediaWarning =
+      summary.mediaCount > 0
+        ? ` This also deletes ${summary.mediaCount} photo${summary.mediaCount === 1 ? '' : 's'} or clip${summary.mediaCount === 1 ? '' : 's'} from that session.`
+        : '';
+
+    showAlert(
+      'Undo check-in?',
+      `Your most recent visit here will be removed from your passport.${mediaWarning} This can't be undone.`,
+      [
+        { text: 'Keep It', style: 'cancel' },
+        {
+          text: 'Undo Check-In',
+          style: 'destructive',
+          onPress: () => runUndoCheckIn(summary.id, spotId),
+        },
+      ]
+    );
+  }
+
   function promptAddSessionMedia(checkInId: string, spotId: string) {
     showAlert(
       'Add a photo or clip?',
       'Capture this session and tie it to your passport entry.',
       [
         { text: 'Skip', style: 'cancel' },
+        { text: 'Tag Who You Skated With', onPress: () => setSkatedWithCheckInId(checkInId) },
         { text: 'Add', onPress: () => pickAndUploadSpotMedia(spotId, checkInId) },
       ]
     );
@@ -1131,7 +1197,18 @@ export function SpotDetailsModal({
 
             {/* ── Check-in card ── */}
             {!detailsLoading && !isShop ? (
-              <View style={[styles.ratingCard, { backgroundColor: c.tagBg, alignItems: 'center' }]}>
+              <View
+                style={[
+                  styles.ratingCard,
+                  { backgroundColor: c.tagBg, alignItems: 'center' },
+                  myLastCheckInId
+                    ? {
+                        marginBottom: 0,
+                        borderBottomLeftRadius: 0,
+                        borderBottomRightRadius: 0,
+                      }
+                    : null,
+                ]}>
                 <Pressable
                   style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}
                   disabled={!visitorCount || visitorCount <= 0}
@@ -1164,9 +1241,14 @@ export function SpotDetailsModal({
                     if (alreadyCheckedInToday) {
                       showAlert(
                         'Check in again?',
-                        "You already checked in here today. This will add another visit to your passport but won't post to your feed.",
+                        'You already checked in here today. This adds another visit to your passport.',
                         [
                           { text: 'Cancel', style: 'cancel' },
+                          {
+                            text: 'Undo Last Check-In',
+                            style: 'destructive',
+                            onPress: () => confirmUndoCheckIn(spot.id),
+                          },
                           {
                             text: 'Check In Again',
                             onPress: async () => {
@@ -1175,6 +1257,8 @@ export function SpotDetailsModal({
                                 await Haptics.notificationAsync(
                                   Haptics.NotificationFeedbackType.Success
                                 );
+                                setMyLastCheckInId(result.checkInId ?? null);
+                                setMyTags([]);
                                 if (result.checkInId) {
                                   promptAddSessionMedia(result.checkInId, spot.id);
                                 }
@@ -1190,17 +1274,32 @@ export function SpotDetailsModal({
                       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                       setAlreadyCheckedInToday(true);
                       setVisitorCount((prev) => (prev === null ? 1 : prev + 1));
+                      setMyLastCheckInId(result.checkInId ?? null);
+                      setMyTags([]);
                       showAlert(
                         'Checked in!',
-                        'Added to your passport and shared to your feed. Add a photo or clip from this session?',
+                        'Added to your passport and shared to your feed.',
                         [
-                          { text: 'Skip', style: 'cancel' },
+                          { text: 'Done', style: 'cancel' },
+                          {
+                            text: 'Tag Who You Skated With',
+                            onPress: () => {
+                              if (result.checkInId) setSkatedWithCheckInId(result.checkInId);
+                            },
+                          },
                           {
                             text: 'Add Photo/Clip',
                             onPress: () => {
                               if (result.checkInId) {
                                 pickAndUploadSpotMedia(spot.id, result.checkInId);
                               }
+                            },
+                          },
+                          {
+                            text: 'Undo Check-In',
+                            style: 'destructive',
+                            onPress: () => {
+                              if (result.checkInId) runUndoCheckIn(result.checkInId, spot.id);
                             },
                           },
                         ]
@@ -1234,6 +1333,70 @@ export function SpotDetailsModal({
                   </Text>
                 </Pressable>
               </View>
+            ) : null}
+
+            {!isShop && myLastCheckInId ? (
+              <Pressable
+                onPress={() => setSkatedWithCheckInId(myLastCheckInId)}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 10,
+                  backgroundColor: c.tagBg,
+                  borderBottomLeftRadius: 16,
+                  borderBottomRightRadius: 16,
+                  paddingHorizontal: 16,
+                  paddingTop: 12,
+                  paddingBottom: 14,
+                  marginBottom: 10,
+                  borderTopWidth: 1,
+                  borderTopColor: c.surface,
+                }}>
+                <Ionicons name="people" size={16} color={c.subtext} />
+                {myTags.length === 0 ? (
+                  <Text style={{ flex: 1, fontSize: 13, fontWeight: '600', color: c.subtext }}>
+                    Skated with…
+                  </Text>
+                ) : (
+                  <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <View style={{ flexDirection: 'row' }}>
+                      {myTags.slice(0, 4).map((t, i) => (
+                        <View
+                          key={t.id}
+                          style={{
+                            width: 24,
+                            height: 24,
+                            borderRadius: 12,
+                            marginLeft: i === 0 ? 0 : -8,
+                            borderWidth: 1.5,
+                            borderColor: c.surface,
+                            backgroundColor: c.surface,
+                            overflow: 'hidden',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}>
+                          {t.avatar_url ? (
+                            <Image
+                              source={{ uri: t.avatar_url }}
+                              style={{ width: '100%', height: '100%' }}
+                            />
+                          ) : (
+                            <Ionicons name="person" size={12} color={c.subtext} />
+                          )}
+                        </View>
+                      ))}
+                    </View>
+                    <Text
+                      numberOfLines={1}
+                      style={{ flex: 1, fontSize: 13, fontWeight: '600', color: c.text }}>
+                      {myTags.length === 1
+                        ? `@${myTags[0].username}`
+                        : `@${myTags[0].username} +${myTags.length - 1}`}
+                    </Text>
+                  </View>
+                )}
+                <Ionicons name="chevron-forward" size={14} color={c.subtext} />
+              </Pressable>
             ) : null}
 
             {/* ── Action toolbar ── */}
@@ -1593,6 +1756,25 @@ export function SpotDetailsModal({
         onClose={() => setTrickLogOpen(false)}
         onLogTrick={onLogTrickSubmit}
         onDeleteTrickLog={onDeleteTrickLog}
+      />
+      <SkatedWithModal
+        visible={!!skatedWithCheckInId}
+        saving={tagging}
+        initialSelected={
+          skatedWithCheckInId === myLastCheckInId ? myTags.map((t) => t.id) : undefined
+        }
+        onClose={() => setSkatedWithCheckInId(null)}
+        onConfirm={async (userIds) => {
+          if (!skatedWithCheckInId || !spot) return;
+          const result = await setTags(skatedWithCheckInId, { spotId: spot.id }, userIds);
+          setSkatedWithCheckInId(null);
+          if (!result.success) {
+            showAlert('Could not save tags', result.error);
+            return;
+          }
+          await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          await loadMyTagsForSpot(spot.id);
+        }}
       />
       {/* ── Flag modal ── */}
       <Modal

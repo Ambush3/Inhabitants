@@ -158,6 +158,8 @@ export function ExplorePanel({
         return `${actor} added "${spot}" to "${crew}"`;
       case 'feedback_reply':
         return `${actor} replied to your feedback`;
+      case 'skated_with':
+        return `${actor} skated with you at "${spot}"`;
       default:
         return `Activity on "${spot}"`;
     }

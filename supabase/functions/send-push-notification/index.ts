@@ -18,6 +18,7 @@ const PREF_COLUMN_BY_TYPE: Record<string, string | null> = {
     crew_invite: null,
     crew_join: null,
     crew_spot_added: null,
+    skated_with: 'notify_skated_with',
 };
 
 async function isAllowed(userId: string, eventType: string): Promise<boolean> {
@@ -43,6 +44,7 @@ Deno.serve(async (req) => {
             crew_id,
             crew_name,
             spot_name,
+            place_id,
             feedback_post_id,
         } = await req.json();
 
@@ -276,6 +278,90 @@ Deno.serve(async (req) => {
 
             const result = await response.json();
             return new Response(JSON.stringify(result), { status: 200 });
+        }
+
+        if (event_type === 'skated_with') {
+            const recipients: string[] = Array.isArray(addressee_ids) ? addressee_ids : [];
+            if (recipients.length === 0)
+                return new Response(JSON.stringify({ noop: true }), { status: 200 });
+
+            const { data: taggedSpot } = spot_id
+                ? await supabase
+                    .from('spots')
+                    .select('name, lat, lng')
+                    .eq('id', spot_id)
+                    .maybeSingle()
+                : { data: null };
+
+            const { data: taggedPlace } = place_id
+                ? await supabase
+                    .from('places')
+                    .select('name, lat, lng')
+                    .eq('id', place_id)
+                    .maybeSingle()
+                : { data: null };
+
+            const taggedSpotName =
+                taggedSpot?.name ?? taggedPlace?.name ?? spot_name ?? 'a spot';
+
+            const allowed: string[] = [];
+            for (const rid of recipients) {
+                if (await isAllowed(rid, 'skated_with')) allowed.push(rid);
+            }
+            if (allowed.length === 0)
+                return new Response(JSON.stringify({ muted: true }), { status: 200 });
+
+            await supabase.from('notifications').insert(
+                allowed.map((rid) => ({
+                    user_id: rid,
+                    type: 'skated_with',
+                    actor_id: actor_id ?? null,
+                    actor_username: actor_username ?? null,
+                    spot_id: spot_id ?? null,
+                    place_id: place_id ?? null,
+                    spot_name: taggedSpotName,
+                }))
+            );
+
+            const { data: tokenRows } = await supabase
+                .from('push_tokens')
+                .select('user_id, token')
+                .in('user_id', allowed);
+            const tokens = (tokenRows ?? [])
+                .map((r: any) => r.token)
+                .filter((t: string) => !!t);
+            if (tokens.length === 0)
+                return new Response(JSON.stringify({ inserted: true }), { status: 200 });
+
+            const messages = tokens.map((t: string) => ({
+                to: t,
+                title: '🛹 Skated Together',
+                body: `${actor_username} tagged you at "${taggedSpotName}"`,
+                sound: 'default',
+                data: taggedSpot
+                    ? {
+                        url: `inhabitants://?deepLinkSpotId=${spot_id}&deepLinkLat=${taggedSpot.lat}&deepLinkLng=${taggedSpot.lng}`,
+                    }
+                    : taggedPlace
+                        ? {
+                            url: `inhabitants://?deepLinkPlaceId=${encodeURIComponent(place_id)}`,
+                        }
+                        : {},
+            }));
+            let taggedResult: unknown = { sent: 0 };
+            for (let i = 0; i < messages.length; i += 100) {
+                const response = await fetch('https://exp.host/--/api/v2/push/send', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Accept: 'application/json',
+                        'Accept-Encoding': 'gzip, deflate',
+                    },
+                    body: JSON.stringify(messages.slice(i, i + 100)),
+                });
+                taggedResult = await response.json();
+            }
+            return new Response(JSON.stringify(taggedResult), { status: 200 });
         }
 
         if (event_type === 'spot_closed') {
