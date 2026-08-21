@@ -1178,6 +1178,16 @@ export default function Index() {
     setPreviewImageUrl(image?.url ?? videoThumb?.thumbnail_url ?? null);
   }, []);
 
+  async function openPlaceById(placeId: string) {
+    const full = await fetchPlaceById(placeId);
+    if (!full) return;
+    setPanelOpen(false);
+    setSelectedPlaceId(full.id);
+    setSelectedPlace(full);
+    animateToSpotWithModalOffset(full.lat, full.lng, 'small');
+    setPlaceDetailsOpen(true);
+  }
+
   const openSpotDetails = useCallback(
     async (spot: Spot) => {
       if (!session) {
@@ -1312,6 +1322,9 @@ export default function Index() {
       setPanelOpen(false);
       setSelectedCrewId(crewId);
       setCrewDetailOpen(true);
+    },
+    (placeId) => {
+      setTimeout(() => openPlaceById(placeId), 300);
     }
   );
 
@@ -1746,6 +1759,12 @@ export default function Index() {
       setCrewDetailOpen(true);
     });
 
+    AsyncStorage.getItem('pendingNotificationPlace').then((placeId) => {
+      if (!placeId) return;
+      AsyncStorage.removeItem('pendingNotificationPlace');
+      openPlaceById(placeId);
+    });
+
     AsyncStorage.getItem('pendingNotificationProfile').then((val) => {
       if (!val) return;
       setProfileOpen(true);
@@ -2061,6 +2080,10 @@ export default function Index() {
             setPanelOpen(false);
             setPendingFeedbackPostId(n.feedback_post_id ?? null);
             setSettingsOpen(true);
+            return;
+          }
+          if (n.place_id) {
+            openPlaceById(n.place_id);
             return;
           }
           openedFromPanelRef.current = true;
