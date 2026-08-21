@@ -90,7 +90,10 @@ import { useFriendships } from '@/src/hooks/social/useFriendships';
 import { useNotifications } from '@/src/hooks/useNotifications';
 import { useSocialFeed } from '@/src/hooks/useSocialFeed';
 import { SpotVisibility, spotVisibility } from '@/src/hooks/useSpots';
-import { useOfflineCache } from '@/src/hooks/offlineCache/useOfflineCache';
+import {
+  useOfflineCache,
+  MAX_OFFLINE_PHOTOS_PER_SPOT,
+} from '@/src/hooks/offlineCache/useOfflineCache';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -435,10 +438,12 @@ export default function Index() {
     cacheLoaded,
     cachedMapSpots,
     cachedFavorites,
+    cachedFavoritePhotos,
     showOfflineBanner,
     bannerMessage,
     cacheMapSpots,
     cacheFavorites,
+    cacheFavoritePhotos,
   } = useOfflineCache();
 
   const { signOut, session } = useAuth();
@@ -1842,6 +1847,36 @@ export default function Index() {
     if (favorites.length > 0) cacheFavorites(favorites);
   }, [favorites]);
 
+  const favoriteIdsKey = favorites.map((f) => f.id).sort().join(',');
+
+  useEffect(() => {
+    if (!isOnline || favorites.length === 0) return;
+    let cancelled = false;
+
+    (async () => {
+      const { data } = await supabase
+        .from('spot_images')
+        .select('spot_id, url')
+        .in(
+          'spot_id',
+          favorites.map((f) => f.id)
+        );
+      if (cancelled || !data) return;
+
+      const bySpot: Record<string, string[]> = {};
+      for (const row of data as { spot_id: string; url: string }[]) {
+        const list = (bySpot[row.spot_id] ??= []);
+        if (list.length < MAX_OFFLINE_PHOTOS_PER_SPOT) list.push(row.url);
+      }
+      cacheFavoritePhotos(bySpot);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [favoriteIdsKey, isOnline]);
+
   useEffect(() => {
     if (!deepLinkSpotId && typeof window !== 'undefined') return;
     const url = Linking.getInitialURL();
@@ -2826,7 +2861,11 @@ export default function Index() {
           const err = await deleteReview(reviewId, selectedSpot.id);
           if (err) setError(err);
         }}
-        images={images}
+        images={
+          images.length === 0 && selectedSpot
+            ? (cachedFavoritePhotos[selectedSpot.id] ?? [])
+            : images
+        }
         imagesLoading={imagesUploading}
         onDeleteImage={async (url) => {
           if (!selectedSpot) return;
