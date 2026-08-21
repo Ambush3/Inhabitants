@@ -24,7 +24,8 @@ export function usePushNotifications(
   onMarkSpotNotificationRead?: (spotId: string) => void,
   onOpenEvents?: () => void,
   onOpenCrewInvites?: () => void,
-  onOpenCrewDetail?: (crewId: string) => void
+  onOpenCrewDetail?: (crewId: string) => void,
+  onOpenPlace?: (placeId: string) => void
 ) {
   const sessionRef = useRef(session);
   const onSpotOpenRef = useRef(onSpotOpen);
@@ -35,6 +36,7 @@ export function usePushNotifications(
   const onOpenEventsRef = useRef(onOpenEvents);
   const onOpenCrewInvitesRef = useRef(onOpenCrewInvites);
   const onOpenCrewDetailRef = useRef(onOpenCrewDetail);
+  const onOpenPlaceRef = useRef(onOpenPlace);
 
   useEffect(() => {
     onMarkSpotNotificationReadRef.current = onMarkSpotNotificationRead;
@@ -61,6 +63,9 @@ export function usePushNotifications(
   useEffect(() => {
     onOpenCrewDetailRef.current = onOpenCrewDetail;
   }, [onOpenCrewDetail]);
+  useEffect(() => {
+    onOpenPlaceRef.current = onOpenPlace;
+  }, [onOpenPlace]);
 
   useEffect(() => {
     (async () => {
@@ -85,6 +90,10 @@ export function usePushNotifications(
           const params = new URLSearchParams(url.split('?')[1]);
           const crewId = params.get('openCrewId');
           if (crewId) await AsyncStorage.setItem('pendingNotificationCrewDetail', crewId);
+        } else if (url?.includes('deepLinkPlaceId')) {
+          const params = new URLSearchParams(url.split('?')[1]);
+          const placeId = params.get('deepLinkPlaceId');
+          if (placeId) await AsyncStorage.setItem('pendingNotificationPlace', placeId);
         } else if (url) {
           const params = new URLSearchParams(url.split('?')[1]);
           const spot_id = params.get('deepLinkSpotId');
@@ -155,6 +164,18 @@ export function usePushNotifications(
           onOpenCrewDetailRef.current?.(crewId);
         } else {
           await AsyncStorage.setItem('pendingNotificationCrewDetail', crewId);
+        }
+        return;
+      }
+
+      if (url.includes('deepLinkPlaceId')) {
+        const placeParams = new URLSearchParams(url.split('?')[1]);
+        const placeId = placeParams.get('deepLinkPlaceId');
+        if (!placeId) return;
+        if (sessionRef.current) {
+          onOpenPlaceRef.current?.(placeId);
+        } else {
+          await AsyncStorage.setItem('pendingNotificationPlace', placeId);
         }
         return;
       }

@@ -44,6 +44,7 @@ Deno.serve(async (req) => {
             crew_id,
             crew_name,
             spot_name,
+            place_id,
             feedback_post_id,
         } = await req.json();
 
@@ -291,7 +292,17 @@ Deno.serve(async (req) => {
                     .eq('id', spot_id)
                     .maybeSingle()
                 : { data: null };
-            const taggedSpotName = taggedSpot?.name ?? spot_name ?? 'a spot';
+
+            const { data: taggedPlace } = place_id
+                ? await supabase
+                    .from('places')
+                    .select('name, lat, lng')
+                    .eq('id', place_id)
+                    .maybeSingle()
+                : { data: null };
+
+            const taggedSpotName =
+                taggedSpot?.name ?? taggedPlace?.name ?? spot_name ?? 'a spot';
 
             const allowed: string[] = [];
             for (const rid of recipients) {
@@ -307,6 +318,7 @@ Deno.serve(async (req) => {
                     actor_id: actor_id ?? null,
                     actor_username: actor_username ?? null,
                     spot_id: spot_id ?? null,
+                    place_id: place_id ?? null,
                     spot_name: taggedSpotName,
                 }))
             );
@@ -330,7 +342,11 @@ Deno.serve(async (req) => {
                     ? {
                         url: `inhabitants://?deepLinkSpotId=${spot_id}&deepLinkLat=${taggedSpot.lat}&deepLinkLng=${taggedSpot.lng}`,
                     }
-                    : {},
+                    : taggedPlace
+                        ? {
+                            url: `inhabitants://?deepLinkPlaceId=${encodeURIComponent(place_id)}`,
+                        }
+                        : {},
             }));
             let taggedResult: unknown = { sent: 0 };
             for (let i = 0; i < messages.length; i += 100) {

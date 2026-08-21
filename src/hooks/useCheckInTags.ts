@@ -24,7 +24,7 @@ export function useCheckInTags(kind: CheckInKind = 'spot') {
   const setTags = useCallback(
     async (
       checkInId: string,
-      target: { spotId?: string; placeName?: string },
+      target: { spotId?: string; placeId?: string; placeName?: string },
       nextUserIds: string[]
     ): Promise<{ success: boolean; error?: string }> => {
       const {
@@ -71,7 +71,7 @@ export function useCheckInTags(kind: CheckInKind = 'spot') {
             .maybeSingle();
 
           await sendSkatedWithNotification(
-            { spotId: target.spotId, placeName: target.placeName },
+            { spotId: target.spotId, placeId: target.placeId, placeName: target.placeName },
             added,
             profile?.username ?? 'Someone',
             user.id

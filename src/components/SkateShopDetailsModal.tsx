@@ -854,7 +854,7 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
           if (!skatedWithCheckInId || !place) return;
           const result = await setTags(
             skatedWithCheckInId,
-            { placeName: place.name },
+            { placeId: place.id, placeName: place.name },
             userIds
           );
           setSkatedWithCheckInId(null);
