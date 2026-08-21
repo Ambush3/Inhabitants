@@ -8,6 +8,7 @@ export type AppNotification = {
     actor_username: string | null;
     spot_id: string | null;
     spot_name: string | null;
+    place_id?: string | null;
     crew_id?: string | null;
     crew_name?: string | null;
     feedback_post_id?: string | null;

@@ -224,10 +224,31 @@ async function uploadCheckInMedia(
   return { uploaded, error: uploaded === 0 ? firstError : undefined };
 }
 
+function storagePathFromUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  return url.split(`/${BUCKET}/`)[1] ?? null;
+}
+
 async function deleteCheckInMedia(item: CheckInMedia): Promise<void> {
-  const filename = item.url.split(`/${BUCKET}/`)[1];
-  if (filename) await supabase.storage.from(BUCKET).remove([filename]);
+  const paths = [storagePathFromUrl(item.url), storagePathFromUrl(item.thumbnail_url)].filter(
+    (p): p is string => !!p
+  );
+  if (paths.length > 0) await supabase.storage.from(BUCKET).remove(paths);
   await supabase.from('check_in_media').delete().eq('id', item.id);
+}
+
+export async function deleteAllMediaForCheckIn(checkInId: string): Promise<void> {
+  const { data } = await supabase
+    .from('check_in_media')
+    .select('id, url, thumbnail_url')
+    .eq('check_in_id', checkInId);
+
+  const paths = (data ?? [])
+    .flatMap((row: any) => [storagePathFromUrl(row.url), storagePathFromUrl(row.thumbnail_url)])
+    .filter((p): p is string => !!p);
+
+  if (paths.length > 0) await supabase.storage.from(BUCKET).remove(paths);
+  await supabase.from('check_in_media').delete().eq('check_in_id', checkInId);
 }
 
 export function useCheckInMedia() {

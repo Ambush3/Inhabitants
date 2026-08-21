@@ -468,6 +468,7 @@ export function SettingsPanel({
                             ['notify_friend_accepted', 'Friend Accepted'],
                             ['notify_event_invite', 'Event Invites'],
                             ['notify_event_reminder', 'Event Reminders'],
+                            ['notify_skated_with', 'Skated With Tags'],
                           ] as [keyof NotificationPrefs, string][]
                         ).map(([key, label]) => (
                           <View

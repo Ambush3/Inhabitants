@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/src/libs/supabase';
+import { deleteAllMediaForCheckIn } from '@/src/hooks/useCheckInMedia';
 
 export type CheckIn = {
   id: string;
@@ -63,8 +64,7 @@ export function useCheckIns() {
 
   const checkIn = useCallback(
     async (
-      spotId: string,
-      isPrivate = false
+      spotId: string
     ): Promise<{ success: boolean; error?: string; alreadyCheckedIn?: boolean; checkInId?: string }> => {
       const userId = await getCurrentUserId();
       if (!userId) return { success: false, error: 'Not authenticated' };
@@ -96,17 +96,7 @@ export function useCheckIns() {
 
         if (error) return { success: false, error: error.message };
 
-        const withinCooldown = !!recent;
-
-        if (!withinCooldown && !isPrivate) {
-          await supabase.from('feed_items').insert({
-            user_id: userId,
-            type: 'check_in',
-            spot_id: spotId,
-            check_in_id: data.id,
-          });
-        }
-        return { success: true, alreadyCheckedIn: withinCooldown, checkInId: data.id };
+        return { success: true, alreadyCheckedIn: !!recent, checkInId: data.id };
       } catch (e: any) {
         return { success: false, error: e.message };
       } finally {
@@ -117,12 +107,6 @@ export function useCheckIns() {
   );
 
   const getVisitorCount = useCallback(async (spotId: string): Promise<number> => {
-    const { count } = await supabase
-      .from('check_ins')
-      .select('user_id', { count: 'exact', head: false })
-      .eq('spot_id', spotId)
-      .eq('is_private', false);
-
     const { data } = await supabase
       .from('check_ins')
       .select('user_id')
@@ -266,6 +250,7 @@ export function useCheckIns() {
   }, []);
 
   const deleteCheckIn = useCallback(async (checkInId: string): Promise<boolean> => {
+    await deleteAllMediaForCheckIn(checkInId);
     const { error } = await supabase.from('check_ins').delete().eq('id', checkInId);
 
     if (!error) {
@@ -281,6 +266,48 @@ export function useCheckIns() {
     }
     return !error;
   }, []);
+
+  const getLastCheckInSummary = useCallback(
+    async (spotId: string): Promise<{ id: string; mediaCount: number } | null> => {
+      const userId = await getCurrentUserId();
+      if (!userId) return null;
+
+      const { data } = await supabase
+        .from('check_ins')
+        .select('id, check_in_media (id)')
+        .eq('user_id', userId)
+        .eq('spot_id', spotId)
+        .order('checked_in_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (!data) return null;
+      return { id: data.id, mediaCount: ((data.check_in_media as any) ?? []).length };
+    },
+    []
+  );
+
+  const undoCheckIn = useCallback(
+    async (checkInId: string): Promise<{ success: boolean; error?: string }> => {
+      await supabase.from('check_in_tags').delete().eq('check_in_id', checkInId);
+      await deleteAllMediaForCheckIn(checkInId);
+
+      const { error } = await supabase.from('check_ins').delete().eq('id', checkInId);
+      if (error) return { success: false, error: error.message };
+
+      setPassportEntries((prev) =>
+        prev
+          .map((entry) => ({
+            ...entry,
+            visit_count: entry.visits.filter((v) => v.id !== checkInId).length,
+            visits: entry.visits.filter((v) => v.id !== checkInId),
+          }))
+          .filter((entry) => entry.visit_count > 0)
+      );
+      return { success: true };
+    },
+    []
+  );
 
   const hasCheckedInWithinCooldown = useCallback(async (spotId: string): Promise<boolean> => {
     const userId = await getCurrentUserId();
@@ -312,6 +339,8 @@ export function useCheckIns() {
     loadPassport,
     togglePrivacy,
     deleteCheckIn,
+    getLastCheckInSummary,
+    undoCheckIn,
     hasCheckedInWithinCooldown,
   };
 }

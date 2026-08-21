@@ -6,7 +6,7 @@ const MIN_GAP_MS = 8 * 60 * 60 * 1000;
 const NORMAL_AFTER_MS = 24 * 60 * 60 * 1000;
 
 export type PlaceCheckInResult =
-  | { ok: true }
+  | { ok: true; checkInId: string }
   | { ok: false; reason: 'auth' | 'cooldown' | 'error' };
 
 export type PlaceCheckInState = 'available' | 'confirm' | 'recent';
@@ -112,6 +112,55 @@ export function usePlaceCheckIns() {
     setLoading(false);
   }, []);
 
+  const getLastPlaceCheckIn = useCallback(async (placeId: string): Promise<string | null> => {
+    const { data: u } = await supabase.auth.getUser();
+    const uid = u.user?.id;
+    if (!uid) return null;
+
+    const { data } = await supabase
+      .from('place_check_ins')
+      .select('id')
+      .eq('user_id', uid)
+      .eq('place_id', placeId)
+      .order('checked_in_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    return data?.id ?? null;
+  }, []);
+
+  const undoPlaceCheckIn = useCallback(
+    async (checkInId: string, placeId: string): Promise<{ ok: boolean; error?: string }> => {
+      const { data: u } = await supabase.auth.getUser();
+      const uid = u.user?.id;
+      if (!uid) return { ok: false, error: 'Not authenticated' };
+
+      await supabase.from('place_check_in_tags').delete().eq('place_check_in_id', checkInId);
+
+      const { error } = await supabase.from('place_check_ins').delete().eq('id', checkInId);
+      if (error) return { ok: false, error: error.message };
+
+      const { data: previous } = await supabase
+        .from('place_check_ins')
+        .select('checked_in_at')
+        .eq('user_id', uid)
+        .eq('place_id', placeId)
+        .order('checked_in_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      setLastCheckInAt((prev) => {
+        const nextMap = new Map(prev);
+        if (previous) nextMap.set(placeId, new Date(previous.checked_in_at).getTime());
+        else nextMap.delete(placeId);
+        return nextMap;
+      });
+
+      return { ok: true };
+    },
+    []
+  );
+
   const getPlaceCheckInState = useCallback(
     (placeId: string): PlaceCheckInState => {
       const last = lastCheckInAt.get(placeId);
@@ -152,13 +201,15 @@ export function usePlaceCheckIns() {
           { onConflict: 'id', ignoreDuplicates: true }
         );
 
-        const { error } = await supabase
+        const { data: inserted, error } = await supabase
           .from('place_check_ins')
-          .insert({ user_id: uid, place_id: place.id, is_private: priv });
-        if (error) return { ok: false, reason: 'error' };
+          .insert({ user_id: uid, place_id: place.id, is_private: priv })
+          .select('id')
+          .single();
+        if (error || !inserted) return { ok: false, reason: 'error' };
 
         setLastCheckInAt((prev) => new Map(prev).set(place.id, Date.now()));
-        return { ok: true };
+        return { ok: true, checkInId: inserted.id };
       } finally {
         setCheckingIn(false);
       }
@@ -173,6 +224,8 @@ export function usePlaceCheckIns() {
     load,
     checkInPlace,
     getPlaceCheckInState,
+    getLastPlaceCheckIn,
+    undoPlaceCheckIn,
     parkEntries,
     parkEntriesLoading,
     loadParkEntries,

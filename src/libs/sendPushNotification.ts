@@ -115,6 +115,26 @@ export async function sendCrewSpotAddedNotification(
   });
 }
 
+export async function sendSkatedWithNotification(
+  target: { spotId?: string; placeId?: string; placeName?: string },
+  addresseeIds: string[],
+  actorUsername: string,
+  actorId: string
+) {
+  if (addresseeIds.length === 0) return;
+  await supabase.functions.invoke('send-push-notification', {
+    body: {
+      spot_id: target.spotId ?? null,
+      place_id: target.placeId ?? null,
+      spot_name: target.placeName ?? null,
+      addressee_ids: addresseeIds,
+      event_type: 'skated_with',
+      actor_username: actorUsername,
+      actor_id: actorId,
+    },
+  });
+}
+
 export async function sendEventInviteNotification(
   inviteeId: string,
   actorUsername: string,
