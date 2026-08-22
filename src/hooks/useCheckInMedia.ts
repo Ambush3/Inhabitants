@@ -3,7 +3,7 @@ import { supabase } from '@/src/libs/supabase';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import * as VideoThumbnails from 'expo-video-thumbnails';
 import { decode } from 'base64-arraybuffer';
-import { MAX_VIDEO_MB } from '@/src/config/iap';
+import { videoSizeLimitMb } from '@/src/config/iap';
 
 const BUCKET = 'check-in-media';
 
@@ -80,6 +80,13 @@ async function uploadCheckInMedia(
   } = await supabase.auth.getUser();
   if (!user) return { uploaded: 0, error: 'Not logged in' };
 
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('is_pro')
+    .eq('id', user.id)
+    .maybeSingle();
+  const sizeLimitMb = videoSizeLimitMb(!!profile?.is_pro);
+
   let uploaded = 0;
   let firstError: string | undefined;
 
@@ -135,8 +142,8 @@ async function uploadCheckInMedia(
       } else {
         const res = await fetch(asset.uri);
         const bytes = await res.arrayBuffer();
-        if (bytes.byteLength > MAX_VIDEO_MB * 1024 * 1024) {
-          firstError = firstError ?? `Videos must be under ${MAX_VIDEO_MB}MB.`;
+        if (bytes.byteLength > sizeLimitMb * 1024 * 1024) {
+          firstError = firstError ?? `Videos must be under ${sizeLimitMb}MB.`;
           continue;
         }
 

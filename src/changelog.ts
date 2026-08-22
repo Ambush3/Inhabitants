@@ -1,5 +1,18 @@
 export const changelog = [
   {
+    version: '1.14.0',
+    date: 'August 2026',
+    changes: [
+      'Tag the friends you skated with when you check in at a spot or park',
+      'Tagged friends get a heads up, and tapping it takes them straight there',
+      'See who you skated with on a spot, and add or remove people any time',
+      'Changed your mind? Undo a check-in from the check-in button',
+      'Photos on your saved spots now work without a signal',
+      'Fixed the spot count being wrong after switching between Skate Park and Skate Shop filters',
+      'Pro: post clips up to 3 minutes, up from 1',
+    ],
+  },
+  {
     version: '1.13.0',
     date: 'August 2026',
     changes: [
