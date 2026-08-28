@@ -3074,6 +3074,14 @@ export default function Index() {
         }}
       />
       <ProfileModal
+        userLocation={
+          userLocationRef.current
+            ? {
+              latitude: userLocationRef.current.latitude,
+              longitude: userLocationRef.current.longitude,
+            }
+            : null
+        }
         onSelectPlace={async (p) => {
           setProfileOpen(false);
           setSelectedPlaceId(p.id);

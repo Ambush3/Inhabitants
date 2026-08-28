@@ -9,6 +9,8 @@ export const changelog = [
       'Changed your mind? Undo a check-in from the check-in button',
       'Photos on your saved spots now work without a signal',
       'Fixed the spot count being wrong after switching between Skate Park and Skate Shop filters',
+      'Pro: plan a session from any list — spots get ordered by distance, with the miles between each one',
+      'Pro: drag to set your own order, then send the whole route to Google Maps',
       'Pro: post clips up to 3 minutes, up from 1',
     ],
   },
