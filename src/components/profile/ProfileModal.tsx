@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { PassportShareCard } from '@/src/components/profile/PassportShareCard';
 import { PaywallModal } from '@/src/components/PaywallModal';
+import { SessionPlannerModal } from '@/src/components/SessionPlannerModal';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/src/libs/supabase';
@@ -55,6 +56,7 @@ type Props = {
   myReviews: MyReview[];
   onLoadMyReviews: () => Promise<void>;
   onSelectSpot: (spot: Spot) => void;
+  userLocation?: { latitude: number; longitude: number } | null;
   onSelectPlace?: (place: Place) => void;
   allSpots: Spot[];
   onSignOut: () => void;
@@ -73,6 +75,7 @@ export function ProfileModal({
   myReviews,
   onLoadMyReviews,
   onSelectSpot,
+  userLocation = null,
   onSelectPlace,
   allSpots,
   onSignOut,
@@ -84,6 +87,7 @@ export function ProfileModal({
   const { theme } = useTheme();
   const { isPro } = usePro();
   const [proPaywallOpen, setProPaywallOpen] = useState(false);
+  const [plannerOpen, setPlannerOpen] = useState(false);
   const [sharingPassport, setSharingPassport] = useState(false);
   const shareCardRef = useRef<View>(null);
   const [sharingRecap, setSharingRecap] = useState(false);
@@ -294,7 +298,22 @@ export function ProfileModal({
       setUserSearchQuery('');
       setUserSearchResults([]);
     }
+    if (activeTab === 'collections') loadCollections();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
+
+  useEffect(() => {
+    if (!visible || !selectedCollection) return;
+    let cancelled = false;
+    (async () => {
+      const spots = await loadCollectionSpots(selectedCollection.id);
+      if (!cancelled) setCollectionSpots(spots);
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, selectedCollection?.id]);
 
   useEffect(() => {
     if (!visible) return;
@@ -336,6 +355,18 @@ export function ProfileModal({
       {visible ? <AlertHost /> : null}
       {visible ? <ToastHost /> : null}
       <PaywallModal visible={proPaywallOpen} onClose={() => setProPaywallOpen(false)} />
+      <SessionPlannerModal
+        visible={plannerOpen}
+        onClose={() => setPlannerOpen(false)}
+        title={selectedCollection?.name ?? ''}
+        spots={collectionSpots}
+        userLocation={userLocation}
+        onOpenSpot={(spot) => {
+          setPlannerOpen(false);
+          onSelectSpot(spot);
+          onClose();
+        }}
+      />
       <View ref={shareCardRef} collapsable={false} style={{ position: 'absolute', left: -9999, top: 0 }}>
         <PassportShareCard
           username={username}
@@ -1071,6 +1102,32 @@ export function ProfileModal({
                                 }}>
                                 {selectedCollection.name}
                               </Text>
+                              {collectionSpots.length > 1 ? (
+                                <Pressable
+                                  onPress={() => {
+                                    if (!isPro) {
+                                      setProPaywallOpen(true);
+                                      return;
+                                    }
+                                    setPlannerOpen(true);
+                                  }}
+                                  style={{
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: 8,
+                                    backgroundColor: c.accent,
+                                    borderRadius: 12,
+                                    paddingVertical: 12,
+                                    marginBottom: 16,
+                                  }}>
+                                  <Ionicons name="map" size={16} color="#fff" />
+                                  <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>
+                                    Plan a session
+                                  </Text>
+                                  {!isPro ? <CrownIcon size={13} /> : null}
+                                </Pressable>
+                              ) : null}
                               {collectionSpotsLoading ? (
                                 <Text
                                   style={{
