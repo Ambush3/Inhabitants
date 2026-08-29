@@ -9,6 +9,7 @@ import { ThemeProvider, useTheme } from '@/src/context/ThemeContext';
 import { ToastProvider } from '@/src/context/ToastContext';
 import { MapProviderProvider } from '@/src/context/MapProviderContext';
 import { ProProvider } from '@/src/context/ProContext';
+import { MarkerStyleProvider } from '@/src/context/MarkerStyleContext';
 import { ErrorBoundary } from '@/src/components/ErrorBoundary';
 import { AlertHost } from '@/src/components/ui/ThemedAlert';
 import { ToastHost } from '@/src/context/ToastContext';
@@ -163,11 +164,13 @@ function RootLayout() {
           <ThemeProvider>
             <MapProviderProvider>
               <ProProvider>
-                <ToastProvider>
-                  <SplashProvider>
-                    <RootLayoutInner />
-                  </SplashProvider>
-                </ToastProvider>
+                <MarkerStyleProvider>
+                  <ToastProvider>
+                    <SplashProvider>
+                      <RootLayoutInner />
+                    </SplashProvider>
+                  </ToastProvider>
+                </MarkerStyleProvider>
               </ProProvider>
             </MapProviderProvider>
           </ThemeProvider>

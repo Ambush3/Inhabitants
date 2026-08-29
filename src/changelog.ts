@@ -12,6 +12,7 @@ export const changelog = [
       'Pro: plan a session from any list — spots get ordered by distance, with the miles between each one',
       'Pro: drag to set your own order, then send the whole route to Google Maps',
       'Pro: post clips up to 3 minutes, up from 1',
+      'Pro: pick the symbol on your spot markers — Settings > Your marker. Everyone sees it on the map',
     ],
   },
   {
