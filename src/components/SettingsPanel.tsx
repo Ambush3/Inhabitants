@@ -17,6 +17,8 @@ import { useNotificationPreferences, NotificationPrefs } from '@/src/hooks/useNo
 import { FeedbackBoardModal } from '@/src/components/feedback/FeedbackBoardModal';
 import { ThemeBackdrop } from '@/src/components/ThemeBackdrop';
 import { ThemePickerModal } from '@/src/components/ThemePickerModal';
+import { MarkerStylePickerModal } from '@/src/components/MarkerStylePickerModal';
+import { useMarkerStyle } from '@/src/context/MarkerStyleContext';
 
 import * as ImagePicker from 'expo-image-picker';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
@@ -96,6 +98,8 @@ export function SettingsPanel({
   const [changelogOpen, setChangelogOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [themePickerOpen, setThemePickerOpen] = useState(false);
+  const [markerPickerOpen, setMarkerPickerOpen] = useState(false);
+  const { style: markerStyle } = useMarkerStyle();
   const { theme, themeId, themes } = useTheme();
   const toast = useToast();
   const { isPro, restore } = usePro();
@@ -436,6 +440,27 @@ export function SettingsPanel({
                   </View>
                 </Pressable>
                 {session ? (
+                  <Pressable
+                    onPress={() => {
+                      if (!isPro) {
+                        setProPaywallOpen(true);
+                        return;
+                      }
+                      setMarkerPickerOpen(true);
+                    }}
+                    style={rowStyle}>
+                    <View style={rowLeftStyle}>
+                      <Ionicons name="location-outline" size={20} color={c.text} />
+                      <Text style={{ fontSize: 15, color: c.text }}>Your marker</Text>
+                      {!isPro ? <CrownIcon size={13} /> : null}
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <Text style={{ fontSize: 13, color: c.subtext }}>{markerStyle.label}</Text>
+                      <Ionicons name="chevron-forward" size={16} color={c.subtext} />
+                    </View>
+                  </Pressable>
+                ) : null}
+                {session ? (
                   <>
                     <Pressable
                       onPress={() => setNotifSectionOpen((p) => !p)}
@@ -649,6 +674,10 @@ export function SettingsPanel({
               </ScrollView>
             </ThemeBackdrop>
             <ThemePickerModal visible={themePickerOpen} onClose={() => setThemePickerOpen(false)} />
+            <MarkerStylePickerModal
+              visible={markerPickerOpen}
+              onClose={() => setMarkerPickerOpen(false)}
+            />
             {/* Changelog modal */}
             <Modal
               visible={changelogOpen}

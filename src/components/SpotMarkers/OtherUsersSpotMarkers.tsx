@@ -6,9 +6,11 @@ import { SelectedPulse } from '@/src/components/SpotMarkers/SelectedPulse';
 type Props = {
     selected: boolean;
     isFriend?: boolean;
+    glyphPath?: string | string[] | null;
+    glyphViewBox?: string;
 };
 
-export function OtherUsersSpotMarkers({ selected, isFriend }: Props) {
+export function OtherUsersSpotMarkers({ selected, isFriend, glyphPath = null, glyphViewBox }: Props) {
     const color = isFriend ? '#5856D6' : '#8E8E93';
 
     return (
@@ -17,6 +19,8 @@ export function OtherUsersSpotMarkers({ selected, isFriend }: Props) {
             <PinMarker
                 color={color}
                 size={64}
+                glyphPath={glyphPath}
+                glyphViewBox={glyphViewBox}
                 icon={require('@/assets/pin-images/SkateboardOnly.png')}
                 iconX={6}
                 iconY={8}
