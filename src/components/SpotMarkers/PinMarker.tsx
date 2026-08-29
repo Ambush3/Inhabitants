@@ -1,5 +1,6 @@
 import React from 'react';
-import Svg, { Path, Image, Ellipse } from 'react-native-svg';
+import Svg, { Path, Image, Ellipse, G } from 'react-native-svg';
+import { GLYPH_SIZE, DEFAULT_GLYPH_VIEWBOX } from '@/src/config/markerStyles';
 
 type Props = {
     color?: string;
@@ -9,6 +10,11 @@ type Props = {
     iconY?: number;
     iconWidth?: number;
     iconHeight?: number;
+    /** SVG path data — one or more subpaths. Takes precedence over `icon`. */
+    glyphPath?: string | string[] | null;
+    /** viewBox the glyph path was drawn in. */
+    glyphViewBox?: string;
+    glyphColor?: string;
 };
 
 export function PinMarker({
@@ -19,9 +25,17 @@ export function PinMarker({
     iconY = 10,
     iconWidth = 59,
     iconHeight = 59,
+    glyphPath = null,
+    glyphViewBox = DEFAULT_GLYPH_VIEWBOX,
+    glyphColor = '#1C1C1E',
 }: Props) {
     const w = size * 0.75;
     const h = size;
+
+    const [vbX, vbY, vbW, vbH] = glyphViewBox.split(/[\s,]+/).map(Number);
+    const glyphScale = GLYPH_SIZE / Math.max(vbW || 100, vbH || 100);
+    const glyphX = 37.5 - ((vbW || 100) * glyphScale) / 2 - (vbX || 0) * glyphScale;
+    const glyphY = 36.5 - ((vbH || 100) * glyphScale) / 2 - (vbY || 0) * glyphScale;
 
     return (
         <Svg width={w} height={h} viewBox="0 0 75 104">
@@ -32,14 +46,22 @@ export function PinMarker({
                 stroke="white"
                 strokeWidth={3}
             />
-            <Image
-                x={iconX}
-                y={iconY}
-                width={iconWidth}
-                height={iconHeight}
-                href={icon}
-                preserveAspectRatio="xMidYMid meet"
-            />
+            {glyphPath ? (
+                <G transform={`translate(${glyphX}, ${glyphY}) scale(${glyphScale})`}>
+                    {(Array.isArray(glyphPath) ? glyphPath : [glyphPath]).map((d, i) => (
+                        <Path key={i} d={d} fill={glyphColor} />
+                    ))}
+                </G>
+            ) : (
+                <Image
+                    x={iconX}
+                    y={iconY}
+                    width={iconWidth}
+                    height={iconHeight}
+                    href={icon}
+                    preserveAspectRatio="xMidYMid meet"
+                />
+            )}
         </Svg>
     );
 }

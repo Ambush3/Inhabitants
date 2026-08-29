@@ -46,6 +46,8 @@ import { ThemeBackdrop } from '@/src/components/ThemeBackdrop';
 import { ProfileModal } from '@/src/components/profile/ProfileModal';
 import { PublicProfileModal } from '@/src/components/profile/PublicProfileModal';
 import { MySpotMarker } from '@/src/components/SpotMarkers/MySpotMarker';
+import { markerStyleByKey } from '@/src/config/markerStyles';
+import { useOwnerMarkerStyles } from '@/src/hooks/useOwnerMarkerStyles';
 import { OtherUsersSpotMarkers } from '@/src/components/SpotMarkers/OtherUsersSpotMarkers';
 import { TrackedMarker } from '@/src/components/SpotMarkers/TrackedMarker';
 import { MapLegend } from '@/src/components/MapLegend';
@@ -114,6 +116,7 @@ const SpotMap = React.memo(
   ({
     mapRef,
     visibleSpots,
+    ownerMarkerStyles,
     places,
     highlightSpotId,
     selectedPlaceId,
@@ -245,6 +248,12 @@ const SpotMap = React.memo(
                 <OtherUsersSpotMarkers
                   selected={s.id === highlightSpotId}
                   isFriend={s.user_id ? friendIds.has(s.user_id) : false}
+                  glyphPath={
+                    s.user_id ? markerStyleByKey(ownerMarkerStyles[s.user_id]).path : null
+                  }
+                  glyphViewBox={
+                    s.user_id ? markerStyleByKey(ownerMarkerStyles[s.user_id]).viewBox : undefined
+                  }
                 />
               </TrackedMarker>
             )
@@ -787,6 +796,12 @@ export default function Index() {
     viewportRegion,
     initialRegion,
   ]);
+
+  const visibleSpotOwnerIds = useMemo(
+    () => visibleSpots.map((s) => s.user_id).filter((id): id is string => !!id),
+    [visibleSpots]
+  );
+  const ownerMarkerStyles = useOwnerMarkerStyles(visibleSpotOwnerIds);
 
   useEffect(() => {
     const uid = session?.user?.id;
@@ -2397,6 +2412,7 @@ export default function Index() {
       />
 
       <SpotMap
+        ownerMarkerStyles={ownerMarkerStyles}
         mapRef={mapRef}
         visibleSpots={visibleSpots}
         places={visiblePlaces}
