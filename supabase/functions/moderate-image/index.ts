@@ -2,6 +2,8 @@
 // eslint-disable-next-line import/no-unresolved
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
+const JSON_HEADERS = { 'Content-Type': 'application/json' };
+
 const supabase = createClient(
     Deno.env.get('SUPABASE_URL')!,
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -57,9 +59,7 @@ Deno.serve(async (req) => {
         const safe = data.responses?.[0]?.safeSearchAnnotation;
 
         if (!safe) {
-            return new Response(JSON.stringify({ safe: true }), {
-                status: 200,
-            });
+            return new Response(JSON.stringify({ safe: true }), { status: 200, headers: JSON_HEADERS });
         }
 
         const flagged = ['adult', 'violence', 'racy'].some((category) =>
@@ -68,12 +68,12 @@ Deno.serve(async (req) => {
 
         if (flagged) {
             if (check_only) {
-                return new Response(JSON.stringify({ safe: false }), { status: 200 });
+                return new Response(JSON.stringify({ safe: false }), { status: 200, headers: JSON_HEADERS });
             }
             if (!ALLOWED_TARGETS.has(`${table}:${bucket}`)) {
                 return new Response(
                     JSON.stringify({ safe: false, reason: 'Unsupported moderation target' }),
-                    { status: 200 }
+                    { status: 200, headers: JSON_HEADERS }
                 );
             }
             // Remove every uploaded file tied to this row (e.g. video + its
@@ -99,14 +99,12 @@ Deno.serve(async (req) => {
                     safe: false,
                     reason: 'Inappropriate content detected',
                 }),
-                { status: 200 }
+                { status: 200, headers: JSON_HEADERS }
             );
         }
 
-        return new Response(JSON.stringify({ safe: true }), { status: 200 });
+        return new Response(JSON.stringify({ safe: true }), { status: 200, headers: JSON_HEADERS });
     } catch (err) {
-        return new Response(JSON.stringify({ error: String(err) }), {
-            status: 500,
-        });
+        return new Response(JSON.stringify({ error: String(err) }), { status: 500, headers: JSON_HEADERS });
     }
 });

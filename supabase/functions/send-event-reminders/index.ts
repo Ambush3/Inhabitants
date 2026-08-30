@@ -1,6 +1,8 @@
 // @ts-nocheck
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
+const JSON_HEADERS = { 'Content-Type': 'application/json' };
+
 const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 
 Deno.serve(async () => {
@@ -88,8 +90,8 @@ Deno.serve(async () => {
       }
     }
 
-    return new Response(JSON.stringify({ sent, events: allEvents.length }), { status: 200 });
+    return new Response(JSON.stringify({ sent, events: allEvents.length }), { status: 200, headers: JSON_HEADERS });
   } catch (err) {
-    return new Response(JSON.stringify({ error: String(err) }), { status: 500 });
+    return new Response(JSON.stringify({ error: String(err) }), { status: 500, headers: JSON_HEADERS });
   }
 });

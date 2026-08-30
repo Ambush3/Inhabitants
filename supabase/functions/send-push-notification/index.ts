@@ -2,6 +2,8 @@
 // eslint-disable-next-line import/no-unresolved
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
+const JSON_HEADERS = { 'Content-Type': 'application/json' };
+
 const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 
 const PREF_COLUMN_BY_TYPE: Record<string, string | null> = {
@@ -52,7 +54,7 @@ Deno.serve(async (req) => {
         if (authToken !== Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')) {
             const { data: { user }, error: authErr } = await supabase.auth.getUser(authToken);
             if (authErr || !user) {
-                return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+                return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: JSON_HEADERS });
             }
             actor_id = user.id;
             const { data: prof } = await supabase
@@ -76,7 +78,7 @@ Deno.serve(async (req) => {
                 .select('token')
                 .eq('user_id', addressee_id)
                 .maybeSingle();
-            if (!tokenRow) return new Response(JSON.stringify({ inserted: true }), { status: 200 });
+            if (!tokenRow) return new Response(JSON.stringify({ inserted: true }), { status: 200, headers: JSON_HEADERS });
             const response = await fetch('https://exp.host/--/api/v2/push/send', {
                 method: 'POST',
                 headers: {
@@ -93,14 +95,12 @@ Deno.serve(async (req) => {
                 }),
             });
             const result = await response.json();
-            return new Response(JSON.stringify(result), { status: 200 });
+            return new Response(JSON.stringify(result), { status: 200, headers: JSON_HEADERS });
         }
 
         if (event_type === 'friend_request' || event_type === 'friend_accepted') {
             if (!(await isAllowed(addressee_id, event_type))) {
-                return new Response(JSON.stringify({ muted: true }), {
-                    status: 200,
-                });
+                return new Response(JSON.stringify({ muted: true }), { status: 200, headers: JSON_HEADERS });
             }
 
             const { data: tokenRow } = await supabase
@@ -109,16 +109,14 @@ Deno.serve(async (req) => {
                 .eq('user_id', addressee_id)
                 .single();
 
-            if (!tokenRow) return new Response('No push token', { status: 200 });
+            if (!tokenRow) return new Response('No push token', { status: 200, headers: JSON_HEADERS });
 
             const isAccepted = event_type === 'friend_accepted';
 
             const now = new Date();
             const last = tokenRow.last_friend_request_notify ? new Date(tokenRow.last_friend_request_notify) : null;
             if (last && now.getTime() - last.getTime() < 60000) {
-                return new Response(JSON.stringify({ debounced: true }), {
-                    status: 200,
-                });
+                return new Response(JSON.stringify({ debounced: true }), { status: 200, headers: JSON_HEADERS });
             }
             await supabase
                 .from('push_tokens')
@@ -148,7 +146,7 @@ Deno.serve(async (req) => {
             });
 
             const result = await response.json();
-            return new Response(JSON.stringify(result), { status: 200 });
+            return new Response(JSON.stringify(result), { status: 200, headers: JSON_HEADERS });
         }
 
         if (event_type === 'crew_invite') {
@@ -165,7 +163,7 @@ Deno.serve(async (req) => {
                 .select('token')
                 .eq('user_id', addressee_id)
                 .maybeSingle();
-            if (!tokenRow) return new Response(JSON.stringify({ inserted: true }), { status: 200 });
+            if (!tokenRow) return new Response(JSON.stringify({ inserted: true }), { status: 200, headers: JSON_HEADERS });
             const response = await fetch('https://exp.host/--/api/v2/push/send', {
                 method: 'POST',
                 headers: {
@@ -182,13 +180,13 @@ Deno.serve(async (req) => {
                 }),
             });
             const result = await response.json();
-            return new Response(JSON.stringify(result), { status: 200 });
+            return new Response(JSON.stringify(result), { status: 200, headers: JSON_HEADERS });
         }
 
         if (event_type === 'crew_join' || event_type === 'crew_spot_added') {
             const recipients: string[] = Array.isArray(addressee_ids) ? addressee_ids : [];
             if (recipients.length === 0)
-                return new Response(JSON.stringify({ noop: true }), { status: 200 });
+                return new Response(JSON.stringify({ noop: true }), { status: 200, headers: JSON_HEADERS });
             const rows = recipients.map((rid) => ({
                 user_id: rid,
                 type: event_type,
@@ -215,7 +213,7 @@ Deno.serve(async (req) => {
                 .map((r: any) => r.token)
                 .filter((t: string) => t && !actorTokens.has(t));
             if (tokens.length === 0)
-                return new Response(JSON.stringify({ inserted: true }), { status: 200 });
+                return new Response(JSON.stringify({ inserted: true }), { status: 200, headers: JSON_HEADERS });
             const title =
                 event_type === 'crew_join' ? '👥 New Crew Member' : '📍 New Crew Spot';
             const body =
@@ -242,12 +240,12 @@ Deno.serve(async (req) => {
                 });
                 result = await response.json();
             }
-            return new Response(JSON.stringify(result), { status: 200 });
+            return new Response(JSON.stringify(result), { status: 200, headers: JSON_HEADERS });
         }
 
         if (event_type === 'event_invite') {
             if (!(await isAllowed(addressee_id, event_type))) {
-                return new Response(JSON.stringify({ muted: true }), { status: 200 });
+                return new Response(JSON.stringify({ muted: true }), { status: 200, headers: JSON_HEADERS });
             }
 
             const { data: tokenRow } = await supabase
@@ -256,7 +254,7 @@ Deno.serve(async (req) => {
                 .eq('user_id', addressee_id)
                 .single();
 
-            if (!tokenRow) return new Response('No push token', { status: 200 });
+            if (!tokenRow) return new Response('No push token', { status: 200, headers: JSON_HEADERS });
 
             const response = await fetch('https://exp.host/--/api/v2/push/send', {
                 method: 'POST',
@@ -277,13 +275,13 @@ Deno.serve(async (req) => {
             });
 
             const result = await response.json();
-            return new Response(JSON.stringify(result), { status: 200 });
+            return new Response(JSON.stringify(result), { status: 200, headers: JSON_HEADERS });
         }
 
         if (event_type === 'skated_with') {
             const recipients: string[] = Array.isArray(addressee_ids) ? addressee_ids : [];
             if (recipients.length === 0)
-                return new Response(JSON.stringify({ noop: true }), { status: 200 });
+                return new Response(JSON.stringify({ noop: true }), { status: 200, headers: JSON_HEADERS });
 
             const { data: taggedSpot } = spot_id
                 ? await supabase
@@ -309,7 +307,7 @@ Deno.serve(async (req) => {
                 if (await isAllowed(rid, 'skated_with')) allowed.push(rid);
             }
             if (allowed.length === 0)
-                return new Response(JSON.stringify({ muted: true }), { status: 200 });
+                return new Response(JSON.stringify({ muted: true }), { status: 200, headers: JSON_HEADERS });
 
             await supabase.from('notifications').insert(
                 allowed.map((rid) => ({
@@ -331,7 +329,7 @@ Deno.serve(async (req) => {
                 .map((r: any) => r.token)
                 .filter((t: string) => !!t);
             if (tokens.length === 0)
-                return new Response(JSON.stringify({ inserted: true }), { status: 200 });
+                return new Response(JSON.stringify({ inserted: true }), { status: 200, headers: JSON_HEADERS });
 
             const messages = tokens.map((t: string) => ({
                 to: t,
@@ -361,7 +359,7 @@ Deno.serve(async (req) => {
                 });
                 taggedResult = await response.json();
             }
-            return new Response(JSON.stringify(taggedResult), { status: 200 });
+            return new Response(JSON.stringify(taggedResult), { status: 200, headers: JSON_HEADERS });
         }
 
         if (event_type === 'spot_closed') {
@@ -370,7 +368,7 @@ Deno.serve(async (req) => {
                 .select('user_id, name, lat, lng')
                 .eq('id', spot_id)
                 .single();
-            if (!closedSpot) return new Response('Spot not found', { status: 404 });
+            if (!closedSpot) return new Response('Spot not found', { status: 404, headers: JSON_HEADERS });
 
             const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString();
             const { data: recentClosed } = await supabase
@@ -381,7 +379,7 @@ Deno.serve(async (req) => {
                 .gte('created_at', twelveHoursAgo)
                 .limit(1);
             if (recentClosed && recentClosed.length > 0) {
-                return new Response(JSON.stringify({ debounced: true }), { status: 200 });
+                return new Response(JSON.stringify({ debounced: true }), { status: 200, headers: JSON_HEADERS });
             }
 
             const [{ data: favs }, { data: wish }, { data: colSpots }] = await Promise.all([
@@ -414,7 +412,7 @@ Deno.serve(async (req) => {
                 if (await isAllowed(rid, 'spot_closed')) gated.push(rid);
             }
             recipients = gated;
-            if (recipients.length === 0) return new Response(JSON.stringify({ noop: true }), { status: 200 });
+            if (recipients.length === 0) return new Response(JSON.stringify({ noop: true }), { status: 200, headers: JSON_HEADERS });
 
             const rows = recipients.map((rid) => ({
                 user_id: rid,
@@ -453,7 +451,7 @@ Deno.serve(async (req) => {
                     });
                 }
             }
-            return new Response(JSON.stringify({ inserted: recipients.length }), { status: 200 });
+            return new Response(JSON.stringify({ inserted: recipients.length }), { status: 200, headers: JSON_HEADERS });
         }
 
         const { data: spot } = await supabase
@@ -462,12 +460,10 @@ Deno.serve(async (req) => {
             .eq('id', spot_id)
             .single();
 
-        if (!spot) return new Response('Spot not found', { status: 404 });
+        if (!spot) return new Response('Spot not found', { status: 404, headers: JSON_HEADERS });
 
         if (!(await isAllowed(spot.user_id, event_type))) {
-            return new Response(JSON.stringify({ muted: true }), {
-                status: 200,
-            });
+            return new Response(JSON.stringify({ muted: true }), { status: 200, headers: JSON_HEADERS });
         }
 
         const { data: tokenRow } = await supabase
@@ -476,16 +472,14 @@ Deno.serve(async (req) => {
             .eq('user_id', spot.user_id)
             .single();
 
-        if (!tokenRow) return new Response('No push token', { status: 200 });
+        if (!tokenRow) return new Response('No push token', { status: 200, headers: JSON_HEADERS });
 
         if (event_type === 'condition') {
             const now = new Date();
             const last = tokenRow.last_condition_notify ? new Date(tokenRow.last_condition_notify) : null;
 
             if (last && now.getTime() - last.getTime() < 10000) {
-                return new Response(JSON.stringify({ debounced: true }), {
-                    status: 200,
-                });
+                return new Response(JSON.stringify({ debounced: true }), { status: 200, headers: JSON_HEADERS });
             }
 
             await supabase
@@ -522,7 +516,7 @@ Deno.serve(async (req) => {
         };
 
         const message = messages[event_type];
-        if (!message) return new Response('Unknown event type', { status: 400 });
+        if (!message) return new Response('Unknown event type', { status: 400, headers: JSON_HEADERS });
 
         await supabase.from('notifications').insert({
             user_id: spot.user_id,
@@ -552,10 +546,8 @@ Deno.serve(async (req) => {
         });
 
         const result = await response.json();
-        return new Response(JSON.stringify(result), { status: 200 });
+        return new Response(JSON.stringify(result), { status: 200, headers: JSON_HEADERS });
     } catch (err) {
-        return new Response(JSON.stringify({ error: String(err) }), {
-            status: 500,
-        });
+        return new Response(JSON.stringify({ error: String(err) }), { status: 500, headers: JSON_HEADERS });
     }
 });
