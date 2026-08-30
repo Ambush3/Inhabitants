@@ -1155,18 +1155,25 @@ export default function Index() {
     }
   }
 
-  const prevFilterPlaceTypesRef = useRef<MapFilters['types']>([]);
+  // Place types the TYPE filter switched on. Only these get switched back off, so
+  // a pill the user tapped themselves is never cleared by the filter sheet.
+  const filterEnabledPlaceTypesRef = useRef<Set<PlaceType>>(new Set());
 
   useEffect(() => {
-    const prev = prevFilterPlaceTypesRef.current;
-    prevFilterPlaceTypesRef.current = advFilters.types;
-
     (['skatepark', 'skateshop'] as const).forEach((t) => {
       const inNext = advFilters.types.includes(t);
-      if (inNext && !activePlaceTypes.has(t)) {
-        setPlaceTypeActive(t, true);
-      } else if (!inNext && prev.includes(t) && activePlaceTypes.has(t)) {
-        setPlaceTypeActive(t, false);
+
+      if (inNext) {
+        if (!activePlaceTypes.has(t)) {
+          filterEnabledPlaceTypesRef.current.add(t);
+          setPlaceTypeActive(t, true);
+        }
+        return;
+      }
+
+      if (filterEnabledPlaceTypesRef.current.has(t)) {
+        filterEnabledPlaceTypesRef.current.delete(t);
+        if (activePlaceTypes.has(t)) setPlaceTypeActive(t, false);
       }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps

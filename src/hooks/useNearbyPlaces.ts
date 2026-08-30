@@ -16,7 +16,7 @@ const OVERPASS_ENDPOINTS = [
 ];
 
 const PROXY_TIMEOUT_MS = 40000;
-const OVERPASS_TIMEOUT_MS = 8000;
+const OVERPASS_TIMEOUT_MS = 25000;
 
 const CACHE_PREFIX = 'nearby_cache_v1';
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -135,8 +135,19 @@ export function useNearbyPlaces() {
                     body: { lat, lng, radiusMeters, type },
                     signal: proxyController.signal,
                 });
-                if (!fnError && data && Array.isArray(data.places)) {
-                    const proxyPlaces = data.places as Place[];
+                // The function may respond as text/plain, in which case supabase-js
+                // hands back a raw string instead of a parsed object.
+                let payload: any = data;
+                if (typeof payload === 'string') {
+                    try {
+                        payload = JSON.parse(payload);
+                    } catch {
+                        payload = null;
+                    }
+                }
+
+                if (!fnError && payload && Array.isArray(payload.places)) {
+                    const proxyPlaces = payload.places as Place[];
                     setError(proxyPlaces.length === 0 ? emptyMessage : null);
                     if (cacheKey) writeTileCache(cacheKey, proxyPlaces);
                     await deliverPlaces(proxyPlaces, onLoaded);
