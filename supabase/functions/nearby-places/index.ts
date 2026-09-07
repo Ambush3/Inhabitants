@@ -60,6 +60,7 @@ function normalizeOverpass(json: any, type: string): any[] {
                 lat: pLat,
                 lng: pLng,
                 tags: el.tags ?? {},
+                hours: el.tags?.opening_hours ?? null,
             };
         })
         .filter((p: any) => p !== null);
@@ -118,6 +119,7 @@ async function queryGoogle(lat: number, lng: number, radiusMeters: number, type:
             lat: el.geometry.location.lat,
             lng: el.geometry.location.lng,
             tags: {},
+            hours: null,
         }));
 }
 
