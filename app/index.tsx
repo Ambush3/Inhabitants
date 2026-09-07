@@ -22,6 +22,7 @@ import * as Haptics from 'expo-haptics';
 import { useLocalSearchParams, useFocusEffect, usePathname, router } from 'expo-router';
 
 import { supabase } from '@/src/libs/supabase';
+import { isOpenNow } from '@/src/libs/openingHours';
 
 import { SkateMarker } from '@/src/components/SkateMarker';
 import { CreateSpotModal } from '@/src/components/CreateSpotModal';
@@ -695,10 +696,16 @@ export default function Index() {
   const [viewportRegion, setViewportRegion] = useState<Region | null>(null);
   const [visitedSpotIds, setVisitedSpotIds] = useState<Set<string>>(new Set());
   const [spotRatings, setSpotRatings] = useState<Record<string, number>>({});
+  const [currentTime, setCurrentTime] = useState(() => Date.now());
   const [mapSearch, setMapSearch] = useState('');
   const [headerHeight, setHeaderHeight] = useState(0);
   const [bannerVisible, setBannerVisible] = useState(false);
   const [markersVisible, setMarkersVisible] = useState(true);
+
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(Date.now()), 60_000);
+    return () => clearInterval(timer);
+  }, []);
 
   function matchesDifficultyFilter(spot: Spot): boolean {
     if (difficultyFilter.size === 0) return true;
@@ -749,6 +756,11 @@ export default function Index() {
     if (advFilters.types.length > 0) {
       list = list.filter((s) => advFilters.types.includes(s.spot_type));
     }
+    if (advFilters.openNow) {
+      list = list.filter(
+        (s) => s.spot_type !== 'spot' && isOpenNow(s.hours, new Date(currentTime)) === true
+      );
+    }
     if (advFilters.verifiedOnly) {
       list = list.filter((s) => s.is_verified);
     }
@@ -795,6 +807,7 @@ export default function Index() {
     spotRatings,
     viewportRegion,
     initialRegion,
+    currentTime,
   ]);
 
   const visibleSpotOwnerIds = useMemo(
@@ -867,10 +880,12 @@ export default function Index() {
         !activePlaceTypes.has(p.type)
       )
         return false;
+      if (advFilters.openNow && isOpenNow(p.hours ?? p.tags?.opening_hours, new Date(currentTime)) !== true)
+        return false;
       seen.add(p.id);
       return true;
     });
-  }, [places, visibleSpots, advFilters, highlightSpotId, activePlaceTypes, mapSearch]);
+  }, [places, visibleSpots, advFilters, highlightSpotId, activePlaceTypes, mapSearch, currentTime]);
 
   const toggleOwnershipFilter = (key: 'mine' | 'friends' | 'community') =>
     setOwnershipFilter((prev) => {
@@ -1013,7 +1028,15 @@ export default function Index() {
           s.lng != null &&
           haversineMeters(latitude, longitude, s.lat, s.lng) <= radiusMeters
       )
-      .map((s) => ({ id: s.id, name: s.name, type, lat: s.lat, lng: s.lng, tags: {} }));
+      .map((s) => ({
+        id: s.id,
+        name: s.name,
+        type,
+        lat: s.lat,
+        lng: s.lng,
+        tags: {},
+        hours: s.hours,
+      }));
   }
 
   async function loadPlacesForRegion(type: PlaceType, quiet = false) {
@@ -1062,6 +1085,19 @@ export default function Index() {
   }
 
   function togglePlaceType(type: PlaceType) {
+    if (activePlaceTypes.has(type)) {
+      setAdvFilters((prev) => {
+        const nextTypes = prev.types.filter((value) => value !== type);
+        const hasRemainingPlaceType = nextTypes.some(
+          (value) => value === 'skatepark' || value === 'skateshop'
+        );
+        return {
+          ...prev,
+          types: nextTypes,
+          openNow: hasRemainingPlaceType ? prev.openNow : false,
+        };
+      });
+    }
     return setPlaceTypeActive(type, !activePlaceTypes.has(type));
   }
 
@@ -1178,6 +1214,15 @@ export default function Index() {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [advFilters.types]);
+
+  useEffect(() => {
+    const hasPlaceTypeFilter = advFilters.types.some(
+      (type) => type === 'skatepark' || type === 'skateshop'
+    );
+    if (activePlaceTypes.size === 0 && !hasPlaceTypeFilter && advFilters.openNow) {
+      setAdvFilters((prev) => (prev.openNow ? { ...prev, openNow: false } : prev));
+    }
+  }, [activePlaceTypes, advFilters.types, advFilters.openNow]);
 
   const animateToSpotWithModalOffset = useCallback(
     (lat: number, lng: number, modalSize: 'full' | 'small' | 'medium' = 'full') => {

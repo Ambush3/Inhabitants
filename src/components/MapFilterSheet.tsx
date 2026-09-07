@@ -12,6 +12,7 @@ export type MapFilters = {
   types: SpotType[];
   visited: 'all' | 'visited' | 'notvisited';
   verifiedOnly: boolean;
+  openNow: boolean;
 };
 
 export const EMPTY_FILTERS: MapFilters = {
@@ -20,6 +21,7 @@ export const EMPTY_FILTERS: MapFilters = {
   types: [],
   visited: 'all',
   verifiedOnly: false,
+  openNow: false,
 };
 
 export const FEATURES: { key: string; label: string; match: string[] }[] = [
@@ -55,7 +57,8 @@ export function countActiveFilters(f: MapFilters): number {
     f.ratings.length +
     f.types.length +
     (f.visited !== 'all' ? 1 : 0) +
-    (f.verifiedOnly ? 1 : 0)
+    (f.verifiedOnly ? 1 : 0) +
+    (f.openNow ? 1 : 0)
   );
 }
 
@@ -106,6 +109,7 @@ export function MapFilterSheet({
 
   const activeCount = countActiveFilters(filters);
   const placeOnly = filters.types.length > 0 && !filters.types.includes('spot');
+  const hasPlaceType = filters.types.some((type) => type === 'skatepark' || type === 'skateshop');
 
   function toggleFeature(key: string) {
     onChange({
@@ -138,6 +142,7 @@ export function MapFilterSheet({
     onChange({
       ...filters,
       types: nextTypes,
+      ...(t === 'spot' ? { openNow: false } : {}),
       ...(placeOnly
         ? { features: [], ratings: [], visited: 'all', verifiedOnly: false }
         : {}),
@@ -272,6 +277,19 @@ export function MapFilterSheet({
                   onPress={() => onToggleOwnership(o.key)}
                 />
               ))}
+            </Section>
+
+            <Section
+              title="HOURS"
+              hint={!hasPlaceType ? 'select a park or shop' : undefined}
+              disabled={!hasPlaceType}>
+              <Chip
+                label="Open now"
+                icon="time-outline"
+                active={filters.openNow}
+                onPress={() => onChange({ ...filters, openNow: !filters.openNow })}
+                disabled={!hasPlaceType}
+              />
             </Section>
 
             <Section title="DIFFICULTY" disabled={placeOnly}>

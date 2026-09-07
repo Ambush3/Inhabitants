@@ -215,6 +215,7 @@ export function useNearbyPlaces() {
                             lat: pLat,
                             lng: pLng,
                             tags: el.tags ?? {},
+                            hours: el.tags?.opening_hours ?? null,
                         } as Place;
                     })
                     .filter((p: Place | null): p is Place => p !== null);
@@ -336,6 +337,7 @@ export function useNearbyPlaces() {
                         lat: pLat,
                         lng: pLng,
                         tags: el.tags ?? {},
+                        hours: el.tags?.opening_hours ?? null,
                     } as Place;
                 } catch (e: any) {
                     if (e?.name === 'AbortError') break;

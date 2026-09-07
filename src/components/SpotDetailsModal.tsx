@@ -29,6 +29,7 @@ import * as Haptics from 'expo-haptics';
 import * as Location from 'expo-location';
 import { useTheme } from '@/src/context/ThemeContext';
 import { useToast, ToastHost } from '@/src/context/ToastContext';
+import { openStatusLabel } from '@/src/libs/openingHours';
 
 import { CONDITION_META, SpotCondition } from '@/src/hooks/useSpotConditions';
 import { useCheckIns, SpotVisitor } from '@/src/hooks/useCheckIns';
@@ -302,6 +303,7 @@ export function SpotDetailsModal({
 
   const isPlaceType = spot?.spot_type === 'skatepark' || spot?.spot_type === 'skateshop';
   const isShop = spot?.spot_type === 'skateshop';
+  const currentStatus = openStatusLabel(spot?.hours);
 
   const editFieldStyle = {
     borderWidth: 1,
@@ -980,6 +982,22 @@ export function SpotDetailsModal({
                   <View style={[styles.detailRow, { alignItems: 'flex-start' }]}>
                     <Ionicons name="time-outline" size={18} color={c.subtext} />
                     <Text style={{ flex: 1, opacity: 0.8, color: c.text }}>{spot.hours}</Text>
+                  </View>
+                ) : null}
+                {currentStatus ? (
+                  <View style={styles.detailRow}>
+                    <Ionicons
+                      name="ellipse"
+                      size={12}
+                      color={currentStatus === 'Open now' ? '#35B86B' : '#E05A5A'}
+                    />
+                    <Text
+                      style={{
+                        color: currentStatus === 'Open now' ? '#35B86B' : '#E05A5A',
+                        fontWeight: '700',
+                      }}>
+                      {currentStatus}
+                    </Text>
                   </View>
                 ) : null}
               </View>

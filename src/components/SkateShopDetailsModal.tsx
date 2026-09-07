@@ -33,6 +33,7 @@ import { SessionMediaStrip } from '@/src/components/SessionMediaStrip';
 import { SessionMediaViewerModal, ViewerMedia } from '@/src/components/SessionMediaViewerModal';
 import { PaywallModal } from '@/src/components/PaywallModal';
 import { FREE_MEDIA_PER_SPOT, videoDurationLimit } from '@/src/config/iap';
+import { openStatusLabel } from '@/src/libs/openingHours';
 import * as ImagePicker from 'expo-image-picker';
 
 const geocodeCache = new Map<string, string>();
@@ -222,6 +223,7 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
   const phone = override?.phone ?? tags['phone'] ?? tags['contact:phone'] ?? null;
   const website = override?.website ?? tags['website'] ?? tags['contact:website'] ?? null;
   const hours = override?.hours ?? tags['opening_hours'] ?? null;
+  const currentStatus = openStatusLabel(hours);
   const osmStreet =
     tags['addr:housenumber'] && tags['addr:street']
       ? `${tags['addr:housenumber']} ${tags['addr:street']}`
@@ -616,6 +618,22 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
                     color: c.text,
                   }}>
                   {hours}
+                </Text>
+              </View>
+            ) : null}
+            {currentStatus ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                <Ionicons
+                  name="ellipse"
+                  size={12}
+                  color={currentStatus === 'Open now' ? '#35B86B' : '#E05A5A'}
+                />
+                <Text
+                  style={{
+                    color: currentStatus === 'Open now' ? '#35B86B' : '#E05A5A',
+                    fontWeight: '700',
+                  }}>
+                  {currentStatus}
                 </Text>
               </View>
             ) : null}
