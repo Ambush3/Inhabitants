@@ -2722,9 +2722,6 @@ export default function Index() {
               })
             }
           />
-          <MapLegend
-            style={{ position: 'absolute', top: (headerHeight || insets.top + 56) + 55, right: 12, alignItems: 'flex-end' }}
-          />
           <Pressable
             onPress={recenterToUser}
             disabled={locating}
@@ -2785,6 +2782,9 @@ export default function Index() {
               color={c.accent}
             />
           </Pressable>
+          <MapLegend
+            style={{ position: 'absolute', bottom: 148, right: 16, alignItems: 'flex-end' }}
+          />
         </>
       ) : null}
       {locating ? (
