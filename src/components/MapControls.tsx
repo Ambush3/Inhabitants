@@ -21,6 +21,8 @@ type Props = {
   placeTypes: Set<PlaceType>;
   onTogglePlaceType: (key: PlaceType) => void;
   onSubmitSearch?: () => void;
+  onOpenLiveSession?: () => void;
+  liveSessionActive?: boolean;
   parksLoading?: boolean;
   shopsLoading?: boolean;
 };
@@ -41,6 +43,8 @@ export function MapControls({
   placeTypes,
   onTogglePlaceType,
   onSubmitSearch,
+  onOpenLiveSession,
+  liveSessionActive = false,
   parksLoading = false,
   shopsLoading = false,
 }: Props) {
@@ -180,6 +184,27 @@ export function MapControls({
             onPress={() => onTogglePlaceType(p.key)}
           />
         ))}
+        {onOpenLiveSession ? (
+          <Pressable
+            onPress={onOpenLiveSession}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 6,
+              paddingVertical: 6,
+              paddingHorizontal: 12,
+              borderRadius: 16,
+              backgroundColor: liveSessionActive ? '#35B86B' : c.surface,
+              borderWidth: 1,
+              borderColor: liveSessionActive ? '#35B86B' : c.border,
+              marginRight: 8,
+            }}>
+            <Ionicons name="radio-outline" size={15} color={liveSessionActive ? '#fff' : c.text} />
+            <Text style={{ fontSize: 13, fontWeight: '600', color: liveSessionActive ? '#fff' : c.text }}>
+              {liveSessionActive ? 'Live' : 'Session'}
+            </Text>
+          </Pressable>
+        ) : null}
       </ScrollView>
     </View>
   );

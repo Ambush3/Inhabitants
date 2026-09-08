@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { showAlert, AlertHost } from '@/src/components/ui/ThemedAlert';
 import {
   View,
@@ -28,7 +28,7 @@ import { Place, Spot } from '@/src/types';
 import { useFriendships, Friend } from '@/src/hooks/social/useFriendships';
 import { useCollections, Collection } from '@/src/hooks/useCollections';
 import { useCheckIns, PassportEntry } from '@/src/hooks/useCheckIns';
-import { usePlaceCheckIns } from '@/src/hooks/usePlaceCheckIns';
+import { usePlaceCheckIns, ParkVisitEntry } from '@/src/hooks/usePlaceCheckIns';
 import { MyMediaGrid } from '@/src/components/profile/MyMediaGrid';
 import { TrickLog } from '@/src/hooks/useTrickLog';
 import { sendFriendAcceptedNotification } from '@/src/libs/sendPushNotification';
@@ -39,6 +39,7 @@ import { StreakCard } from '@/src/components/StreakCard';
 import { PassportBadges } from '@/src/components/profile/PassportBadges';
 import { WeeklyRecapCard } from '@/src/components/profile/WeeklyRecapCard';
 import { SessionMediaViewerModal, ViewerMedia } from '@/src/components/SessionMediaViewerModal';
+import { LiveSession } from '@/src/hooks/useLiveSession';
 
 type MyReview = {
   id: string;
@@ -64,6 +65,7 @@ type Props = {
   trickLogs: TrickLog[];
   trickLogsLoading: boolean;
   onDeleteTrickLog: (id: string) => Promise<string | null>;
+  liveSessions: LiveSession[];
 };
 
 type Tab = 'spots' | 'reviews' | 'friends' | 'collections' | 'passport';
@@ -83,6 +85,7 @@ export function ProfileModal({
   trickLogs,
   trickLogsLoading,
   onDeleteTrickLog,
+  liveSessions,
 }: Props) {
   const { theme } = useTheme();
   const { isPro } = usePro();
@@ -96,6 +99,7 @@ export function ProfileModal({
   const c = theme.colors;
 
   const [activeTab, setActiveTab] = useState<Tab>('spots');
+  const [showAllSessions, setShowAllSessions] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [username, setUsername] = useState<string | null>(null);
   const [firstName, setFirstName] = useState<string | null>(null);
@@ -137,17 +141,55 @@ export function ProfileModal({
   const { loadPassport, passportEntries, passportLoading, togglePrivacy, deleteCheckIn } = useCheckIns();
   const { activityData, loading: streakLoading, loadStreak } = useStreak();
   const {
-    parksSkated,
     load: loadPlaceCheckIns,
     parkEntries,
     parkEntriesLoading,
     loadParkEntries,
   } = usePlaceCheckIns();
-  const [passportFilter, setPassportFilter] = useState<'spots' | 'parks'>('spots');
+  const [passportFilter, setPassportFilter] = useState<'spots' | 'parks' | 'shops'>('spots');
 
-  const totalCheckIns = passportEntries.reduce((sum, e) => sum + e.visit_count, 0);
+  const passportParkShopEntries = useMemo<ParkVisitEntry[]>(() => {
+    const communityEntries = passportEntries
+      .filter(
+        (entry): entry is PassportEntry & { spot_type: 'skatepark' | 'skateshop' } =>
+          entry.spot_type === 'skatepark' || entry.spot_type === 'skateshop'
+      )
+      .map((entry) => ({
+        place_id: entry.spot_id,
+        name: entry.spot_name,
+        lat: entry.spot_lat,
+        lng: entry.spot_lng,
+        type: entry.spot_type,
+        visit_count: entry.visit_count,
+        last_visit: entry.last_visited_at,
+        source: 'community' as const,
+      }));
+    return [...communityEntries, ...parkEntries].sort(
+      (a, b) => new Date(b.last_visit).getTime() - new Date(a.last_visit).getTime()
+    );
+  }, [passportEntries, parkEntries]);
+
+  const passportSpotEntries = useMemo(
+    () => passportEntries.filter((entry) => entry.spot_type === 'spot'),
+    [passportEntries]
+  );
+  const passportParkEntries = useMemo(
+    () => passportParkShopEntries.filter((entry) => entry.type === 'skatepark'),
+    [passportParkShopEntries]
+  );
+  const passportShopEntries = useMemo(
+    () => passportParkShopEntries.filter((entry) => entry.type === 'skateshop'),
+    [passportParkShopEntries]
+  );
+  const passportLocationEntries = passportFilter === 'parks'
+    ? passportParkEntries
+    : passportFilter === 'shops'
+      ? passportShopEntries
+      : [];
+
+  const totalCheckIns = passportSpotEntries.reduce((sum, e) => sum + e.visit_count, 0);
   const mostSkatedSpot =
-    passportEntries.reduce<PassportEntry | null>(
+    passportSpotEntries.reduce<PassportEntry | null>(
       (best, e) => (!best || e.visit_count > best.visit_count ? e : best),
       null
     )?.spot_name ?? null;
@@ -371,9 +413,9 @@ export function ProfileModal({
         <PassportShareCard
           username={username}
           avatarUrl={avatarUrl}
-          spotsVisited={passportEntries.length}
+          spotsVisited={passportSpotEntries.length}
           totalCheckIns={totalCheckIns}
-          parksSkated={parksSkated}
+          parksSkated={passportParkEntries.length}
           longestStreak={activityData.longestStreak}
           mostSkatedSpot={mostSkatedSpot}
           profileUrl={myId ? `https://inhabitants.chottu.link/join?ref=${myId}&view=profile` : null}
@@ -634,9 +676,9 @@ export function ProfileModal({
                 borderColor: c.border,
               }}>
               <Text style={{ fontSize: 22, fontWeight: '700', color: c.text }}>
-                {passportEntries.length}
+                {friends.length}
               </Text>
-              <Text style={{ fontSize: 12, color: c.subtext, marginTop: 2 }}>Visited</Text>
+              <Text style={{ fontSize: 12, color: c.subtext, marginTop: 2 }}>Friends</Text>
             </View>
             <View style={{ flex: 1, alignItems: 'center', paddingVertical: 16 }}>
               <Text style={{ fontSize: 22, fontWeight: '700', color: c.text }}>
@@ -1377,7 +1419,6 @@ export function ProfileModal({
                   ) : /* Passport */
                     activeTab === 'passport' ? (
                       <>
-                        <StreakCard activityData={activityData} loading={streakLoading} />
                         <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
                           <Pressable
                             onPress={() => setPassportFilter('spots')}
@@ -1391,29 +1432,12 @@ export function ProfileModal({
                               borderColor: passportFilter === 'spots' ? c.accent : 'transparent',
                             }}>
                             <Text style={{ fontSize: 22, fontWeight: '700', color: c.text }}>
-                              {passportEntries.length}
+                              {passportSpotEntries.length}
                             </Text>
                             <Text style={{ fontSize: 12, color: c.subtext, marginTop: 2 }}>
                               Spots Visited
                             </Text>
                           </Pressable>
-                          <View
-                            style={{
-                              flex: 1,
-                              backgroundColor: c.tagBg,
-                              borderRadius: 10,
-                              padding: 12,
-                              alignItems: 'center',
-                              borderWidth: 2,
-                              borderColor: 'transparent',
-                            }}>
-                            <Text style={{ fontSize: 22, fontWeight: '700', color: c.text }}>
-                              {passportEntries.reduce((sum, e) => sum + e.visit_count, 0)}
-                            </Text>
-                            <Text style={{ fontSize: 12, color: c.subtext, marginTop: 2 }}>
-                              Spot Check-ins
-                            </Text>
-                          </View>
                           <Pressable
                             onPress={() => setPassportFilter('parks')}
                             style={{
@@ -1426,64 +1450,31 @@ export function ProfileModal({
                               borderColor: passportFilter === 'parks' ? c.accent : 'transparent',
                             }}>
                             <Text style={{ fontSize: 22, fontWeight: '700', color: c.text }}>
-                              {parksSkated}
+                              {passportParkEntries.length}
                             </Text>
                             <Text style={{ fontSize: 12, color: c.subtext, marginTop: 2 }}>
-                              Parks Skated
+                              Parks
+                            </Text>
+                          </Pressable>
+                          <Pressable
+                            onPress={() => setPassportFilter('shops')}
+                            style={{
+                              flex: 1,
+                              backgroundColor: c.tagBg,
+                              borderRadius: 10,
+                              padding: 12,
+                              alignItems: 'center',
+                              borderWidth: 2,
+                              borderColor: passportFilter === 'shops' ? c.accent : 'transparent',
+                            }}>
+                            <Text style={{ fontSize: 22, fontWeight: '700', color: c.text }}>
+                              {passportShopEntries.length}
+                            </Text>
+                            <Text style={{ fontSize: 12, color: c.subtext, marginTop: 2 }}>
+                              Shops
                             </Text>
                           </Pressable>
                         </View>
-
-                        <PassportBadges
-                          longestStreak={activityData.longestStreak}
-                          parksSkated={parksSkated}
-                          spotsVisited={passportEntries.length}
-                        />
-
-                        {(() => {
-                          const passportReady = passportEntries.length > 0;
-                          const recapReady = weekRecap.daysSkated > 0;
-                          const busy = sharingPassport || sharingRecap;
-                          const disabled = busy || (!passportReady && !recapReady);
-                          const disabledIndices: number[] = [];
-                          if (!passportReady) disabledIndices.push(1);
-                          if (!recapReady) disabledIndices.push(2);
-                          return (
-                            <Pressable
-                              onPress={() =>
-                                ActionSheetIOS.showActionSheetWithOptions(
-                                  {
-                                    title: 'Share',
-                                    options: ['Cancel', 'My Passport', 'Weekly Recap'],
-                                    cancelButtonIndex: 0,
-                                    disabledButtonIndices: disabledIndices,
-                                  },
-                                  (index) => {
-                                    if (index === 1) handleSharePassport();
-                                    if (index === 2) handleShareRecap();
-                                  }
-                                )
-                              }
-                              disabled={disabled}
-                              style={{
-                                flexDirection: 'row',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: 8,
-                                backgroundColor: '#000',
-                                borderRadius: 12,
-                                paddingVertical: 12,
-                                marginBottom: 16,
-                                opacity: disabled ? 0.5 : 1,
-                              }}>
-                              <Ionicons name="share-outline" size={16} color="#fff" />
-                              <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>
-                                {busy ? 'Preparing…' : 'Share'}
-                              </Text>
-                              <CrownIcon size={16} />
-                            </Pressable>
-                          );
-                        })()}
 
                         <Text
                           style={{
@@ -1494,43 +1485,68 @@ export function ProfileModal({
                             textTransform: 'uppercase',
                             marginBottom: 4,
                           }}>
+                          Visit history
+                        </Text>
+                        <Text
+                          style={{
+                            fontSize: 11,
+                            fontWeight: '700',
+                            letterSpacing: 0.6,
+                            color: c.subtext,
+                            textTransform: 'uppercase',
+                            marginBottom: 4,
+                          }}>
                           {passportFilter === 'parks'
-                            ? `Parks skated (${parkEntries.length})`
-                            : `Spots visited (${passportEntries.length})`}
+                            ? `Parks (${passportParkEntries.length})`
+                            : passportFilter === 'shops'
+                              ? `Shops (${passportShopEntries.length})`
+                              : `Spots visited (${passportSpotEntries.length})`}
                         </Text>
 
-                        {passportFilter === 'parks' ? (
-                          parkEntriesLoading ? (
+                        {passportFilter === 'parks' || passportFilter === 'shops' ? (
+                          parkEntriesLoading && passportLocationEntries.length === 0 ? (
                             <Text style={{ color: c.subtext, textAlign: 'center', marginTop: 24 }}>
                               Loading...
                             </Text>
-                          ) : parkEntries.length === 0 ? (
+                          ) : passportLocationEntries.length === 0 ? (
                             <Text
                               style={{
                                 color: c.subtext,
                                 fontSize: 14,
                                 textAlign: 'center',
                                 marginTop: 24,
+                                marginBottom: 28,
                               }}>
-                              No parks skated yet. Check in at a skate park!
+                              {passportFilter === 'parks'
+                                ? 'No parks checked in yet.'
+                                : 'No shops checked in yet.'}
                             </Text>
                           ) : (
-                            parkEntries.map((entry) => (
+                            passportLocationEntries.map((entry) => (
                               <Pressable
-                                key={entry.place_id}
+                                key={`${entry.source ?? 'osm'}:${entry.place_id}`}
                                 onPress={() => {
                                   if (entry.lat == null || entry.lng == null) {
-                                    toast.error("Couldn't open this park on the map.");
+                                    toast.error("Couldn't open this location on the map.");
                                     return;
                                   }
-                                  onSelectPlace?.({
-                                    id: entry.place_id,
-                                    name: entry.name,
-                                    lat: entry.lat,
-                                    lng: entry.lng,
-                                    type: entry.type,
-                                    tags: {},
-                                  });
+                                  if (entry.source === 'community') {
+                                    const spot = allSpots.find((item) => item.id === entry.place_id);
+                                    if (!spot) {
+                                      toast.error("Couldn't open this location on the map.");
+                                      return;
+                                    }
+                                    onSelectSpot(spot);
+                                  } else {
+                                    onSelectPlace?.({
+                                      id: entry.place_id,
+                                      name: entry.name,
+                                      lat: entry.lat,
+                                      lng: entry.lng,
+                                      type: entry.type,
+                                      tags: {},
+                                    });
+                                  }
                                   onClose();
                                 }}
                                 style={{
@@ -1550,7 +1566,9 @@ export function ProfileModal({
                                       justifyContent: 'center',
                                     }}>
                                     <Image
-                                      source={require('@/assets/pin-images/skatepark-ramp.png')}
+                                      source={entry.type === 'skateshop'
+                                        ? require('@/assets/pin-images/skate-shop.png')
+                                        : require('@/assets/pin-images/skatepark-ramp.png')}
                                       style={{ width: 20, height: 20, tintColor: '#34C759' }}
                                     />
                                   </View>
@@ -1577,13 +1595,13 @@ export function ProfileModal({
                           <Text style={{ color: c.subtext, textAlign: 'center', marginTop: 24 }}>
                             Loading...
                           </Text>
-                        ) : passportEntries.length === 0 ? (
+                        ) : passportSpotEntries.length === 0 ? (
                           <Text
                             style={{ color: c.subtext, fontSize: 14, textAlign: 'center', marginTop: 24 }}>
                             No check-ins yet. Hit a spot and check in!
                           </Text>
                         ) : (
-                          passportEntries.map((entry) => {
+                          passportSpotEntries.map((entry) => {
                             const expanded = expandedPassportSpot === entry.spot_id;
                             return (
                               <Pressable
@@ -1776,6 +1794,128 @@ export function ProfileModal({
                             );
                           })
                         )}
+
+
+                        <View
+                          style={{
+                            backgroundColor: c.tagBg,
+                            borderRadius: 14,
+                            padding: 14,
+                            marginBottom: 16,
+                          }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+                            <Ionicons name="radio-outline" size={17} color={c.accent} />
+                            <Text style={{ flex: 1, color: c.text, fontWeight: '800', marginLeft: 8 }}>
+                              Recent sessions
+                            </Text>
+                            {liveSessions.length > 3 ? (
+                              <Pressable onPress={() => setShowAllSessions((value) => !value)}>
+                                <Text style={{ color: c.accent, fontWeight: '700', fontSize: 12 }}>
+                                  {showAllSessions ? 'Show less' : 'See all'}
+                                </Text>
+                              </Pressable>
+                            ) : null}
+                          </View>
+                          {liveSessions.length === 0 ? (
+                            <Text style={{ color: c.subtext, fontSize: 13 }}>
+                              Your completed live sessions will appear here.
+                            </Text>
+                          ) : (
+                            liveSessions.slice(0, showAllSessions ? liveSessions.length : 3).map((live) => {
+                              const elapsedMinutes = Math.max(
+                                0,
+                                Math.round(
+                                  (new Date(live.endedAt ?? live.startedAt).getTime() -
+                                    new Date(live.startedAt).getTime()) /
+                                  60000
+                                )
+                              );
+                              const elapsedText = elapsedMinutes === 0 && live.stops.length > 0 ? '<1m' : `${elapsedMinutes}m`;
+                              return (
+                                <View
+                                  key={live.id}
+                                  style={{
+                                    borderTopWidth: 1,
+                                    borderTopColor: c.border,
+                                    paddingVertical: 10,
+                                  }}>
+                                  <Text style={{ color: c.text, fontWeight: '700' }}>{live.title}</Text>
+                                  <Text style={{ color: c.subtext, fontSize: 12, marginTop: 3 }} numberOfLines={1}>
+                                    {new Date(live.startedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} · {elapsedText} · {live.stops.length} stop{live.stops.length === 1 ? '' : 's'}
+                                  </Text>
+                                  <Text style={{ color: c.text, fontSize: 12, marginTop: 3 }} numberOfLines={1}>
+                                    {live.stops.map((stop) => stop.name).join(' → ') || 'No spots recorded'}
+                                  </Text>
+                                </View>
+                              );
+                            })
+                          )}
+                        </View>
+
+                        <PassportBadges
+                          longestStreak={activityData.longestStreak}
+                          parksSkated={passportParkEntries.length}
+                          spotsVisited={passportSpotEntries.length}
+                        />
+
+                        {(() => {
+                          const passportReady = passportSpotEntries.length > 0 || passportParkShopEntries.length > 0;
+                          const recapReady = weekRecap.daysSkated > 0;
+                          const busy = sharingPassport || sharingRecap;
+                          const disabled = busy || (!passportReady && !recapReady);
+                          const disabledIndices: number[] = [];
+                          if (!passportReady) disabledIndices.push(1);
+                          if (!recapReady) disabledIndices.push(2);
+                          return (
+                            <Pressable
+                              onPress={() =>
+                                ActionSheetIOS.showActionSheetWithOptions(
+                                  {
+                                    title: 'Share',
+                                    options: ['Cancel', 'My Passport', 'Weekly Recap'],
+                                    cancelButtonIndex: 0,
+                                    disabledButtonIndices: disabledIndices,
+                                  },
+                                  (index) => {
+                                    if (index === 1) handleSharePassport();
+                                    if (index === 2) handleShareRecap();
+                                  }
+                                )
+                              }
+                              disabled={disabled}
+                              style={{
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: 8,
+                                backgroundColor: '#000',
+                                borderRadius: 12,
+                                paddingVertical: 12,
+                                marginBottom: 16,
+                                opacity: disabled ? 0.5 : 1,
+                              }}>
+                              <Ionicons name="share-outline" size={16} color="#fff" />
+                              <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>
+                                {busy ? 'Preparing…' : 'Share'}
+                              </Text>
+                              <CrownIcon size={16} />
+                            </Pressable>
+                          );
+                        })()}
+
+
+                        <Text
+                          style={{
+                            fontSize: 11,
+                            fontWeight: '700',
+                            letterSpacing: 0.6,
+                            color: c.subtext,
+                            textTransform: 'uppercase',
+                            marginBottom: 8,
+                          }}>
+                          Your progress
+                        </Text>
+                        <StreakCard activityData={activityData} loading={streakLoading} />
                       </>
                     ) : null}
 

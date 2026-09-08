@@ -64,9 +64,10 @@ type Props = {
   checkingIn?: boolean;
   onCheckIn?: () => Promise<string | null>;
   onUndoCheckIn?: (checkInId: string) => Promise<boolean>;
+  onAskAddToLiveSession?: (place: Place, checkInId: string) => void;
 };
 
-export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorite, isFavorite, userLocation, checkInState = 'available', checkingIn = false, onCheckIn, onUndoCheckIn }: Props) {
+export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorite, isFavorite, userLocation, checkInState = 'available', checkingIn = false, onCheckIn, onUndoCheckIn, onAskAddToLiveSession }: Props) {
   const { theme } = useTheme();
   const c = theme.colors;
   const [placeAddress, setPlaceAddress] = useState<string | null>(null);
@@ -316,8 +317,11 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
     if (!newCheckInId) return;
     setMyLastCheckInId(newCheckInId);
     setMyTags([]);
-    showAlert('Checked in!', 'Added to your parks skated.', [
+    showAlert('Checked in!', 'Added to your Passport.', [
       { text: 'Done', style: 'cancel' },
+      ...(place && onAskAddToLiveSession
+        ? [{ text: 'Add to Live Session', onPress: () => onAskAddToLiveSession(place, newCheckInId) }]
+        : []),
       { text: 'Tag Who You Skated With', onPress: () => setSkatedWithCheckInId(newCheckInId) },
       { text: 'Add Photo/Clip', onPress: pickAndUploadPlaceMedia },
       {
@@ -648,41 +652,52 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
               </Text>
             ) : null}
 
-            {place?.type === 'skatepark' && onCheckIn ? (
-              <Pressable
-                onPress={checkingIn ? undefined : handleCheckInPress}
-                disabled={checkingIn}
+            {(place?.type === 'skatepark' || place?.type === 'skateshop') && onCheckIn ? (
+              <View
                 style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 8,
+                  backgroundColor: c.tagBg,
+                  borderRadius: 16,
+                  padding: 12,
                   marginTop: 8,
-                  paddingVertical: 13,
-                  borderRadius: 12,
-                  backgroundColor: checkInState === 'recent' ? c.tagBg : '#34C759',
-                  opacity: checkingIn ? 0.6 : 1,
                 }}>
-                <Ionicons
-                  name={checkInState === 'recent' ? 'checkmark-circle' : 'location'}
-                  size={18}
-                  color={checkInState === 'recent' ? '#34C759' : '#fff'}
-                />
-                <Text
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 4, paddingBottom: 10 }}>
+                  <Ionicons name="people-outline" size={18} color={c.subtext} />
+                  <Text style={{ flex: 1, color: c.subtext, fontSize: 15 }}>Check in to add this place to your Passport</Text>
+                </View>
+                <Pressable
+                  onPress={checkingIn ? undefined : handleCheckInPress}
+                  disabled={checkingIn}
                   style={{
-                    fontSize: 15,
-                    fontWeight: '700',
-                    color: checkInState === 'recent' ? c.text : '#fff',
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8,
+                    paddingVertical: 13,
+                    borderRadius: 12,
+                    backgroundColor: checkInState === 'recent' ? c.surface : '#34C759',
+                    opacity: checkingIn ? 0.6 : 1,
                   }}>
-                  {checkingIn
-                    ? 'Checking in…'
-                    : checkInState === 'recent'
-                      ? 'Skated'
-                      : checkInState === 'confirm'
-                        ? 'Check In Again'
-                        : 'Check In'}
-                </Text>
-              </Pressable>
+                  <Ionicons
+                    name={checkInState === 'recent' ? 'checkmark-circle' : 'location'}
+                    size={18}
+                    color={checkInState === 'recent' ? '#34C759' : '#fff'}
+                  />
+                  <Text
+                    style={{
+                      fontSize: 15,
+                      fontWeight: '700',
+                      color: checkInState === 'recent' ? c.text : '#fff',
+                    }}>
+                    {checkingIn
+                      ? 'Checking in…'
+                      : checkInState === 'recent'
+                        ? 'Skated'
+                        : checkInState === 'confirm'
+                          ? 'Check In Again'
+                          : 'Check In'}
+                  </Text>
+                </Pressable>
+              </View>
             ) : null}
 
             {isPark && myLastCheckInId ? (

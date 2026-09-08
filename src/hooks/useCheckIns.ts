@@ -41,6 +41,7 @@ export type PassportEntry = {
   spot_name: string;
   spot_lat: number;
   spot_lng: number;
+  spot_type: 'spot' | 'skatepark' | 'skateshop';
   visit_count: number;
   last_visited_at: string;
   visits: PassportVisit[];
@@ -105,6 +106,14 @@ export function useCheckIns() {
     },
     []
   );
+
+  const linkCheckInToSession = useCallback(async (checkInId: string, sessionId: string): Promise<boolean> => {
+    const { error } = await supabase
+      .from('check_ins')
+      .update({ live_session_id: sessionId })
+      .eq('id', checkInId);
+    return !error;
+  }, []);
 
   const getVisitorCount = useCallback(async (spotId: string): Promise<number> => {
     const { data } = await supabase
@@ -186,6 +195,7 @@ export function useCheckIns() {
             name,
             lat,
             lng
+            ,spot_type
           ),
           check_in_media (
             id,
@@ -222,6 +232,7 @@ export function useCheckIns() {
             spot_name: spot.name,
             spot_lat: spot.lat,
             spot_lng: spot.lng,
+            spot_type: spot.spot_type ?? 'spot',
             visit_count: 1,
             last_visited_at: row.checked_in_at,
             visits: [visit],
@@ -333,6 +344,7 @@ export function useCheckIns() {
     passportLoading,
     visitorCounts,
     checkIn,
+    linkCheckInToSession,
     getVisitorCount,
     getSpotVisitors,
     getMyCheckInsForSpot,

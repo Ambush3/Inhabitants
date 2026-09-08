@@ -19,6 +19,7 @@ export type ParkVisitEntry = {
   type: 'skatepark' | 'skateshop';
   visit_count: number;
   last_visit: string;
+  source?: 'osm' | 'community';
 };
 
 export function usePlaceCheckIns() {
@@ -77,6 +78,7 @@ export function usePlaceCheckIns() {
           type: (place?.type as 'skatepark' | 'skateshop') ?? 'skatepark',
           visit_count: 1,
           last_visit: r.checked_in_at,
+          source: 'osm',
         });
       }
 
@@ -217,12 +219,21 @@ export function usePlaceCheckIns() {
     [lastCheckInAt]
   );
 
+  const linkCheckInToSession = useCallback(async (checkInId: string, sessionId: string): Promise<boolean> => {
+    const { error } = await supabase
+      .from('place_check_ins')
+      .update({ live_session_id: sessionId })
+      .eq('id', checkInId);
+    return !error;
+  }, []);
+
   return {
     parksSkated: lastCheckInAt.size,
     loading,
     checkingIn,
     load,
     checkInPlace,
+    linkCheckInToSession,
     getPlaceCheckInState,
     getLastPlaceCheckIn,
     undoPlaceCheckIn,

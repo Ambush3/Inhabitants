@@ -144,6 +144,7 @@ type Props = {
   onOpenTrickLog?: () => void;
   spotTrickLogs: TrickLog[];
   onDeleteTrickLog: (id: string) => Promise<string | null>;
+  onAskAddToLiveSession?: (spot: Spot, checkInId: string) => void;
 };
 
 export function SpotDetailsModal({
@@ -197,6 +198,7 @@ export function SpotDetailsModal({
   onLogTrickSubmit,
   onOpenTrickLog,
   onDeleteTrickLog,
+  onAskAddToLiveSession,
 }: Props) {
   const { width } = Dimensions.get('window');
   const { theme } = useTheme();
@@ -567,6 +569,9 @@ export function SpotDetailsModal({
       'Capture this session and tie it to your passport entry.',
       [
         { text: 'Skip', style: 'cancel' },
+        ...(spot && onAskAddToLiveSession
+          ? [{ text: 'Add to Live Session', onPress: () => onAskAddToLiveSession(spot, checkInId) }]
+          : []),
         { text: 'Tag Who You Skated With', onPress: () => setSkatedWithCheckInId(checkInId) },
         { text: 'Add', onPress: () => pickAndUploadSpotMedia(spotId, checkInId) },
       ]
@@ -773,8 +778,8 @@ export function SpotDetailsModal({
 
             {/* ── Shop identity ── */}
             {isShop ? (
-              <View style={{ marginBottom: 12 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+              <View style={{ marginBottom: 2 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
                   <Image
                     source={require('@/assets/pin-images/skate-shop.png')}
                     style={{ width: 20, height: 20, tintColor: c.text }}
@@ -800,7 +805,7 @@ export function SpotDetailsModal({
                     </Pressable>
                   ) : null}
                   <Pressable onPress={handleShopShareSheet} style={{ padding: 4 }}>
-                    <Ionicons name="share-outline" size={22} color={c.accent} />
+                    <Ionicons name="share-outline" size={24} color={c.accent} />
                   </Pressable>
                   <Pressable onPress={onToggleFavorite} style={{ padding: 4 }}>
                     <Ionicons
@@ -825,7 +830,7 @@ export function SpotDetailsModal({
                 ) : null}
 
                 <View
-                  style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 }}>
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 16 }}>
                   <Text style={{ fontSize: 12, opacity: 0.5, color: c.text }}>Skate Shop</Text>
                   {reviews.length > 0 ? (
                     <>
@@ -838,6 +843,17 @@ export function SpotDetailsModal({
                       </Text>
                     </>
                   ) : null}
+                  <View
+                    style={{
+                      backgroundColor: 'rgba(52,199,89,0.12)',
+                      borderRadius: 6,
+                      paddingHorizontal: 6,
+                      paddingVertical: 3,
+                    }}>
+                    <Text style={{ fontSize: 10, color: '#249447', fontWeight: '700' }}>
+                      Community created
+                    </Text>
+                  </View>
                 </View>
               </View>
             ) : null}
@@ -1215,11 +1231,16 @@ export function SpotDetailsModal({
             ) : null}
 
             {/* ── Check-in card ── */}
-            {!detailsLoading && !isShop ? (
+            {!detailsLoading ? (
               <View
                 style={[
                   styles.ratingCard,
-                  { backgroundColor: c.tagBg, alignItems: 'center' },
+                  {
+                    backgroundColor: c.tagBg,
+                    alignItems: isShop ? 'stretch' : 'center',
+                    flexDirection: isShop ? 'column' : 'row',
+                    gap: isShop ? 10 : undefined,
+                  },
                   myLastCheckInId
                     ? {
                         marginBottom: 0,
@@ -1229,7 +1250,13 @@ export function SpotDetailsModal({
                     : null,
                 ]}>
                 <Pressable
-                  style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 6,
+                    flex: isShop ? undefined : 1,
+                    width: isShop ? '100%' : undefined,
+                  }}
                   disabled={!visitorCount || visitorCount <= 0}
                   onPress={async () => {
                     if (!spot || !visitorCount || visitorCount <= 0) return;
@@ -1306,6 +1333,9 @@ export function SpotDetailsModal({
                               if (result.checkInId) setSkatedWithCheckInId(result.checkInId);
                             },
                           },
+                          ...(onAskAddToLiveSession
+                            ? [{ text: 'Add to Live Session', onPress: () => result.checkInId && onAskAddToLiveSession(spot, result.checkInId) }]
+                            : []),
                           {
                             text: 'Add Photo/Clip',
                             onPress: () => {
@@ -1329,10 +1359,12 @@ export function SpotDetailsModal({
                   style={{
                     flexDirection: 'row',
                     alignItems: 'center',
+                    justifyContent: isShop ? 'center' : undefined,
                     gap: 5,
+                    width: isShop ? '100%' : undefined,
                     paddingHorizontal: 16,
-                    paddingVertical: 8,
-                    borderRadius: 20,
+                    paddingVertical: isShop ? 13 : 8,
+                    borderRadius: isShop ? 12 : 20,
                     backgroundColor: alreadyCheckedInToday ? 'rgba(52,199,89,0.15)' : '#34C759',
                     borderWidth: 1,
                     borderColor: '#34C759',

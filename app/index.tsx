@@ -53,6 +53,7 @@ import { OtherUsersSpotMarkers } from '@/src/components/SpotMarkers/OtherUsersSp
 import { TrackedMarker } from '@/src/components/SpotMarkers/TrackedMarker';
 import { MapLegend } from '@/src/components/MapLegend';
 import { MapControls, PlaceType } from '@/src/components/MapControls';
+import { LiveSessionModal } from '@/src/components/LiveSessionModal';
 import { DARK_MAP_STYLE, LIGHT_MAP_STYLE } from '@/src/constants/darkMapStyle';
 import { CreateEventModal } from '@/src/components/CreateEventModal';
 import { EventDetailsModal } from '@/src/components/EventDetailsModal';
@@ -73,6 +74,8 @@ import { useAuth } from '@/src/hooks/useAuth';
 import { useFavorites } from '@/src/hooks/useFavorites';
 import { usePlaceFavorites } from '@/src/hooks/usePlaceFavorites';
 import { usePlaceCheckIns } from '@/src/hooks/usePlaceCheckIns';
+import { useCheckIns } from '@/src/hooks/useCheckIns';
+import { useLiveSession, LiveSessionStop } from '@/src/hooks/useLiveSession';
 import { usePushNotifications } from '@/src/hooks/usePushNotifications';
 import { sendPushNotification, sendSpotClosedNotification } from '@/src/libs/sendPushNotification';
 import { useSpotFlags } from '@/src/hooks/flaggingSystem/useSpotFlags';
@@ -138,6 +141,7 @@ const SpotMap = React.memo(
     animateToSpotWithModalOffset,
     openSpotDetails,
     openSpotPreview,
+    onLiveSessionSelect,
     setSelectedPlaceId,
     setSelectedPlace,
     setPlaceDetailsOpen,
@@ -221,6 +225,7 @@ const SpotMap = React.memo(
                 opacity={markersVisible || s.id === highlightSpotId ? 1 : 0}
                 keepActive={s.id === highlightSpotId}
                 onPress={() => {
+                  if (onLiveSessionSelect?.(s)) return;
                   suppressMapPressRef.current = true;
                   setHighlightSpotId(s.id);
                   highlightSpotIdRef.current = s.id;
@@ -240,6 +245,7 @@ const SpotMap = React.memo(
                 opacity={markersVisible || s.id === highlightSpotId ? 1 : 0}
                 keepActive={s.id === highlightSpotId}
                 onPress={() => {
+                  if (onLiveSessionSelect?.(s)) return;
                   suppressMapPressRef.current = true;
                   setHighlightSpotId(s.id);
                   highlightSpotIdRef.current = s.id;
@@ -272,6 +278,7 @@ const SpotMap = React.memo(
               selected={s.id === highlightSpotId}
               opacity={markersVisible || s.id === highlightSpotId ? 1 : 0}
               onPress={() => {
+                if (onLiveSessionSelect?.(s)) return;
                 suppressMapPressRef.current = true;
                 setHighlightSpotId(s.id);
                 highlightSpotIdRef.current = s.id;
@@ -298,6 +305,7 @@ const SpotMap = React.memo(
             selected={p.id === selectedPlaceId}
             opacity={markersVisible || p.id === selectedPlaceId ? 1 : 0}
             onPress={() => {
+              if (onLiveSessionSelect?.(p)) return;
               suppressMapPressRef.current = true;
               const communitySpot = spots.find((s: any) => s.id === p.id);
               if (communitySpot) {
@@ -478,10 +486,26 @@ export default function Index() {
   const {
     load: loadPlaceCheckIns,
     checkInPlace,
+    linkCheckInToSession: linkPlaceCheckInToSession,
     getPlaceCheckInState,
     undoPlaceCheckIn,
     checkingIn: placeCheckingIn,
   } = usePlaceCheckIns();
+  const {
+    checkIn: checkInSpot,
+    linkCheckInToSession: linkSpotCheckInToSession,
+  } = useCheckIns();
+  const {
+    activeSession: liveSession,
+    lastCompleted: completedLiveSession,
+    startSession: startLiveSession,
+    addStop: addLiveSessionStop,
+    removeStop: removeLiveSessionStop,
+    endSession: endLiveSession,
+    clearLastCompleted: clearCompletedLiveSession,
+    ensureServerSession,
+    history: liveSessionHistory,
+  } = useLiveSession(session?.user.id ?? null);
   const { images, uploading: imagesUploading, loadImages, uploadImages, deleteImage, clearImages } = useSpotImages();
   const { activeConditions, myConditions, loadConditions, toggleCondition, resetConditions } = useSpotConditions();
 
@@ -553,6 +577,7 @@ export default function Index() {
   const [spotComment, setSpotComment] = useState('');
 
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [liveSessionOpen, setLiveSessionOpen] = useState(false);
   const [selectedSpot, setSelectedSpot] = useState<Spot | null>(null);
   const [previewSpot, setPreviewSpot] = useState<Spot | null>(null);
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
@@ -886,6 +911,123 @@ export default function Index() {
       return true;
     });
   }, [places, visibleSpots, advFilters, highlightSpotId, activePlaceTypes, mapSearch, currentTime]);
+
+  const liveSessionStops = useMemo(() => {
+    const byId = new Map<string, Omit<LiveSessionStop, 'addedAt'>>();
+    for (const spot of visibleSpots) {
+      byId.set(spot.id, {
+        id: spot.id,
+        name: spot.name,
+        lat: spot.lat,
+        lng: spot.lng,
+        type: spot.spot_type,
+      });
+    }
+    for (const place of visiblePlaces) {
+      byId.set(place.id, {
+        id: place.id,
+        name: place.name,
+        lat: place.lat,
+        lng: place.lng,
+        type: place.type,
+      });
+    }
+    return [...byId.values()];
+  }, [visibleSpots, visiblePlaces]);
+
+  const selectedLiveSessionStop = useMemo(() => {
+    if (selectedSpot) {
+      return {
+        id: selectedSpot.id,
+        name: selectedSpot.name,
+        lat: selectedSpot.lat,
+        lng: selectedSpot.lng,
+        type: selectedSpot.spot_type,
+      } satisfies Omit<LiveSessionStop, 'addedAt'>;
+    }
+    if (selectedPlace) {
+      return {
+        id: selectedPlace.id,
+        name: selectedPlace.name,
+        lat: selectedPlace.lat,
+        lng: selectedPlace.lng,
+        type: selectedPlace.type,
+      } satisfies Omit<LiveSessionStop, 'addedAt'>;
+    }
+    return undefined;
+  }, [selectedSpot, selectedPlace]);
+
+  async function addStopToLiveSession(stop: Omit<LiveSessionStop, 'addedAt'>) {
+    const place = places.find((item) => item.id === stop.id);
+    let checkInSucceeded = false;
+    let checkInId: string | null = null;
+    if (place) {
+      const result = await checkInPlace(place);
+      checkInSucceeded = result.ok;
+      if (result.ok) checkInId = result.checkInId;
+    } else {
+      const result = await checkInSpot(stop.id);
+      checkInSucceeded = result.success;
+      checkInId = result.checkInId ?? null;
+    }
+    if (!checkInSucceeded) {
+      toast.show('Check in could not be added to this session');
+      return;
+    }
+
+    // Detail-card check-ins are linked after the user confirms. The session
+    // chooser performs both actions together, so link that check-in here too
+    // when the server session is already available.
+    if (liveSession) {
+      const sessionId = liveSession.serverId ?? await ensureServerSession();
+      if (sessionId && checkInId) {
+        const linked = place
+          ? await linkPlaceCheckInToSession(checkInId, sessionId)
+          : await linkSpotCheckInToSession(checkInId, sessionId);
+        if (!linked) {
+          toast.error('Check-in saved, but could not link it to the session');
+        }
+      }
+    }
+    addLiveSessionStop(stop);
+  }
+
+  async function askAddToLiveSession(
+    stop: Omit<LiveSessionStop, 'addedAt'>,
+    checkInId: string
+  ) {
+    if (!liveSession) return;
+    showAlert(
+      'Add to live session?',
+      `Add “${stop.name}” to ${liveSession.title}?`,
+      [
+        { text: 'Not now', style: 'cancel' },
+        {
+          text: 'Add',
+          onPress: async () => {
+            const sessionId = await ensureServerSession();
+            if (!sessionId) {
+              toast.error('Couldn’t sync this session right now');
+              return;
+            }
+            const linked = stop.type === 'spot'
+              ? await linkSpotCheckInToSession(checkInId, sessionId)
+              : await linkPlaceCheckInToSession(checkInId, sessionId);
+            if (!linked) {
+              toast.error('Couldn’t link this check-in to the session');
+              return;
+            }
+            addLiveSessionStop(stop);
+          },
+        },
+      ]
+    );
+  }
+
+  async function startLiveSessionFromUI(title: string, firstStop?: Omit<LiveSessionStop, 'addedAt'>) {
+    startLiveSession(title, firstStop);
+    if (firstStop) await addStopToLiveSession(firstStop);
+  }
 
   const toggleOwnershipFilter = (key: 'mine' | 'friends' | 'community') =>
     setOwnershipFilter((prev) => {
@@ -2565,6 +2707,8 @@ export default function Index() {
             }}
             placeTypes={activePlaceTypes}
             onTogglePlaceType={(t) => requireAuth(() => togglePlaceType(t))}
+            onOpenLiveSession={() => requireAuth(() => setLiveSessionOpen(true))}
+            liveSessionActive={!!liveSession}
             onSubmitSearch={() => requireAuth(() => searchPlacesByName())}
             parksLoading={parksLoading && !searchingPlaces}
             shopsLoading={shopsLoading && !searchingPlaces}
@@ -3047,6 +3191,14 @@ export default function Index() {
           if (!selectedSpot) return;
           loadTrickLogsForSpot(selectedSpot.id);
         }}
+        onAskAddToLiveSession={liveSession ? (spot, checkInId) =>
+          askAddToLiveSession({
+            id: spot.id,
+            name: spot.name,
+            lat: spot.lat,
+            lng: spot.lng,
+            type: spot.spot_type,
+          }, checkInId) : undefined}
       />
 
       <SkateShopDetailsModal
@@ -3101,6 +3253,14 @@ export default function Index() {
           toast.show('Check-in removed');
           return true;
         }}
+        onAskAddToLiveSession={liveSession ? (place, checkInId) =>
+          askAddToLiveSession({
+            id: place.id,
+            name: place.name,
+            lat: place.lat,
+            lng: place.lng,
+            type: place.type,
+          }, checkInId) : undefined}
       />
       <SettingsPanel
         session={session}
@@ -3178,6 +3338,7 @@ export default function Index() {
         }}
         mySpots={mySpots}
         myReviews={myReviews}
+        liveSessions={liveSessionHistory}
         onLoadMyReviews={loadMyReviews}
         allSpots={spots}
         onSelectSpot={(s) => {
@@ -3291,6 +3452,30 @@ export default function Index() {
         onToggleOwnership={toggleOwnershipFilter}
         difficultyFilter={difficultyFilter}
         onToggleDifficulty={toggleDifficultyFilter}
+      />
+      <LiveSessionModal
+        visible={liveSessionOpen}
+        onClose={() => setLiveSessionOpen(false)}
+        activeSession={liveSession}
+        lastCompleted={completedLiveSession}
+        availableStops={liveSessionStops}
+        initialStop={selectedLiveSessionStop}
+        onStart={startLiveSessionFromUI}
+        onAddStop={addStopToLiveSession}
+        onRemoveStop={removeLiveSessionStop}
+        onEnd={() => {
+          showAlert(
+            'End live session?',
+            liveSession && liveSession.stops.length > 0
+              ? `Save ${liveSession.stops.length} stop${liveSession.stops.length === 1 ? '' : 's'} to your Passport?`
+              : 'Save this session to your Passport?',
+            [
+              { text: 'Keep skating', style: 'cancel' },
+              { text: 'End session', onPress: () => endLiveSession() },
+            ]
+          );
+        }}
+        onClearCompleted={clearCompletedLiveSession}
       />
       <SkateCitiesModal
         visible={citiesOpen}
