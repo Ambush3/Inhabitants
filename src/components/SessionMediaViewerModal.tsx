@@ -29,6 +29,7 @@ export type ViewerMedia = {
   url: string;
   media_type: 'image' | 'video';
   thumbnail_url?: string | null;
+  locationName?: string | null;
 };
 
 type Props = {
@@ -337,6 +338,20 @@ export function SessionMediaViewerModal({
                 <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}>
                   {activeIndex + 1} / {mediaList.length}
                 </Text>
+              </View>
+            ) : null}
+            {active?.locationName ? (
+              <View
+                style={{
+                  position: 'absolute',
+                  left: 16,
+                  right: 16,
+                  bottom: 8,
+                  alignItems: 'center',
+                }}>
+                <View style={{ backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 12, paddingHorizontal: 10, paddingVertical: 5 }}>
+                  <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>{active.locationName}</Text>
+                </View>
               </View>
             ) : null}
           </View>

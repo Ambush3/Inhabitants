@@ -19,6 +19,7 @@ import { Image } from 'expo-image';
 import MapView, { Marker, Region, LongPressEvent, MapMarker, PROVIDER_GOOGLE } from 'react-native-maps';
 import * as Location from 'expo-location';
 import * as Haptics from 'expo-haptics';
+import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useFocusEffect, usePathname, router } from 'expo-router';
 
 import { supabase } from '@/src/libs/supabase';
@@ -75,6 +76,7 @@ import { useFavorites } from '@/src/hooks/useFavorites';
 import { usePlaceFavorites } from '@/src/hooks/usePlaceFavorites';
 import { usePlaceCheckIns } from '@/src/hooks/usePlaceCheckIns';
 import { useCheckIns } from '@/src/hooks/useCheckIns';
+import { useCheckInMedia, PendingMedia } from '@/src/hooks/useCheckInMedia';
 import { useLiveSession, LiveSessionStop } from '@/src/hooks/useLiveSession';
 import { usePushNotifications } from '@/src/hooks/usePushNotifications';
 import { sendPushNotification, sendSpotClosedNotification } from '@/src/libs/sendPushNotification';
@@ -83,6 +85,7 @@ import { useReviewFlags } from '@/src/hooks/flaggingSystem/useReviewFlags';
 import { useEvents, SkateEvent } from '@/src/hooks/useEvents';
 import { useWhatsNew } from '@/src/hooks/useWhatsNew';
 import { useTrickLog } from '@/src/hooks/useTrickLog';
+import { videoDurationLimit } from '@/src/config/iap';
 
 import { useTheme } from '@/src/context/ThemeContext';
 import { useMapProvider } from '@/src/context/MapProviderContext';
@@ -503,9 +506,11 @@ export default function Index() {
     removeStop: removeLiveSessionStop,
     endSession: endLiveSession,
     clearLastCompleted: clearCompletedLiveSession,
+    deleteSession: deleteLiveSession,
     ensureServerSession,
     history: liveSessionHistory,
   } = useLiveSession(session?.user.id ?? null);
+  const liveSessionMedia = useCheckInMedia();
   const { images, uploading: imagesUploading, loadImages, uploadImages, deleteImage, clearImages } = useSpotImages();
   const { activeConditions, myConditions, loadConditions, toggleCondition, resetConditions } = useSpotConditions();
 
@@ -975,9 +980,6 @@ export default function Index() {
       return;
     }
 
-    // Detail-card check-ins are linked after the user confirms. The session
-    // chooser performs both actions together, so link that check-in here too
-    // when the server session is already available.
     if (liveSession) {
       const sessionId = liveSession.serverId ?? await ensureServerSession();
       if (sessionId && checkInId) {
@@ -992,36 +994,74 @@ export default function Index() {
     addLiveSessionStop(stop);
   }
 
-  async function askAddToLiveSession(
+  async function addCheckInToLiveSession(
     stop: Omit<LiveSessionStop, 'addedAt'>,
     checkInId: string
   ) {
     if (!liveSession) return;
-    showAlert(
-      'Add to live session?',
-      `Add “${stop.name}” to ${liveSession.title}?`,
-      [
-        { text: 'Not now', style: 'cancel' },
-        {
-          text: 'Add',
-          onPress: async () => {
-            const sessionId = await ensureServerSession();
-            if (!sessionId) {
-              toast.error('Couldn’t sync this session right now');
-              return;
-            }
-            const linked = stop.type === 'spot'
-              ? await linkSpotCheckInToSession(checkInId, sessionId)
-              : await linkPlaceCheckInToSession(checkInId, sessionId);
-            if (!linked) {
-              toast.error('Couldn’t link this check-in to the session');
-              return;
-            }
-            addLiveSessionStop(stop);
-          },
-        },
-      ]
+    const sessionId = await ensureServerSession();
+    if (!sessionId) {
+      toast.error('Couldn’t sync this session right now');
+      return;
+    }
+    const linked = stop.type === 'spot'
+      ? await linkSpotCheckInToSession(checkInId, sessionId)
+      : await linkPlaceCheckInToSession(checkInId, sessionId);
+    if (!linked) {
+      toast.error('Couldn’t link this check-in to the session');
+      return;
+    }
+    addLiveSessionStop(stop);
+    showAlert('Capture this session?', 'Add a photo or clip while you are here?', [
+      { text: 'Later', style: 'cancel' },
+      { text: 'Capture', onPress: () => addMediaToLiveSession(stop, checkInId) },
+    ]);
+  }
+
+  async function addMediaToLiveSession(
+    stop: Omit<LiveSessionStop, 'addedAt'>,
+    checkInId?: string
+  ) {
+    if (!isPro) {
+      setPaywallHeadline('Unlock photos and clips attached to every live session.');
+      setPaywallOpen(true);
+      return;
+    }
+    if (!liveSession) return;
+
+    const sessionId = liveSession.serverId ?? await ensureServerSession();
+    if (!sessionId) {
+      toast.error('Couldn’t sync this session right now');
+      return;
+    }
+
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') return;
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images', 'videos'],
+      allowsMultipleSelection: true,
+      quality: 1,
+      videoMaxDuration: videoDurationLimit(true),
+      videoQuality: ImagePicker.UIImagePickerControllerQualityType.Medium,
+      selectionLimit: 10,
+    });
+    if (result.canceled) return;
+
+    const assets: PendingMedia[] = result.assets.map((asset) => ({
+      uri: asset.uri,
+      type: asset.type === 'video' ? 'video' : 'image',
+    }));
+    if (assets.length === 0) return;
+
+    const uploadResult = await liveSessionMedia.uploadMedia(
+      stop.type === 'spot' ? stop.id : null,
+      stop.type === 'spot' ? checkInId ?? null : null,
+      assets,
+      stop.type === 'spot' ? undefined : stop.id,
+      sessionId
     );
+    if (uploadResult.error) toast.error(uploadResult.error);
+    else toast.success(`${uploadResult.uploaded} item${uploadResult.uploaded === 1 ? '' : 's'} added to session`);
   }
 
   async function startLiveSessionFromUI(title: string, firstStop?: Omit<LiveSessionStop, 'addedAt'>) {
@@ -3178,7 +3218,7 @@ export default function Index() {
         spotTrickLogs={spotTrickLogs}
         onLogTrickSubmit={async (trickName, loggedAt) => {
           if (!selectedSpot) return null;
-          const err = await logTrick(selectedSpot.id, trickName, loggedAt);
+          const err = await logTrick(selectedSpot.id, trickName, loggedAt, liveSession?.serverId ?? null);
           if (!err) await loadTrickLogsForSpot(selectedSpot.id);
           return err;
         }}
@@ -3192,7 +3232,7 @@ export default function Index() {
           loadTrickLogsForSpot(selectedSpot.id);
         }}
         onAskAddToLiveSession={liveSession ? (spot, checkInId) =>
-          askAddToLiveSession({
+          addCheckInToLiveSession({
             id: spot.id,
             name: spot.name,
             lat: spot.lat,
@@ -3254,7 +3294,7 @@ export default function Index() {
           return true;
         }}
         onAskAddToLiveSession={liveSession ? (place, checkInId) =>
-          askAddToLiveSession({
+          addCheckInToLiveSession({
             id: place.id,
             name: place.name,
             lat: place.lat,
@@ -3339,6 +3379,7 @@ export default function Index() {
         mySpots={mySpots}
         myReviews={myReviews}
         liveSessions={liveSessionHistory}
+        onDeleteLiveSession={deleteLiveSession}
         onLoadMyReviews={loadMyReviews}
         allSpots={spots}
         onSelectSpot={(s) => {
@@ -3463,6 +3504,8 @@ export default function Index() {
         onStart={startLiveSessionFromUI}
         onAddStop={addStopToLiveSession}
         onRemoveStop={removeLiveSessionStop}
+        onAddMedia={addMediaToLiveSession}
+        isPro={isPro}
         onEnd={() => {
           showAlert(
             'End live session?',

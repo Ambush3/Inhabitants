@@ -32,6 +32,7 @@ export function useLiveSession(userId: string | null) {
   const [lastCompleted, setLastCompleted] = useState<LiveSession | null>(null);
   const [history, setHistory] = useState<LiveSession[]>([]);
   const creatingServerSession = useRef<Promise<string | null> | null>(null);
+  const endingServerSessions = useRef(new Set<string>());
 
   const ensureServerSession = useCallback(async (): Promise<string | null> => {
     if (!userId || !activeSession) return null;
@@ -85,7 +86,7 @@ export function useLiveSession(userId: string | null) {
             // Fall through to the empty remote state if the local cache is invalid.
           }
         }
-        const activeRow = rows.find((row) => !row.ended_at);
+        const activeRow = rows.find((row) => !row.ended_at && !endingServerSessions.current.has(row.id));
         const completedRows = rows.filter((row) => !!row.ended_at);
         const sessionIds = rows.map((row) => row.id);
         let stopRows: any[] = [];
@@ -128,11 +129,21 @@ export function useLiveSession(userId: string | null) {
         }
         const remoteHistory = completedRows.map(mapRemote);
         const remoteIds = new Set(remoteHistory.map((session) => session.id));
-        setActiveSession(activeRow ? mapRemote(activeRow) : null);
-        setHistory([
+        const remoteServerIds = new Set(remoteHistory.map((session) => session.serverId).filter(Boolean));
+        const seenSessionKeys = new Set<string>([
+          ...remoteHistory.map((session) => session.serverId ?? session.id),
+        ]);
+        const mergedHistory = [
           ...remoteHistory,
-          ...localHistory.filter((session) => !remoteIds.has(session.id)),
-        ].slice(0, 25));
+          ...localHistory.filter((session) => {
+            const key = session.serverId ?? session.id;
+            if (remoteIds.has(session.id) || remoteServerIds.has(session.serverId) || seenSessionKeys.has(key)) return false;
+            seenSessionKeys.add(key);
+            return true;
+          }),
+        ];
+        setActiveSession(activeRow ? mapRemote(activeRow) : null);
+        setHistory(mergedHistory.slice(0, 25));
         return;
       }
 
@@ -218,30 +229,61 @@ export function useLiveSession(userId: string | null) {
   const endSession = useCallback(async (): Promise<LiveSession | null> => {
     if (!activeSession || !userId) return null;
     const completed = { ...activeSession, endedAt: new Date().toISOString() };
-    if (activeSession.serverId) {
-      await supabase
-        .from('live_sessions')
-        .update({ ended_at: completed.endedAt })
-        .eq('id', activeSession.serverId)
-        .eq('user_id', userId);
-    }
-    const historyKey = keyFor(HISTORY_KEY, userId);
-    try {
-      const raw = await AsyncStorage.getItem(historyKey);
-      const history = raw ? (JSON.parse(raw) as LiveSession[]) : [];
-      const nextHistory = [completed, ...history].slice(0, 25);
-      await AsyncStorage.setItem(historyKey, JSON.stringify(nextHistory));
-      setHistory(nextHistory);
-      await AsyncStorage.removeItem(keyFor(ACTIVE_KEY, userId));
-    } catch {
-      // The recap is still available in memory if local persistence fails.
-    }
+    if (activeSession.serverId) endingServerSessions.current.add(activeSession.serverId);
+
     setLastCompleted(completed);
     setActiveSession(null);
+    const historyKey = keyFor(HISTORY_KEY, userId);
+    setHistory((current) => [completed, ...current.filter((item) => item.id !== completed.id)].slice(0, 25));
+
+    void (async () => {
+      let serverId = activeSession.serverId;
+      if (!serverId) {
+        const { data } = await supabase
+          .from('live_sessions')
+          .insert({ user_id: userId, title: completed.title, started_at: completed.startedAt })
+          .select('id')
+          .single();
+        serverId = data?.id;
+      }
+      if (serverId) {
+        await supabase
+          .from('live_sessions')
+          .update({ ended_at: completed.endedAt })
+          .eq('id', serverId)
+          .eq('user_id', userId);
+        endingServerSessions.current.delete(serverId);
+      }
+      try {
+        const raw = await AsyncStorage.getItem(historyKey);
+        const stored = raw ? (JSON.parse(raw) as LiveSession[]) : [];
+        const nextHistory = [completed, ...stored.filter((item) => item.id !== completed.id)].slice(0, 25);
+        await AsyncStorage.setItem(historyKey, JSON.stringify(nextHistory));
+        await AsyncStorage.removeItem(keyFor(ACTIVE_KEY, userId));
+      } catch {}
+    })();
     return completed;
   }, [activeSession, userId]);
 
   const clearLastCompleted = useCallback(() => setLastCompleted(null), []);
+
+  const deleteSession = useCallback(async (session: LiveSession): Promise<boolean> => {
+    if (!userId) return false;
+    if (session.serverId) {
+      const { error } = await supabase
+        .from('live_sessions')
+        .delete()
+        .eq('id', session.serverId)
+        .eq('user_id', userId);
+      if (error) return false;
+    }
+
+    const nextHistory = history.filter((item) => item.id !== session.id);
+    setHistory(nextHistory);
+    if (lastCompleted?.id === session.id) setLastCompleted(null);
+    await AsyncStorage.setItem(keyFor(HISTORY_KEY, userId), JSON.stringify(nextHistory));
+    return true;
+  }, [history, lastCompleted, userId]);
 
   return {
     activeSession,
@@ -251,6 +293,7 @@ export function useLiveSession(userId: string | null) {
     removeStop,
     endSession,
     clearLastCompleted,
+    deleteSession,
     ensureServerSession,
     history,
   };

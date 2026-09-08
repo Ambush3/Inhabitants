@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/src/context/ThemeContext';
+import { AlertHost } from '@/src/components/ui/ThemedAlert';
 import { LiveSession, LiveSessionStop } from '@/src/hooks/useLiveSession';
 
 type SessionStop = Omit<LiveSessionStop, 'addedAt'>;
@@ -24,6 +25,8 @@ export function LiveSessionModal({
   onStart,
   onAddStop,
   onRemoveStop,
+  onAddMedia,
+  isPro = false,
   onEnd,
   onClearCompleted,
 }: {
@@ -36,6 +39,8 @@ export function LiveSessionModal({
   onStart: (title: string, firstStop?: SessionStop) => void;
   onAddStop: (stop: SessionStop) => void;
   onRemoveStop: (stopId: string) => void;
+  onAddMedia?: (stop: SessionStop) => void;
+  isPro?: boolean;
   onEnd: () => void;
   onClearCompleted: () => void;
 }) {
@@ -72,9 +77,16 @@ export function LiveSessionModal({
           <Text style={{ color: c.subtext, fontSize: 12 }}>{stop.type === 'skateshop' ? 'Skate shop' : stop.type === 'skatepark' ? 'Skate park' : 'Skate spot'}</Text>
         </View>
         {remove ? (
-          <Pressable onPress={() => onRemoveStop(stop.id)} hitSlop={8}>
-            <Ionicons name="close-circle-outline" size={21} color={c.subtext} />
-          </Pressable>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            {onAddMedia ? (
+              <Pressable onPress={() => onAddMedia(stop)} hitSlop={8}>
+                <Ionicons name={isPro ? 'camera-outline' : 'lock-closed-outline'} size={20} color={isPro ? c.accent : c.subtext} />
+              </Pressable>
+            ) : null}
+            <Pressable onPress={() => onRemoveStop(stop.id)} hitSlop={8}>
+              <Ionicons name="close-circle-outline" size={21} color={c.subtext} />
+            </Pressable>
+          </View>
         ) : null}
       </View>
     );
@@ -82,6 +94,7 @@ export function LiveSessionModal({
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      {visible ? <AlertHost /> : null}
       <View style={{ flex: 1 }}>
         <Pressable onPress={onClose} style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)' }} />
         <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, maxHeight: '88%', backgroundColor: c.surface, borderTopLeftRadius: 22, borderTopRightRadius: 22, paddingTop: 20, paddingBottom: 28 }}>

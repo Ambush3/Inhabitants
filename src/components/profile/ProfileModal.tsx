@@ -40,6 +40,7 @@ import { PassportBadges } from '@/src/components/profile/PassportBadges';
 import { WeeklyRecapCard } from '@/src/components/profile/WeeklyRecapCard';
 import { SessionMediaViewerModal, ViewerMedia } from '@/src/components/SessionMediaViewerModal';
 import { LiveSession } from '@/src/hooks/useLiveSession';
+import { LiveSessionDetailModal } from '@/src/components/profile/LiveSessionDetailModal';
 
 type MyReview = {
   id: string;
@@ -66,6 +67,7 @@ type Props = {
   trickLogsLoading: boolean;
   onDeleteTrickLog: (id: string) => Promise<string | null>;
   liveSessions: LiveSession[];
+  onDeleteLiveSession: (session: LiveSession) => Promise<boolean>;
 };
 
 type Tab = 'spots' | 'reviews' | 'friends' | 'collections' | 'passport';
@@ -86,6 +88,7 @@ export function ProfileModal({
   trickLogsLoading,
   onDeleteTrickLog,
   liveSessions,
+  onDeleteLiveSession,
 }: Props) {
   const { theme } = useTheme();
   const { isPro } = usePro();
@@ -100,6 +103,7 @@ export function ProfileModal({
 
   const [activeTab, setActiveTab] = useState<Tab>('spots');
   const [showAllSessions, setShowAllSessions] = useState(false);
+  const [selectedLiveSession, setSelectedLiveSession] = useState<LiveSession | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [username, setUsername] = useState<string | null>(null);
   const [firstName, setFirstName] = useState<string | null>(null);
@@ -397,6 +401,14 @@ export function ProfileModal({
       {visible ? <AlertHost /> : null}
       {visible ? <ToastHost /> : null}
       <PaywallModal visible={proPaywallOpen} onClose={() => setProPaywallOpen(false)} />
+      <LiveSessionDetailModal
+        visible={selectedLiveSession !== null}
+        session={selectedLiveSession}
+        isPro={isPro}
+        currentUserId={myId}
+        onClose={() => setSelectedLiveSession(null)}
+        onOpenPro={() => setProPaywallOpen(true)}
+      />
       <SessionPlannerModal
         visible={plannerOpen}
         onClose={() => setPlannerOpen(false)}
@@ -1839,13 +1851,37 @@ export function ProfileModal({
                                     borderTopColor: c.border,
                                     paddingVertical: 10,
                                   }}>
-                                  <Text style={{ color: c.text, fontWeight: '700' }}>{live.title}</Text>
-                                  <Text style={{ color: c.subtext, fontSize: 12, marginTop: 3 }} numberOfLines={1}>
-                                    {new Date(live.startedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} · {elapsedText} · {live.stops.length} stop{live.stops.length === 1 ? '' : 's'}
-                                  </Text>
-                                  <Text style={{ color: c.text, fontSize: 12, marginTop: 3 }} numberOfLines={1}>
-                                    {live.stops.map((stop) => stop.name).join(' → ') || 'No spots recorded'}
-                                  </Text>
+                                  <Pressable onPress={() => setSelectedLiveSession(live)} style={{ paddingRight: 28 }}>
+                                    <Text style={{ color: c.text, fontWeight: '700' }}>{live.title}</Text>
+                                    <Text style={{ color: c.subtext, fontSize: 12, marginTop: 3 }} numberOfLines={1}>
+                                      {new Date(live.startedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} · {elapsedText} · {live.stops.length} stop{live.stops.length === 1 ? '' : 's'}
+                                    </Text>
+                                    <Text style={{ color: c.text, fontSize: 12, marginTop: 3 }} numberOfLines={1}>
+                                      {live.stops.map((stop) => stop.name).join(' → ') || 'No spots recorded'}
+                                    </Text>
+                                  </Pressable>
+                                  <Pressable
+                                    onPress={() =>
+                                      showAlert(
+                                        'Delete session?',
+                                        'This removes the session from your Passport and cannot be undone.',
+                                        [
+                                          { text: 'Cancel', style: 'cancel' },
+                                          {
+                                            text: 'Delete',
+                                            style: 'destructive',
+                                            onPress: async () => {
+                                              const deleted = await onDeleteLiveSession(live);
+                                              if (!deleted) toast.error('Couldn’t delete this session');
+                                            },
+                                          },
+                                        ]
+                                      )
+                                    }
+                                    hitSlop={8}
+                                    style={{ position: 'absolute', right: 0, top: 10 }}>
+                                    <Ionicons name="trash-outline" size={16} color={c.subtext} />
+                                  </Pressable>
                                 </View>
                               );
                             })
