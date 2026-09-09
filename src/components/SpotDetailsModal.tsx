@@ -30,6 +30,7 @@ import * as Location from 'expo-location';
 import { useTheme } from '@/src/context/ThemeContext';
 import { useToast, ToastHost } from '@/src/context/ToastContext';
 import { openStatusLabel } from '@/src/libs/openingHours';
+import { CheckInActionsSheet } from '@/src/components/CheckInActionsSheet';
 
 import { CONDITION_META, SpotCondition } from '@/src/hooks/useSpotConditions';
 import { useCheckIns, SpotVisitor } from '@/src/hooks/useCheckIns';
@@ -144,7 +145,10 @@ type Props = {
   onOpenTrickLog?: () => void;
   spotTrickLogs: TrickLog[];
   onDeleteTrickLog: (id: string) => Promise<string | null>;
-  onAskAddToLiveSession?: (spot: Spot, checkInId: string) => void;
+  onAskAddToLiveSession?: (spot: Spot, checkInId: string) => Promise<boolean>;
+  onAddParticipantsToLiveSession?: (userIds: string[]) => Promise<void>;
+  onAddMediaToLiveSession?: (spot: Spot, checkInId: string) => Promise<void>;
+  liveSessionTitle?: string | null;
 };
 
 export function SpotDetailsModal({
@@ -199,6 +203,9 @@ export function SpotDetailsModal({
   onOpenTrickLog,
   onDeleteTrickLog,
   onAskAddToLiveSession,
+  onAddParticipantsToLiveSession,
+  onAddMediaToLiveSession,
+  liveSessionTitle,
 }: Props) {
   const { width } = Dimensions.get('window');
   const { theme } = useTheme();
@@ -478,8 +485,29 @@ export function SpotDetailsModal({
   const sessionMedia = useCheckInMedia();
   const { isPro } = usePro();
   const [proPaywallOpen, setProPaywallOpen] = useState(false);
+  const [proPaywallHeadline, setProPaywallHeadline] = useState('Upgrade for unlimited photos & videos.');
   const [sessionViewerMedia, setSessionViewerMedia] = useState<ViewerMedia | null>(null);
   const [mediaGrid, setMediaGrid] = useState(false);
+  const [checkInActionsOpen, setCheckInActionsOpen] = useState(false);
+  const [checkInActionsId, setCheckInActionsId] = useState<string | null>(null);
+  const [checkInAddedToSession, setCheckInAddedToSession] = useState(false);
+  const [addingCheckInToSession, setAddingCheckInToSession] = useState(false);
+  const [returnToCheckInActions, setReturnToCheckInActions] = useState(false);
+
+  async function addCheckInToLiveSession(checkInId: string): Promise<boolean> {
+    if (!spot || !onAskAddToLiveSession) return false;
+    setAddingCheckInToSession(true);
+    const added = await onAskAddToLiveSession(spot, checkInId);
+    setAddingCheckInToSession(false);
+    if (added) setCheckInAddedToSession(true);
+    return added;
+  }
+
+  function openCheckInActions(checkInId: string) {
+    setCheckInActionsId(checkInId);
+    setCheckInAddedToSession(false);
+    setCheckInActionsOpen(true);
+  }
 
   // Pick photos/videos and upload to a spot. checkInId links it to a passport
   // visit (optional); null = a standalone spot upload.
@@ -487,6 +515,7 @@ export function SpotDetailsModal({
     const mine = sessionMedia.media.filter((m) => m.user_id === currentUserId).length;
     const remaining = FREE_MEDIA_PER_SPOT - mine;
     if (!isPro && remaining <= 0) {
+      setProPaywallHeadline('Upgrade for unlimited photos & videos.');
       setProPaywallOpen(true);
       return;
     }
@@ -563,20 +592,6 @@ export function SpotDetailsModal({
     );
   }
 
-  function promptAddSessionMedia(checkInId: string, spotId: string) {
-    showAlert(
-      'Add a photo or clip?',
-      'Capture this session and tie it to your passport entry.',
-      [
-        { text: 'Skip', style: 'cancel' },
-        ...(spot && onAskAddToLiveSession
-          ? [{ text: 'Add to Live Session', onPress: () => onAskAddToLiveSession(spot, checkInId) }]
-          : []),
-        { text: 'Tag Who You Skated With', onPress: () => setSkatedWithCheckInId(checkInId) },
-        { text: 'Add', onPress: () => pickAndUploadSpotMedia(spotId, checkInId) },
-      ]
-    );
-  }
   const [visitorCount, setVisitorCount] = useState<number | null>(null);
   const [alreadyCheckedInToday, setAlreadyCheckedInToday] = useState(false);
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
@@ -656,7 +671,7 @@ export function SpotDetailsModal({
       <PaywallModal
         visible={proPaywallOpen}
         onClose={() => setProPaywallOpen(false)}
-        headline="Upgrade for unlimited photos & videos."
+        headline={proPaywallHeadline}
       />
       <Modal
         visible={visitorsOpen}
@@ -1306,7 +1321,7 @@ export function SpotDetailsModal({
                                 setMyLastCheckInId(result.checkInId ?? null);
                                 setMyTags([]);
                                 if (result.checkInId) {
-                                  promptAddSessionMedia(result.checkInId, spot.id);
+                                  openCheckInActions(result.checkInId);
                                 }
                               }
                             },
@@ -1322,37 +1337,7 @@ export function SpotDetailsModal({
                       setVisitorCount((prev) => (prev === null ? 1 : prev + 1));
                       setMyLastCheckInId(result.checkInId ?? null);
                       setMyTags([]);
-                      showAlert(
-                        'Checked in!',
-                        'Added to your passport and shared to your feed.',
-                        [
-                          { text: 'Done', style: 'cancel' },
-                          {
-                            text: 'Tag Who You Skated With',
-                            onPress: () => {
-                              if (result.checkInId) setSkatedWithCheckInId(result.checkInId);
-                            },
-                          },
-                          ...(onAskAddToLiveSession
-                            ? [{ text: 'Add to Live Session', onPress: () => result.checkInId && onAskAddToLiveSession(spot, result.checkInId) }]
-                            : []),
-                          {
-                            text: 'Add Photo/Clip',
-                            onPress: () => {
-                              if (result.checkInId) {
-                                pickAndUploadSpotMedia(spot.id, result.checkInId);
-                              }
-                            },
-                          },
-                          {
-                            text: 'Undo Check-In',
-                            style: 'destructive',
-                            onPress: () => {
-                              if (result.checkInId) runUndoCheckIn(result.checkInId, spot.id);
-                            },
-                          },
-                        ]
-                      );
+                      if (result.checkInId) openCheckInActions(result.checkInId);
                     }
                   }}
                   disabled={checkingIn}
@@ -1804,7 +1789,10 @@ export function SpotDetailsModal({
         spotName={spot?.name ?? ''}
         spotId={spotId ?? ''}
         spotTrickLogs={spotTrickLogs}
-        onClose={() => setTrickLogOpen(false)}
+        onClose={() => {
+          setTrickLogOpen(false);
+          if (returnToCheckInActions) setTimeout(() => setCheckInActionsOpen(true), 250);
+        }}
         onLogTrick={onLogTrickSubmit}
         onDeleteTrickLog={onDeleteTrickLog}
       />
@@ -1823,9 +1811,59 @@ export function SpotDetailsModal({
             showAlert('Could not save tags', result.error);
             return;
           }
+          await onAddParticipantsToLiveSession?.(userIds);
           await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           await loadMyTagsForSpot(spot.id);
+          if (returnToCheckInActions && checkInActionsId === skatedWithCheckInId) {
+            setReturnToCheckInActions(false);
+            setTimeout(() => setCheckInActionsOpen(true), 250);
+          }
         }}
+      />
+      <CheckInActionsSheet
+        visible={checkInActionsOpen}
+        placeName={spot?.name ?? 'Spot'}
+        sessionTitle={liveSessionTitle}
+        addedToSession={checkInAddedToSession}
+        addingToSession={addingCheckInToSession}
+        isPro={isPro}
+        onAddToSession={checkInActionsId && onAskAddToLiveSession ? () => addCheckInToLiveSession(checkInActionsId) : undefined}
+        onTag={() => {
+          if (!checkInActionsId) return;
+          setReturnToCheckInActions(true);
+          setCheckInActionsOpen(false);
+          setSkatedWithCheckInId(checkInActionsId);
+        }}
+        onAddSessionMedia={checkInActionsId && spot ? () => {
+          if (!isPro) {
+            setCheckInActionsOpen(false);
+            setTimeout(() => {
+              setProPaywallHeadline('Unlock photos and clips attached to every live session.');
+              setProPaywallOpen(true);
+            }, 250);
+            return;
+          }
+          setCheckInActionsOpen(false);
+          setReturnToCheckInActions(true);
+          const upload = onAddMediaToLiveSession?.(spot, checkInActionsId);
+          upload?.finally(() => setTimeout(() => setCheckInActionsOpen(true), 250));
+        } : undefined}
+        onAddPhoto={() => {
+          if (!checkInActionsId || !spot) return;
+          setCheckInActionsOpen(false);
+          setReturnToCheckInActions(true);
+          pickAndUploadSpotMedia(spot.id, checkInActionsId).finally(() => setTimeout(() => setCheckInActionsOpen(true), 250));
+        }}
+        onLogTrick={spot && !isShop ? () => {
+          setCheckInActionsOpen(false);
+          setReturnToCheckInActions(true);
+          setTrickLogOpen(true);
+        } : undefined}
+        onUndo={checkInActionsId && spot ? () => {
+          setCheckInActionsOpen(false);
+          runUndoCheckIn(checkInActionsId, spot.id);
+        } : undefined}
+        onClose={() => setCheckInActionsOpen(false)}
       />
       {/* ── Flag modal ── */}
       <Modal

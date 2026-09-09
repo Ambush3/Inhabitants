@@ -34,6 +34,7 @@ import { SessionMediaViewerModal, ViewerMedia } from '@/src/components/SessionMe
 import { PaywallModal } from '@/src/components/PaywallModal';
 import { FREE_MEDIA_PER_SPOT, videoDurationLimit } from '@/src/config/iap';
 import { openStatusLabel } from '@/src/libs/openingHours';
+import { CheckInActionsSheet } from '@/src/components/CheckInActionsSheet';
 import * as ImagePicker from 'expo-image-picker';
 
 const geocodeCache = new Map<string, string>();
@@ -64,10 +65,13 @@ type Props = {
   checkingIn?: boolean;
   onCheckIn?: () => Promise<string | null>;
   onUndoCheckIn?: (checkInId: string) => Promise<boolean>;
-  onAskAddToLiveSession?: (place: Place, checkInId: string) => void;
+  onAskAddToLiveSession?: (place: Place, checkInId: string) => Promise<boolean>;
+  onAddParticipantsToLiveSession?: (userIds: string[]) => Promise<void>;
+  onAddMediaToLiveSession?: (place: Place, checkInId: string) => Promise<void>;
+  liveSessionTitle?: string | null;
 };
 
-export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorite, isFavorite, userLocation, checkInState = 'available', checkingIn = false, onCheckIn, onUndoCheckIn, onAskAddToLiveSession }: Props) {
+export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorite, isFavorite, userLocation, checkInState = 'available', checkingIn = false, onCheckIn, onUndoCheckIn, onAskAddToLiveSession, onAddParticipantsToLiveSession, onAddMediaToLiveSession, liveSessionTitle }: Props) {
   const { theme } = useTheme();
   const c = theme.colors;
   const [placeAddress, setPlaceAddress] = useState<string | null>(null);
@@ -117,8 +121,29 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
   const { isPro } = usePro();
   const placeMedia = useCheckInMedia();
   const [proPaywallOpen, setProPaywallOpen] = useState(false);
+  const [proPaywallHeadline, setProPaywallHeadline] = useState('Upgrade for unlimited photos & videos.');
   const [mediaViewer, setMediaViewer] = useState<{ list: ViewerMedia[]; index: number } | null>(null);
   const isPark = place?.type === 'skatepark';
+  const [checkInActionsOpen, setCheckInActionsOpen] = useState(false);
+  const [checkInActionsId, setCheckInActionsId] = useState<string | null>(null);
+  const [checkInAddedToSession, setCheckInAddedToSession] = useState(false);
+  const [addingCheckInToSession, setAddingCheckInToSession] = useState(false);
+  const [returnToCheckInActions, setReturnToCheckInActions] = useState(false);
+
+  async function addCheckInToLiveSession(checkInId: string): Promise<boolean> {
+    if (!place || !onAskAddToLiveSession) return false;
+    setAddingCheckInToSession(true);
+    const added = await onAskAddToLiveSession(place, checkInId);
+    setAddingCheckInToSession(false);
+    if (added) setCheckInAddedToSession(true);
+    return added;
+  }
+
+  function openCheckInActions(checkInId: string) {
+    setCheckInActionsId(checkInId);
+    setCheckInAddedToSession(false);
+    setCheckInActionsOpen(true);
+  }
 
   const { setTags, getTagsForCheckIns, tagging } = useCheckInTags('place');
   const { getLastPlaceCheckIn } = usePlaceCheckIns();
@@ -138,7 +163,7 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
   }
 
   useEffect(() => {
-    if (visible && place && isPark) {
+    if (visible && place) {
       placeMedia.loadMediaForPlace(place.id);
       loadMyTagsForPlace(place.id);
     }
@@ -148,13 +173,14 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
       setMyLastCheckInId(null);
       setMyTags([]);
     }
-  }, [visible, place?.id, isPark]);
+  }, [visible, place?.id]);
 
   async function pickAndUploadPlaceMedia() {
     if (!place) return;
     const mine = placeMedia.media.filter((m) => m.user_id === session?.user.id).length;
     const remaining = FREE_MEDIA_PER_SPOT - mine;
     if (!isPro && remaining <= 0) {
+      setProPaywallHeadline('Upgrade for unlimited photos & videos.');
       setProPaywallOpen(true);
       return;
     }
@@ -317,19 +343,7 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
     if (!newCheckInId) return;
     setMyLastCheckInId(newCheckInId);
     setMyTags([]);
-    showAlert('Checked in!', 'Added to your Passport.', [
-      { text: 'Done', style: 'cancel' },
-      ...(place && onAskAddToLiveSession
-        ? [{ text: 'Add to Live Session', onPress: () => onAskAddToLiveSession(place, newCheckInId) }]
-        : []),
-      { text: 'Tag Who You Skated With', onPress: () => setSkatedWithCheckInId(newCheckInId) },
-      { text: 'Add Photo/Clip', onPress: pickAndUploadPlaceMedia },
-      {
-        text: 'Undo Check-In',
-        style: 'destructive',
-        onPress: () => runUndoCheckIn(newCheckInId),
-      },
-    ]);
+    openCheckInActions(newCheckInId);
   }
 
   async function runUndoCheckIn(checkInId: string) {
@@ -341,12 +355,12 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
 
   function confirmUndoCheckIn() {
     if (!myLastCheckInId) {
-      showAlert('Nothing to undo', 'No check-in found for this park.');
+      showAlert('Nothing to undo', 'No check-in found here.');
       return;
     }
     showAlert(
       'Undo check-in?',
-      "Your most recent visit here will be removed from your parks skated. Any clips you posted stay on the park. This can't be undone.",
+      "Your most recent check-in will be removed from your Passport. Any media you posted stays here. This can't be undone.",
       [
         { text: 'Keep It', style: 'cancel' },
         {
@@ -361,7 +375,7 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
   function handleCheckInPress() {
     if (!onCheckIn) return;
     if (checkInState === 'recent') {
-      showAlert('You skated here recently', 'You already checked in here in the last few hours.', [
+      showAlert('You checked in here recently', 'You already checked in here in the last few hours.', [
         { text: 'OK', style: 'cancel' },
         ...(onUndoCheckIn && myLastCheckInId
           ? [
@@ -376,7 +390,7 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
     } else if (checkInState === 'confirm') {
       showAlert(
         'Check in again?',
-        'You already skated here earlier today. Log another check-in?',
+        'You already checked in here earlier today. Log another check-in?',
         [
           { text: 'Cancel', style: 'cancel' },
           ...(onUndoCheckIn && myLastCheckInId
@@ -691,7 +705,7 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
                     {checkingIn
                       ? 'Checking in…'
                       : checkInState === 'recent'
-                        ? 'Skated'
+                        ? place?.type === 'skateshop' ? 'Checked In' : 'Skated'
                         : checkInState === 'confirm'
                           ? 'Check In Again'
                           : 'Check In'}
@@ -700,7 +714,7 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
               </View>
             ) : null}
 
-            {isPark && myLastCheckInId ? (
+            {myLastCheckInId ? (
               <Pressable
                 onPress={() => setSkatedWithCheckInId(myLastCheckInId)}
                 style={{
@@ -716,7 +730,7 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
                 <Ionicons name="people" size={16} color={c.subtext} />
                 {myTags.length === 0 ? (
                   <Text style={{ flex: 1, fontSize: 13, fontWeight: '600', color: c.subtext }}>
-                    Skated with…
+                    {place?.type === 'skateshop' ? 'Tag Who You Were With…' : 'Skated with…'}
                   </Text>
                 ) : (
                   <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -760,7 +774,7 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
               </Pressable>
             ) : null}
 
-            {isPark ? (
+            {place ? (
               <View
                 style={{
                   borderTopWidth: 1,
@@ -876,9 +890,11 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
         initialIndex={mediaViewer?.index ?? 0}
         currentUserId={session?.user.id ?? null}
       />
-      <PaywallModal visible={proPaywallOpen} onClose={() => setProPaywallOpen(false)} />
+      <PaywallModal visible={proPaywallOpen} onClose={() => setProPaywallOpen(false)} headline={proPaywallHeadline} />
       <SkatedWithModal
         visible={!!skatedWithCheckInId}
+        title={place?.type === 'skateshop' ? 'Were you with' : 'Skated with'}
+        description={place?.type === 'skateshop' ? 'Tag the friends who were there with you.' : 'Tag the friends who were there with you.'}
         saving={tagging}
         initialSelected={
           skatedWithCheckInId === myLastCheckInId ? myTags.map((t) => t.id) : undefined
@@ -896,8 +912,54 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
             showAlert('Could not save tags', result.error);
             return;
           }
+          await onAddParticipantsToLiveSession?.(userIds);
           await loadMyTagsForPlace(place.id);
+          if (returnToCheckInActions && checkInActionsId === skatedWithCheckInId) {
+            setReturnToCheckInActions(false);
+            setTimeout(() => setCheckInActionsOpen(true), 250);
+          }
         }}
+      />
+      <CheckInActionsSheet
+        visible={checkInActionsOpen}
+        placeName={place?.name ?? (isPark ? 'Skate park' : 'Skate shop')}
+        sessionTitle={liveSessionTitle}
+        tagLabel={place?.type === 'skateshop' ? 'Tag Who You Were With' : 'Tag Who You Skated With'}
+        addedToSession={checkInAddedToSession}
+        addingToSession={addingCheckInToSession}
+        isPro={isPro}
+        onAddToSession={checkInActionsId && onAskAddToLiveSession ? () => addCheckInToLiveSession(checkInActionsId) : undefined}
+        onTag={() => {
+          if (!checkInActionsId) return;
+          setReturnToCheckInActions(true);
+          setCheckInActionsOpen(false);
+          setSkatedWithCheckInId(checkInActionsId);
+        }}
+        onAddSessionMedia={checkInActionsId && place ? () => {
+          if (!isPro) {
+            setCheckInActionsOpen(false);
+            setTimeout(() => {
+              setProPaywallHeadline('Unlock photos and clips attached to every live session.');
+              setProPaywallOpen(true);
+            }, 250);
+            return;
+          }
+          setCheckInActionsOpen(false);
+          setReturnToCheckInActions(true);
+          const upload = onAddMediaToLiveSession?.(place, checkInActionsId);
+          upload?.finally(() => setTimeout(() => setCheckInActionsOpen(true), 250));
+        } : undefined}
+        onAddPhoto={() => {
+          if (!checkInActionsId) return;
+          setCheckInActionsOpen(false);
+          setReturnToCheckInActions(true);
+          pickAndUploadPlaceMedia().finally(() => setTimeout(() => setCheckInActionsOpen(true), 250));
+        }}
+        onUndo={checkInActionsId ? () => {
+          setCheckInActionsOpen(false);
+          runUndoCheckIn(checkInActionsId);
+        } : undefined}
+        onClose={() => setCheckInActionsOpen(false)}
       />
 
       {/* Edit Modal */}

@@ -2,8 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/src/context/ThemeContext';
-import { AlertHost } from '@/src/components/ui/ThemedAlert';
 import { LiveSession, LiveSessionStop } from '@/src/hooks/useLiveSession';
+import { CrownIcon } from '@/src/components/icons/CrownIcon';
 
 type SessionStop = Omit<LiveSessionStop, 'addedAt'>;
 
@@ -80,7 +80,7 @@ export function LiveSessionModal({
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
             {onAddMedia ? (
               <Pressable onPress={() => onAddMedia(stop)} hitSlop={8}>
-                <Ionicons name={isPro ? 'camera-outline' : 'lock-closed-outline'} size={20} color={isPro ? c.accent : c.subtext} />
+                {isPro ? <Ionicons name="camera-outline" size={20} color={c.accent} /> : <CrownIcon size={21} />}
               </Pressable>
             ) : null}
             <Pressable onPress={() => onRemoveStop(stop.id)} hitSlop={8}>
@@ -94,7 +94,6 @@ export function LiveSessionModal({
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      {visible ? <AlertHost /> : null}
       <View style={{ flex: 1 }}>
         <Pressable onPress={onClose} style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)' }} />
         <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, maxHeight: '88%', backgroundColor: c.surface, borderTopLeftRadius: 22, borderTopRightRadius: 22, paddingTop: 20, paddingBottom: 28 }}>

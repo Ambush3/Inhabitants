@@ -9,6 +9,7 @@ export type TrickLog = {
   trick_name: string;
   logged_at: string;
   created_at: string;
+  live_session_id?: string | null;
   spot?: {
     name: string;
   };

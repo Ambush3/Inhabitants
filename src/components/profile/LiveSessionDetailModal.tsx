@@ -9,6 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/src/libs/supabase';
 import { LiveSession } from '@/src/hooks/useLiveSession';
 import { ViewerMedia, SessionMediaViewerModal } from '@/src/components/SessionMediaViewerModal';
+import { CrownIcon } from '@/src/components/icons/CrownIcon';
 
 type SessionMedia = ViewerMedia & {
   spot_id: string | null;
@@ -267,5 +268,5 @@ function EmptySection({ text, c }: { text: string; c: any }) {
 }
 
 function ProPrompt({ text, onPress, c }: { text: string; onPress: () => void; c: any }) {
-  return <Pressable onPress={onPress} style={{ backgroundColor: c.tagBg, borderRadius: 16, padding: 16, flexDirection: 'row', alignItems: 'center' }}><Ionicons name="lock-closed-outline" size={18} color={c.accent} /><Text style={{ color: c.subtext, flex: 1, marginLeft: 9, fontSize: 13 }}>{text}</Text><Text style={{ color: c.accent, fontWeight: '800', fontSize: 13 }}>Pro</Text></Pressable>;
+  return <Pressable onPress={onPress} style={{ backgroundColor: c.tagBg, borderRadius: 16, padding: 16, flexDirection: 'row', alignItems: 'center' }}><CrownIcon size={20} /><Text style={{ color: c.subtext, flex: 1, marginLeft: 9, fontSize: 13 }}>{text}</Text><Text style={{ color: c.accent, fontWeight: '800', fontSize: 13 }}>Pro</Text></Pressable>;
 }

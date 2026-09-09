@@ -14,6 +14,7 @@ import {
   Linking,
   ActivityIndicator,
   AppState,
+  Alert,
 } from 'react-native';
 import { Image } from 'expo-image';
 import MapView, { Marker, Region, LongPressEvent, MapMarker, PROVIDER_GOOGLE } from 'react-native-maps';
@@ -997,25 +998,32 @@ export default function Index() {
   async function addCheckInToLiveSession(
     stop: Omit<LiveSessionStop, 'addedAt'>,
     checkInId: string
-  ) {
-    if (!liveSession) return;
+  ): Promise<boolean> {
+    if (!liveSession) return false;
     const sessionId = await ensureServerSession();
     if (!sessionId) {
       toast.error('Couldn’t sync this session right now');
-      return;
+      return false;
     }
     const linked = stop.type === 'spot'
       ? await linkSpotCheckInToSession(checkInId, sessionId)
       : await linkPlaceCheckInToSession(checkInId, sessionId);
     if (!linked) {
       toast.error('Couldn’t link this check-in to the session');
-      return;
+      return false;
     }
     addLiveSessionStop(stop);
-    showAlert('Capture this session?', 'Add a photo or clip while you are here?', [
-      { text: 'Later', style: 'cancel' },
-      { text: 'Capture', onPress: () => addMediaToLiveSession(stop, checkInId) },
-    ]);
+    return true;
+  }
+
+  async function addParticipantsToLiveSession(userIds: string[]) {
+    const sessionId = liveSession?.serverId ?? await ensureServerSession();
+    if (!sessionId || userIds.length === 0) return;
+    const { error } = await supabase.from('live_session_participants').upsert(
+      userIds.map((userId) => ({ session_id: sessionId, user_id: userId, status: 'accepted' })),
+      { onConflict: 'session_id,user_id' }
+    );
+    if (error) toast.error('Couldn’t save session participants');
   }
 
   async function addMediaToLiveSession(
@@ -1024,7 +1032,9 @@ export default function Index() {
   ) {
     if (!isPro) {
       setPaywallHeadline('Unlock photos and clips attached to every live session.');
-      setPaywallOpen(true);
+      setDetailsOpen(false);
+      setPlaceDetailsOpen(false);
+      setTimeout(() => setPaywallOpen(true), 300);
       return;
     }
     if (!liveSession) return;
@@ -2747,7 +2757,11 @@ export default function Index() {
             }}
             placeTypes={activePlaceTypes}
             onTogglePlaceType={(t) => requireAuth(() => togglePlaceType(t))}
-            onOpenLiveSession={() => requireAuth(() => setLiveSessionOpen(true))}
+            onOpenLiveSession={() => requireAuth(() => {
+              setSelectedSpot(null);
+              setSelectedPlace(null);
+              setLiveSessionOpen(true);
+            })}
             liveSessionActive={!!liveSession}
             onSubmitSearch={() => requireAuth(() => searchPlacesByName())}
             parksLoading={parksLoading && !searchingPlaces}
@@ -3215,10 +3229,13 @@ export default function Index() {
           return err;
         }}
         creatorBadge={spotCreatorBadge}
-        spotTrickLogs={spotTrickLogs}
+        spotTrickLogs={liveSession?.serverId
+          ? spotTrickLogs.filter((log) => log.live_session_id === liveSession.serverId)
+          : spotTrickLogs}
         onLogTrickSubmit={async (trickName, loggedAt) => {
           if (!selectedSpot) return null;
-          const err = await logTrick(selectedSpot.id, trickName, loggedAt, liveSession?.serverId ?? null);
+          const sessionId = liveSession?.serverId ?? (liveSession ? await ensureServerSession() : null);
+          const err = await logTrick(selectedSpot.id, trickName, loggedAt, sessionId);
           if (!err) await loadTrickLogsForSpot(selectedSpot.id);
           return err;
         }}
@@ -3239,6 +3256,15 @@ export default function Index() {
             lng: spot.lng,
             type: spot.spot_type,
           }, checkInId) : undefined}
+        onAddParticipantsToLiveSession={addParticipantsToLiveSession}
+        onAddMediaToLiveSession={(spot, checkInId) => addMediaToLiveSession({
+          id: spot.id,
+          name: spot.name,
+          lat: spot.lat,
+          lng: spot.lng,
+          type: spot.spot_type,
+        }, checkInId)}
+        liveSessionTitle={liveSession?.title}
       />
 
       <SkateShopDetailsModal
@@ -3301,6 +3327,15 @@ export default function Index() {
             lng: place.lng,
             type: place.type,
           }, checkInId) : undefined}
+        onAddParticipantsToLiveSession={addParticipantsToLiveSession}
+        onAddMediaToLiveSession={(place, checkInId) => addMediaToLiveSession({
+          id: place.id,
+          name: place.name,
+          lat: place.lat,
+          lng: place.lng,
+          type: place.type,
+        }, checkInId)}
+        liveSessionTitle={liveSession?.title}
       />
       <SettingsPanel
         session={session}
@@ -3496,7 +3531,10 @@ export default function Index() {
       />
       <LiveSessionModal
         visible={liveSessionOpen}
-        onClose={() => setLiveSessionOpen(false)}
+        onClose={() => {
+          setLiveSessionOpen(false);
+          if (!liveSession) clearCompletedLiveSession();
+        }}
         activeSession={liveSession}
         lastCompleted={completedLiveSession}
         availableStops={liveSessionStops}
@@ -3507,14 +3545,14 @@ export default function Index() {
         onAddMedia={addMediaToLiveSession}
         isPro={isPro}
         onEnd={() => {
-          showAlert(
+          Alert.alert(
             'End live session?',
             liveSession && liveSession.stops.length > 0
               ? `Save ${liveSession.stops.length} stop${liveSession.stops.length === 1 ? '' : 's'} to your Passport?`
               : 'Save this session to your Passport?',
             [
               { text: 'Keep skating', style: 'cancel' },
-              { text: 'End session', onPress: () => endLiveSession() },
+              { text: 'End session', style: 'destructive', onPress: () => void endLiveSession() },
             ]
           );
         }}

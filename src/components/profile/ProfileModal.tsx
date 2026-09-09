@@ -103,6 +103,7 @@ export function ProfileModal({
 
   const [activeTab, setActiveTab] = useState<Tab>('spots');
   const [showAllSessions, setShowAllSessions] = useState(false);
+  const [showAllPassportVisits, setShowAllPassportVisits] = useState(false);
   const [selectedLiveSession, setSelectedLiveSession] = useState<LiveSession | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [username, setUsername] = useState<string | null>(null);
@@ -190,6 +191,13 @@ export function ProfileModal({
     : passportFilter === 'shops'
       ? passportShopEntries
       : [];
+  const passportVisitLimit = 5;
+  const visiblePassportLocationEntries = showAllPassportVisits
+    ? passportLocationEntries
+    : passportLocationEntries.slice(0, passportVisitLimit);
+  const visiblePassportSpotEntries = showAllPassportVisits
+    ? passportSpotEntries
+    : passportSpotEntries.slice(0, passportVisitLimit);
 
   const totalCheckIns = passportSpotEntries.reduce((sum, e) => sum + e.visit_count, 0);
   const mostSkatedSpot =
@@ -390,6 +398,7 @@ export function ProfileModal({
     loadPlaceCheckIns();
     loadParkEntries();
     setPassportFilter('spots');
+    setShowAllPassportVisits(false);
   }, [visible]);
 
   const myActualSpots = mySpots.filter((s) => s.spot_type === 'spot');
@@ -1433,7 +1442,7 @@ export function ProfileModal({
                       <>
                         <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
                           <Pressable
-                            onPress={() => setPassportFilter('spots')}
+                            onPress={() => { setPassportFilter('spots'); setShowAllPassportVisits(false); }}
                             style={{
                               flex: 1,
                               backgroundColor: c.tagBg,
@@ -1451,7 +1460,7 @@ export function ProfileModal({
                             </Text>
                           </Pressable>
                           <Pressable
-                            onPress={() => setPassportFilter('parks')}
+                            onPress={() => { setPassportFilter('parks'); setShowAllPassportVisits(false); }}
                             style={{
                               flex: 1,
                               backgroundColor: c.tagBg,
@@ -1469,7 +1478,7 @@ export function ProfileModal({
                             </Text>
                           </Pressable>
                           <Pressable
-                            onPress={() => setPassportFilter('shops')}
+                            onPress={() => { setPassportFilter('shops'); setShowAllPassportVisits(false); }}
                             style={{
                               flex: 1,
                               backgroundColor: c.tagBg,
@@ -1534,7 +1543,8 @@ export function ProfileModal({
                                 : 'No shops checked in yet.'}
                             </Text>
                           ) : (
-                            passportLocationEntries.map((entry) => (
+                            <>
+                              {visiblePassportLocationEntries.map((entry) => (
                               <Pressable
                                 key={`${entry.source ?? 'osm'}:${entry.place_id}`}
                                 onPress={() => {
@@ -1601,7 +1611,13 @@ export function ProfileModal({
                                   </View>
                                 </View>
                               </Pressable>
-                            ))
+                              ))}
+                              {passportLocationEntries.length > passportVisitLimit ? (
+                                <Pressable onPress={() => setShowAllPassportVisits((value) => !value)} style={{ paddingVertical: 14, alignItems: 'center' }}>
+                                  <Text style={{ color: c.accent, fontWeight: '700' }}>{showAllPassportVisits ? 'Show less' : `See more (${passportLocationEntries.length - passportVisitLimit})`}</Text>
+                                </Pressable>
+                              ) : null}
+                            </>
                           )
                         ) : passportLoading ? (
                           <Text style={{ color: c.subtext, textAlign: 'center', marginTop: 24 }}>
@@ -1612,8 +1628,9 @@ export function ProfileModal({
                             style={{ color: c.subtext, fontSize: 14, textAlign: 'center', marginTop: 24 }}>
                             No check-ins yet. Hit a spot and check in!
                           </Text>
-                        ) : (
-                          passportSpotEntries.map((entry) => {
+                          ) : (
+                          <>
+                          {visiblePassportSpotEntries.map((entry) => {
                             const expanded = expandedPassportSpot === entry.spot_id;
                             return (
                               <Pressable
@@ -1804,7 +1821,13 @@ export function ProfileModal({
                                 ) : null}
                               </Pressable>
                             );
-                          })
+                          })}
+                          {passportSpotEntries.length > passportVisitLimit ? (
+                            <Pressable onPress={() => setShowAllPassportVisits((value) => !value)} style={{ paddingVertical: 14, alignItems: 'center' }}>
+                              <Text style={{ color: c.accent, fontWeight: '700' }}>{showAllPassportVisits ? 'Show less' : `See more (${passportSpotEntries.length - passportVisitLimit})`}</Text>
+                            </Pressable>
+                          ) : null}
+                          </>
                         )}
 
 
