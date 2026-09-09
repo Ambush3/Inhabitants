@@ -67,10 +67,11 @@ export function LiveSessionModal({
   }
 
   function StopRow({ stop, remove }: { stop: SessionStop; remove?: boolean }) {
+    const stopIndex = activeSession?.stops.findIndex((item) => item.id === stop.id) ?? -1;
     return (
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: c.border }}>
         <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: c.accent, alignItems: 'center', justifyContent: 'center' }}>
-          <Text style={{ color: '#fff', fontWeight: '800', fontSize: 12 }}>{activeSession ? activeSession.stops.findIndex((item) => item.id === stop.id) + 1 : '+'}</Text>
+          <Text style={{ color: '#fff', fontWeight: '800', fontSize: 12 }}>{stopIndex >= 0 ? stopIndex + 1 : '+'}</Text>
         </View>
         <View style={{ flex: 1 }}>
           <Text style={{ color: c.text, fontWeight: '700' }} numberOfLines={1}>{stop.name}</Text>
