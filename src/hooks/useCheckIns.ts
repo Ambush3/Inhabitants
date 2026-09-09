@@ -300,11 +300,20 @@ export function useCheckIns() {
 
   const undoCheckIn = useCallback(
     async (checkInId: string): Promise<{ success: boolean; error?: string }> => {
+      const userId = await getCurrentUserId();
+      if (!userId) return { success: false, error: 'Not authenticated' };
+
       await supabase.from('check_in_tags').delete().eq('check_in_id', checkInId);
       await deleteAllMediaForCheckIn(checkInId);
 
-      const { error } = await supabase.from('check_ins').delete().eq('id', checkInId);
+      const { data: deleted, error } = await supabase
+        .from('check_ins')
+        .delete()
+        .eq('id', checkInId)
+        .eq('user_id', userId)
+        .select('id');
       if (error) return { success: false, error: error.message };
+      if (!deleted?.length) return { success: false, error: 'Check-in could not be removed.' };
 
       setPassportEntries((prev) =>
         prev

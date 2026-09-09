@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Dimensions, Modal, Pressable, ScrollView, Share, Text, View } from 'react-native';
+import { ActivityIndicator, Dimensions, Modal, Pressable, ScrollView, Share, Text, TextInput, View } from 'react-native';
 import MapView, { Marker, Polyline } from 'react-native-maps';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,6 +10,7 @@ import { supabase } from '@/src/libs/supabase';
 import { LiveSession } from '@/src/hooks/useLiveSession';
 import { ViewerMedia, SessionMediaViewerModal } from '@/src/components/SessionMediaViewerModal';
 import { CrownIcon } from '@/src/components/icons/CrownIcon';
+import { moderateText } from '@/src/libs/moderator/textModerator';
 
 type SessionMedia = ViewerMedia & {
   spot_id: string | null;
@@ -45,6 +46,7 @@ type Props = {
   currentUserId: string | null;
   onClose: () => void;
   onOpenPro: () => void;
+  onUpdateNotes: (session: LiveSession, notes: string) => Promise<boolean>;
 };
 
 function elapsedText(session: LiveSession): string {
@@ -63,7 +65,7 @@ function distanceBetween(a: LiveSession['stops'][number], b: LiveSession['stops'
   return 3958.8 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
 }
 
-export function LiveSessionDetailModal({ visible, session, isPro, currentUserId, onClose, onOpenPro }: Props) {
+export function LiveSessionDetailModal({ visible, session, isPro, currentUserId, onClose, onOpenPro, onUpdateNotes }: Props) {
   const { theme } = useTheme();
   const toast = useToast();
   const insets = useSafeAreaInsets();
@@ -74,6 +76,16 @@ export function LiveSessionDetailModal({ visible, session, isPro, currentUserId,
   const [participants, setParticipants] = useState<SessionParticipant[]>([]);
   const [conditions, setConditions] = useState<SessionCondition[]>([]);
   const [viewer, setViewer] = useState<{ list: ViewerMedia[]; index: number } | null>(null);
+  const [editingNotes, setEditingNotes] = useState(false);
+  const [notesDraft, setNotesDraft] = useState('');
+  const [savingNotes, setSavingNotes] = useState(false);
+
+  useEffect(() => {
+    if (visible && session) {
+      setNotesDraft(session.notes ?? '');
+      setEditingNotes(false);
+    }
+  }, [visible, session?.id]);
 
   useEffect(() => {
     if (!visible || !session?.serverId) {
@@ -175,10 +187,31 @@ export function LiveSessionDetailModal({ visible, session, isPro, currentUserId,
 
   if (!session) return null;
   const proLocked = !isPro;
+  const saveNotes = async () => {
+    const trimmed = notesDraft.trim();
+    if (trimmed.length > 1000) {
+      toast.error('Keep notes under 1,000 characters');
+      return;
+    }
+    const moderation = moderateText(trimmed);
+    if (!moderation.allowed) {
+      toast.error(moderation.reason ?? 'Notes contain inappropriate content');
+      return;
+    }
+    setSavingNotes(true);
+    const saved = await onUpdateNotes(session, trimmed);
+    setSavingNotes(false);
+    if (!saved) {
+      toast.error('Couldn’t save session notes');
+      return;
+    }
+    setEditingNotes(false);
+    toast.success(trimmed ? 'Notes saved' : 'Notes removed');
+  };
   const shareSession = async () => {
     try {
       await Share.share({
-        message: `${session.title} · ${new Date(session.startedAt).toLocaleDateString()}\n${session.stops.length} stops · ${elapsedText(session)}${distance > 0 ? ` · ${distance.toFixed(1)} mi` : ''}\n${session.stops.map((stop) => stop.name).join(' → ')}`,
+        message: `${session.title} · ${new Date(session.startedAt).toLocaleDateString()}\n${session.stops.length} stops · ${elapsedText(session)}${distance > 0 ? ` · ${distance.toFixed(1)} mi` : ''}\n${session.stops.map((stop) => stop.name).join(' → ')}${session.notes ? `\n\n${session.notes}` : ''}`,
       });
     } catch {
       toast.error('Couldn’t share this session');
@@ -199,6 +232,44 @@ export function LiveSessionDetailModal({ visible, session, isPro, currentUserId,
           <Text style={{ color: c.subtext, marginTop: 5 }}>
             {new Date(session.startedAt).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
           </Text>
+
+          <View style={{ marginTop: 16, backgroundColor: c.tagBg, borderRadius: 16, padding: 14 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Ionicons name="document-text-outline" size={18} color={c.accent} />
+                <Text style={{ color: c.text, fontWeight: '800', marginLeft: 7 }}>Session notes</Text>
+              </View>
+              <Pressable onPress={() => { setNotesDraft(session.notes ?? ''); setEditingNotes((current) => !current); }} hitSlop={8}>
+                <Text style={{ color: c.accent, fontWeight: '800' }}>{editingNotes ? 'Cancel' : 'Edit'}</Text>
+              </Pressable>
+            </View>
+            {editingNotes ? (
+              <>
+                <TextInput
+                  value={notesDraft}
+                  onChangeText={setNotesDraft}
+                  placeholder="What stood out about this session?"
+                  placeholderTextColor={c.subtext}
+                  multiline
+                  maxLength={1000}
+                  textAlignVertical="top"
+                  style={{ color: c.text, backgroundColor: c.surface, borderRadius: 12, minHeight: 94, marginTop: 12, padding: 12, fontSize: 15 }}
+                />
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 9 }}>
+                  <Text style={{ color: c.subtext, fontSize: 12 }}>{notesDraft.length}/1000</Text>
+                  <Pressable onPress={saveNotes} disabled={savingNotes} style={{ backgroundColor: c.accent, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 9, opacity: savingNotes ? 0.6 : 1 }}>
+                    <Text style={{ color: '#fff', fontWeight: '800' }}>{savingNotes ? 'Saving…' : 'Save notes'}</Text>
+                  </Pressable>
+                </View>
+              </>
+            ) : (
+              <Pressable onPress={() => setEditingNotes(true)}>
+                <Text style={{ color: session.notes ? c.text : c.subtext, marginTop: 10, lineHeight: 21 }}>
+                  {session.notes || 'Add a note about this session…'}
+                </Text>
+              </Pressable>
+            )}
+          </View>
 
           <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
             {[

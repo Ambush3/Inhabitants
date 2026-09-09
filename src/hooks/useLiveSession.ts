@@ -14,6 +14,7 @@ export type LiveSessionStop = {
 export type LiveSession = {
   id: string;
   title: string;
+  notes?: string;
   startedAt: string;
   endedAt?: string;
   serverId?: string;
@@ -42,7 +43,12 @@ export function useLiveSession(userId: string | null) {
     const creation = (async () => {
       const { data, error } = await supabase
         .from('live_sessions')
-        .insert({ user_id: userId, title: activeSession.title, started_at: activeSession.startedAt })
+        .insert({
+          user_id: userId,
+          title: activeSession.title,
+          notes: activeSession.notes ?? null,
+          started_at: activeSession.startedAt,
+        })
         .select('id')
         .single();
       if (error || !data) return null;
@@ -115,6 +121,7 @@ export function useLiveSession(userId: string | null) {
           id: `live-${row.id}`,
           serverId: row.id,
           title: row.title,
+          notes: row.notes ?? undefined,
           startedAt: row.started_at,
           endedAt: row.ended_at ?? undefined,
           stops: stopsBySession.get(row.id) ?? [],
@@ -241,7 +248,12 @@ export function useLiveSession(userId: string | null) {
       if (!serverId) {
         const { data } = await supabase
           .from('live_sessions')
-          .insert({ user_id: userId, title: completed.title, started_at: completed.startedAt })
+          .insert({
+            user_id: userId,
+            title: completed.title,
+            notes: completed.notes ?? null,
+            started_at: completed.startedAt,
+          })
           .select('id')
           .single();
         serverId = data?.id;
@@ -249,7 +261,7 @@ export function useLiveSession(userId: string | null) {
       if (serverId) {
         await supabase
           .from('live_sessions')
-          .update({ ended_at: completed.endedAt })
+          .update({ ended_at: completed.endedAt, notes: completed.notes ?? null })
           .eq('id', serverId)
           .eq('user_id', userId);
         endingServerSessions.current.delete(serverId);
@@ -266,6 +278,30 @@ export function useLiveSession(userId: string | null) {
   }, [activeSession, userId]);
 
   const clearLastCompleted = useCallback(() => setLastCompleted(null), []);
+
+  const updateSessionNotes = useCallback(async (session: LiveSession, notes: string): Promise<boolean> => {
+    if (!userId) return false;
+    const trimmed = notes.trim();
+    if (session.serverId) {
+      const { error } = await supabase
+        .from('live_sessions')
+        .update({ notes: trimmed || null })
+        .eq('id', session.serverId)
+        .eq('user_id', userId);
+      if (error) return false;
+    }
+
+    const update = (item: LiveSession): LiveSession =>
+      item.id === session.id ? { ...item, notes: trimmed || undefined } : item;
+    const nextHistory = history.map(update);
+    setHistory(nextHistory);
+    setLastCompleted((current) => (current?.id === session.id ? update(current) : current));
+    setActiveSession((current) => (current?.id === session.id ? update(current) : current));
+    try {
+      await AsyncStorage.setItem(keyFor(HISTORY_KEY, userId), JSON.stringify(nextHistory));
+    } catch {}
+    return true;
+  }, [history, userId]);
 
   const deleteSession = useCallback(async (session: LiveSession): Promise<boolean> => {
     if (!userId) return false;
@@ -293,6 +329,7 @@ export function useLiveSession(userId: string | null) {
     removeStop,
     endSession,
     clearLastCompleted,
+    updateSessionNotes,
     deleteSession,
     ensureServerSession,
     history,

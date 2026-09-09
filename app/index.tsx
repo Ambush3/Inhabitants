@@ -508,6 +508,7 @@ export default function Index() {
     endSession: endLiveSession,
     clearLastCompleted: clearCompletedLiveSession,
     deleteSession: deleteLiveSession,
+    updateSessionNotes: updateLiveSessionNotes,
     ensureServerSession,
     history: liveSessionHistory,
   } = useLiveSession(session?.user.id ?? null);
@@ -3415,6 +3416,7 @@ export default function Index() {
         myReviews={myReviews}
         liveSessions={liveSessionHistory}
         onDeleteLiveSession={deleteLiveSession}
+        onUpdateLiveSessionNotes={updateLiveSessionNotes}
         onLoadMyReviews={loadMyReviews}
         allSpots={spots}
         onSelectSpot={(s) => {

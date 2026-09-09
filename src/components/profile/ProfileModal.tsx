@@ -68,6 +68,7 @@ type Props = {
   onDeleteTrickLog: (id: string) => Promise<string | null>;
   liveSessions: LiveSession[];
   onDeleteLiveSession: (session: LiveSession) => Promise<boolean>;
+  onUpdateLiveSessionNotes: (session: LiveSession, notes: string) => Promise<boolean>;
 };
 
 type Tab = 'spots' | 'reviews' | 'friends' | 'collections' | 'passport';
@@ -89,6 +90,7 @@ export function ProfileModal({
   onDeleteTrickLog,
   liveSessions,
   onDeleteLiveSession,
+  onUpdateLiveSessionNotes,
 }: Props) {
   const { theme } = useTheme();
   const { isPro } = usePro();
@@ -417,6 +419,15 @@ export function ProfileModal({
         currentUserId={myId}
         onClose={() => setSelectedLiveSession(null)}
         onOpenPro={() => setProPaywallOpen(true)}
+        onUpdateNotes={async (session, notes) => {
+          const saved = await onUpdateLiveSessionNotes(session, notes);
+          if (saved) {
+            setSelectedLiveSession((current) =>
+              current?.id === session.id ? { ...current, notes: notes.trim() || undefined } : current
+            );
+          }
+          return saved;
+        }}
       />
       <SessionPlannerModal
         visible={plannerOpen}
@@ -1831,6 +1842,18 @@ export function ProfileModal({
                         )}
 
 
+                        <Text
+                          style={{
+                            fontSize: 11,
+                            fontWeight: '700',
+                            letterSpacing: 0.6,
+                            color: c.subtext,
+                            textTransform: 'uppercase',
+                            marginTop: 24,
+                            marginBottom: 8,
+                          }}>
+                          Sessions
+                        </Text>
                         <View
                           style={{
                             backgroundColor: c.tagBg,
@@ -1838,19 +1861,15 @@ export function ProfileModal({
                             padding: 14,
                             marginBottom: 16,
                           }}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
-                            <Ionicons name="radio-outline" size={17} color={c.accent} />
-                            <Text style={{ flex: 1, color: c.text, fontWeight: '800', marginLeft: 8 }}>
-                              Recent sessions
-                            </Text>
-                            {liveSessions.length > 3 ? (
+                          {liveSessions.length > 3 ? (
+                            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 6 }}>
                               <Pressable onPress={() => setShowAllSessions((value) => !value)}>
                                 <Text style={{ color: c.accent, fontWeight: '700', fontSize: 12 }}>
                                   {showAllSessions ? 'Show less' : 'See all'}
                                 </Text>
                               </Pressable>
-                            ) : null}
-                          </View>
+                            </View>
+                          ) : null}
                           {liveSessions.length === 0 ? (
                             <Text style={{ color: c.subtext, fontSize: 13 }}>
                               Your completed live sessions will appear here.
