@@ -48,6 +48,16 @@ export type PassportEntry = {
 };
 
 const FEED_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+const checkInChangeListeners = new Set<() => void>();
+
+export function subscribeToCheckInChanges(listener: () => void): () => void {
+  checkInChangeListeners.add(listener);
+  return () => checkInChangeListeners.delete(listener);
+}
+
+function notifyCheckInChanged() {
+  checkInChangeListeners.forEach((listener) => listener());
+}
 
 export function useCheckIns() {
   const [loading, setLoading] = useState(false);
@@ -97,6 +107,7 @@ export function useCheckIns() {
 
         if (error) return { success: false, error: error.message };
 
+        notifyCheckInChanged();
         return { success: true, alreadyCheckedIn: !!recent, checkInId: data.id };
       } catch (e: any) {
         return { success: false, error: e.message };
@@ -274,6 +285,7 @@ export function useCheckIns() {
           }))
           .filter((entry) => entry.visit_count > 0)
       );
+      notifyCheckInChanged();
     }
     return !error;
   }, []);
@@ -324,6 +336,7 @@ export function useCheckIns() {
           }))
           .filter((entry) => entry.visit_count > 0)
       );
+      notifyCheckInChanged();
       return { success: true };
     },
     []

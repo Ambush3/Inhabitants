@@ -33,7 +33,7 @@ import { openStatusLabel } from '@/src/libs/openingHours';
 import { CheckInActionsSheet } from '@/src/components/CheckInActionsSheet';
 
 import { CONDITION_META, SpotCondition } from '@/src/hooks/useSpotConditions';
-import { useCheckIns, SpotVisitor } from '@/src/hooks/useCheckIns';
+import { subscribeToCheckInChanges, useCheckIns, SpotVisitor } from '@/src/hooks/useCheckIns';
 import { useCheckInTags, TaggedSkater } from '@/src/hooks/useCheckInTags';
 import { SkatedWithModal } from '@/src/components/SkatedWithModal';
 import { useCheckInMedia, PendingMedia } from '@/src/hooks/useCheckInMedia';
@@ -596,6 +596,14 @@ export function SpotDetailsModal({
   const [alreadyCheckedInToday, setAlreadyCheckedInToday] = useState(false);
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
   const [trickLogOpen, setTrickLogOpen] = useState(false);
+
+  useEffect(() => {
+    if (!visible || !spot) return;
+    return subscribeToCheckInChanges(() => {
+      hasCheckedInWithinCooldown(spot.id).then(setAlreadyCheckedInToday);
+      getVisitorCount(spot.id).then(setVisitorCount);
+    });
+  }, [visible, spot?.id, hasCheckedInWithinCooldown, getVisitorCount]);
 
   const isOwner = spot?.user_id === currentUserId;
 
