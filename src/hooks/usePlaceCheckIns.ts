@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/src/libs/supabase';
 import { Place } from '@/src/types';
 
@@ -28,6 +28,7 @@ export function usePlaceCheckIns() {
   const [checkingIn, setCheckingIn] = useState(false);
   const [parkEntries, setParkEntries] = useState<ParkVisitEntry[]>([]);
   const [parkEntriesLoading, setParkEntriesLoading] = useState(false);
+  const checkingInRef = useRef(false);
 
   const loadParkEntries = useCallback(async () => {
     const { data: u } = await supabase.auth.getUser();
@@ -180,6 +181,8 @@ export function usePlaceCheckIns() {
       const { data: u } = await supabase.auth.getUser();
       const uid = u.user?.id;
       if (!uid) return { ok: false, reason: 'auth' };
+      if (checkingInRef.current) return { ok: false, reason: 'error' };
+      checkingInRef.current = true;
 
       setCheckingIn(true);
       try {
@@ -214,6 +217,7 @@ export function usePlaceCheckIns() {
         return { ok: true, checkInId: inserted.id };
       } finally {
         setCheckingIn(false);
+        checkingInRef.current = false;
       }
     },
     [lastCheckInAt]

@@ -149,6 +149,7 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
   const { getLastPlaceCheckIn } = usePlaceCheckIns();
   const [skatedWithCheckInId, setSkatedWithCheckInId] = useState<string | null>(null);
   const [myLastCheckInId, setMyLastCheckInId] = useState<string | null>(null);
+  const [undoingCheckIn, setUndoingCheckIn] = useState(false);
   const [myTags, setMyTags] = useState<TaggedSkater[]>([]);
 
   async function loadMyTagsForPlace(placeId: string) {
@@ -348,9 +349,15 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
 
   async function runUndoCheckIn(checkInId: string) {
     if (!onUndoCheckIn || !place) return;
-    const ok = await onUndoCheckIn(checkInId);
-    if (!ok) return;
-    await loadMyTagsForPlace(place.id);
+    if (undoingCheckIn) return;
+    setUndoingCheckIn(true);
+    try {
+      const ok = await onUndoCheckIn(checkInId);
+      if (!ok) return;
+      await loadMyTagsForPlace(place.id);
+    } finally {
+      setUndoingCheckIn(false);
+    }
   }
 
   function confirmUndoCheckIn() {

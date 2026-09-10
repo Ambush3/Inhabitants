@@ -2,18 +2,14 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/src/context/ThemeContext';
-import { LiveSession, LiveSessionStop } from '@/src/hooks/useLiveSession';
-import { CrownIcon } from '@/src/components/icons/CrownIcon';
+import {
+  formatLiveSessionDuration,
+  isLiveSessionPaused,
+  LiveSession,
+  LiveSessionStop,
+} from '@/src/hooks/useLiveSession';
 
 type SessionStop = Omit<LiveSessionStop, 'addedAt'>;
-
-function elapsedLabel(startedAt: string, endedAt?: string): string {
-  const elapsedMs = Math.max(0, new Date(endedAt ?? Date.now()).getTime() - new Date(startedAt).getTime());
-  const minutes = Math.max(0, Math.round(elapsedMs / 60000));
-  const hours = Math.floor(minutes / 60);
-  if (hours > 0) return `${hours}h ${minutes % 60}m`;
-  return elapsedMs > 0 && minutes === 0 ? '<1m' : `${minutes}m`;
-}
 
 export function LiveSessionModal({
   visible,
@@ -25,8 +21,9 @@ export function LiveSessionModal({
   onStart,
   onAddStop,
   onRemoveStop,
+  onPause,
+  onResume,
   onAddMedia,
-  isPro = false,
   onEnd,
   onClearCompleted,
 }: {
@@ -39,18 +36,27 @@ export function LiveSessionModal({
   onStart: (title: string, firstStop?: SessionStop) => void;
   onAddStop: (stop: SessionStop) => void;
   onRemoveStop: (stopId: string) => void;
+  onPause: () => void;
+  onResume: () => void;
   onAddMedia?: (stop: SessionStop) => void;
-  isPro?: boolean;
   onEnd: () => void;
   onClearCompleted: () => void;
 }) {
   const { theme } = useTheme();
   const c = theme.colors;
   const [title, setTitle] = useState('');
+  const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
     if (visible && !activeSession && !lastCompleted) setTitle('');
   }, [visible, activeSession, lastCompleted]);
+
+  useEffect(() => {
+    setNow(Date.now());
+    if (!visible || !activeSession || isLiveSessionPaused(activeSession)) return;
+    const timer = setInterval(() => setNow(Date.now()), 30000);
+    return () => clearInterval(timer);
+  }, [visible, activeSession]);
 
   const stopIds = useMemo(() => new Set(activeSession?.stops.map((stop) => stop.id) ?? []), [activeSession]);
   const choices = availableStops.filter((stop) => !stopIds.has(stop.id));
@@ -81,7 +87,7 @@ export function LiveSessionModal({
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
             {onAddMedia ? (
               <Pressable onPress={() => onAddMedia(stop)} hitSlop={8}>
-                {isPro ? <Ionicons name="camera-outline" size={20} color={c.accent} /> : <CrownIcon size={21} />}
+                <Ionicons name="camera-outline" size={20} color={c.accent} />
               </Pressable>
             ) : null}
             <Pressable onPress={() => onRemoveStop(stop.id)} hitSlop={8}>
@@ -128,8 +134,8 @@ export function LiveSessionModal({
               <Header label="Session complete" />
               <View style={{ paddingHorizontal: 20 }}>
                 <Text style={{ color: c.text, fontSize: 20, fontWeight: '800', marginBottom: 5 }}>{lastCompleted.title}</Text>
-                <Text style={{ color: c.subtext, marginBottom: 18 }}>{elapsedLabel(lastCompleted.startedAt, new Date().toISOString())} · {lastCompleted.stops.length} spot{lastCompleted.stops.length === 1 ? '' : 's'}</Text>
-                {lastCompleted.stops.map((stop) => <StopRow key={stop.id} stop={stop} />)}
+                <Text style={{ color: c.subtext, marginBottom: 18 }}>{formatLiveSessionDuration(lastCompleted)} · {lastCompleted.stops.length} spot{lastCompleted.stops.length === 1 ? '' : 's'}</Text>
+                {lastCompleted.stops.map((stop) => <StopRow key={`${stop.type}:${stop.id}`} stop={stop} />)}
                 <Pressable onPress={() => { onClearCompleted(); onClose(); }} style={{ backgroundColor: c.accent, borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginTop: 20 }}>
                   <Text style={{ color: '#fff', fontWeight: '800' }}>Done</Text>
                 </Pressable>
@@ -140,15 +146,23 @@ export function LiveSessionModal({
               <Header label="Live session" />
               <ScrollView contentContainerStyle={{ paddingHorizontal: 20 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 5 }}>
-                  <View style={{ width: 9, height: 9, borderRadius: 5, backgroundColor: '#35B86B' }} />
+                  <View style={{ width: 9, height: 9, borderRadius: 5, backgroundColor: isLiveSessionPaused(activeSession!) ? c.subtext : '#35B86B' }} />
                   <Text style={{ color: c.text, fontWeight: '800' }}>{activeSession?.title}</Text>
                 </View>
-                <Text style={{ color: c.subtext, marginBottom: 18 }}>{elapsedLabel(activeSession!.startedAt)} · {activeSession!.stops.length} stop{activeSession!.stops.length === 1 ? '' : 's'}</Text>
-                {activeSession!.stops.length === 0 ? <Text style={{ color: c.subtext, paddingVertical: 16 }}>Add the first spot to your session.</Text> : activeSession!.stops.map((stop) => <StopRow key={stop.id} stop={stop} remove />)}
+                <Text style={{ color: c.subtext, marginBottom: 10 }}>
+                  {isLiveSessionPaused(activeSession!) ? 'Paused · ' : ''}{formatLiveSessionDuration(activeSession!, now)} · {activeSession!.stops.length} stop{activeSession!.stops.length === 1 ? '' : 's'}
+                </Text>
+                <Pressable
+                  onPress={isLiveSessionPaused(activeSession!) ? onResume : onPause}
+                  style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, backgroundColor: c.tagBg, borderRadius: 11, paddingVertical: 11, marginBottom: 8 }}>
+                  <Ionicons name={isLiveSessionPaused(activeSession!) ? 'play' : 'pause'} size={17} color={c.accent} />
+                  <Text style={{ color: c.accent, fontWeight: '800' }}>{isLiveSessionPaused(activeSession!) ? 'Resume session' : 'Pause session'}</Text>
+                </Pressable>
+                {activeSession!.stops.length === 0 ? <Text style={{ color: c.subtext, paddingVertical: 16 }}>Add the first spot to your session.</Text> : activeSession!.stops.map((stop) => <StopRow key={`${stop.type}:${stop.id}`} stop={stop} remove />)}
                 <Text style={{ color: c.subtext, fontSize: 12, fontWeight: '700', marginTop: 20, marginBottom: 7 }}>CHECK IN TO ADD</Text>
                 <Text style={{ color: c.subtext, fontSize: 12, marginBottom: 5 }}>Choose a spot, park, or shop to check in and add it to this session.</Text>
                 {choices.slice(0, 12).map((stop) => (
-                  <Pressable key={stop.id} onPress={() => onAddStop(stop)}><StopRow stop={stop} /></Pressable>
+                  <Pressable key={`${stop.type}:${stop.id}`} onPress={() => onAddStop(stop)}><StopRow stop={stop} /></Pressable>
                 ))}
                 {choices.length === 0 ? <Text style={{ color: c.subtext, paddingVertical: 12 }}>Open a spot on the map to add it here.</Text> : null}
                 <Pressable onPress={onEnd} style={{ borderWidth: 1, borderColor: c.danger, borderRadius: 12, paddingVertical: 13, alignItems: 'center', marginTop: 20 }}>

@@ -39,7 +39,7 @@ import { StreakCard } from '@/src/components/StreakCard';
 import { PassportBadges } from '@/src/components/profile/PassportBadges';
 import { WeeklyRecapCard } from '@/src/components/profile/WeeklyRecapCard';
 import { SessionMediaViewerModal, ViewerMedia } from '@/src/components/SessionMediaViewerModal';
-import { LiveSession } from '@/src/hooks/useLiveSession';
+import { formatLiveSessionDuration, LiveSession } from '@/src/hooks/useLiveSession';
 import { LiveSessionDetailModal } from '@/src/components/profile/LiveSessionDetailModal';
 
 type MyReview = {
@@ -1876,15 +1876,7 @@ export function ProfileModal({
                             </Text>
                           ) : (
                             liveSessions.slice(0, showAllSessions ? liveSessions.length : 3).map((live) => {
-                              const elapsedMinutes = Math.max(
-                                0,
-                                Math.round(
-                                  (new Date(live.endedAt ?? live.startedAt).getTime() -
-                                    new Date(live.startedAt).getTime()) /
-                                  60000
-                                )
-                              );
-                              const elapsedText = elapsedMinutes === 0 && live.stops.length > 0 ? '<1m' : `${elapsedMinutes}m`;
+                              const elapsedText = formatLiveSessionDuration(live);
                               return (
                                 <View
                                   key={live.id}

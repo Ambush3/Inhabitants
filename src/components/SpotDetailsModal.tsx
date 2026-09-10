@@ -554,16 +554,22 @@ export function SpotDetailsModal({
   }
 
   async function runUndoCheckIn(checkInId: string, spotId: string) {
-    const result = await undoCheckIn(checkInId);
-    if (!result.success) {
-      showAlert('Could not undo', result.error);
-      return;
+    if (undoingCheckIn) return;
+    setUndoingCheckIn(true);
+    try {
+      const result = await undoCheckIn(checkInId);
+      if (!result.success) {
+        showAlert('Could not undo', result.error);
+        return;
+      }
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setAlreadyCheckedInToday(await hasCheckedInWithinCooldown(spotId));
+      setVisitorCount(await getVisitorCount(spotId));
+      await sessionMedia.loadMediaForSpot(spotId);
+      await loadMyTagsForSpot(spotId);
+    } finally {
+      setUndoingCheckIn(false);
     }
-    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    setAlreadyCheckedInToday(await hasCheckedInWithinCooldown(spotId));
-    setVisitorCount(await getVisitorCount(spotId));
-    await sessionMedia.loadMediaForSpot(spotId);
-    await loadMyTagsForSpot(spotId);
   }
 
   async function confirmUndoCheckIn(spotId: string) {
@@ -594,6 +600,7 @@ export function SpotDetailsModal({
 
   const [visitorCount, setVisitorCount] = useState<number | null>(null);
   const [alreadyCheckedInToday, setAlreadyCheckedInToday] = useState(false);
+  const [undoingCheckIn, setUndoingCheckIn] = useState(false);
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
   const [trickLogOpen, setTrickLogOpen] = useState(false);
 

@@ -79,7 +79,7 @@ import { usePlaceFavorites } from '@/src/hooks/usePlaceFavorites';
 import { usePlaceCheckIns } from '@/src/hooks/usePlaceCheckIns';
 import { useCheckIns } from '@/src/hooks/useCheckIns';
 import { useCheckInMedia, PendingMedia } from '@/src/hooks/useCheckInMedia';
-import { useLiveSession, LiveSessionStop } from '@/src/hooks/useLiveSession';
+import { isLiveSessionPaused, useLiveSession, LiveSessionStop } from '@/src/hooks/useLiveSession';
 import { usePushNotifications } from '@/src/hooks/usePushNotifications';
 import { sendPushNotification, sendSpotClosedNotification } from '@/src/libs/sendPushNotification';
 import { useSpotFlags } from '@/src/hooks/flaggingSystem/useSpotFlags';
@@ -506,6 +506,8 @@ export default function Index() {
     startSession: startLiveSession,
     addStop: addLiveSessionStop,
     removeStop: removeLiveSessionStop,
+    pauseSession: pauseLiveSession,
+    resumeSession: resumeLiveSession,
     endSession: endLiveSession,
     clearLastCompleted: clearCompletedLiveSession,
     deleteSession: deleteLiveSession,
@@ -2279,7 +2281,10 @@ export default function Index() {
             alignItems: 'center',
           }}>
           {liveSession ? (
-            <LiveSessionBanner session={liveSession} onPress={() => setLiveSessionOpen(true)} />
+            <LiveSessionBanner
+              session={liveSession}
+              onPress={() => (isLiveSessionPaused(liveSession) ? resumeLiveSession() : pauseLiveSession())}
+            />
           ) : (
             <Text style={{ fontSize: 16, fontWeight: '600', color: c.text }}>Inhabitants</Text>
           )}
@@ -3552,8 +3557,9 @@ export default function Index() {
         onStart={startLiveSessionFromUI}
         onAddStop={addStopToLiveSession}
         onRemoveStop={removeLiveSessionStop}
+        onPause={pauseLiveSession}
+        onResume={resumeLiveSession}
         onAddMedia={addMediaToLiveSession}
-        isPro={isPro}
         onEnd={() => {
           Alert.alert(
             'End live session?',

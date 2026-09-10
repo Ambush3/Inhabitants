@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/src/libs/supabase';
 import { deleteAllMediaForCheckIn } from '@/src/hooks/useCheckInMedia';
 
@@ -65,6 +65,7 @@ export function useCheckIns() {
   const [passportEntries, setPassportEntries] = useState<PassportEntry[]>([]);
   const [passportLoading, setPassportLoading] = useState(false);
   const [visitorCounts, setVisitorCounts] = useState<Record<string, number>>({});
+  const checkingInRef = useRef(false);
 
   async function getCurrentUserId(): Promise<string | null> {
     const {
@@ -79,16 +80,17 @@ export function useCheckIns() {
     ): Promise<{ success: boolean; error?: string; alreadyCheckedIn?: boolean; checkInId?: string }> => {
       const userId = await getCurrentUserId();
       if (!userId) return { success: false, error: 'Not authenticated' };
-
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('public_check_ins')
-        .eq('id', userId)
-        .single();
-      const effectivePrivate = !(profile?.public_check_ins ?? true);
+      if (checkingInRef.current) return { success: false, error: 'Check-in already in progress' };
+      checkingInRef.current = true;
 
       setCheckingIn(true);
       try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('public_check_ins')
+          .eq('id', userId)
+          .single();
+        const effectivePrivate = !(profile?.public_check_ins ?? true);
         const twentyFourHoursAgo = new Date(Date.now() - FEED_COOLDOWN_MS).toISOString();
         const { data: recent } = await supabase
           .from('check_ins')
@@ -113,6 +115,7 @@ export function useCheckIns() {
         return { success: false, error: e.message };
       } finally {
         setCheckingIn(false);
+        checkingInRef.current = false;
       }
     },
     []

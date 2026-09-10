@@ -17,6 +17,9 @@ export type LiveSession = {
   notes?: string;
   startedAt: string;
   endedAt?: string;
+  activeSeconds?: number;
+  activeStartedAt?: string;
+  pausedAt?: string;
   serverId?: string;
   stops: LiveSessionStop[];
 };
@@ -28,12 +31,45 @@ function keyFor(key: string, userId: string | null): string {
   return `${key}:${userId ?? 'guest'}`;
 }
 
+function stopKey(stop: Pick<LiveSessionStop, 'id' | 'type'>): string {
+  return `${stop.type}:${stop.id}`;
+}
+
+export function getLiveSessionActiveSeconds(session: LiveSession, now = Date.now()): number {
+  if (session.activeSeconds == null) {
+    const end = new Date(session.endedAt ?? now).getTime();
+    return Math.max(0, Math.round((end - new Date(session.startedAt).getTime()) / 1000));
+  }
+
+  if (!session.activeStartedAt || session.pausedAt || session.endedAt) {
+    return Math.max(0, session.activeSeconds);
+  }
+
+  return Math.max(
+    0,
+    session.activeSeconds + Math.round((now - new Date(session.activeStartedAt).getTime()) / 1000)
+  );
+}
+
+export function formatLiveSessionDuration(session: LiveSession, now = Date.now()): string {
+  const seconds = getLiveSessionActiveSeconds(session, now);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  if (hours > 0) return `${hours}h ${minutes % 60}m`;
+  return seconds > 0 && minutes === 0 ? '<1m' : `${minutes}m`;
+}
+
+export function isLiveSessionPaused(session: LiveSession): boolean {
+  return Boolean(session.pausedAt && !session.endedAt);
+}
+
 export function useLiveSession(userId: string | null) {
   const [activeSession, setActiveSession] = useState<LiveSession | null>(null);
   const [lastCompleted, setLastCompleted] = useState<LiveSession | null>(null);
   const [history, setHistory] = useState<LiveSession[]>([]);
   const creatingServerSession = useRef<Promise<string | null> | null>(null);
   const endingServerSessions = useRef(new Set<string>());
+  const persistingServerSession = useRef(Promise.resolve());
 
   const ensureServerSession = useCallback(async (): Promise<string | null> => {
     if (!userId || !activeSession) return null;
@@ -48,6 +84,9 @@ export function useLiveSession(userId: string | null) {
           title: activeSession.title,
           notes: activeSession.notes ?? null,
           started_at: activeSession.startedAt,
+          active_seconds: activeSession.activeSeconds ?? null,
+          active_started_at: activeSession.activeStartedAt ?? null,
+          paused_at: activeSession.pausedAt ?? null,
         })
         .select('id')
         .single();
@@ -105,8 +144,12 @@ export function useLiveSession(userId: string | null) {
           stopRows = data ?? [];
         }
         const stopsBySession = new Map<string, LiveSessionStop[]>();
+        const stopKeysBySession = new Map<string, Set<string>>();
         for (const row of stopRows) {
           const stops = stopsBySession.get(row.session_id) ?? [];
+          const stopKeySet = stopKeysBySession.get(row.session_id) ?? new Set<string>();
+          const key = stopKey({ id: row.spot_id ?? row.place_id, type: row.stop_type });
+          if (stopKeySet.has(key)) continue;
           stops.push({
             id: row.spot_id ?? row.place_id,
             name: row.name,
@@ -116,6 +159,8 @@ export function useLiveSession(userId: string | null) {
             addedAt: row.added_at,
           });
           stopsBySession.set(row.session_id, stops);
+          stopKeySet.add(key);
+          stopKeysBySession.set(row.session_id, stopKeySet);
         }
         const mapRemote = (row: any): LiveSession => ({
           id: `live-${row.id}`,
@@ -124,6 +169,9 @@ export function useLiveSession(userId: string | null) {
           notes: row.notes ?? undefined,
           startedAt: row.started_at,
           endedAt: row.ended_at ?? undefined,
+          activeSeconds: row.active_seconds ?? undefined,
+          activeStartedAt: row.active_started_at ?? undefined,
+          pausedAt: row.paused_at ?? undefined,
           stops: stopsBySession.get(row.id) ?? [],
         });
         let localHistory: LiveSession[] = [];
@@ -180,6 +228,17 @@ export function useLiveSession(userId: string | null) {
       const serverId = await ensureServerSession();
       if (!serverId || cancelled) return;
 
+      await supabase
+        .from('live_sessions')
+        .update({
+          notes: current.notes ?? null,
+          active_seconds: current.activeSeconds ?? null,
+          active_started_at: current.activeStartedAt ?? null,
+          paused_at: current.pausedAt ?? null,
+        })
+        .eq('id', serverId)
+        .eq('user_id', userId);
+
       await supabase.from('live_session_stops').delete().eq('session_id', serverId);
       if (current.stops.length > 0) {
         await supabase.from('live_session_stops').insert(
@@ -198,7 +257,10 @@ export function useLiveSession(userId: string | null) {
       }
     }
 
-    persistActiveSession();
+    persistingServerSession.current = persistingServerSession.current.then(
+      persistActiveSession,
+      persistActiveSession
+    );
     return () => {
       cancelled = true;
     };
@@ -214,6 +276,8 @@ export function useLiveSession(userId: string | null) {
       id: `live-${Date.now()}`,
       title: title.trim() || 'Skate session',
       startedAt: new Date().toISOString(),
+      activeSeconds: 0,
+      activeStartedAt: new Date().toISOString(),
       stops: firstStop ? [{ ...firstStop, addedAt: new Date().toISOString() }] : [],
     };
     setLastCompleted(null);
@@ -222,7 +286,7 @@ export function useLiveSession(userId: string | null) {
 
   const addStop = useCallback((stop: Omit<LiveSessionStop, 'addedAt'>) => {
     setActiveSession((current) => {
-      if (!current || current.stops.some((item) => item.id === stop.id)) return current;
+      if (!current || current.stops.some((item) => stopKey(item) === stopKey(stop))) return current;
       return { ...current, stops: [...current.stops, { ...stop, addedAt: new Date().toISOString() }] };
     });
   }, []);
@@ -233,9 +297,32 @@ export function useLiveSession(userId: string | null) {
     );
   }, []);
 
+  const pauseSession = useCallback(() => {
+    setActiveSession((current) => {
+      if (!current || isLiveSessionPaused(current)) return current;
+      const pausedAt = new Date().toISOString();
+      const activeSeconds = getLiveSessionActiveSeconds(current, new Date(pausedAt).getTime());
+      return { ...current, activeSeconds, activeStartedAt: undefined, pausedAt };
+    });
+  }, []);
+
+  const resumeSession = useCallback(() => {
+    setActiveSession((current) => {
+      if (!current || !isLiveSessionPaused(current)) return current;
+      return { ...current, activeStartedAt: new Date().toISOString(), pausedAt: undefined };
+    });
+  }, []);
+
   const endSession = useCallback(async (): Promise<LiveSession | null> => {
     if (!activeSession || !userId) return null;
-    const completed = { ...activeSession, endedAt: new Date().toISOString() };
+    const endedAt = new Date().toISOString();
+    const completed = {
+      ...activeSession,
+      endedAt,
+      activeSeconds: getLiveSessionActiveSeconds(activeSession, new Date(endedAt).getTime()),
+      activeStartedAt: undefined,
+      pausedAt: undefined,
+    };
     if (activeSession.serverId) endingServerSessions.current.add(activeSession.serverId);
 
     setLastCompleted(completed);
@@ -253,6 +340,9 @@ export function useLiveSession(userId: string | null) {
             title: completed.title,
             notes: completed.notes ?? null,
             started_at: completed.startedAt,
+            active_seconds: completed.activeSeconds ?? null,
+            active_started_at: null,
+            paused_at: null,
           })
           .select('id')
           .single();
@@ -261,7 +351,13 @@ export function useLiveSession(userId: string | null) {
       if (serverId) {
         await supabase
           .from('live_sessions')
-          .update({ ended_at: completed.endedAt, notes: completed.notes ?? null })
+          .update({
+            ended_at: completed.endedAt,
+            notes: completed.notes ?? null,
+            active_seconds: completed.activeSeconds ?? null,
+            active_started_at: null,
+            paused_at: null,
+          })
           .eq('id', serverId)
           .eq('user_id', userId);
         endingServerSessions.current.delete(serverId);
@@ -327,6 +423,8 @@ export function useLiveSession(userId: string | null) {
     startSession,
     addStop,
     removeStop,
+    pauseSession,
+    resumeSession,
     endSession,
     clearLastCompleted,
     updateSessionNotes,

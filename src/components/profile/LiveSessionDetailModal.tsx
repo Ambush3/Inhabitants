@@ -7,7 +7,7 @@ import { useTheme } from '@/src/context/ThemeContext';
 import { useToast } from '@/src/context/ToastContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@/src/libs/supabase';
-import { LiveSession } from '@/src/hooks/useLiveSession';
+import { formatLiveSessionDuration, LiveSession } from '@/src/hooks/useLiveSession';
 import { ViewerMedia, SessionMediaViewerModal } from '@/src/components/SessionMediaViewerModal';
 import { CrownIcon } from '@/src/components/icons/CrownIcon';
 import { moderateText } from '@/src/libs/moderator/textModerator';
@@ -50,9 +50,7 @@ type Props = {
 };
 
 function elapsedText(session: LiveSession): string {
-  const end = new Date(session.endedAt ?? session.startedAt).getTime();
-  const minutes = Math.max(0, Math.round((end - new Date(session.startedAt).getTime()) / 60000));
-  return minutes === 0 && session.stops.length > 0 ? '<1 min' : `${minutes} min`;
+  return formatLiveSessionDuration(session).replace('m', ' min');
 }
 
 function distanceBetween(a: LiveSession['stops'][number], b: LiveSession['stops'][number]): number {

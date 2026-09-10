@@ -2,15 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { Pressable, Text, View, StyleProp, ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/src/context/ThemeContext';
-import { LiveSession } from '@/src/hooks/useLiveSession';
-
-function elapsedLabel(startedAt: string): string {
-  const elapsedMs = Math.max(0, Date.now() - new Date(startedAt).getTime());
-  const minutes = Math.floor(elapsedMs / 60000);
-  const hours = Math.floor(minutes / 60);
-  if (hours > 0) return `${hours}h ${minutes % 60}m`;
-  return `${minutes}m`;
-}
+import {
+  formatLiveSessionDuration,
+  isLiveSessionPaused,
+  LiveSession,
+} from '@/src/hooks/useLiveSession';
 
 export function LiveSessionBanner({
   session,
@@ -23,19 +19,20 @@ export function LiveSessionBanner({
 }) {
   const { theme } = useTheme();
   const c = theme.colors;
-  const [elapsed, setElapsed] = useState(() => elapsedLabel(session.startedAt));
+  const [elapsed, setElapsed] = useState(() => formatLiveSessionDuration(session));
+  const paused = isLiveSessionPaused(session);
 
   useEffect(() => {
-    setElapsed(elapsedLabel(session.startedAt));
-    const timer = setInterval(() => setElapsed(elapsedLabel(session.startedAt)), 30000);
+    setElapsed(formatLiveSessionDuration(session));
+    const timer = setInterval(() => setElapsed(formatLiveSessionDuration(session)), 30000);
     return () => clearInterval(timer);
-  }, [session.startedAt]);
+  }, [session]);
 
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`Open live session ${session.title}`}
+      accessibilityLabel={`${paused ? 'Resume' : 'Pause'} live session ${session.title}`}
       style={({ pressed }) => [{
         flexDirection: 'row',
         alignItems: 'center',
@@ -48,16 +45,16 @@ export function LiveSessionBanner({
         opacity: pressed ? 0.85 : 1,
         maxWidth: 190,
       }, style, { opacity: pressed ? 0.85 : 1 }] }>
-      <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: '#35B86B', marginRight: 7 }} />
+      <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: paused ? c.subtext : '#35B86B', marginRight: 7 }} />
       <View style={{ flex: 1 }}>
         <Text style={{ color: c.text, fontSize: 11, fontWeight: '800' }} numberOfLines={1}>
           {session.title}
         </Text>
         <Text style={{ color: c.subtext, fontSize: 10, marginTop: 1 }}>
-          {elapsed} · {session.stops.length} stop{session.stops.length === 1 ? '' : 's'}
+          {paused ? 'Paused · ' : ''}{elapsed} · {session.stops.length} stop{session.stops.length === 1 ? '' : 's'}
         </Text>
       </View>
-      <Ionicons name="chevron-forward" size={15} color={c.accent} />
+      <Ionicons name={paused ? 'play' : 'pause'} size={14} color={c.accent} />
     </Pressable>
   );
 }
