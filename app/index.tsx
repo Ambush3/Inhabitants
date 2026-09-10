@@ -56,6 +56,7 @@ import { TrackedMarker } from '@/src/components/SpotMarkers/TrackedMarker';
 import { MapLegend } from '@/src/components/MapLegend';
 import { MapControls, PlaceType } from '@/src/components/MapControls';
 import { LiveSessionModal } from '@/src/components/LiveSessionModal';
+import { LiveSessionBanner } from '@/src/components/LiveSessionBanner';
 import { DARK_MAP_STYLE, LIGHT_MAP_STYLE } from '@/src/constants/darkMapStyle';
 import { CreateEventModal } from '@/src/components/CreateEventModal';
 import { EventDetailsModal } from '@/src/components/EventDetailsModal';
@@ -2237,6 +2238,7 @@ export default function Index() {
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'space-between',
+          position: 'relative',
           borderBottomWidth: 1,
           borderColor: c.border,
           backgroundColor: 'transparent',
@@ -2268,14 +2270,20 @@ export default function Index() {
             </View>
           ) : null}
         </Pressable>
-        <Text
+        <View
+          pointerEvents="box-none"
           style={{
-            fontSize: 16,
-            fontWeight: '600',
-            color: c.text,
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            alignItems: 'center',
           }}>
-          Inhabitants
-        </Text>
+          {liveSession ? (
+            <LiveSessionBanner session={liveSession} onPress={() => setLiveSessionOpen(true)} />
+          ) : (
+            <Text style={{ fontSize: 16, fontWeight: '600', color: c.text }}>Inhabitants</Text>
+          )}
+        </View>
         <View
           style={{
             flexDirection: 'row',
