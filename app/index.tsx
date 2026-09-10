@@ -1038,6 +1038,7 @@ export default function Index() {
       setPaywallHeadline('Unlock photos and clips attached to every live session.');
       setDetailsOpen(false);
       setPlaceDetailsOpen(false);
+      setLiveSessionOpen(false);
       setTimeout(() => setPaywallOpen(true), 300);
       return;
     }
@@ -3243,9 +3244,10 @@ export default function Index() {
           return err;
         }}
         creatorBadge={spotCreatorBadge}
-        spotTrickLogs={liveSession?.serverId
-          ? spotTrickLogs.filter((log) => log.live_session_id === liveSession.serverId)
-          : spotTrickLogs}
+        spotTrickLogs={spotTrickLogs.filter((log) =>
+          log.spot_id === selectedSpot?.id &&
+          (!liveSession?.serverId || log.live_session_id === liveSession.serverId)
+        )}
         onLogTrickSubmit={async (trickName, loggedAt) => {
           if (!selectedSpot) return null;
           const sessionId = liveSession?.serverId ?? (liveSession ? await ensureServerSession() : null);

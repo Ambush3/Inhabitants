@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Modal, Pressable, ScrollView, Share, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/src/context/ThemeContext';
 import {
@@ -10,6 +10,16 @@ import {
 } from '@/src/hooks/useLiveSession';
 
 type SessionStop = Omit<LiveSessionStop, 'addedAt'>;
+
+function distanceBetween(a: SessionStop, b: SessionStop): number {
+  const radians = (value: number) => (value * Math.PI) / 180;
+  const lat1 = radians(a.lat);
+  const lat2 = radians(b.lat);
+  const dLat = radians(b.lat - a.lat);
+  const dLng = radians(b.lng - a.lng);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  return 3958.8 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+}
 
 export function LiveSessionModal({
   visible,
@@ -60,6 +70,21 @@ export function LiveSessionModal({
 
   const stopIds = useMemo(() => new Set(activeSession?.stops.map((stop) => stop.id) ?? []), [activeSession]);
   const choices = availableStops.filter((stop) => !stopIds.has(stop.id));
+  const completedDistance = useMemo(
+    () => lastCompleted?.stops.slice(1).reduce((total, stop, index) => total + distanceBetween(lastCompleted.stops[index], stop), 0) ?? 0,
+    [lastCompleted]
+  );
+
+  async function shareRecap() {
+    if (!lastCompleted) return;
+    try {
+      await Share.share({
+        message: `${lastCompleted.title}\n${formatLiveSessionDuration(lastCompleted)} · ${lastCompleted.stops.length} stop${lastCompleted.stops.length === 1 ? '' : 's'}${completedDistance > 0 ? ` · ${completedDistance.toFixed(1)} mi` : ''}\n${lastCompleted.stops.map((stop) => stop.name).join(' → ') || 'No stops recorded'}`,
+      });
+    } catch {
+      // Sharing can be dismissed without requiring an error message.
+    }
+  }
 
   function Header({ label }: { label: string }) {
     return (
@@ -131,15 +156,54 @@ export function LiveSessionModal({
             </>
           ) : lastCompleted ? (
             <>
-              <Header label="Session complete" />
-              <View style={{ paddingHorizontal: 20 }}>
-                <Text style={{ color: c.text, fontSize: 20, fontWeight: '800', marginBottom: 5 }}>{lastCompleted.title}</Text>
-                <Text style={{ color: c.subtext, marginBottom: 18 }}>{formatLiveSessionDuration(lastCompleted)} · {lastCompleted.stops.length} spot{lastCompleted.stops.length === 1 ? '' : 's'}</Text>
-                {lastCompleted.stops.map((stop) => <StopRow key={`${stop.type}:${stop.id}`} stop={stop} />)}
-                <Pressable onPress={() => { onClearCompleted(); onClose(); }} style={{ backgroundColor: c.accent, borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginTop: 20 }}>
+              <Header label="Session recap" />
+              <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 4 }}>
+                <View style={{ backgroundColor: c.tagBg, borderRadius: 16, padding: 16, marginBottom: 16 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 7 }}>
+                    <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: '#35B86B' }} />
+                    <Text style={{ color: '#35B86B', fontSize: 12, fontWeight: '800', letterSpacing: 0.5 }}>SESSION COMPLETE</Text>
+                  </View>
+                  <Text style={{ color: c.text, fontSize: 24, fontWeight: '800' }}>{lastCompleted.title}</Text>
+                  <Text style={{ color: c.subtext, marginTop: 5 }}>
+                    {new Date(lastCompleted.startedAt).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
+                  </Text>
+                </View>
+                <View style={{ flexDirection: 'row', gap: 8, marginBottom: 18 }}>
+                  {[
+                    ['timer-outline', formatLiveSessionDuration(lastCompleted)],
+                    ['location-outline', `${lastCompleted.stops.length} stop${lastCompleted.stops.length === 1 ? '' : 's'}`],
+                    ['navigate-outline', completedDistance > 0 ? `${completedDistance.toFixed(1)} mi` : '—'],
+                  ].map(([icon, value]) => (
+                    <View key={value} style={{ flex: 1, backgroundColor: c.tagBg, borderRadius: 13, paddingVertical: 12, alignItems: 'center' }}>
+                      <Ionicons name={icon as any} size={19} color={c.accent} />
+                      <Text style={{ color: c.text, fontWeight: '800', fontSize: 12, marginTop: 5 }}>{value}</Text>
+                    </View>
+                  ))}
+                </View>
+                <Text style={{ color: c.subtext, fontSize: 12, fontWeight: '800', letterSpacing: 0.5, marginBottom: 8 }}>YOUR ROUTE</Text>
+                <View style={{ backgroundColor: c.tagBg, borderRadius: 16, paddingHorizontal: 14 }}>
+                  {lastCompleted.stops.length === 0 ? (
+                    <Text style={{ color: c.subtext, paddingVertical: 16 }}>No stops recorded.</Text>
+                  ) : lastCompleted.stops.map((stop, index) => (
+                    <View key={`${stop.type}:${stop.id}`} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: index === lastCompleted.stops.length - 1 ? 0 : 1, borderBottomColor: c.border }}>
+                      <View style={{ width: 29, height: 29, borderRadius: 15, backgroundColor: c.accent, alignItems: 'center', justifyContent: 'center', marginRight: 11 }}>
+                        <Text style={{ color: '#fff', fontWeight: '800', fontSize: 12 }}>{index + 1}</Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ color: c.text, fontWeight: '700' }} numberOfLines={1}>{stop.name}</Text>
+                        <Text style={{ color: c.subtext, fontSize: 12, marginTop: 2 }}>{stop.type === 'skateshop' ? 'Skate shop' : stop.type === 'skatepark' ? 'Skate park' : 'Skate spot'}</Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+                <Pressable onPress={shareRecap} style={{ borderWidth: 1, borderColor: c.accent, borderRadius: 12, paddingVertical: 13, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 7, marginTop: 18 }}>
+                  <Ionicons name="share-outline" size={18} color={c.accent} />
+                  <Text style={{ color: c.accent, fontWeight: '800' }}>Share recap</Text>
+                </Pressable>
+                <Pressable onPress={() => { onClearCompleted(); onClose(); }} style={{ backgroundColor: c.accent, borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginTop: 10 }}>
                   <Text style={{ color: '#fff', fontWeight: '800' }}>Done</Text>
                 </Pressable>
-              </View>
+              </ScrollView>
             </>
           ) : (
             <>
