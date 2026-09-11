@@ -418,6 +418,7 @@ export function ProfileModal({
         isPro={isPro}
         currentUserId={myId}
         onClose={() => setSelectedLiveSession(null)}
+        onViewProfile={onViewProfile}
         onOpenPro={() => setProPaywallOpen(true)}
         onUpdateNotes={async (session, notes) => {
           const saved = await onUpdateLiveSessionNotes(session, notes);

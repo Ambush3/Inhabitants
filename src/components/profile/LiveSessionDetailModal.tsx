@@ -45,6 +45,7 @@ type Props = {
   isPro: boolean;
   currentUserId: string | null;
   onClose: () => void;
+  onViewProfile?: (userId: string) => void;
   onOpenPro: () => void;
   onUpdateNotes: (session: LiveSession, notes: string) => Promise<boolean>;
 };
@@ -63,7 +64,11 @@ function distanceBetween(a: LiveSession['stops'][number], b: LiveSession['stops'
   return 3958.8 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
 }
 
-export function LiveSessionDetailModal({ visible, session, isPro, currentUserId, onClose, onOpenPro, onUpdateNotes }: Props) {
+function formatStopTime(addedAt: string): string {
+  return new Date(addedAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+}
+
+export function LiveSessionDetailModal({ visible, session, isPro, currentUserId, onClose, onViewProfile, onOpenPro, onUpdateNotes }: Props) {
   const { theme } = useTheme();
   const toast = useToast();
   const insets = useSafeAreaInsets();
@@ -77,11 +82,13 @@ export function LiveSessionDetailModal({ visible, session, isPro, currentUserId,
   const [editingNotes, setEditingNotes] = useState(false);
   const [notesDraft, setNotesDraft] = useState('');
   const [savingNotes, setSavingNotes] = useState(false);
+  const [expandedStopKey, setExpandedStopKey] = useState<string | null>(null);
 
   useEffect(() => {
     if (visible && session) {
       setNotesDraft(session.notes ?? '');
       setEditingNotes(false);
+      setExpandedStopKey(null);
     }
   }, [visible, session?.id]);
 
@@ -182,6 +189,15 @@ export function LiveSessionDetailModal({ visible, session, isPro, currentUserId,
       longitudeDelta: Math.max(maxLng - minLng, 0.012) * 1.8,
     };
   }, [session]);
+
+  const activityForStop = (stop: LiveSession['stops'][number]) => {
+    const stopMedia = media.filter((item) =>
+      stop.type === 'spot' ? item.spot_id === stop.id : item.place_id === stop.id
+    );
+    const stopTricks = stop.type === 'spot' ? tricks.filter((trick) => trick.spot_id === stop.id) : [];
+    const stopConditions = stop.type === 'spot' ? conditions.filter((condition) => condition.spot_id === stop.id) : [];
+    return { stopMedia, stopTricks, stopConditions };
+  };
 
   if (!session) return null;
   const proLocked = !isPro;
@@ -295,13 +311,46 @@ export function LiveSessionDetailModal({ visible, session, isPro, currentUserId,
             </MapView>
           ) : null}
 
-          <SectionTitle icon="trail-sign-outline" title="Stops" c={c} />
+          <SectionTitle icon="trail-sign-outline" title="Session timeline" c={c} />
           <View style={{ backgroundColor: c.tagBg, borderRadius: 16, paddingHorizontal: 14 }}>
             {session.stops.length === 0 ? <Text style={{ color: c.subtext, paddingVertical: 16 }}>No stops recorded.</Text> : session.stops.map((stop, index) => (
-              <View key={`${stop.id}-${index}`} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 13, borderBottomWidth: index === session.stops.length - 1 ? 0 : 1, borderBottomColor: c.border }}>
-                <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: c.accent, alignItems: 'center', justifyContent: 'center', marginRight: 11 }}><Text style={{ color: '#fff', fontWeight: '800' }}>{index + 1}</Text></View>
-                <View style={{ flex: 1 }}><Text style={{ color: c.text, fontWeight: '700' }}>{stop.name}</Text><Text style={{ color: c.subtext, fontSize: 12, marginTop: 3 }}>{stop.type === 'skateshop' ? 'Skate shop' : stop.type === 'skatepark' ? 'Skate park' : 'Skate spot'}</Text></View>
-                <Ionicons name="checkmark-circle" size={19} color="#34C759" />
+              <View key={`${stop.type}:${stop.id}:${index}`} style={{ borderBottomWidth: index === session.stops.length - 1 ? 0 : 1, borderBottomColor: c.border }}>
+                <Pressable
+                  onPress={() => setExpandedStopKey((current) => current === `${stop.type}:${stop.id}` ? null : `${stop.type}:${stop.id}`)}
+                  style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 13 }}>
+                  <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: c.accent, alignItems: 'center', justifyContent: 'center', marginRight: 11 }}><Text style={{ color: '#fff', fontWeight: '800' }}>{index + 1}</Text></View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: c.text, fontWeight: '700' }}>{stop.name}</Text>
+                    <Text style={{ color: c.subtext, fontSize: 12, marginTop: 3 }}>{formatStopTime(stop.addedAt)} · {stop.type === 'skateshop' ? 'Skate shop' : stop.type === 'skatepark' ? 'Skate park' : 'Skate spot'}</Text>
+                  </View>
+                  <Ionicons name={expandedStopKey === `${stop.type}:${stop.id}` ? 'chevron-up' : 'chevron-down'} size={19} color={c.subtext} />
+                </Pressable>
+                {expandedStopKey === `${stop.type}:${stop.id}` ? (() => {
+                  const { stopMedia, stopTricks, stopConditions } = activityForStop(stop);
+                  return (
+                    <View style={{ paddingBottom: 14, paddingLeft: 39 }}>
+                      {loading ? <ActivityIndicator color={c.accent} /> : (
+                        <>
+                          <Text style={{ color: c.subtext, fontSize: 11, fontWeight: '800', letterSpacing: 0.5, marginBottom: 7 }}>ACTIVITY</Text>
+                          {stop.type === 'spot' && !proLocked && stopTricks.length > 0 ? (
+                            <View style={{ marginBottom: 10 }}>
+                              {stopTricks.map((trick) => <View key={trick.id} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 5 }}><Ionicons name="sparkles-outline" size={15} color={c.accent} /><Text style={{ color: c.text, fontSize: 13, fontWeight: '700', marginLeft: 7 }}>{trick.trick_name}</Text><Text style={{ color: c.subtext, fontSize: 11, marginLeft: 'auto' }}>{new Date(trick.logged_at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}</Text></View>)}
+                            </View>
+                          ) : null}
+                          {stop.type === 'spot' && !proLocked && stopTricks.length === 0 ? <Text style={{ color: c.subtext, fontSize: 12, marginBottom: 10 }}>No tricks logged here.</Text> : null}
+                          {stopMedia.length > 0 && !proLocked ? (
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 7, marginBottom: 10 }}>
+                              {stopMedia.map((item, mediaIndex) => <Pressable key={item.id} onPress={() => setViewer({ list: stopMedia.map((mediaItem) => ({ ...mediaItem, locationName: stop.name })), index: mediaIndex })}><Image source={{ uri: item.media_type === 'video' ? item.thumbnail_url ?? item.url : item.url }} style={{ width: 58, height: 58, borderRadius: 8 }} /><View style={{ position: 'absolute', right: 4, bottom: 4 }}>{item.media_type === 'video' ? <Ionicons name="play-circle" size={18} color="#fff" /> : null}</View></Pressable>)}
+                            </ScrollView>
+                          ) : null}
+                          {stop.type === 'spot' && stopConditions.length > 0 ? <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 7 }}>{stopConditions.map((condition, conditionIndex) => <View key={`${condition.condition}-${conditionIndex}`} style={{ backgroundColor: c.surface, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 5 }}><Text style={{ color: c.text, fontSize: 11, fontWeight: '700' }}>{condition.condition.replace(/_/g, ' ')}</Text></View>)}</View> : null}
+                          {stop.type === 'spot' && stopConditions.length === 0 && stopTricks.length === 0 && stopMedia.length === 0 ? <Text style={{ color: c.subtext, fontSize: 12 }}>No activity recorded here.</Text> : null}
+                          {proLocked && (stop.type === 'spot' || stopMedia.length > 0) ? <Text style={{ color: c.subtext, fontSize: 12 }}>Upgrade to see tricks and session media.</Text> : null}
+                        </>
+                      )}
+                    </View>
+                  );
+                })() : null}
               </View>
             ))}
           </View>
@@ -320,7 +369,7 @@ export function LiveSessionDetailModal({ visible, session, isPro, currentUserId,
           {proLocked ? <ProPrompt text="Keep a trick log for every session stop." onPress={onOpenPro} c={c} /> : loading ? <ActivityIndicator color={c.accent} /> : tricks.length === 0 ? <EmptySection text="No tricks logged for this session." c={c} /> : <View style={{ backgroundColor: c.tagBg, borderRadius: 16, padding: 14 }}>{tricks.map((trick, index) => <View key={trick.id} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 7, borderBottomWidth: index === tricks.length - 1 ? 0 : 1, borderBottomColor: c.border }}><Ionicons name="flash-outline" size={18} color={c.accent} /><Text style={{ flex: 1, color: c.text, fontWeight: '700', marginLeft: 9 }}>{trick.trick_name}</Text><Text style={{ color: c.subtext, fontSize: 12 }}>{trick.spot?.name ?? 'Session'}</Text></View>)}</View>}
 
           <SectionTitle icon="people-outline" title={`Friends${participants.length ? ` · ${participants.length}` : ''}`} c={c} />
-          {proLocked ? <ProPrompt text="See who joined your session." onPress={onOpenPro} c={c} /> : loading ? <ActivityIndicator color={c.accent} /> : participants.length === 0 ? <EmptySection text="No friends joined this session." c={c} /> : <View style={{ backgroundColor: c.tagBg, borderRadius: 16, padding: 14 }}>{participants.map((participant) => <View key={participant.user_id} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 6 }}><Image source={participant.avatar_url ? { uri: participant.avatar_url } : undefined} style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: c.border }} /><Text style={{ color: c.text, fontWeight: '700', marginLeft: 10 }}>{participant.username ?? 'Skater'}</Text><Text style={{ color: c.subtext, fontSize: 12, marginLeft: 'auto' }}>{participant.status === 'accepted' ? 'Joined' : participant.status}</Text></View>)}</View>}
+          {proLocked ? <ProPrompt text="See who joined your session." onPress={onOpenPro} c={c} /> : loading ? <ActivityIndicator color={c.accent} /> : participants.length === 0 ? <EmptySection text="No friends joined this session." c={c} /> : <View style={{ backgroundColor: c.tagBg, borderRadius: 16, padding: 14 }}>{participants.map((participant) => <Pressable key={participant.user_id} onPress={() => { onClose(); onViewProfile?.(participant.user_id); }} disabled={!onViewProfile} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 6 }}><Image source={participant.avatar_url ? { uri: participant.avatar_url } : undefined} style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: c.border }} /><Text style={{ color: c.text, fontWeight: '700', marginLeft: 10 }}>{participant.username ?? 'Skater'}</Text><Text style={{ color: c.subtext, fontSize: 12, marginLeft: 'auto' }}>{participant.status === 'accepted' ? 'Joined' : participant.status}</Text></Pressable>)}</View>}
         </ScrollView>
       </View>
       <SessionMediaViewerModal visible={viewer !== null} onClose={() => setViewer(null)} mediaList={viewer?.list ?? []} initialIndex={viewer?.index ?? 0} currentUserId={currentUserId} />
