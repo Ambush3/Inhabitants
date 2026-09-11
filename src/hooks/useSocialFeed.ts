@@ -42,6 +42,40 @@ export type FeedItem =
     actor: FeedActor;
     crew_id: string;
     crew_name: string;
+  }
+  | {
+    kind: 'media_uploaded';
+    id: string;
+    created_at: string;
+    spot: Spot;
+    actor: FeedActor;
+    media: {
+      id: string;
+      url: string;
+      thumbnail_url: string | null;
+      media_type: 'image' | 'video';
+    };
+  }
+  | {
+    kind: 'trick_logged';
+    id: string;
+    created_at: string;
+    spot: Spot;
+    actor: FeedActor;
+    trick_name: string;
+  }
+  | {
+    kind: 'session_completed';
+    id: string;
+    created_at: string;
+    spot: Spot | null;
+    actor: FeedActor;
+    session_id: string;
+    title: string;
+    started_at: string;
+    ended_at: string;
+    stop_count: number;
+    stop_names: string[];
   };
 
 export function useSocialFeed() {
@@ -81,7 +115,7 @@ export function useSocialFeed() {
       return;
     }
 
-    const [spotsRes, reviewsRes, checkInsRes, crewSpotsRes] = await Promise.all([
+    const [spotsRes, reviewsRes, checkInsRes, crewSpotsRes, mediaRes, tricksRes, sessionsRes] = await Promise.all([
       actorIds.length > 0
         ? supabase
           .from('spots')
@@ -122,12 +156,42 @@ export function useSocialFeed() {
           .order('added_at', { ascending: false })
           .limit(25)
         : Promise.resolve({ data: [] as any[] }),
+      actorIds.length > 0
+        ? supabase
+          .from('check_in_media')
+          .select('id, url, thumbnail_url, media_type, created_at, user_id, spot_id, spots(id, name, description, lat, lng, created_at, user_id, tags, is_private, friends_only, spot_type, flag_count, is_verified, is_flagged)')
+          .in('user_id', actorIds)
+          .eq('is_hidden', false)
+          .order('created_at', { ascending: false })
+          .limit(25)
+        : Promise.resolve({ data: [] as any[] }),
+      actorIds.length > 0
+        ? supabase
+          .from('trick_logs')
+          .select('id, trick_name, logged_at, created_at, user_id, spot_id, spots(id, name, description, lat, lng, created_at, user_id, tags, is_private, friends_only, spot_type, flag_count, is_verified, is_flagged)')
+          .in('user_id', actorIds)
+          .order('logged_at', { ascending: false })
+          .limit(25)
+        : Promise.resolve({ data: [] as any[] }),
+      actorIds.length > 0
+        ? supabase
+          .from('live_sessions')
+          .select('id, title, started_at, ended_at, user_id, visibility, live_session_stops(name, sequence, spot_id)')
+          .in('user_id', actorIds)
+          .in('visibility', ['friends', 'public'])
+          .not('ended_at', 'is', null)
+          .order('ended_at', { ascending: false })
+          .limit(25)
+        : Promise.resolve({ data: [] as any[] }),
     ]);
 
     const spotRows = (spotsRes.data ?? []) as Spot[];
     const reviewRows = (reviewsRes.data ?? []) as any[];
     const checkInRows = (checkInsRes.data ?? []) as any[];
     const crewSpotRows = (crewSpotsRes.data ?? []) as any[];
+    const mediaRows = (mediaRes.data ?? []) as any[];
+    const trickRows = (tricksRes.data ?? []) as any[];
+    const sessionRows = (sessionsRes.data ?? []) as any[];
 
     const allActorIds = Array.from(
       new Set([
@@ -135,6 +199,9 @@ export function useSocialFeed() {
         ...reviewRows.map((r) => r.user_id).filter((x): x is string => !!x),
         ...checkInRows.map((c) => c.user_id).filter((x): x is string => !!x),
         ...crewSpotRows.map((r) => r.added_by).filter((x): x is string => !!x),
+        ...mediaRows.map((m) => m.user_id).filter((x): x is string => !!x),
+        ...trickRows.map((t) => t.user_id).filter((x): x is string => !!x),
+        ...sessionRows.map((s) => s.user_id).filter((x): x is string => !!x),
       ])
     );
 
@@ -215,7 +282,57 @@ export function useSocialFeed() {
         crew_name: crewNameById[r.crew_id] ?? 'Crew',
       }));
 
-    const merged = [...spotItems, ...reviewItems, ...checkInItems, ...crewSpotItems].sort((a, b) =>
+    const mediaItems: FeedItem[] = mediaRows
+      .filter((m) => m.spots && !m.spots.is_flagged && profileMap.has(m.user_id))
+      .map((m) => ({
+        kind: 'media_uploaded',
+        id: `media-${m.id}`,
+        created_at: m.created_at,
+        spot: m.spots as Spot,
+        actor: profileMap.get(m.user_id)!,
+        media: {
+          id: m.id,
+          url: m.url,
+          thumbnail_url: m.thumbnail_url ?? null,
+          media_type: m.media_type,
+        },
+      }));
+
+    const trickItems: FeedItem[] = trickRows
+      .filter((t) => t.spots && !t.spots.is_flagged && profileMap.has(t.user_id))
+      .map((t) => ({
+        kind: 'trick_logged',
+        id: `trick-${t.id}`,
+        created_at: t.logged_at ?? t.created_at,
+        spot: t.spots as Spot,
+        actor: profileMap.get(t.user_id)!,
+        trick_name: t.trick_name,
+      }));
+
+    const sessionItems: FeedItem[] = sessionRows
+      .filter((s) => profileMap.has(s.user_id) && s.ended_at)
+      .map((s) => {
+        const stops = [...(s.live_session_stops ?? [])].sort((a: any, b: any) => a.sequence - b.sequence);
+        const firstSpot = stops.find((stop: any) => stop.spot_id);
+        const matchingSpot = firstSpot
+          ? spotRows.find((spot) => spot.id === firstSpot.spot_id) ?? null
+          : null;
+        return {
+          kind: 'session_completed',
+          id: `session-${s.id}`,
+          created_at: s.ended_at,
+          spot: matchingSpot,
+          actor: profileMap.get(s.user_id)!,
+          session_id: s.id,
+          title: s.title,
+          started_at: s.started_at,
+          ended_at: s.ended_at,
+          stop_count: stops.length,
+          stop_names: stops.slice(0, 3).map((stop: any) => stop.name),
+        } as FeedItem;
+      });
+
+    const merged = [...spotItems, ...reviewItems, ...checkInItems, ...crewSpotItems, ...mediaItems, ...trickItems, ...sessionItems].sort((a, b) =>
       b.created_at.localeCompare(a.created_at)
     );
     setItems(merged.slice(0, 80));
