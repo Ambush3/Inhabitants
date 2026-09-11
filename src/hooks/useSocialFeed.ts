@@ -54,6 +54,7 @@ export type FeedItem =
       url: string;
       thumbnail_url: string | null;
       media_type: 'image' | 'video';
+      show_location: boolean;
     };
   }
   | {
@@ -159,7 +160,7 @@ export function useSocialFeed() {
       actorIds.length > 0
         ? supabase
           .from('check_in_media')
-          .select('id, url, thumbnail_url, media_type, created_at, user_id, spot_id, spots(id, name, description, lat, lng, created_at, user_id, tags, is_private, friends_only, spot_type, flag_count, is_verified, is_flagged)')
+          .select('id, url, thumbnail_url, media_type, show_location, created_at, user_id, spot_id, spots(id, name, description, lat, lng, created_at, user_id, tags, is_private, friends_only, spot_type, flag_count, is_verified, is_flagged)')
           .in('user_id', actorIds)
           .eq('is_hidden', false)
           .order('created_at', { ascending: false })
@@ -295,6 +296,7 @@ export function useSocialFeed() {
           url: m.url,
           thumbnail_url: m.thumbnail_url ?? null,
           media_type: m.media_type,
+          show_location: m.show_location !== false,
         },
       }));
 

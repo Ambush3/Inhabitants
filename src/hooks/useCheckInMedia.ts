@@ -17,6 +17,7 @@ export type CheckInMedia = {
   thumbnail_url?: string | null;
   media_type: 'image' | 'video';
   is_hero?: boolean;
+  show_location?: boolean;
   created_at: string;
   profiles?: { username: string | null; avatar_url: string | null } | null;
   spots?: { name: string | null } | null;
@@ -74,7 +75,8 @@ async function uploadCheckInMedia(
   checkInId: string | null,
   assets: PendingMedia[],
   placeId?: string,
-  liveSessionId?: string
+  liveSessionId?: string,
+  showLocation = true
 ): Promise<{ uploaded: number; error?: string }> {
   const {
     data: { user },
@@ -133,6 +135,7 @@ async function uploadCheckInMedia(
           thumbnail_url: null,
           media_type: 'image',
           is_public: true,
+          show_location: showLocation,
           live_session_id: liveSessionId ?? null,
         });
         if (insertError) {
@@ -215,6 +218,7 @@ async function uploadCheckInMedia(
           thumbnail_url: thumbnailUrl,
           media_type: 'video',
           is_public: true,
+          show_location: showLocation,
           live_session_id: liveSessionId ?? null,
         });
         if (insertError) {
@@ -290,10 +294,11 @@ export function useCheckInMedia() {
     checkInId: string | null,
     assets: PendingMedia[],
     placeId?: string,
-    liveSessionId?: string
+    liveSessionId?: string,
+    showLocation = true
   ): Promise<{ uploaded: number; error?: string }> {
     setUploading(true);
-    const result = await uploadCheckInMedia(spotId, checkInId, assets, placeId, liveSessionId);
+    const result = await uploadCheckInMedia(spotId, checkInId, assets, placeId, liveSessionId, showLocation);
     setUploading(false);
     if (checkInId) await loadMediaForCheckIn(checkInId);
     return result;

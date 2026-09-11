@@ -248,6 +248,7 @@ export function MyMediaGrid({ userId, onViewProfile }: Props) {
           url: m.url,
           media_type: m.media_type,
           thumbnail_url: m.thumbnail_url,
+          locationName: m.show_location === false ? null : (m.spots?.name ?? null),
         }))}
         initialIndex={Math.max(0, filtered.findIndex((m) => m.id === viewerMedia?.id))}
         currentUserId={userId}

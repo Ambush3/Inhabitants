@@ -176,7 +176,7 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
     }
   }, [visible, place?.id]);
 
-  async function pickAndUploadPlaceMedia() {
+  async function pickAndUploadPlaceMedia(showLocation = true) {
     if (!place) return;
     const mine = placeMedia.media.filter((m) => m.user_id === session?.user.id).length;
     const remaining = FREE_MEDIA_PER_SPOT - mine;
@@ -202,9 +202,17 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
     }));
     if (!isPro) assets = assets.slice(0, remaining);
     if (!assets.length) return;
-    const res = await placeMedia.uploadMedia(null, null, assets, place.id);
+    const res = await placeMedia.uploadMedia(null, null, assets, place.id, undefined, showLocation);
     await placeMedia.loadMediaForPlace(place.id);
     if (res.error) showAlert('Upload failed', res.error, [{ text: 'OK' }]);
+  }
+
+  function promptPlaceMediaUpload() {
+    showAlert('Show location?', 'Choose whether the place name appears with this media.', [
+      { text: 'Show place name', onPress: () => pickAndUploadPlaceMedia(true) },
+      { text: 'Hide location', onPress: () => pickAndUploadPlaceMedia(false) },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
   }
 
   const {
@@ -800,7 +808,7 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
                     Session Media
                   </Text>
                   <Pressable
-                    onPress={pickAndUploadPlaceMedia}
+                    onPress={promptPlaceMediaUpload}
                     disabled={placeMedia.uploading}
                     style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                     <Ionicons name="add-circle-outline" size={18} color={c.accent} />
@@ -822,6 +830,7 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
                           url: mm.url,
                           media_type: mm.media_type,
                           thumbnail_url: mm.thumbnail_url,
+                          locationName: mm.show_location === false ? null : (place?.name ?? null),
                         })),
                         index: placeMedia.media.findIndex((x) => x.id === m.id),
                       })
@@ -960,7 +969,7 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
           if (!checkInActionsId) return;
           setCheckInActionsOpen(false);
           setReturnToCheckInActions(true);
-          pickAndUploadPlaceMedia().finally(() => setTimeout(() => setCheckInActionsOpen(true), 250));
+          promptPlaceMediaUpload();
         }}
         onUndo={checkInActionsId ? () => {
           setCheckInActionsOpen(false);

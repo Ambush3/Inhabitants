@@ -16,6 +16,7 @@ type SessionMedia = ViewerMedia & {
   spot_id: string | null;
   place_id: string | null;
   created_at: string;
+  show_location?: boolean;
 };
 
 type SessionTrick = {
@@ -109,7 +110,7 @@ export function LiveSessionDetailModal({ visible, session, isPro, currentUserId,
       const [mediaResult, trickResult, participantResult, conditionResult] = await Promise.all([
         supabase
           .from('check_in_media')
-          .select('id, url, thumbnail_url, media_type, spot_id, place_id, created_at')
+          .select('id, url, thumbnail_url, media_type, spot_id, place_id, show_location, created_at')
           .eq('live_session_id', serverId)
           .order('created_at', { ascending: true }),
         supabase
@@ -340,7 +341,7 @@ export function LiveSessionDetailModal({ visible, session, isPro, currentUserId,
                           {stop.type === 'spot' && !proLocked && stopTricks.length === 0 ? <Text style={{ color: c.subtext, fontSize: 12, marginBottom: 10 }}>No tricks logged here.</Text> : null}
                           {stopMedia.length > 0 && !proLocked ? (
                             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 7, marginBottom: 10 }}>
-                              {stopMedia.map((item, mediaIndex) => <Pressable key={item.id} onPress={() => setViewer({ list: stopMedia.map((mediaItem) => ({ ...mediaItem, locationName: stop.name })), index: mediaIndex })}><Image source={{ uri: item.media_type === 'video' ? item.thumbnail_url ?? item.url : item.url }} style={{ width: 58, height: 58, borderRadius: 8 }} /><View style={{ position: 'absolute', right: 4, bottom: 4 }}>{item.media_type === 'video' ? <Ionicons name="play-circle" size={18} color="#fff" /> : null}</View></Pressable>)}
+              {stopMedia.map((item, mediaIndex) => <Pressable key={item.id} onPress={() => setViewer({ list: stopMedia.map((mediaItem) => ({ ...mediaItem, locationName: mediaItem.show_location === false ? null : stop.name })), index: mediaIndex })}><Image source={{ uri: item.media_type === 'video' ? item.thumbnail_url ?? item.url : item.url }} style={{ width: 58, height: 58, borderRadius: 8 }} /><View style={{ position: 'absolute', right: 4, bottom: 4 }}>{item.media_type === 'video' ? <Ionicons name="play-circle" size={18} color="#fff" /> : null}</View></Pressable>)}
                             </ScrollView>
                           ) : null}
                           {stop.type === 'spot' && stopConditions.length > 0 ? <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 7 }}>{stopConditions.map((condition, conditionIndex) => <View key={`${condition.condition}-${conditionIndex}`} style={{ backgroundColor: c.surface, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 5 }}><Text style={{ color: c.text, fontSize: 11, fontWeight: '700' }}>{condition.condition.replace(/_/g, ' ')}</Text></View>)}</View> : null}
@@ -361,7 +362,7 @@ export function LiveSessionDetailModal({ visible, session, isPro, currentUserId,
           <SectionTitle icon="images-outline" title={`Media${media.length ? ` · ${media.length}` : ''}`} c={c} />
           {proLocked ? <ProPrompt text="Attach photos and clips to every session." onPress={onOpenPro} c={c} /> : loading ? <ActivityIndicator color={c.accent} /> : media.length === 0 ? <EmptySection text="No photos or clips attached yet." c={c} /> : (
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4 }}>
-              {media.map((item, index) => <Pressable key={item.id} onPress={() => setViewer({ list: media.map((mediaItem) => ({ ...mediaItem, locationName: session.stops.find((stop) => stop.id === (mediaItem.spot_id ?? mediaItem.place_id))?.name ?? null })), index })}><Image source={{ uri: item.media_type === 'video' ? item.thumbnail_url ?? item.url : item.url }} style={{ width: (Dimensions.get('window').width - 32 - 8) / 3, aspectRatio: 1, borderRadius: 8 }} /><View style={{ position: 'absolute', right: 6, bottom: 6 }}>{item.media_type === 'video' ? <Ionicons name="play-circle" size={22} color="#fff" /> : null}</View></Pressable>)}
+              {media.map((item, index) => <Pressable key={item.id} onPress={() => setViewer({ list: media.map((mediaItem) => ({ ...mediaItem, locationName: mediaItem.show_location === false ? null : session.stops.find((stop) => stop.id === (mediaItem.spot_id ?? mediaItem.place_id))?.name ?? null })), index })}><Image source={{ uri: item.media_type === 'video' ? item.thumbnail_url ?? item.url : item.url }} style={{ width: (Dimensions.get('window').width - 32 - 8) / 3, aspectRatio: 1, borderRadius: 8 }} /><View style={{ position: 'absolute', right: 6, bottom: 6 }}>{item.media_type === 'video' ? <Ionicons name="play-circle" size={22} color="#fff" /> : null}</View></Pressable>)}
             </View>
           )}
 

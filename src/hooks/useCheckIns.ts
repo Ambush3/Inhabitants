@@ -27,6 +27,7 @@ export type PassportMedia = {
   url: string;
   thumbnail_url?: string | null;
   media_type: 'image' | 'video';
+  show_location?: boolean;
 };
 
 export type PassportVisit = {
@@ -215,7 +216,8 @@ export function useCheckIns() {
             id,
             url,
             thumbnail_url,
-            media_type
+            media_type,
+            show_location
           )
         `
         )

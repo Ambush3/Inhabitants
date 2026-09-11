@@ -1571,6 +1571,7 @@ export function ExplorePanel({
                                 url: item.media.url,
                                 thumbnail_url: item.media.thumbnail_url,
                                 media_type: item.media.media_type,
+                                locationName: item.media.show_location ? item.spot.name : null,
                               },
                             ]);
                           } else if (spot) {

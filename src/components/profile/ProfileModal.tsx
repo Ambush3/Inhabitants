@@ -1781,6 +1781,8 @@ export function ProfileModal({
                                                       media_type: mm.media_type,
                                                       thumbnail_url:
                                                         mm.thumbnail_url,
+                                                      locationName:
+                                                        mm.show_location === false ? null : entry.spot_name,
                                                     })),
                                                     index: mi,
                                                   })

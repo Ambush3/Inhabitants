@@ -511,7 +511,7 @@ export function SpotDetailsModal({
 
   // Pick photos/videos and upload to a spot. checkInId links it to a passport
   // visit (optional); null = a standalone spot upload.
-  async function pickAndUploadSpotMedia(spotId: string, checkInId: string | null) {
+  async function pickAndUploadSpotMedia(spotId: string, checkInId: string | null, showLocation = true) {
     const mine = sessionMedia.media.filter((m) => m.user_id === currentUserId).length;
     const remaining = FREE_MEDIA_PER_SPOT - mine;
     if (!isPro && remaining <= 0) {
@@ -536,10 +536,18 @@ export function SpotDetailsModal({
     }));
     if (!isPro) assets = assets.slice(0, remaining);
     if (!assets.length) return;
-    const res = await uploadMedia(spotId, checkInId, assets);
+    const res = await uploadMedia(spotId, checkInId, assets, undefined, undefined, showLocation);
     await sessionMedia.loadMediaForSpot(spotId);
     if (res.error) toast.error(res.error);
     else toast.success(`${res.uploaded} item${res.uploaded === 1 ? '' : 's'} added.`);
+  }
+
+  function promptSpotMediaUpload(spotId: string, checkInId: string | null) {
+    showAlert('Show location?', 'Choose whether the place name appears with this media.', [
+      { text: 'Show place name', onPress: () => pickAndUploadSpotMedia(spotId, checkInId, true) },
+      { text: 'Hide location', onPress: () => pickAndUploadSpotMedia(spotId, checkInId, false) },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
   }
 
   async function loadMyTagsForSpot(spotId: string) {
@@ -1529,7 +1537,7 @@ export function SpotDetailsModal({
                     ) : null}
                     {currentUserId ? (
                       <Pressable
-                        onPress={() => spot && pickAndUploadSpotMedia(spot.id, null)}
+                        onPress={() => spot && promptSpotMediaUpload(spot.id, null)}
                         disabled={uploadingSpotMedia}>
                         <Text style={{ fontSize: 13, color: c.accent, fontWeight: '500' }}>
                           {uploadingSpotMedia ? 'Uploading…' : '+ Add'}
@@ -1771,6 +1779,7 @@ export function SpotDetailsModal({
           url: m.url,
           media_type: m.media_type,
           thumbnail_url: m.thumbnail_url,
+          locationName: m.show_location === false ? null : (spot?.name ?? null),
         }))}
         initialIndex={Math.max(
           0,
@@ -1867,7 +1876,7 @@ export function SpotDetailsModal({
           if (!checkInActionsId || !spot) return;
           setCheckInActionsOpen(false);
           setReturnToCheckInActions(true);
-          pickAndUploadSpotMedia(spot.id, checkInActionsId).finally(() => setTimeout(() => setCheckInActionsOpen(true), 250));
+          promptSpotMediaUpload(spot.id, checkInActionsId);
         }}
         onLogTrick={spot && !isShop ? () => {
           setCheckInActionsOpen(false);
