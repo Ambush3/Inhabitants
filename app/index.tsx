@@ -48,6 +48,7 @@ import { MapTour, TourTargets } from '@/src/components/onboarding/MapTour';
 import { ThemeBackdrop } from '@/src/components/ThemeBackdrop';
 import { ProfileModal } from '@/src/components/profile/ProfileModal';
 import { PublicProfileModal } from '@/src/components/profile/PublicProfileModal';
+import { SessionMediaViewerModal, ViewerMedia } from '@/src/components/SessionMediaViewerModal';
 import { MySpotMarker } from '@/src/components/SpotMarkers/MySpotMarker';
 import { markerStyleByKey } from '@/src/config/markerStyles';
 import { useOwnerMarkerStyles } from '@/src/hooks/useOwnerMarkerStyles';
@@ -709,6 +710,7 @@ export default function Index() {
   const [createEventOpen, setCreateEventOpen] = useState(false);
   const [citiesOpen, setCitiesOpen] = useState(false);
   const [paywallOpen, setPaywallOpen] = useState(false);
+  const [notificationMedia, setNotificationMedia] = useState<ViewerMedia[] | null>(null);
   const [paywallHeadline, setPaywallHeadline] = useState<string | undefined>(undefined);
   const { isPro } = usePro();
   const [editingEvent, setEditingEvent] = useState<SkateEvent | null>(null);
@@ -2383,6 +2385,25 @@ export default function Index() {
         onMarkAllNotificationsRead={markAllAsRead}
         onSelectNotification={(n) => {
           markAsRead(n.id);
+          if (n.media_id) {
+            setPanelOpen(false);
+            supabase
+              .from('check_in_media')
+              .select('id, url, thumbnail_url, media_type, show_location, spots(name)')
+              .eq('id', n.media_id)
+              .maybeSingle()
+              .then(({ data }) => {
+                if (!data) return;
+                setNotificationMedia([{
+                  id: data.id,
+                  url: data.url,
+                  thumbnail_url: data.thumbnail_url,
+                  media_type: data.media_type,
+                  locationName: data.show_location === false ? null : (data.spots as any)?.name ?? null,
+                }]);
+              });
+            return;
+          }
           if (n.type === 'crew_invite') {
             setPanelOpen(false);
             setCrewsInitialTab('invites');
@@ -3524,6 +3545,12 @@ export default function Index() {
         visible={paywallOpen}
         onClose={() => setPaywallOpen(false)}
         headline={paywallHeadline}
+      />
+      <SessionMediaViewerModal
+        visible={notificationMedia !== null}
+        onClose={() => setNotificationMedia(null)}
+        mediaList={notificationMedia ?? []}
+        currentUserId={session?.user.id ?? null}
       />
       <MapFilterSheet
         visible={filterSheetOpen}

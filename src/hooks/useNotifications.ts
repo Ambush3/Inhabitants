@@ -12,6 +12,7 @@ export type AppNotification = {
     crew_id?: string | null;
     crew_name?: string | null;
     feedback_post_id?: string | null;
+    media_id?: string | null;
     read: boolean;
     created_at: string;
 };

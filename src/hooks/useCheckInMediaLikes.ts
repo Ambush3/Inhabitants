@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/src/libs/supabase';
+import { sendMediaNotification } from '@/src/libs/sendPushNotification';
 
 export function useCheckInMediaLikes() {
   const [count, setCount] = useState(0);
@@ -61,6 +62,15 @@ export function useCheckInMediaLikes() {
         if (error) {
           setLiked(false);
           setCount((c) => c - 1);
+        } else {
+          const { data: media } = await supabase
+            .from('check_in_media')
+            .select('user_id')
+            .eq('id', mediaId)
+            .maybeSingle();
+          if (media?.user_id) {
+            sendMediaNotification(media.user_id, mediaId, 'media_like').catch(() => {});
+          }
         }
       }
       setBusy(false);

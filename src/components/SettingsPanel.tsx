@@ -494,6 +494,8 @@ export function SettingsPanel({
                             ['notify_event_invite', 'Event Invites'],
                             ['notify_event_reminder', 'Event Reminders'],
                             ['notify_skated_with', 'Skated With Tags'],
+                            ['notify_media_like', 'Media Likes'],
+                            ['notify_media_comment', 'Media Comments'],
                           ] as [keyof NotificationPrefs, string][]
                         ).map(([key, label]) => (
                           <View

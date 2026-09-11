@@ -21,6 +21,8 @@ const PREF_COLUMN_BY_TYPE: Record<string, string | null> = {
     crew_join: null,
     crew_spot_added: null,
     skated_with: 'notify_skated_with',
+    media_like: 'notify_media_like',
+    media_comment: 'notify_media_comment',
 };
 
 async function isAllowed(userId: string, eventType: string): Promise<boolean> {
@@ -48,6 +50,7 @@ Deno.serve(async (req) => {
             spot_name,
             place_id,
             feedback_post_id,
+            media_id,
         } = await req.json();
 
         const authToken = (req.headers.get('Authorization') ?? '').replace('Bearer ', '').trim();
@@ -96,6 +99,54 @@ Deno.serve(async (req) => {
             });
             const result = await response.json();
             return new Response(JSON.stringify(result), { status: 200, headers: JSON_HEADERS });
+        }
+
+        if (event_type === 'media_like' || event_type === 'media_comment') {
+            if (!addressee_id || !media_id || addressee_id === actor_id) {
+                return new Response(JSON.stringify({ noop: true }), { status: 200, headers: JSON_HEADERS });
+            }
+            if (!(await isAllowed(addressee_id, event_type))) {
+                return new Response(JSON.stringify({ muted: true }), { status: 200, headers: JSON_HEADERS });
+            }
+            const { data: media } = await supabase
+                .from('check_in_media')
+                .select('id, spot_id, spots(name)')
+                .eq('id', media_id)
+                .maybeSingle();
+            if (!media) return new Response(JSON.stringify({ noop: true }), { status: 200, headers: JSON_HEADERS });
+
+            await supabase.from('notifications').insert({
+                user_id: addressee_id,
+                type: event_type,
+                actor_id: actor_id ?? null,
+                actor_username: actor_username ?? null,
+                media_id,
+                spot_id: media.spot_id ?? null,
+                spot_name: media.spots?.name ?? null,
+            });
+
+            const { data: tokenRow } = await supabase
+                .from('push_tokens')
+                .select('token')
+                .eq('user_id', addressee_id)
+                .maybeSingle();
+            if (!tokenRow) return new Response(JSON.stringify({ inserted: true }), { status: 200, headers: JSON_HEADERS });
+
+            const isLike = event_type === 'media_like';
+            const response = await fetch('https://exp.host/--/api/v2/push/send', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+                body: JSON.stringify({
+                    to: tokenRow.token,
+                    title: isLike ? '❤️ New Like' : '💬 New Comment',
+                    body: isLike
+                        ? `${actor_username} liked your media`
+                        : `${actor_username} commented on your media`,
+                    sound: 'default',
+                    data: { url: `inhabitants://?openMediaId=${media_id}` },
+                }),
+            });
+            return new Response(JSON.stringify(await response.json()), { status: 200, headers: JSON_HEADERS });
         }
 
         if (event_type === 'friend_request' || event_type === 'friend_accepted') {

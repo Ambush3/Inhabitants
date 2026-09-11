@@ -135,6 +135,20 @@ export async function sendSkatedWithNotification(
   });
 }
 
+export async function sendMediaNotification(
+  addresseeId: string,
+  mediaId: string,
+  eventType: 'media_like' | 'media_comment'
+) {
+  await supabase.functions.invoke('send-push-notification', {
+    body: {
+      addressee_id: addresseeId,
+      media_id: mediaId,
+      event_type: eventType,
+    },
+  });
+}
+
 export async function sendEventInviteNotification(
   inviteeId: string,
   actorUsername: string,
@@ -151,4 +165,3 @@ export async function sendEventInviteNotification(
     },
   });
 }
-

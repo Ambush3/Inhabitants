@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { supabase } from '@/src/libs/supabase';
 import { moderateText } from '@/src/libs/moderator/textModerator';
+import { sendMediaNotification } from '@/src/libs/sendPushNotification';
 
 export type CheckInMediaComment = {
   id: string;
@@ -59,6 +60,14 @@ export function useCheckInMediaComments() {
       .from('check_in_media_comments')
       .insert({ media_id: mediaId, user_id: user.id, content: trimmed });
     if (error) return error.message;
+    const { data: media } = await supabase
+      .from('check_in_media')
+      .select('user_id')
+      .eq('id', mediaId)
+      .maybeSingle();
+    if (media?.user_id) {
+      sendMediaNotification(media.user_id, mediaId, 'media_comment').catch(() => {});
+    }
     await loadComments(mediaId);
     return null;
   }

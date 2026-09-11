@@ -11,6 +11,8 @@ export type NotificationPrefs = {
   notify_event_invite: boolean;
   notify_event_reminder: boolean;
   notify_skated_with: boolean;
+  notify_media_like: boolean;
+  notify_media_comment: boolean;
 };
 
 const DEFAULTS: NotificationPrefs = {
@@ -23,6 +25,8 @@ const DEFAULTS: NotificationPrefs = {
   notify_event_invite: true,
   notify_event_reminder: true,
   notify_skated_with: true,
+  notify_media_like: true,
+  notify_media_comment: true,
 };
 
 export function useNotificationPreferences() {
@@ -51,6 +55,8 @@ export function useNotificationPreferences() {
         notify_event_invite: data.notify_event_invite ?? true,
         notify_event_reminder: data.notify_event_reminder ?? true,
         notify_skated_with: data.notify_skated_with ?? true,
+        notify_media_like: data.notify_media_like ?? true,
+        notify_media_comment: data.notify_media_comment ?? true,
       });
     } else {
       setPrefs(DEFAULTS);

@@ -207,6 +207,10 @@ export function ExplorePanel({
         return `${actor} replied to your feedback`;
       case 'skated_with':
         return `${actor} skated with you at "${spot}"`;
+      case 'media_like':
+        return `${actor} liked your media`;
+      case 'media_comment':
+        return `${actor} commented on your media`;
       default:
         return `Activity on "${spot}"`;
     }
