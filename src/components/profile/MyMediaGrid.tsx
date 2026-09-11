@@ -199,6 +199,22 @@ export function MyMediaGrid({ userId, onViewProfile }: Props) {
                     <Ionicons name="play" size={18} color="#fff" />
                   </View>
                 ) : null}
+                {m.show_location !== false && m.spots?.name ? (
+                  <View
+                    style={{
+                      position: 'absolute',
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      backgroundColor: 'rgba(0,0,0,0.55)',
+                      paddingHorizontal: 5,
+                      paddingVertical: 4,
+                    }}>
+                    <Text style={{ color: '#fff', fontSize: 10, fontWeight: '600' }} numberOfLines={1}>
+                      {m.spots.name}
+                    </Text>
+                  </View>
+                ) : null}
               </Pressable>
               {selectMode ? (
                 <View

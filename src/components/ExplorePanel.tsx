@@ -18,6 +18,8 @@ import { FeedItem } from '@/src/hooks/useSocialFeed';
 import { SkateEvent } from '@/src/hooks/useEvents';
 import { TrickLog } from '@/src/hooks/useTrickLog';
 import { SessionMediaViewerModal, ViewerMedia } from '@/src/components/SessionMediaViewerModal';
+import { useCheckInMediaLikes } from '@/src/hooks/useCheckInMediaLikes';
+import { useCheckInMediaComments } from '@/src/hooks/useCheckInMediaComments';
 
 import { supabase } from '@/src/libs/supabase';
 
@@ -28,6 +30,50 @@ type PlaceFavorite = {
   lat: number;
   lng: number;
 };
+
+function FeedMediaActions({
+  mediaId,
+  onOpen,
+  c,
+}: {
+  mediaId: string;
+  onOpen: () => void;
+  c: any;
+}) {
+  const { count, liked, loadLikes, toggleLike } = useCheckInMediaLikes();
+  const { comments, commentCount, loadComments } = useCheckInMediaComments();
+
+  useEffect(() => {
+    loadLikes(mediaId);
+    loadComments(mediaId);
+  }, [mediaId, loadLikes]);
+
+  return (
+    <View style={{ gap: 6 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+        <Pressable
+          onPress={() => toggleLike(mediaId)}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}
+          hitSlop={6}>
+          <Ionicons name={liked ? 'heart' : 'heart-outline'} size={18} color={liked ? '#FF3B30' : c.subtext} />
+          <Text style={{ color: c.subtext, fontSize: 12 }}>{count}</Text>
+        </Pressable>
+        <Pressable onPress={onOpen} style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }} hitSlop={6}>
+          <Ionicons name="chatbubble-outline" size={17} color={c.subtext} />
+          <Text style={{ color: c.subtext, fontSize: 12 }}>{commentCount}</Text>
+        </Pressable>
+      </View>
+      {comments[0] ? (
+        <Pressable onPress={onOpen}>
+          <Text style={{ color: c.subtext, fontSize: 12 }} numberOfLines={1}>
+            <Text style={{ fontWeight: '700', color: c.text }}>{comments[0].profiles?.username ?? 'Someone'}</Text>{' '}
+            {comments[0].content}
+          </Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
 
 type Props = {
   visible: boolean;
@@ -1649,18 +1695,33 @@ export function ExplorePanel({
                           )}
 
                           {item.kind === 'media_uploaded' ? (
-                            <View style={{ borderRadius: 10, overflow: 'hidden', backgroundColor: c.tagBg }}>
-                              <Image
-                                source={{ uri: item.media.media_type === 'video' ? item.media.thumbnail_url ?? item.media.url : item.media.url }}
-                                style={{ width: '100%', height: 150 }}
-                                contentFit="cover"
+                            <>
+                              <View style={{ borderRadius: 10, overflow: 'hidden', backgroundColor: c.tagBg }}>
+                                <Image
+                                  source={{ uri: item.media.media_type === 'video' ? item.media.thumbnail_url ?? item.media.url : item.media.url }}
+                                  style={{ width: '100%', height: 150 }}
+                                  contentFit="cover"
+                                />
+                                {item.media.media_type === 'video' ? (
+                                  <View style={{ position: 'absolute', top: 62, left: '50%', marginLeft: -18, backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 18, padding: 7 }}>
+                                    <Ionicons name="play" size={22} color="#fff" />
+                                  </View>
+                                ) : null}
+                              </View>
+                              <FeedMediaActions
+                                mediaId={item.media.id}
+                                c={c}
+                                onOpen={() => setFeedMediaViewer([
+                                  {
+                                    id: item.media.id,
+                                    url: item.media.url,
+                                    thumbnail_url: item.media.thumbnail_url,
+                                    media_type: item.media.media_type,
+                                    locationName: item.media.show_location ? item.spot.name : null,
+                                  },
+                                ])}
                               />
-                              {item.media.media_type === 'video' ? (
-                                <View style={{ position: 'absolute', top: 62, left: '50%', marginLeft: -18, backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 18, padding: 7 }}>
-                                  <Ionicons name="play" size={22} color="#fff" />
-                                </View>
-                              ) : null}
-                            </View>
+                            </>
                           ) : null}
 
                           {item.kind === 'trick_logged' ? (

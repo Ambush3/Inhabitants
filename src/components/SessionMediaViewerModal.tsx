@@ -369,9 +369,9 @@ export function SessionMediaViewerModal({
               hitSlop={8}
               style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
               <Ionicons
-                name={liked ? 'thumbs-up' : 'thumbs-up-outline'}
+                name={liked ? 'heart' : 'heart-outline'}
                 size={22}
-                color={liked ? '#fff' : 'rgba(255,255,255,0.6)'}
+                color={liked ? '#FF3B30' : 'rgba(255,255,255,0.6)'}
               />
               <Text
                 style={{
