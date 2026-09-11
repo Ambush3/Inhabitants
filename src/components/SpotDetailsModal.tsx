@@ -30,9 +30,10 @@ import * as Location from 'expo-location';
 import { useTheme } from '@/src/context/ThemeContext';
 import { useToast, ToastHost } from '@/src/context/ToastContext';
 import { openStatusLabel } from '@/src/libs/openingHours';
+import { CheckInActionsSheet } from '@/src/components/CheckInActionsSheet';
 
 import { CONDITION_META, SpotCondition } from '@/src/hooks/useSpotConditions';
-import { useCheckIns, SpotVisitor } from '@/src/hooks/useCheckIns';
+import { subscribeToCheckInChanges, useCheckIns, SpotVisitor } from '@/src/hooks/useCheckIns';
 import { useCheckInTags, TaggedSkater } from '@/src/hooks/useCheckInTags';
 import { SkatedWithModal } from '@/src/components/SkatedWithModal';
 import { useCheckInMedia, PendingMedia } from '@/src/hooks/useCheckInMedia';
@@ -144,6 +145,10 @@ type Props = {
   onOpenTrickLog?: () => void;
   spotTrickLogs: TrickLog[];
   onDeleteTrickLog: (id: string) => Promise<string | null>;
+  onAskAddToLiveSession?: (spot: Spot, checkInId: string) => Promise<boolean>;
+  onAddParticipantsToLiveSession?: (userIds: string[]) => Promise<void>;
+  onAddMediaToLiveSession?: (spot: Spot, checkInId: string) => Promise<void>;
+  liveSessionTitle?: string | null;
 };
 
 export function SpotDetailsModal({
@@ -197,6 +202,10 @@ export function SpotDetailsModal({
   onLogTrickSubmit,
   onOpenTrickLog,
   onDeleteTrickLog,
+  onAskAddToLiveSession,
+  onAddParticipantsToLiveSession,
+  onAddMediaToLiveSession,
+  liveSessionTitle,
 }: Props) {
   const { width } = Dimensions.get('window');
   const { theme } = useTheme();
@@ -476,8 +485,29 @@ export function SpotDetailsModal({
   const sessionMedia = useCheckInMedia();
   const { isPro } = usePro();
   const [proPaywallOpen, setProPaywallOpen] = useState(false);
+  const [proPaywallHeadline, setProPaywallHeadline] = useState('Upgrade for unlimited photos & videos.');
   const [sessionViewerMedia, setSessionViewerMedia] = useState<ViewerMedia | null>(null);
   const [mediaGrid, setMediaGrid] = useState(false);
+  const [checkInActionsOpen, setCheckInActionsOpen] = useState(false);
+  const [checkInActionsId, setCheckInActionsId] = useState<string | null>(null);
+  const [checkInAddedToSession, setCheckInAddedToSession] = useState(false);
+  const [addingCheckInToSession, setAddingCheckInToSession] = useState(false);
+  const [returnToCheckInActions, setReturnToCheckInActions] = useState(false);
+
+  async function addCheckInToLiveSession(checkInId: string): Promise<boolean> {
+    if (!spot || !onAskAddToLiveSession) return false;
+    setAddingCheckInToSession(true);
+    const added = await onAskAddToLiveSession(spot, checkInId);
+    setAddingCheckInToSession(false);
+    if (added) setCheckInAddedToSession(true);
+    return added;
+  }
+
+  function openCheckInActions(checkInId: string) {
+    setCheckInActionsId(checkInId);
+    setCheckInAddedToSession(false);
+    setCheckInActionsOpen(true);
+  }
 
   // Pick photos/videos and upload to a spot. checkInId links it to a passport
   // visit (optional); null = a standalone spot upload.
@@ -485,6 +515,7 @@ export function SpotDetailsModal({
     const mine = sessionMedia.media.filter((m) => m.user_id === currentUserId).length;
     const remaining = FREE_MEDIA_PER_SPOT - mine;
     if (!isPro && remaining <= 0) {
+      setProPaywallHeadline('Upgrade for unlimited photos & videos.');
       setProPaywallOpen(true);
       return;
     }
@@ -523,16 +554,22 @@ export function SpotDetailsModal({
   }
 
   async function runUndoCheckIn(checkInId: string, spotId: string) {
-    const result = await undoCheckIn(checkInId);
-    if (!result.success) {
-      showAlert('Could not undo', result.error);
-      return;
+    if (undoingCheckIn) return;
+    setUndoingCheckIn(true);
+    try {
+      const result = await undoCheckIn(checkInId);
+      if (!result.success) {
+        showAlert('Could not undo', result.error);
+        return;
+      }
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setAlreadyCheckedInToday(await hasCheckedInWithinCooldown(spotId));
+      setVisitorCount(await getVisitorCount(spotId));
+      await sessionMedia.loadMediaForSpot(spotId);
+      await loadMyTagsForSpot(spotId);
+    } finally {
+      setUndoingCheckIn(false);
     }
-    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    setAlreadyCheckedInToday(await hasCheckedInWithinCooldown(spotId));
-    setVisitorCount(await getVisitorCount(spotId));
-    await sessionMedia.loadMediaForSpot(spotId);
-    await loadMyTagsForSpot(spotId);
   }
 
   async function confirmUndoCheckIn(spotId: string) {
@@ -561,21 +598,19 @@ export function SpotDetailsModal({
     );
   }
 
-  function promptAddSessionMedia(checkInId: string, spotId: string) {
-    showAlert(
-      'Add a photo or clip?',
-      'Capture this session and tie it to your passport entry.',
-      [
-        { text: 'Skip', style: 'cancel' },
-        { text: 'Tag Who You Skated With', onPress: () => setSkatedWithCheckInId(checkInId) },
-        { text: 'Add', onPress: () => pickAndUploadSpotMedia(spotId, checkInId) },
-      ]
-    );
-  }
   const [visitorCount, setVisitorCount] = useState<number | null>(null);
   const [alreadyCheckedInToday, setAlreadyCheckedInToday] = useState(false);
+  const [undoingCheckIn, setUndoingCheckIn] = useState(false);
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
   const [trickLogOpen, setTrickLogOpen] = useState(false);
+
+  useEffect(() => {
+    if (!visible || !spot) return;
+    return subscribeToCheckInChanges(() => {
+      hasCheckedInWithinCooldown(spot.id).then(setAlreadyCheckedInToday);
+      getVisitorCount(spot.id).then(setVisitorCount);
+    });
+  }, [visible, spot?.id, hasCheckedInWithinCooldown, getVisitorCount]);
 
   const isOwner = spot?.user_id === currentUserId;
 
@@ -651,7 +686,7 @@ export function SpotDetailsModal({
       <PaywallModal
         visible={proPaywallOpen}
         onClose={() => setProPaywallOpen(false)}
-        headline="Upgrade for unlimited photos & videos."
+        headline={proPaywallHeadline}
       />
       <Modal
         visible={visitorsOpen}
@@ -773,8 +808,8 @@ export function SpotDetailsModal({
 
             {/* ── Shop identity ── */}
             {isShop ? (
-              <View style={{ marginBottom: 12 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+              <View style={{ marginBottom: 2 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
                   <Image
                     source={require('@/assets/pin-images/skate-shop.png')}
                     style={{ width: 20, height: 20, tintColor: c.text }}
@@ -800,7 +835,7 @@ export function SpotDetailsModal({
                     </Pressable>
                   ) : null}
                   <Pressable onPress={handleShopShareSheet} style={{ padding: 4 }}>
-                    <Ionicons name="share-outline" size={22} color={c.accent} />
+                    <Ionicons name="share-outline" size={24} color={c.accent} />
                   </Pressable>
                   <Pressable onPress={onToggleFavorite} style={{ padding: 4 }}>
                     <Ionicons
@@ -825,7 +860,7 @@ export function SpotDetailsModal({
                 ) : null}
 
                 <View
-                  style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 }}>
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 16 }}>
                   <Text style={{ fontSize: 12, opacity: 0.5, color: c.text }}>Skate Shop</Text>
                   {reviews.length > 0 ? (
                     <>
@@ -838,6 +873,17 @@ export function SpotDetailsModal({
                       </Text>
                     </>
                   ) : null}
+                  <View
+                    style={{
+                      backgroundColor: 'rgba(52,199,89,0.12)',
+                      borderRadius: 6,
+                      paddingHorizontal: 6,
+                      paddingVertical: 3,
+                    }}>
+                    <Text style={{ fontSize: 10, color: '#249447', fontWeight: '700' }}>
+                      Community created
+                    </Text>
+                  </View>
                 </View>
               </View>
             ) : null}
@@ -1215,11 +1261,16 @@ export function SpotDetailsModal({
             ) : null}
 
             {/* ── Check-in card ── */}
-            {!detailsLoading && !isShop ? (
+            {!detailsLoading ? (
               <View
                 style={[
                   styles.ratingCard,
-                  { backgroundColor: c.tagBg, alignItems: 'center' },
+                  {
+                    backgroundColor: c.tagBg,
+                    alignItems: isShop ? 'stretch' : 'center',
+                    flexDirection: isShop ? 'column' : 'row',
+                    gap: isShop ? 10 : undefined,
+                  },
                   myLastCheckInId
                     ? {
                         marginBottom: 0,
@@ -1229,7 +1280,13 @@ export function SpotDetailsModal({
                     : null,
                 ]}>
                 <Pressable
-                  style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 6,
+                    flex: isShop ? undefined : 1,
+                    width: isShop ? '100%' : undefined,
+                  }}
                   disabled={!visitorCount || visitorCount <= 0}
                   onPress={async () => {
                     if (!spot || !visitorCount || visitorCount <= 0) return;
@@ -1279,7 +1336,7 @@ export function SpotDetailsModal({
                                 setMyLastCheckInId(result.checkInId ?? null);
                                 setMyTags([]);
                                 if (result.checkInId) {
-                                  promptAddSessionMedia(result.checkInId, spot.id);
+                                  openCheckInActions(result.checkInId);
                                 }
                               }
                             },
@@ -1295,44 +1352,19 @@ export function SpotDetailsModal({
                       setVisitorCount((prev) => (prev === null ? 1 : prev + 1));
                       setMyLastCheckInId(result.checkInId ?? null);
                       setMyTags([]);
-                      showAlert(
-                        'Checked in!',
-                        'Added to your passport and shared to your feed.',
-                        [
-                          { text: 'Done', style: 'cancel' },
-                          {
-                            text: 'Tag Who You Skated With',
-                            onPress: () => {
-                              if (result.checkInId) setSkatedWithCheckInId(result.checkInId);
-                            },
-                          },
-                          {
-                            text: 'Add Photo/Clip',
-                            onPress: () => {
-                              if (result.checkInId) {
-                                pickAndUploadSpotMedia(spot.id, result.checkInId);
-                              }
-                            },
-                          },
-                          {
-                            text: 'Undo Check-In',
-                            style: 'destructive',
-                            onPress: () => {
-                              if (result.checkInId) runUndoCheckIn(result.checkInId, spot.id);
-                            },
-                          },
-                        ]
-                      );
+                      if (result.checkInId) openCheckInActions(result.checkInId);
                     }
                   }}
                   disabled={checkingIn}
                   style={{
                     flexDirection: 'row',
                     alignItems: 'center',
+                    justifyContent: isShop ? 'center' : undefined,
                     gap: 5,
+                    width: isShop ? '100%' : undefined,
                     paddingHorizontal: 16,
-                    paddingVertical: 8,
-                    borderRadius: 20,
+                    paddingVertical: isShop ? 13 : 8,
+                    borderRadius: isShop ? 12 : 20,
                     backgroundColor: alreadyCheckedInToday ? 'rgba(52,199,89,0.15)' : '#34C759',
                     borderWidth: 1,
                     borderColor: '#34C759',
@@ -1772,7 +1804,10 @@ export function SpotDetailsModal({
         spotName={spot?.name ?? ''}
         spotId={spotId ?? ''}
         spotTrickLogs={spotTrickLogs}
-        onClose={() => setTrickLogOpen(false)}
+        onClose={() => {
+          setTrickLogOpen(false);
+          if (returnToCheckInActions) setTimeout(() => setCheckInActionsOpen(true), 250);
+        }}
         onLogTrick={onLogTrickSubmit}
         onDeleteTrickLog={onDeleteTrickLog}
       />
@@ -1791,9 +1826,59 @@ export function SpotDetailsModal({
             showAlert('Could not save tags', result.error);
             return;
           }
+          await onAddParticipantsToLiveSession?.(userIds);
           await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           await loadMyTagsForSpot(spot.id);
+          if (returnToCheckInActions && checkInActionsId === skatedWithCheckInId) {
+            setReturnToCheckInActions(false);
+            setTimeout(() => setCheckInActionsOpen(true), 250);
+          }
         }}
+      />
+      <CheckInActionsSheet
+        visible={checkInActionsOpen}
+        placeName={spot?.name ?? 'Spot'}
+        sessionTitle={liveSessionTitle}
+        addedToSession={checkInAddedToSession}
+        addingToSession={addingCheckInToSession}
+        isPro={isPro}
+        onAddToSession={checkInActionsId && onAskAddToLiveSession ? () => addCheckInToLiveSession(checkInActionsId) : undefined}
+        onTag={() => {
+          if (!checkInActionsId) return;
+          setReturnToCheckInActions(true);
+          setCheckInActionsOpen(false);
+          setSkatedWithCheckInId(checkInActionsId);
+        }}
+        onAddSessionMedia={checkInActionsId && spot ? () => {
+          if (!isPro) {
+            setCheckInActionsOpen(false);
+            setTimeout(() => {
+              setProPaywallHeadline('Unlock photos and clips attached to every live session.');
+              setProPaywallOpen(true);
+            }, 250);
+            return;
+          }
+          setCheckInActionsOpen(false);
+          setReturnToCheckInActions(true);
+          const upload = onAddMediaToLiveSession?.(spot, checkInActionsId);
+          upload?.finally(() => setTimeout(() => setCheckInActionsOpen(true), 250));
+        } : undefined}
+        onAddPhoto={() => {
+          if (!checkInActionsId || !spot) return;
+          setCheckInActionsOpen(false);
+          setReturnToCheckInActions(true);
+          pickAndUploadSpotMedia(spot.id, checkInActionsId).finally(() => setTimeout(() => setCheckInActionsOpen(true), 250));
+        }}
+        onLogTrick={spot && !isShop ? () => {
+          setCheckInActionsOpen(false);
+          setReturnToCheckInActions(true);
+          setTrickLogOpen(true);
+        } : undefined}
+        onUndo={checkInActionsId && spot ? () => {
+          setCheckInActionsOpen(false);
+          runUndoCheckIn(checkInActionsId, spot.id);
+        } : undefined}
+        onClose={() => setCheckInActionsOpen(false)}
       />
       {/* ── Flag modal ── */}
       <Modal

@@ -20,12 +20,16 @@ export function SkatedWithModal({
   onConfirm,
   saving = false,
   initialSelected,
+  title = 'Skated with',
+  description = 'Tag the friends who were there with you.',
 }: {
   visible: boolean;
   onClose: () => void;
   onConfirm: (userIds: string[]) => void;
   saving?: boolean;
   initialSelected?: string[];
+  title?: string;
+  description?: string;
 }) {
   const { theme } = useTheme();
   const c = theme.colors;
@@ -102,13 +106,13 @@ export function SkatedWithModal({
               paddingHorizontal: 20,
               marginBottom: 4,
             }}>
-            <Text style={{ fontSize: 18, fontWeight: '800', color: c.text }}>Skated with</Text>
+            <Text style={{ fontSize: 18, fontWeight: '800', color: c.text }}>{title}</Text>
             <Pressable onPress={onClose}>
               <Ionicons name="close" size={24} color={c.subtext} />
             </Pressable>
           </View>
           <Text style={{ paddingHorizontal: 20, fontSize: 13, color: c.subtext, marginBottom: 14 }}>
-            Tag the friends who were there with you.
+            {description}
           </Text>
 
           {friends.length > 6 ? (

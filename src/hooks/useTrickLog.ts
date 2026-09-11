@@ -9,6 +9,7 @@ export type TrickLog = {
   trick_name: string;
   logged_at: string;
   created_at: string;
+  live_session_id?: string | null;
   spot?: {
     name: string;
   };
@@ -22,7 +23,8 @@ export function useTrickLog() {
   async function logTrick(
     spotId: string,
     trickName: string,
-    loggedAt: Date
+    loggedAt: Date,
+    liveSessionId?: string | null
   ): Promise<string | null> {
     const {
       data: { user },
@@ -37,6 +39,7 @@ export function useTrickLog() {
       spot_id: spotId,
       trick_name: trickName.trim(),
       logged_at: loggedAt.toISOString(),
+      live_session_id: liveSessionId ?? null,
     });
 
     if (error) return error.message;

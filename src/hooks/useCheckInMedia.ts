@@ -73,7 +73,8 @@ async function uploadCheckInMedia(
   spotId: string | null,
   checkInId: string | null,
   assets: PendingMedia[],
-  placeId?: string
+  placeId?: string,
+  liveSessionId?: string
 ): Promise<{ uploaded: number; error?: string }> {
   const {
     data: { user },
@@ -132,6 +133,7 @@ async function uploadCheckInMedia(
           thumbnail_url: null,
           media_type: 'image',
           is_public: true,
+          live_session_id: liveSessionId ?? null,
         });
         if (insertError) {
           await supabase.storage.from(BUCKET).remove([filename]);
@@ -213,6 +215,7 @@ async function uploadCheckInMedia(
           thumbnail_url: thumbnailUrl,
           media_type: 'video',
           is_public: true,
+          live_session_id: liveSessionId ?? null,
         });
         if (insertError) {
           await supabase.storage.from(BUCKET).remove([filename]);
@@ -286,10 +289,11 @@ export function useCheckInMedia() {
     spotId: string | null,
     checkInId: string | null,
     assets: PendingMedia[],
-    placeId?: string
+    placeId?: string,
+    liveSessionId?: string
   ): Promise<{ uploaded: number; error?: string }> {
     setUploading(true);
-    const result = await uploadCheckInMedia(spotId, checkInId, assets, placeId);
+    const result = await uploadCheckInMedia(spotId, checkInId, assets, placeId, liveSessionId);
     setUploading(false);
     if (checkInId) await loadMediaForCheckIn(checkInId);
     return result;
