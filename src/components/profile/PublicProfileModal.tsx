@@ -23,6 +23,9 @@ type PublicReview = {
   created_at: string;
 };
 
+type PublicTrick = { id: string; trick_name: string; logged_at: string; spot_name: string };
+type PublicSession = { id: string; title: string; ended_at: string; stop_count: number; stop_names: string[] };
+
 type Props = {
   visible: boolean;
   onClose: () => void;
@@ -52,6 +55,8 @@ export function PublicProfileModal({
   const [joinDate, setJoinDate] = useState<string | null>(null);
   const [publicSpots, setPublicSpots] = useState<Spot[]>([]);
   const [publicReviews, setPublicReviews] = useState<PublicReview[]>([]);
+  const [publicTricks, setPublicTricks] = useState<PublicTrick[]>([]);
+  const [publicSessions, setPublicSessions] = useState<PublicSession[]>([]);
   const [activeTab, setActiveTab] = useState<'spots' | 'reviews'>('spots');
   const [loading, setLoading] = useState(false);
 
@@ -81,7 +86,7 @@ export function PublicProfileModal({
     if (!visible || !userId) return;
     async function load() {
       setLoading(true);
-      const [profileRes, spotsRes, reviewsRes, status] = await Promise.all([
+      const [profileRes, spotsRes, reviewsRes, tricksRes, sessionsRes, status] = await Promise.all([
         supabase
           .from('profiles')
           .select('avatar_url, username, created_at, first_name, last_name, badge, is_pro')
@@ -99,6 +104,20 @@ export function PublicProfileModal({
           .select('id, spot_id, rating, comment, created_at, spots(name)')
           .eq('user_id', userId!)
           .order('created_at', { ascending: false }),
+        supabase
+          .from('trick_logs')
+          .select('id, trick_name, logged_at, spots(name)')
+          .eq('user_id', userId!)
+          .order('logged_at', { ascending: false })
+          .limit(8),
+        supabase
+          .from('live_sessions')
+          .select('id, title, ended_at, live_session_stops(name)')
+          .eq('user_id', userId!)
+          .in('visibility', ['friends', 'public'])
+          .not('ended_at', 'is', null)
+          .order('ended_at', { ascending: false })
+          .limit(5),
         getFriendshipStatus(userId!),
       ]);
       setAvatarUrl(profileRes.data?.avatar_url ?? null);
@@ -119,6 +138,22 @@ export function PublicProfileModal({
           created_at: r.created_at,
         }))
       );
+      setPublicTricks((tricksRes.data ?? []).map((t: any) => ({
+        id: t.id,
+        trick_name: t.trick_name,
+        logged_at: t.logged_at,
+        spot_name: t.spots?.name ?? 'Unknown spot',
+      })));
+      setPublicSessions((sessionsRes.data ?? []).map((s: any) => {
+        const stops = (s.live_session_stops ?? []) as { name: string }[];
+        return {
+          id: s.id,
+          title: s.title,
+          ended_at: s.ended_at,
+          stop_count: stops.length,
+          stop_names: stops.slice(0, 3).map((stop) => stop.name),
+        };
+      }));
       setFriendshipStatus(status);
       setLoading(false);
     }
@@ -472,6 +507,19 @@ export function PublicProfileModal({
                   flex: 1,
                   alignItems: 'center',
                   paddingVertical: 16,
+                  borderRightWidth: 1,
+                  borderColor: c.border,
+                }}>
+                <Text style={{ fontSize: 22, fontWeight: '700', color: c.text }}>
+                  {sessionMedia.media.length}
+                </Text>
+                <Text style={{ fontSize: 12, color: c.subtext, marginTop: 2 }}>Media</Text>
+              </View>
+              <View
+                style={{
+                  flex: 1,
+                  alignItems: 'center',
+                  paddingVertical: 16,
                 }}>
                 <Text
                   style={{
@@ -496,11 +544,47 @@ export function PublicProfileModal({
               <View style={{ marginHorizontal: 16, marginBottom: 20 }}>
                 <SessionMediaStrip
                   media={sessionMedia.media}
-                  title="Sessions"
+                  title="Media"
                   onPressMedia={(m) =>
                     setViewerMedia({ id: m.id, url: m.url, media_type: m.media_type })
                   }
                 />
+              </View>
+            ) : null}
+
+            {publicTricks.length > 0 || publicSessions.length > 0 ? (
+              <View style={{ marginHorizontal: 16, marginBottom: 20, gap: 10 }}>
+                {publicTricks.length > 0 ? (
+                  <View style={{ backgroundColor: c.tagBg, borderRadius: 14, padding: 14 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 8 }}>
+                      <Ionicons name="flash-outline" size={17} color="#FF9500" />
+                      <Text style={{ color: c.text, fontWeight: '700', fontSize: 14 }}>Recent tricks</Text>
+                    </View>
+                    {publicTricks.slice(0, 3).map((trick) => (
+                      <View key={trick.id} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 5 }}>
+                        <Text style={{ color: '#FF9500', fontWeight: '700', flex: 1 }}>{trick.trick_name}</Text>
+                        <Text style={{ color: c.subtext, fontSize: 12 }} numberOfLines={1}>{trick.spot_name}</Text>
+                      </View>
+                    ))}
+                  </View>
+                ) : null}
+                {publicSessions.length > 0 ? (
+                  <View style={{ backgroundColor: c.tagBg, borderRadius: 14, padding: 14 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 8 }}>
+                      <Ionicons name="map-outline" size={17} color={c.accent} />
+                      <Text style={{ color: c.text, fontWeight: '700', fontSize: 14 }}>Recent sessions</Text>
+                    </View>
+                    {publicSessions.slice(0, 2).map((skateSession) => (
+                      <View key={skateSession.id} style={{ paddingVertical: 5 }}>
+                        <Text style={{ color: c.text, fontWeight: '600' }} numberOfLines={1}>{skateSession.title}</Text>
+                        <Text style={{ color: c.subtext, fontSize: 12, marginTop: 2 }} numberOfLines={1}>
+                          {skateSession.stop_count} {skateSession.stop_count === 1 ? 'stop' : 'stops'}
+                          {skateSession.stop_names.length > 0 ? ` · ${skateSession.stop_names.join(' · ')}` : ''}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                ) : null}
               </View>
             ) : null}
 
