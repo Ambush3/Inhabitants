@@ -17,6 +17,7 @@ import { AppNotification } from '@/src/hooks/useNotifications';
 import { FeedItem } from '@/src/hooks/useSocialFeed';
 import { SkateEvent } from '@/src/hooks/useEvents';
 import { TrickLog } from '@/src/hooks/useTrickLog';
+import { SessionMediaViewerModal, ViewerMedia } from '@/src/components/SessionMediaViewerModal';
 
 import { supabase } from '@/src/libs/supabase';
 
@@ -182,6 +183,7 @@ export function ExplorePanel({
   const insets = useSafeAreaInsets();
   const { theme, darkMode } = useTheme();
   const c = theme.colors;
+  const [feedMediaViewer, setFeedMediaViewer] = useState<ViewerMedia[] | null>(null);
 
   const MINE_FILTER_THRESHOLD = 6;
   const [mySpotsSearch, setMySpotsSearch] = useState('');
@@ -1540,111 +1542,157 @@ export function ExplorePanel({
                     No friend activity yet. Add friends to see what they create and review.
                   </Text>
                 ) : (
-                  feedItems.map((item) => (
-                    <Pressable
-                      key={item.id}
-                      onPress={() => onSelectFeedSpot(item.spot)}
-                      style={{
-                        flexDirection: 'row',
-                        gap: 10,
-                        paddingVertical: 12,
-                        borderBottomWidth: 1,
-                        borderColor: c.border,
-                      }}>
-                      {item.actor.avatar_url ? (
-                        <Image
-                          source={{ uri: item.actor.avatar_url }}
-                          style={{
-                            width: 36,
-                            height: 36,
-                            borderRadius: 18,
-                            backgroundColor: c.tagBg,
-                          }}
-                        />
-                      ) : (
-                        <View
-                          style={{
-                            width: 36,
-                            height: 36,
-                            borderRadius: 18,
-                            backgroundColor: c.tagBg,
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                          }}>
-                          <Ionicons name="person-outline" size={18} color={c.subtext} />
-                        </View>
-                      )}
-                      <View style={{ flex: 1 }}>
-                        <Text style={{ fontSize: 13, color: c.text }}>
-                          <Text style={{ fontWeight: '700' }}>
-                            @{item.actor.username ?? 'someone'}
-                          </Text>
-                          {' '}
-                          {item.kind === 'spot_created'
-                            ? 'created'
-                            : item.kind === 'check_in'
-                              ? 'checked in at'
-                              : item.kind === 'crew_spot_added'
-                                ? 'added'
-                                : 'rated'}{' '}
-                          <Text style={{ fontWeight: '600' }}>{`"${item.spot.name}"`}</Text>
-                          {item.kind === 'crew_spot_added' ? (
-                            <Text>
-                              {' '}
-                              to{' '}
-                              <Text style={{ fontWeight: '600' }}>{item.crew_name}</Text>
-                            </Text>
-                          ) : null}
-                        </Text>
-                        {item.kind === 'review_left' ? (
-                          <Text
+                  feedItems.map((item) => {
+                    const spot = item.spot;
+                    const isMedia = item.kind === 'media_uploaded';
+                    const isSession = item.kind === 'session_completed';
+                    const canOpenSpot = !!spot;
+                    const activityIcon = isMedia
+                      ? 'camera-outline'
+                      : item.kind === 'trick_logged'
+                        ? 'flash-outline'
+                        : isSession
+                          ? 'map-outline'
+                          : item.kind === 'check_in'
+                            ? 'location-outline'
+                            : item.kind === 'review_left'
+                              ? 'star-outline'
+                              : 'add-circle-outline';
+
+                    return (
+                      <Pressable
+                        key={item.id}
+                        disabled={!canOpenSpot && !isMedia}
+                        onPress={() => {
+                          if (isMedia) {
+                            setFeedMediaViewer([
+                              {
+                                id: item.media.id,
+                                url: item.media.url,
+                                thumbnail_url: item.media.thumbnail_url,
+                                media_type: item.media.media_type,
+                              },
+                            ]);
+                          } else if (spot) {
+                            onSelectFeedSpot(spot);
+                          }
+                        }}
+                        style={({ pressed }) => ({
+                          flexDirection: 'row',
+                          gap: 10,
+                          paddingVertical: 14,
+                          borderBottomWidth: 1,
+                          borderColor: c.border,
+                          opacity: pressed ? 0.7 : 1,
+                        })}>
+                        {item.actor.avatar_url ? (
+                          <Image
+                            source={{ uri: item.actor.avatar_url }}
                             style={{
-                              fontSize: 13,
-                              color: '#F5A623',
-                              letterSpacing: 1,
-                              marginTop: 2,
-                            }}>
-                            {'★'.repeat(item.rating)}
-                            {'☆'.repeat(5 - item.rating)}
-                          </Text>
-                        ) : null}
-                        {item.kind === 'review_left' && item.comment ? (
-                          <Text
-                            style={{ fontSize: 12, color: c.subtext, marginTop: 2 }}
-                            numberOfLines={2}>
-                            {item.comment}
-                          </Text>
-                        ) : null}
-                        {item.kind === 'check_in' ? (
+                              width: 40,
+                              height: 40,
+                              borderRadius: 20,
+                              backgroundColor: c.tagBg,
+                            }}
+                          />
+                        ) : (
                           <View
                             style={{
-                              flexDirection: 'row',
+                              width: 40,
+                              height: 40,
+                              borderRadius: 20,
+                              backgroundColor: c.tagBg,
                               alignItems: 'center',
-                              gap: 4,
-                              marginTop: 3,
+                              justifyContent: 'center',
                             }}>
-                            <Ionicons name="location-outline" size={11} color="#34C759" />
-                            <Text
-                              style={{
-                                fontSize: 11,
-                                color: '#34C759',
-                                fontWeight: '600',
-                              }}>
-                              Checked in
-                            </Text>
+                            <Ionicons name="person-outline" size={19} color={c.subtext} />
                           </View>
-                        ) : null}
-                        <Text
-                          style={{
-                            fontSize: 11,
-                            color: c.subtext,
-                            marginTop: 4,
-                          }}>
-                          {timeAgo(item.created_at)}
-                        </Text>
-                      </View>
-                    </Pressable>
-                  ))
+                        )}
+                        <View style={{ flex: 1, gap: 5 }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                            <Text style={{ fontSize: 13, color: c.text, flex: 1 }}>
+                              <Text style={{ fontWeight: '700' }}>
+                                @{item.actor.username ?? 'someone'}
+                              </Text>{' '}
+                              {item.kind === 'spot_created'
+                                ? 'created a spot'
+                                : item.kind === 'check_in'
+                                  ? 'checked in'
+                                  : item.kind === 'crew_spot_added'
+                                    ? 'added a spot'
+                                    : item.kind === 'review_left'
+                                      ? 'rated a spot'
+                                      : item.kind === 'media_uploaded'
+                                        ? 'shared media'
+                                        : item.kind === 'trick_logged'
+                                          ? 'logged a trick'
+                                          : 'completed a session'}
+                            </Text>
+                            <Ionicons name={activityIcon as any} size={16} color={c.accent} />
+                          </View>
+
+                          {item.kind === 'session_completed' ? (
+                            <View style={{ backgroundColor: c.tagBg, borderRadius: 10, padding: 10, gap: 3 }}>
+                              <Text style={{ fontSize: 14, fontWeight: '700', color: c.text }} numberOfLines={1}>
+                                {item.title}
+                              </Text>
+                              <Text style={{ fontSize: 12, color: c.subtext }}>
+                                {item.stop_count} {item.stop_count === 1 ? 'stop' : 'stops'}
+                                {item.stop_names.length > 0 ? ` · ${item.stop_names.join(' · ')}` : ''}
+                              </Text>
+                            </View>
+                          ) : (
+                            <Text style={{ fontSize: 14, fontWeight: '600', color: c.text }} numberOfLines={1}>
+                              {spot ? spot.name : 'Unknown spot'}
+                            </Text>
+                          )}
+
+                          {item.kind === 'media_uploaded' ? (
+                            <View style={{ borderRadius: 10, overflow: 'hidden', backgroundColor: c.tagBg }}>
+                              <Image
+                                source={{ uri: item.media.media_type === 'video' ? item.media.thumbnail_url ?? item.media.url : item.media.url }}
+                                style={{ width: '100%', height: 150 }}
+                                contentFit="cover"
+                              />
+                              {item.media.media_type === 'video' ? (
+                                <View style={{ position: 'absolute', top: 62, left: '50%', marginLeft: -18, backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 18, padding: 7 }}>
+                                  <Ionicons name="play" size={22} color="#fff" />
+                                </View>
+                              ) : null}
+                            </View>
+                          ) : null}
+
+                          {item.kind === 'trick_logged' ? (
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                              <Ionicons name="flash" size={13} color="#FF9500" />
+                              <Text style={{ fontSize: 12, color: '#FF9500', fontWeight: '700' }}>
+                                {item.trick_name}
+                              </Text>
+                            </View>
+                          ) : null}
+                          {item.kind === 'review_left' ? (
+                            <Text style={{ fontSize: 13, color: '#F5A623', letterSpacing: 1 }}>
+                              {'★'.repeat(item.rating)}{'☆'.repeat(5 - item.rating)}
+                            </Text>
+                          ) : null}
+                          {item.kind === 'review_left' && item.comment ? (
+                            <Text style={{ fontSize: 12, color: c.subtext }} numberOfLines={2}>
+                              {item.comment}
+                            </Text>
+                          ) : null}
+                          {item.kind === 'crew_spot_added' ? (
+                            <Text style={{ fontSize: 12, color: c.subtext }}>
+                              Added to {item.crew_name}
+                            </Text>
+                          ) : null}
+                          <Text style={{ fontSize: 11, color: c.subtext }}>
+                            {timeAgo(item.created_at)}
+                          </Text>
+                        </View>
+                        {canOpenSpot || isMedia ? <Ionicons name="chevron-forward" size={16} color={c.subtext} /> : null}
+                      </Pressable>
+                    );
+                  })
                 )}
               </View>
             ) : null}
@@ -1996,6 +2044,12 @@ export function ExplorePanel({
           </ThemeBackdrop>
         </Pressable>
       </Pressable>
+      <SessionMediaViewerModal
+        visible={feedMediaViewer !== null}
+        onClose={() => setFeedMediaViewer(null)}
+        mediaList={feedMediaViewer ?? []}
+        currentUserId={session?.user.id ?? null}
+      />
       {visible ? <AlertHost /> : null}
     </Modal>
   );
