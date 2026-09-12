@@ -36,7 +36,7 @@ import { useInvite } from '@/src/hooks/useInvite';
 import { moderateText } from '@/src/libs/moderator/textModerator';
 import { useStreak } from '@/src/hooks/useStreak';
 import { StreakCard } from '@/src/components/StreakCard';
-import { PassportBadges } from '@/src/components/profile/PassportBadges';
+import { PassportBadges, ProfileBadgeSummary } from '@/src/components/profile/PassportBadges';
 import { WeeklyRecapCard } from '@/src/components/profile/WeeklyRecapCard';
 import { SessionMediaViewerModal, ViewerMedia } from '@/src/components/SessionMediaViewerModal';
 import { formatLiveSessionDuration, LiveSession } from '@/src/hooks/useLiveSession';
@@ -537,11 +537,6 @@ export function ProfileModal({
                 {isPro ? <CrownIcon size={16} /> : null}
               </View>
             ) : null}
-            {joinDate ? (
-              <Text style={{ fontSize: 13, color: c.subtext }}>
-                Joined {new Date(joinDate).toLocaleDateString([], { month: 'long', year: 'numeric' })}
-              </Text>
-            ) : null}
             {badge ? (
               <View
                 style={{
@@ -581,6 +576,18 @@ export function ProfileModal({
                 </Text>
               </View>
             ) : null}
+            {joinDate ? (
+              <Text style={{ fontSize: 13, color: c.subtext, marginTop: 6 }}>
+                Joined {new Date(joinDate).toLocaleDateString([], { month: 'long', year: 'numeric' })}
+              </Text>
+            ) : null}
+            <View style={{ marginTop: 16 }}>
+              <ProfileBadgeSummary
+                longestStreak={activityData.longestStreak}
+                parksSkated={passportParkEntries.length}
+                spotsVisited={passportSpotEntries.length}
+              />
+            </View>
           </View>
 
           {/* ── Pending friend requests ── */}

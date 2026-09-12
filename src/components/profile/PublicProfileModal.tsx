@@ -13,6 +13,7 @@ import { useCheckInMedia } from '@/src/hooks/useCheckInMedia';
 import { SessionMediaStrip } from '@/src/components/SessionMediaStrip';
 import { CrownIcon } from '@/src/components/icons/CrownIcon';
 import { SessionMediaViewerModal, ViewerMedia } from '@/src/components/SessionMediaViewerModal';
+import { ProfileBadgeSummary, longestStreakFromDates } from '@/src/components/profile/PassportBadges';
 
 type PublicReview = {
   id: string;
@@ -57,7 +58,8 @@ export function PublicProfileModal({
   const [publicReviews, setPublicReviews] = useState<PublicReview[]>([]);
   const [publicTricks, setPublicTricks] = useState<PublicTrick[]>([]);
   const [publicSessions, setPublicSessions] = useState<PublicSession[]>([]);
-  const [activeTab, setActiveTab] = useState<'spots' | 'reviews'>('spots');
+  const [publicBadgeStats, setPublicBadgeStats] = useState({ longestStreak: 0, parksSkated: 0, spotsVisited: 0 });
+  const [activeTab, setActiveTab] = useState<'overview' | 'spots' | 'reviews'>('overview');
   const [loading, setLoading] = useState(false);
 
   const { getFriendshipStatus, sendFriendRequest, acceptFriendRequest, removeFriend } = useFriendships();
@@ -75,18 +77,11 @@ export function PublicProfileModal({
     setTimeout(() => setCooldown(false), 3000);
   }
 
-  function getFriendButtonLabel(): string {
-    if (friendshipStatus === 'accepted') return 'Friends';
-    if (friendshipStatus === 'pending_sent') return 'Request Sent';
-    if (friendshipStatus === 'pending_received') return 'Accept Request';
-    return 'Add Friend';
-  }
-
   useEffect(() => {
     if (!visible || !userId) return;
     async function load() {
       setLoading(true);
-      const [profileRes, spotsRes, reviewsRes, tricksRes, sessionsRes, status] = await Promise.all([
+      const [profileRes, spotsRes, reviewsRes, tricksRes, sessionsRes, checkInsRes, placeCheckInsRes, status] = await Promise.all([
         supabase
           .from('profiles')
           .select('avatar_url, username, created_at, first_name, last_name, badge, is_pro')
@@ -118,6 +113,15 @@ export function PublicProfileModal({
           .not('ended_at', 'is', null)
           .order('ended_at', { ascending: false })
           .limit(5),
+        supabase
+          .from('check_ins')
+          .select('spot_id, checked_in_at')
+          .eq('user_id', userId!)
+          .eq('is_private', false),
+        supabase
+          .from('place_check_ins')
+          .select('place_id, checked_in_at')
+          .eq('user_id', userId!),
         getFriendshipStatus(userId!),
       ]);
       setAvatarUrl(profileRes.data?.avatar_url ?? null);
@@ -154,6 +158,16 @@ export function PublicProfileModal({
           stop_names: stops.slice(0, 3).map((stop) => stop.name),
         };
       }));
+      const visibleCheckIns = (checkInsRes.data ?? []) as { spot_id: string; checked_in_at: string }[];
+      const visiblePlaceCheckIns = (placeCheckInsRes.data ?? []) as { place_id: string; checked_in_at: string }[];
+      setPublicBadgeStats({
+        longestStreak: longestStreakFromDates([
+          ...visibleCheckIns.map((row) => row.checked_in_at),
+          ...visiblePlaceCheckIns.map((row) => row.checked_in_at),
+        ]),
+        parksSkated: new Set(visiblePlaceCheckIns.map((row) => row.place_id)).size,
+        spotsVisited: new Set(visibleCheckIns.map((row) => row.spot_id)).size,
+      });
       setFriendshipStatus(status);
       setLoading(false);
     }
@@ -163,11 +177,97 @@ export function PublicProfileModal({
   }, [visible, userId]);
 
   useEffect(() => {
-    if (!visible) setBadge(null);
-  }, [visible]);
+    if (!visible) {
+      setBadge(null);
+      return;
+    }
+    setActiveTab('overview');
+  }, [visible, userId]);
 
   const avgRating =
     publicReviews.length === 0 ? null : publicReviews.reduce((sum, r) => sum + r.rating, 0) / publicReviews.length;
+
+  const handleFriendPress = async () => {
+    if (friendshipLoading || cooldown) return;
+    if (friendshipStatus === 'pending_sent') {
+      showAlert('Cancel friend request?', undefined, [
+        { text: 'Keep', style: 'cancel' },
+        {
+          text: 'Cancel Request',
+          style: 'destructive',
+          onPress: async () => {
+            setFriendshipLoading(true);
+            await removeFriend(userId!);
+            setFriendshipStatus('none');
+            setFriendshipLoading(false);
+            startCooldown();
+            onFriendshipChange?.();
+          },
+        },
+      ]);
+      return;
+    }
+    if (friendshipStatus === 'accepted') {
+      showAlert(
+        'Remove friend?',
+        username ? `Remove @${username} as a friend?` : undefined,
+        [
+          { text: 'Keep', style: 'cancel' },
+          {
+            text: 'Remove',
+            style: 'destructive',
+            onPress: async () => {
+              setFriendshipLoading(true);
+              await removeFriend(userId!);
+              setFriendshipStatus('none');
+              setFriendshipLoading(false);
+              startCooldown();
+              onFriendshipChange?.();
+            },
+          },
+        ]
+      );
+      return;
+    }
+    if (friendshipStatus === 'none') {
+      showAlert(
+        'Add friend?',
+        username ? `Send @${username} a friend request?` : undefined,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Add Friend',
+            onPress: async () => {
+              setFriendshipLoading(true);
+              await sendFriendRequest(userId!);
+              setFriendshipStatus('pending_sent');
+              const { data: { user } } = await supabase.auth.getUser();
+              if (user) {
+                const { data: profile } = await supabase
+                  .from('profiles')
+                  .select('username')
+                  .eq('id', user.id)
+                  .single();
+                await sendFriendRequestNotification(userId!, profile?.username ?? 'Someone');
+              }
+              setFriendshipLoading(false);
+              startCooldown();
+              onFriendshipChange?.();
+            },
+          },
+        ]
+      );
+      return;
+    }
+    setFriendshipLoading(true);
+    if (friendshipStatus === 'pending_received') {
+      await acceptFriendRequest(userId!);
+      setFriendshipStatus('accepted');
+    }
+    setFriendshipLoading(false);
+    startCooldown();
+    onFriendshipChange?.();
+  };
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
@@ -178,6 +278,7 @@ export function PublicProfileModal({
           style={{
             flexDirection: 'row',
             alignItems: 'center',
+            position: 'relative',
             paddingHorizontal: 16,
             paddingVertical: 12,
             borderBottomWidth: 1,
@@ -187,8 +288,11 @@ export function PublicProfileModal({
             <Ionicons name="close" size={24} color={c.text} />
           </Pressable>
           <Text
+            pointerEvents="none"
             style={{
-              flex: 1,
+              position: 'absolute',
+              left: 0,
+              right: 0,
               textAlign: 'center',
               fontSize: 16,
               fontWeight: '700',
@@ -196,7 +300,6 @@ export function PublicProfileModal({
             }}>
             Profile
           </Text>
-          <View style={{ width: 32 }} />
         </View>
 
         {loading ? (
@@ -214,7 +317,41 @@ export function PublicProfileModal({
               style={{
                 alignItems: 'center',
                 paddingVertical: 28,
+                position: 'relative',
               }}>
+              <Pressable
+                disabled={friendshipLoading || cooldown}
+                onPress={handleFriendPress}
+                style={{
+                  position: 'absolute',
+                  top: 12,
+                  right: 16,
+                  minWidth: 72,
+                  alignItems: 'center',
+                  paddingVertical: 7,
+                  paddingHorizontal: 12,
+                  borderRadius: 18,
+                  backgroundColor: friendshipStatus === 'accepted' ? 'rgba(52,199,89,0.12)' : c.accent,
+                  borderWidth: friendshipStatus === 'accepted' ? 1 : 0,
+                  borderColor: '#34C759',
+                }}>
+                <Text
+                  style={{
+                    fontSize: 12,
+                    fontWeight: '700',
+                    color: friendshipStatus === 'accepted' ? '#248A3D' : 'white',
+                  }}>
+                  {friendshipLoading
+                    ? '...'
+                    : friendshipStatus === 'accepted'
+                      ? 'Friends'
+                      : friendshipStatus === 'pending_sent'
+                        ? 'Sent'
+                        : friendshipStatus === 'pending_received'
+                          ? 'Accept'
+                          : 'Add'}
+                </Text>
+              </Pressable>
               {avatarUrl ? (
                 <Image
                   source={{ uri: avatarUrl }}
@@ -263,16 +400,6 @@ export function PublicProfileModal({
                   {isProUser ? <CrownIcon size={16} /> : null}
                 </View>
               ) : null}
-              {joinDate ? (
-                <Text style={{ fontSize: 13, color: c.subtext }}>
-                  Joined{' '}
-                  {new Date(joinDate).toLocaleDateString([], {
-                    month: 'long',
-                    year: 'numeric',
-                  })}
-                </Text>
-              ) : null}
-
               {badge ? (
                 <View
                   style={{
@@ -316,131 +443,19 @@ export function PublicProfileModal({
                   </Text>
                 </View>
               ) : null}
-
-              <Pressable
-                disabled={friendshipLoading || cooldown}
-                onPress={async () => {
-                  if (friendshipLoading || cooldown) return;
-                  if (friendshipStatus === 'pending_sent') {
-                    showAlert('Cancel friend request?', undefined, [
-                      {
-                        text: 'Keep',
-                        style: 'cancel',
-                      },
-                      {
-                        text: 'Cancel Request',
-                        style: 'destructive',
-                        onPress: async () => {
-                          setFriendshipLoading(true);
-                          await removeFriend(userId!);
-                          setFriendshipStatus('none');
-                          setFriendshipLoading(false);
-                          startCooldown();
-                          onFriendshipChange?.();
-                        },
-                      },
-                    ]);
-                    return;
-                  }
-                  if (friendshipStatus === 'accepted') {
-                    showAlert(
-                      'Remove friend?',
-                      username ? `Remove @${username} as a friend?` : undefined,
-                      [
-                        {
-                          text: 'Keep',
-                          style: 'cancel',
-                        },
-                        {
-                          text: 'Remove',
-                          style: 'destructive',
-                          onPress: async () => {
-                            setFriendshipLoading(true);
-                            await removeFriend(userId!);
-                            setFriendshipStatus('none');
-                            setFriendshipLoading(false);
-                            startCooldown();
-                            onFriendshipChange?.();
-                          },
-                        },
-                      ]
-                    );
-                    return;
-                  }
-                  if (friendshipStatus === 'none') {
-                    showAlert(
-                      'Add friend?',
-                      username ? `Send @${username} a friend request?` : undefined,
-                      [
-                        {
-                          text: 'Cancel',
-                          style: 'cancel',
-                        },
-                        {
-                          text: 'Add Friend',
-                          onPress: async () => {
-                            setFriendshipLoading(true);
-                            await sendFriendRequest(userId!);
-                            setFriendshipStatus('pending_sent');
-                            const {
-                              data: { user },
-                            } = await supabase.auth.getUser();
-                            if (user) {
-                              const { data: profile } = await supabase
-                                .from('profiles')
-                                .select('username')
-                                .eq('id', user.id)
-                                .single();
-                              await sendFriendRequestNotification(
-                                userId!,
-                                profile?.username ?? 'Someone'
-                              );
-                            }
-                            setFriendshipLoading(false);
-                            startCooldown();
-                            onFriendshipChange?.();
-                          },
-                        },
-                      ]
-                    );
-                    return;
-                  }
-                  setFriendshipLoading(true);
-                  if (friendshipStatus === 'pending_received') {
-                    await acceptFriendRequest(userId!);
-                    setFriendshipStatus('accepted');
-                  }
-                  setFriendshipLoading(false);
-                  startCooldown();
-                  onFriendshipChange?.();
-                }}
-                style={{
-                  marginTop: 14,
-                  paddingHorizontal: 24,
-                  paddingVertical: 8,
-                  borderRadius: 20,
-                  alignSelf: 'center',
-                  backgroundColor:
-                    friendshipStatus === 'accepted'
-                      ? c.tagBg
-                      : friendshipStatus === 'pending_sent'
-                        ? c.tagBg
-                        : c.accent,
-                  borderWidth: friendshipStatus === 'accepted' ? 1 : 0,
-                  borderColor: c.border,
-                }}>
-                <Text
-                  style={{
-                    fontWeight: '600',
-                    fontSize: 14,
-                    color:
-                      friendshipStatus === 'accepted' || friendshipStatus === 'pending_sent'
-                        ? c.text
-                        : 'white',
-                  }}>
-                  {friendshipLoading ? '...' : getFriendButtonLabel()}
+              {joinDate ? (
+                <Text style={{ fontSize: 13, color: c.subtext, marginTop: 8 }}>
+                  Joined{' '}
+                  {new Date(joinDate).toLocaleDateString([], {
+                    month: 'long',
+                    year: 'numeric',
+                  })}
                 </Text>
-              </Pressable>
+              ) : null}
+              <View style={{ marginTop: 16 }}>
+                <ProfileBadgeSummary {...publicBadgeStats} showLabel={false} />
+              </View>
+
             </View>
 
             <View
@@ -540,7 +555,41 @@ export function PublicProfileModal({
               </View>
             </View>
 
-            {sessionMedia.media.length > 0 ? (
+            <View
+              style={{
+                flexDirection: 'row',
+                marginHorizontal: 16,
+                marginBottom: 16,
+                borderRadius: 8,
+                backgroundColor: c.tagBg,
+                padding: 4,
+              }}>
+              {(['overview', 'spots', 'reviews'] as const).map((tab) => (
+                <Pressable
+                  key={tab}
+                  onPress={() => setActiveTab(tab)}
+                  style={{
+                    flex: 1,
+                    paddingVertical: 8,
+                    borderRadius: 6,
+                    alignItems: 'center',
+                    backgroundColor: activeTab === tab ? c.surface : 'transparent',
+                  }}>
+                  <Text
+                    style={{
+                      fontSize: 13,
+                      fontWeight: '600',
+                      color: activeTab === tab ? c.text : c.subtext,
+                    }}>
+                    {tab === 'overview' ? 'Overview' : tab === 'spots' ? 'Spots' : 'Ratings'}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+
+            {activeTab === 'overview' ? (
+              <>
+                {sessionMedia.media.length > 0 ? (
               <View style={{ marginHorizontal: 16, marginBottom: 20 }}>
                 <SessionMediaStrip
                   media={sessionMedia.media}
@@ -552,7 +601,7 @@ export function PublicProfileModal({
               </View>
             ) : null}
 
-            {publicTricks.length > 0 || publicSessions.length > 0 ? (
+                {publicTricks.length > 0 || publicSessions.length > 0 ? (
               <View style={{ marginHorizontal: 16, marginBottom: 20, gap: 10 }}>
                 {publicTricks.length > 0 ? (
                   <View style={{ backgroundColor: c.tagBg, borderRadius: 14, padding: 14 }}>
@@ -586,39 +635,13 @@ export function PublicProfileModal({
                   </View>
                 ) : null}
               </View>
-            ) : null}
-
-            <View
-              style={{
-                flexDirection: 'row',
-                marginHorizontal: 16,
-                marginBottom: 16,
-                borderRadius: 8,
-                backgroundColor: c.tagBg,
-                padding: 4,
-              }}>
-              {(['spots', 'reviews'] as const).map((tab) => (
-                <Pressable
-                  key={tab}
-                  onPress={() => setActiveTab(tab)}
-                  style={{
-                    flex: 1,
-                    paddingVertical: 8,
-                    borderRadius: 6,
-                    alignItems: 'center',
-                    backgroundColor: activeTab === tab ? c.surface : 'transparent',
-                  }}>
-                  <Text
-                    style={{
-                      fontSize: 13,
-                      fontWeight: '600',
-                      color: activeTab === tab ? c.text : c.subtext,
-                    }}>
-                    {tab === 'spots' ? 'Spots' : 'Ratings'}
+                ) : (
+                  <Text style={{ color: c.subtext, textAlign: 'center', marginHorizontal: 16, marginBottom: 20 }}>
+                    No recent activity yet.
                   </Text>
-                </Pressable>
-              ))}
-            </View>
+                )}
+              </>
+            ) : null}
 
             <View style={{ paddingHorizontal: 16, paddingBottom: 32 }}>
               {activeTab === 'spots' ? (
@@ -672,7 +695,7 @@ export function PublicProfileModal({
                     </Pressable>
                   ))
                 )
-              ) : publicReviews.length === 0 ? (
+              ) : activeTab === 'reviews' && publicReviews.length === 0 ? (
                 <Text
                   style={{
                     color: c.subtext,
@@ -682,7 +705,7 @@ export function PublicProfileModal({
                   }}>
                   No ratings yet.
                 </Text>
-              ) : (
+              ) : activeTab === 'reviews' ? (
                 publicReviews.map((r) => (
                   <Pressable
                     key={r.id}
@@ -740,7 +763,7 @@ export function PublicProfileModal({
                     </Text>
                   </Pressable>
                 ))
-              )}
+              ) : null}
             </View>
           </ScrollView>
         )}
