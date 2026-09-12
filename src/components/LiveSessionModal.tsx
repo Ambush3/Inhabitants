@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { showAlert, AlertHost } from '@/src/components/ui/ThemedAlert';
 import { Modal, Pressable, ScrollView, Share, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/src/context/ThemeContext';
@@ -115,7 +116,22 @@ export function LiveSessionModal({
                 <Ionicons name="camera-outline" size={20} color={c.accent} />
               </Pressable>
             ) : null}
-            <Pressable onPress={() => onRemoveStop(stop.id)} hitSlop={8}>
+            <Pressable
+              onPress={() =>
+                showAlert(
+                  'Remove this stop?',
+                  `Are you sure you want to remove "${stop.name}" from this live session?`,
+                  [
+                    { text: 'Keep Stop', style: 'cancel' },
+                    {
+                      text: 'Remove Stop',
+                      style: 'destructive',
+                      onPress: () => onRemoveStop(stop.id),
+                    },
+                  ]
+                )
+              }
+              hitSlop={8}>
               <Ionicons name="close-circle-outline" size={21} color={c.subtext} />
             </Pressable>
           </View>
@@ -126,6 +142,7 @@ export function LiveSessionModal({
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      {visible ? <AlertHost /> : null}
       <View style={{ flex: 1 }}>
         <Pressable onPress={onClose} style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)' }} />
         <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, maxHeight: '88%', backgroundColor: c.surface, borderTopLeftRadius: 22, borderTopRightRadius: 22, paddingTop: 20, paddingBottom: 28 }}>
