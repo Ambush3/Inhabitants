@@ -1,8 +1,18 @@
 import React from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, Modal, Pressable } from 'react-native';
 import { useTheme } from '@/src/context/ThemeContext';
 
 type Tier = { threshold: number; label: string; icon: string };
+type BadgeKind = 'streak' | 'parks' | 'spots';
+type BadgeDetail = {
+  tier: Tier;
+  kind: BadgeKind;
+  value: number;
+  metricLabel: string;
+  description: string;
+  next: Tier | null;
+  earned: boolean;
+};
 
 const STREAK_TIERS: Tier[] = [
   { threshold: 100, label: 'Century', icon: '🔥' },
@@ -31,6 +41,72 @@ function highest(tiers: Tier[], value: number): Tier | null {
 
 function nextLocked(tiers: Tier[], value: number): Tier | null {
   return [...tiers].reverse().find((t) => value < t.threshold) ?? null;
+}
+
+function badgeDetail(kind: BadgeKind, tier: Tier, value: number): BadgeDetail {
+  const tiers = kind === 'streak' ? STREAK_TIERS : kind === 'parks' ? PARK_TIERS : SPOT_TIERS;
+  const higherTiers = tiers.filter((candidate) => candidate.threshold > tier.threshold);
+  const earned = value >= tier.threshold;
+  return {
+    tier,
+    kind,
+    value,
+    metricLabel: kind === 'streak' ? 'Best streak' : kind === 'parks' ? 'Parks visited' : 'Spots visited',
+    description:
+      kind === 'streak'
+        ? 'Earned by checking in on consecutive days.'
+        : kind === 'parks'
+          ? 'Earned by visiting unique parks.'
+          : 'Earned by checking into unique public spots.',
+    next: earned ? (higherTiers.length > 0 ? higherTiers[higherTiers.length - 1] : null) : tier,
+    earned,
+  };
+}
+
+function BadgeDetailsModal({ detail, onClose }: { detail: BadgeDetail | null; onClose: () => void }) {
+  const { theme } = useTheme();
+  const c = theme.colors;
+  if (!detail) return null;
+  const progressTarget = detail.next?.threshold ?? detail.tier.threshold;
+  const progress = Math.min(detail.value / progressTarget, 1);
+
+  return (
+    <Modal visible={detail !== null} transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable
+        onPress={onClose}
+        style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'flex-end' }}>
+        <Pressable
+          onPress={(event) => event.stopPropagation()}
+          style={{ backgroundColor: c.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24 }}>
+          <View style={{ alignItems: 'center', marginBottom: 18 }}>
+            <Text style={{ fontSize: 34 }}>{detail.tier.icon}</Text>
+            <Text style={{ color: c.text, fontSize: 22, fontWeight: '800', marginTop: 6 }}>{detail.tier.label}</Text>
+            <Text style={{ color: c.subtext, textAlign: 'center', marginTop: 6 }}>{detail.description}</Text>
+          </View>
+          <View style={{ backgroundColor: c.tagBg, borderRadius: 14, padding: 14 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+              <Text style={{ color: c.subtext, fontWeight: '600' }}>{detail.metricLabel}</Text>
+              <Text style={{ color: c.text, fontWeight: '800' }}>{detail.value}</Text>
+            </View>
+            <View style={{ height: 8, borderRadius: 4, backgroundColor: c.border, overflow: 'hidden' }}>
+              <View style={{ width: `${progress * 100}%`, height: '100%', backgroundColor: c.accent }} />
+            </View>
+          </View>
+          {detail.next ? (
+            <Text style={{ color: c.subtext, marginTop: 14, textAlign: 'center' }}>
+              {detail.earned ? 'Next' : 'Progress'}:{' '}
+              <Text style={{ color: c.text, fontWeight: '700' }}>{detail.next.label}</Text> at {detail.next.threshold}
+            </Text>
+          ) : (
+            <Text style={{ color: c.subtext, marginTop: 14, textAlign: 'center' }}>Highest badge in this category</Text>
+          )}
+          <Pressable onPress={onClose} style={{ marginTop: 20, alignItems: 'center', paddingVertical: 12 }}>
+            <Text style={{ color: c.accent, fontSize: 16, fontWeight: '700' }}>Done</Text>
+          </Pressable>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
 }
 
 export function longestStreakFromDates(dates: string[]): number {
@@ -64,6 +140,7 @@ export function ProfileBadgeSummary({
 }) {
   const { theme } = useTheme();
   const c = theme.colors;
+  const [selectedBadge, setSelectedBadge] = React.useState<BadgeDetail | null>(null);
   const earned = [
     highest(STREAK_TIERS, longestStreak),
     highest(PARK_TIERS, parksSkated),
@@ -80,12 +157,13 @@ export function ProfileBadgeSummary({
       ) : null}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 6 }}>
         {earned.map((badge) => (
-          <View key={badge.label} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: c.tagBg, borderRadius: 16, paddingHorizontal: 9, paddingVertical: 5 }}>
+          <Pressable key={badge.label} onPress={() => setSelectedBadge(badgeDetail(badge.label.includes('Streak') || badge.label.includes('Warrior') || badge.label.includes('Strong') || badge.label === 'Century' ? 'streak' : badge.label.includes('Park') ? 'parks' : 'spots', badge, badge.label.includes('Streak') ? longestStreak : badge.label.includes('Park') ? parksSkated : spotsVisited))} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: c.tagBg, borderRadius: 16, paddingHorizontal: 9, paddingVertical: 5 }}>
             <Text style={{ fontSize: 13 }}>{badge.icon}</Text>
             <Text style={{ color: c.text, fontSize: 11, fontWeight: '700' }}>{badge.label}</Text>
-          </View>
+          </Pressable>
         ))}
       </View>
+      <BadgeDetailsModal detail={selectedBadge} onClose={() => setSelectedBadge(null)} />
     </View>
   );
 }
@@ -101,6 +179,7 @@ export function PassportBadges({
 }) {
   const { theme } = useTheme();
   const c = theme.colors;
+  const [selectedBadge, setSelectedBadge] = React.useState<BadgeDetail | null>(null);
 
   const earned = [
     highest(STREAK_TIERS, longestStreak),
@@ -129,8 +208,9 @@ export function PassportBadges({
       </Text>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
         {earned.map((t) => (
-          <View
+          <Pressable
             key={t.label}
+            onPress={() => setSelectedBadge(badgeDetail(t.label.includes('Streak') || t.label.includes('Warrior') || t.label.includes('Strong') || t.label === 'Century' ? 'streak' : t.label.includes('Park') ? 'parks' : 'spots', t, t.label.includes('Streak') ? longestStreak : t.label.includes('Park') ? parksSkated : spotsVisited))}
             style={{
               flexDirection: 'row',
               alignItems: 'center',
@@ -142,11 +222,12 @@ export function PassportBadges({
             }}>
             <Text style={{ fontSize: 14 }}>{t.icon}</Text>
             <Text style={{ fontSize: 13, fontWeight: '700', color: c.text }}>{t.label}</Text>
-          </View>
+          </Pressable>
         ))}
         {locked.map(({ tier, value }) => (
-          <View
+          <Pressable
             key={`locked-${tier.label}`}
+            onPress={() => setSelectedBadge(badgeDetail(tier.label.includes('Streak') || tier.label.includes('Warrior') || tier.label.includes('Strong') || tier.label === 'Century' ? 'streak' : tier.label.includes('Park') ? 'parks' : 'spots', tier, value))}
             style={{
               flexDirection: 'row',
               alignItems: 'center',
@@ -164,9 +245,10 @@ export function PassportBadges({
             <Text style={{ fontSize: 11, fontWeight: '600', color: c.subtext }}>
               {value}/{tier.threshold}
             </Text>
-          </View>
+          </Pressable>
         ))}
       </View>
+      <BadgeDetailsModal detail={selectedBadge} onClose={() => setSelectedBadge(null)} />
     </View>
   );
 }
