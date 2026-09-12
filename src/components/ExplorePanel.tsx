@@ -31,86 +31,6 @@ type PlaceFavorite = {
   lng: number;
 };
 
-const PREVIEW_NOTIFICATIONS: AppNotification[] = [
-  {
-    id: 'preview-media-comment',
-    type: 'media_comment',
-    actor_id: 'preview-1',
-    actor_username: 'skate_friend',
-    spot_id: null,
-    spot_name: null,
-    media_id: null,
-    read: false,
-    created_at: new Date(Date.now() - 2 * 60 * 1000).toISOString(),
-  },
-  {
-    id: 'preview-media-like',
-    type: 'media_like',
-    actor_id: 'preview-2',
-    actor_username: 'street_local',
-    spot_id: null,
-    spot_name: null,
-    media_id: null,
-    read: false,
-    created_at: new Date(Date.now() - 12 * 60 * 1000).toISOString(),
-  },
-  {
-    id: 'preview-review',
-    type: 'review',
-    actor_id: 'preview-3',
-    actor_username: 'board_buddy',
-    spot_id: 'preview-spot',
-    spot_name: 'John Ball Zoo Stairs',
-    media_id: null,
-    read: false,
-    created_at: new Date(Date.now() - 34 * 60 * 1000).toISOString(),
-  },
-  {
-    id: 'preview-skated-with',
-    type: 'skated_with',
-    actor_id: 'preview-4',
-    actor_username: 'park_friend',
-    spot_id: 'preview-spot-2',
-    spot_name: 'Treasure Island Hubbas',
-    media_id: null,
-    read: false,
-    created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: 'preview-favorite',
-    type: 'favorite',
-    actor_id: 'preview-5',
-    actor_username: 'ledge_hunter',
-    spot_id: 'preview-spot-3',
-    spot_name: 'Reeds Lake',
-    media_id: null,
-    read: false,
-    created_at: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: 'preview-condition',
-    type: 'condition',
-    actor_id: 'preview-6',
-    actor_username: 'local_watch',
-    spot_id: 'preview-spot-4',
-    spot_name: 'Safeway Stairs',
-    media_id: null,
-    read: false,
-    created_at: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: 'preview-crew',
-    type: 'crew_spot_added',
-    actor_id: 'preview-7',
-    actor_username: 'city_rollout',
-    spot_id: 'preview-spot-5',
-    spot_name: 'Downtown Ledges',
-    media_id: null,
-    read: false,
-    created_at: new Date(Date.now() - 7 * 60 * 60 * 1000).toISOString(),
-  },
-];
-
 function FeedMediaActions({
   mediaId,
   onOpen,
@@ -358,8 +278,7 @@ export function ExplorePanel({
   }
 
   const unreadActivityNotifications = activityNotifications.filter((n) => !n.read);
-  const notificationPreview = __DEV__ ? PREVIEW_NOTIFICATIONS : [];
-  const activityNotificationsForDisplay = [...notificationPreview, ...unreadActivityNotifications];
+  const activityNotificationsForDisplay = unreadActivityNotifications;
   const visibleActivityNotifications = showAllNotifications
     ? activityNotificationsForDisplay.slice(0, 20)
     : activityNotificationsForDisplay.slice(0, 6);
@@ -617,15 +536,10 @@ export function ExplorePanel({
                         </Text>
                       </Pressable>
                     </View>
-                    {__DEV__ && activityNotificationsForDisplay.length > 0 ? (
-                      <Text style={{ color: c.subtext, fontSize: 10, marginBottom: 4 }}>PREVIEW NOTIFICATIONS</Text>
-                    ) : null}
                     {visibleActivityNotifications.map((n) => (
                         <Pressable
                           key={n.id}
-                          onPress={() => {
-                            if (!n.id.startsWith('preview-')) onSelectNotification(n);
-                          }}
+                          onPress={() => onSelectNotification(n)}
                           style={{
                             flexDirection: 'row',
                             alignItems: 'center',
