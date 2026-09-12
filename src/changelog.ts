@@ -1,5 +1,17 @@
 export const changelog = [
   {
+    version: '1.15.0',
+    date: 'September 2026',
+    changes: [
+      'Profiles now open with a cleaner Overview showing media, recent tricks, and recent sessions',
+      'Browse public spots and ratings from dedicated profile tabs',
+      'Earned badges now appear on profiles and show detailed progress when tapped',
+      'Passport badges now explain how they are earned and what comes next',
+      'Friend actions are easier to find from the top of a public profile',
+      'Profile media now consistently shows its spot when the uploader allows location sharing',
+    ],
+  },
+  {
     version: '1.14.0',
     date: 'August 2026',
     changes: [
