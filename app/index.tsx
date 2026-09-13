@@ -2454,6 +2454,11 @@ export default function Index() {
         }}
         topLoading={topLoading}
         topRated={topRated}
+        onLoadNearby={() =>
+          requireAuth(async () => {
+            await loadTopRatedSpotsInArea(mapRegionRef.current, 10);
+          })
+        }
         mySpots={mySpots}
         mySpotsLoading={mySpotsLoading}
         onOpenProfile={() => {

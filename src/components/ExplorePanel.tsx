@@ -81,6 +81,7 @@ type Props = {
   topLoading: boolean;
   topRated: TopRatedItem[];
   onLoadTopRated: () => void;
+  onLoadNearby: () => void;
   onOpenCities: () => void;
   onSelectSpot: (spot: Spot) => void;
   onDeleteSpot: (id: Spot) => void;
@@ -134,6 +135,7 @@ export function ExplorePanel({
   topLoading,
   topRated,
   onLoadTopRated,
+  onLoadNearby,
   onOpenCities,
   onSelectSpot,
   onSignOut,
@@ -258,6 +260,7 @@ export function ExplorePanel({
   const [eventFilter, setEventFilter] = useState<'all' | 'public' | 'friends' | 'invited'>(
     initialEventFilter ?? 'all'
   );
+  const nearbyLoadRequestedRef = useRef(false);
 
   const swipeableRefs = useRef<Map<string, SwipeableMethods>>(new Map());
   const openRowsRef = useRef<Set<string>>(new Set());
@@ -315,6 +318,18 @@ export function ExplorePanel({
   useEffect(() => {
     if (!visible) setTopRatedSearched(false);
   }, [visible]);
+
+  useEffect(() => {
+    if (!visible) {
+      nearbyLoadRequestedRef.current = false;
+      return;
+    }
+    if (activeTab === 'explore' && !nearbyLoadRequestedRef.current) {
+      nearbyLoadRequestedRef.current = true;
+      setTopRatedSearched(true);
+      onLoadNearby();
+    }
+  }, [activeTab, visible, onLoadNearby]);
 
   useEffect(() => {
     if (activeTab === 'events' && visible) {
@@ -606,7 +621,7 @@ export function ExplorePanel({
                     marginBottom: 8,
                     letterSpacing: 0.8,
                   }}>
-                  SEARCH SPOTS
+                  DISCOVER
                 </Text>
                 <View
                   style={{
@@ -831,7 +846,7 @@ export function ExplorePanel({
                     marginBottom: 8,
                     letterSpacing: 0.8,
                   }}>
-                  NEARBY
+                  NEARBY RECOMMENDATIONS
                 </Text>
                 <Pressable
                   onPress={() => {
@@ -842,10 +857,11 @@ export function ExplorePanel({
                   style={{
                     backgroundColor: c.tagBg,
                     borderRadius: 8,
-                    padding: 12,
+                    paddingHorizontal: 12,
+                    paddingVertical: 10,
                     flexDirection: 'row',
                     alignItems: 'center',
-                    justifyContent: 'center',
+                    justifyContent: 'flex-start',
                     gap: 8,
                     opacity: topLoading ? 0.6 : 1,
                     marginBottom: 10,
@@ -857,7 +873,7 @@ export function ExplorePanel({
                     }}>
                     <Image
                       source={require('@/assets/pin-images/top-rated.png')}
-                      style={{ width: 26, height: 32 }}
+                      style={{ width: 22, height: 26 }}
                       tintColor={c.text}
                     />
                   </View>
@@ -866,7 +882,7 @@ export function ExplorePanel({
                       color: c.text,
                       fontWeight: '600',
                     }}>
-                    {topLoading ? 'Searching...' : 'Top Rated Nearby'}
+                    {topLoading ? 'Finding places...' : 'Refresh nearby'}
                   </Text>
                 </Pressable>
 
@@ -878,7 +894,7 @@ export function ExplorePanel({
                       opacity: 0.6,
                       marginTop: 8,
                     }}>
-                    No top rated results found nearby.
+                    No rated places nearby yet. Try searching another area.
                   </Text>
                 ) : null}
 
