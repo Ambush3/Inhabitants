@@ -57,3 +57,6 @@ supabase/config.toml
 supabase/migrations
 
 .vscode
+
+# Markdown notes and handoffs
+*.md
