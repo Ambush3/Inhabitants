@@ -232,6 +232,18 @@ export function ExplorePanel({
     return new Date(iso).toLocaleDateString();
   }
 
+  function formatDistance(meters: number): string {
+    const miles = meters / 1609.344;
+    if (miles < 0.1) return 'Less than 0.1 mi';
+    return `${miles.toFixed(miles < 10 ? 1 : 0)} mi`;
+  }
+
+  function placeTypeLabel(type: string): string {
+    if (type === 'skatepark') return 'Park';
+    if (type === 'skateshop') return 'Shop';
+    return 'Spot';
+  }
+
   const insets = useSafeAreaInsets();
   const { theme, darkMode } = useTheme();
   const c = theme.colors;
@@ -261,6 +273,7 @@ export function ExplorePanel({
     initialEventFilter ?? 'all'
   );
   const nearbyLoadRequestedRef = useRef(false);
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const swipeableRefs = useRef<Map<string, SwipeableMethods>>(new Map());
   const openRowsRef = useRef<Set<string>>(new Set());
@@ -318,6 +331,10 @@ export function ExplorePanel({
   useEffect(() => {
     if (!visible) setTopRatedSearched(false);
   }, [visible]);
+
+  useEffect(() => () => {
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+  }, []);
 
   useEffect(() => {
     if (!visible) {
@@ -384,6 +401,17 @@ export function ExplorePanel({
     }
     return true;
   });
+
+  const nearbySearchResults = searchQuery.trim()
+    ? topRated.filter((result) => {
+        const query = searchQuery.trim().toLowerCase();
+        const nameMatch = result.name.toLowerCase().includes(query);
+        const tags = 'tags' in result && Array.isArray(result.tags) ? result.tags : [];
+        return nameMatch || tags.some((tag) => tag.toLowerCase().includes(query));
+      })
+    : [];
+
+  const totalSearchResults = searchResults.length + nearbySearchResults.length;
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -639,11 +667,14 @@ export function ExplorePanel({
                       value={searchQuery}
                       onChangeText={(text) => {
                         setSearchQuery(text);
-                        if (text.trim().length > 0) {
-                          onSearch(text.trim());
-                        } else {
+                        if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+                        if (!text.trim()) {
                           onClearSearch();
+                          return;
                         }
+                        searchDebounceRef.current = setTimeout(() => {
+                          onSearch(text.trim());
+                        }, 300);
                       }}
                       placeholder="Search by name or tag..."
                       placeholderTextColor={c.placeholder}
@@ -663,6 +694,7 @@ export function ExplorePanel({
                     {searchQuery.length > 0 ? (
                       <Pressable
                         onPress={() => {
+                          if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
                           setSearchQuery('');
                           onClearSearch();
                         }}
@@ -712,7 +744,7 @@ export function ExplorePanel({
                   })}
                 </View>
 
-                {searchQuery.trim().length > 0 && searchResults.length === 0 ? (
+                {searchQuery.trim().length > 0 && totalSearchResults === 0 ? (
                   <Text
                     style={{
                       color: c.subtext,
@@ -722,7 +754,7 @@ export function ExplorePanel({
                     }}>
                     No spots found. Try a different name or tag.
                   </Text>
-                ) : searchResults.length > 0 ? (
+                ) : totalSearchResults > 0 ? (
                   <View style={{ marginBottom: 16 }}>
                     <Text
                       style={{
@@ -730,7 +762,7 @@ export function ExplorePanel({
                         marginBottom: 8,
                         color: c.text,
                       }}>
-                      Results ({searchResults.length})
+                      Results ({totalSearchResults})
                     </Text>
                     {searchResults.map((s, index) => (
                       <AnimatedSpotCard key={s.id} index={index}>
@@ -740,11 +772,20 @@ export function ExplorePanel({
                             paddingVertical: 10,
                             borderBottomWidth: 1,
                             borderColor: c.border,
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            gap: 10,
                           }}
                           onPress={() => {
                             saveToHistory(searchQuery);
                             onSelectSpot(s);
                           }}>
+                          <Image
+                            source={require('@/assets/pin-images/icons8-skateboard-100.png')}
+                            style={{ width: 22, height: 22 }}
+                            tintColor={c.subtext}
+                          />
+                          <View style={{ flex: 1 }}>
                           <Text
                             style={{
                               fontWeight: '600',
@@ -763,6 +804,52 @@ export function ExplorePanel({
                               {s.tags.map((t) => `#${t}`).join(' ')}
                             </Text>
                           ) : null}
+                          </View>
+                        </Pressable>
+                      </AnimatedSpotCard>
+                    ))}
+                    {nearbySearchResults.map((s, index) => (
+                      <AnimatedSpotCard key={`nearby-${s.id}`} index={searchResults.length + index}>
+                        <Pressable
+                          style={{
+                            paddingVertical: 10,
+                            borderBottomWidth: 1,
+                            borderColor: c.border,
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            gap: 10,
+                          }}
+                          onPress={() => {
+                            if ('isPlace' in s && s.isPlace) {
+                              onSelectPlace({
+                                id: s.id,
+                                name: s.name,
+                                lat: s.lat,
+                                lng: s.lng,
+                                type: s.spot_type as 'skatepark' | 'skateshop',
+                                tags: {},
+                              });
+                            } else {
+                              onSelectSpot(s as Spot);
+                            }
+                          }}>
+                          <Image
+                            source={
+                              s.spot_type === 'skatepark'
+                                ? require('@/assets/pin-images/skatepark-ramp.png')
+                                : s.spot_type === 'skateshop'
+                                  ? require('@/assets/pin-images/skate-shop.png')
+                                  : require('@/assets/pin-images/icons8-skateboard-100.png')
+                            }
+                            style={{ width: 22, height: 22 }}
+                            tintColor={c.subtext}
+                          />
+                          <View style={{ flex: 1 }}>
+                            <Text style={{ fontWeight: '600', color: c.text }}>{s.name}</Text>
+                            <Text style={{ opacity: 0.7, fontSize: 12, color: c.text }}>
+                              {placeTypeLabel(s.spot_type)} · {formatDistance(s.distanceMeters)}
+                            </Text>
+                          </View>
                         </Pressable>
                       </AnimatedSpotCard>
                     ))}
@@ -1009,7 +1096,11 @@ export function ExplorePanel({
                                   fontSize: 12,
                                   color: c.text,
                                 }}>
-                                {s.avg.toFixed(1)} ★ ({s.count})
+                                {s.count > 0 ? `${s.avg.toFixed(1)} ★ (${s.count})` : 'Unrated'}
+                                {' · '}
+                                {placeTypeLabel(s.spot_type)}
+                                {' · '}
+                                {formatDistance(s.distanceMeters)}
                               </Text>
                             </View>
                           </Pressable>
