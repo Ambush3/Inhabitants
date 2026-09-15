@@ -2371,6 +2371,8 @@ export default function Index() {
         feedItems={feedItems}
         feedLoading={feedLoading}
         onSelectFeedSpot={(s) => {
+          setPreviewSpot(null);
+          setPreviewImageUrl(null);
           setPanelOpen(false);
           openedFromPanelRef.current = true;
           setHighlightSpotId(s.id);
@@ -2510,6 +2512,8 @@ export default function Index() {
         }}
         onSelectSpot={(s) => {
           if (actionSheetOpenRef.current) return;
+          setPreviewSpot(null);
+          setPreviewImageUrl(null);
           setPanelOpen(false);
           openedFromPanelRef.current = true;
           if (s.spot_type === 'skatepark' || s.spot_type === 'skateshop') {
@@ -2567,6 +2571,8 @@ export default function Index() {
         onSelectPlace={async (p) => {
           setPanelOpen(false);
           openedFromFavoritesRef.current = true;
+          setPreviewSpot(null);
+          setPreviewImageUrl(null);
           animateToPlaceWithModalOffset(p.lat, p.lng);
           setSelectedPlaceId(p.id);
           setSelectedPlace(p);
@@ -3337,6 +3343,8 @@ export default function Index() {
         place={selectedPlace}
         onClose={() => {
           setPlaceDetailsOpen(false);
+          setPreviewSpot(null);
+          setPreviewImageUrl(null);
           setSelectedPlace(null);
           setSelectedPlaceId(null);
           openedFromFavoritesRef.current = false;
