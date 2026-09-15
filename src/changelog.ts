@@ -1,5 +1,16 @@
 export const changelog = [
   {
+    version: '1.16.0',
+    date: 'September 2026',
+    changes: [
+      'Explore now finds nearby spots, parks, and shops with search, filters, and recommendations',
+      'Spot previews now show community rating and difficulty at a glance',
+      'Details views now keep the selected place centered above the modal on different screen sizes',
+      'Copy an address directly from a place details view',
+      'Check-in options remain available after cancelling the photo prompt',
+    ],
+  },
+  {
     version: '1.15.0',
     date: 'September 2026',
     changes: [
