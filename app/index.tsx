@@ -2371,6 +2371,8 @@ export default function Index() {
         feedItems={feedItems}
         feedLoading={feedLoading}
         onSelectFeedSpot={(s) => {
+          setPreviewSpot(null);
+          setPreviewImageUrl(null);
           setPanelOpen(false);
           openedFromPanelRef.current = true;
           setHighlightSpotId(s.id);
@@ -2510,6 +2512,8 @@ export default function Index() {
         }}
         onSelectSpot={(s) => {
           if (actionSheetOpenRef.current) return;
+          setPreviewSpot(null);
+          setPreviewImageUrl(null);
           setPanelOpen(false);
           openedFromPanelRef.current = true;
           if (s.spot_type === 'skatepark' || s.spot_type === 'skateshop') {
@@ -2567,6 +2571,8 @@ export default function Index() {
         onSelectPlace={async (p) => {
           setPanelOpen(false);
           openedFromFavoritesRef.current = true;
+          setPreviewSpot(null);
+          setPreviewImageUrl(null);
           animateToPlaceWithModalOffset(p.lat, p.lng);
           setSelectedPlaceId(p.id);
           setSelectedPlace(p);
@@ -2974,15 +2980,29 @@ export default function Index() {
                 {previewSpot.tags.map((t) => `#${t}`).join(' ')}
               </Text>
             ) : null}
-            {previewSpot.spot_type === 'spot' &&
+            {spotRatings[previewSpot.id] != null ||
+            (previewSpot.spot_type === 'spot' &&
               previewSpot.difficulty_vote_count > 0 &&
-              previewSpot.avg_difficulty !== null ? (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
-                <Ionicons name="skull" size={12} color="#FF3B30" />
-                <Text style={{ fontSize: 11, color: c.subtext, fontWeight: '600' }}>
-                  {previewSpot.avg_difficulty.toFixed(1)} ·{' '}
-                  {difficultyLabel(previewSpot.avg_difficulty)}
-                </Text>
+              previewSpot.avg_difficulty !== null) ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                {spotRatings[previewSpot.id] != null ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                    <Ionicons name="star" size={12} color="#FFB800" />
+                    <Text style={{ fontSize: 11, color: c.subtext, fontWeight: '600' }}>
+                      {spotRatings[previewSpot.id].toFixed(1)}
+                    </Text>
+                  </View>
+                ) : null}
+                {previewSpot.spot_type === 'spot' &&
+                previewSpot.difficulty_vote_count > 0 &&
+                previewSpot.avg_difficulty !== null ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                    <Ionicons name="skull" size={12} color="#FF3B30" />
+                    <Text style={{ fontSize: 11, color: c.subtext, fontWeight: '600' }}>
+                      {previewSpot.avg_difficulty.toFixed(1)} · {difficultyLabel(previewSpot.avg_difficulty)}
+                    </Text>
+                  </View>
+                ) : null}
               </View>
             ) : null}
             <Text
@@ -3337,6 +3357,8 @@ export default function Index() {
         place={selectedPlace}
         onClose={() => {
           setPlaceDetailsOpen(false);
+          setPreviewSpot(null);
+          setPreviewImageUrl(null);
           setSelectedPlace(null);
           setSelectedPlaceId(null);
           openedFromFavoritesRef.current = false;

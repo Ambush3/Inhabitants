@@ -22,6 +22,7 @@ import {
   Animated,
 } from 'react-native';
 import { Image } from 'expo-image';
+import * as Clipboard from 'expo-clipboard';
 import { Spot, Review } from '@/src/types';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -334,6 +335,12 @@ export function SpotDetailsModal({
     await Linking.openURL(website.startsWith('http') ? website : `https://${website}`);
   }
 
+  async function copyAddress() {
+    if (!spot?.address) return;
+    await Clipboard.setStringAsync(spot.address);
+    toast.success('Address copied');
+  }
+
   function openShopEditModal() {
     setEditName(spot?.name ?? '');
     setEditDesc(spot?.description ?? '');
@@ -542,11 +549,15 @@ export function SpotDetailsModal({
     else toast.success(`${res.uploaded} item${res.uploaded === 1 ? '' : 's'} added.`);
   }
 
-  function promptSpotMediaUpload(spotId: string, checkInId: string | null) {
+  function promptSpotMediaUpload(
+    spotId: string,
+    checkInId: string | null,
+    onCancel?: () => void,
+  ) {
     showAlert('Show location?', 'Choose whether the place name appears with this media.', [
       { text: 'Show place name', onPress: () => pickAndUploadSpotMedia(spotId, checkInId, true) },
       { text: 'Hide location', onPress: () => pickAndUploadSpotMedia(spotId, checkInId, false) },
-      { text: 'Cancel', style: 'cancel' },
+    { text: 'Cancel', style: 'cancel', onPress: onCancel },
     ]);
   }
 
@@ -1013,10 +1024,10 @@ export function SpotDetailsModal({
             {isPlaceType && (spot?.address || spot?.phone || spot?.website || spot?.hours) ? (
               <View style={{ marginBottom: 4 }}>
                 {spot?.address ? (
-                  <View style={styles.detailRow}>
+                  <Pressable onPress={copyAddress} style={styles.detailRow}>
                     <Ionicons name="location-outline" size={18} color={c.subtext} />
                     <Text style={{ flex: 1, opacity: 0.8, color: c.text }}>{spot.address}</Text>
-                  </View>
+                  </Pressable>
                 ) : null}
                 {spot?.phone ? (
                   <Pressable onPress={handlePhone} style={styles.detailRow}>
@@ -1876,7 +1887,10 @@ export function SpotDetailsModal({
           if (!checkInActionsId || !spot) return;
           setCheckInActionsOpen(false);
           setReturnToCheckInActions(true);
-          promptSpotMediaUpload(spot.id, checkInActionsId);
+          promptSpotMediaUpload(spot.id, checkInActionsId, () => {
+            setReturnToCheckInActions(false);
+            setTimeout(() => setCheckInActionsOpen(true), 250);
+          });
         }}
         onLogTrick={spot && !isShop ? () => {
           setCheckInActionsOpen(false);

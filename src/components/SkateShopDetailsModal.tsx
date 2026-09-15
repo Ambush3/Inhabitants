@@ -20,6 +20,7 @@ import { Place } from '@/src/types';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { useTheme } from '@/src/context/ThemeContext';
+import { useToast, ToastHost } from '@/src/context/ToastContext';
 import { usePlaceReviews } from '@/src/hooks/usePlaceReviews';
 import { usePlaceOverrides } from '@/src/hooks/usePlaceOverrides';
 import { useAuth } from '@/src/hooks/useAuth';
@@ -36,6 +37,7 @@ import { FREE_MEDIA_PER_SPOT, videoDurationLimit } from '@/src/config/iap';
 import { openStatusLabel } from '@/src/libs/openingHours';
 import { CheckInActionsSheet } from '@/src/components/CheckInActionsSheet';
 import * as ImagePicker from 'expo-image-picker';
+import * as Clipboard from 'expo-clipboard';
 
 const geocodeCache = new Map<string, string>();
 
@@ -73,6 +75,7 @@ type Props = {
 
 export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorite, isFavorite, userLocation, checkInState = 'available', checkingIn = false, onCheckIn, onUndoCheckIn, onAskAddToLiveSession, onAddParticipantsToLiveSession, onAddMediaToLiveSession, liveSessionTitle }: Props) {
   const { theme } = useTheme();
+  const toast = useToast();
   const c = theme.colors;
   const [placeAddress, setPlaceAddress] = useState<string | null>(null);
 
@@ -207,11 +210,11 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
     if (res.error) showAlert('Upload failed', res.error, [{ text: 'OK' }]);
   }
 
-  function promptPlaceMediaUpload() {
+  function promptPlaceMediaUpload(onCancel?: () => void) {
     showAlert('Show location?', 'Choose whether the place name appears with this media.', [
       { text: 'Show place name', onPress: () => pickAndUploadPlaceMedia(true) },
       { text: 'Hide location', onPress: () => pickAndUploadPlaceMedia(false) },
-      { text: 'Cancel', style: 'cancel' },
+    { text: 'Cancel', style: 'cancel', onPress: onCancel },
     ]);
   }
 
@@ -267,6 +270,12 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
   const osmCity = tags['addr:city'] ?? null;
   const osmAddress = [osmStreet, osmCity].filter(Boolean).join(', ') || null;
   const address = override?.address ?? osmAddress;
+
+  async function copyAddress() {
+    if (!address) return;
+    await Clipboard.setStringAsync(address);
+    toast.success('Address copied');
+  }
 
   function openEditModal() {
     setEditName(name ?? '');
@@ -589,7 +598,8 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
             </View>
 
             {address ? (
-              <View
+              <Pressable
+                onPress={copyAddress}
                 style={{
                   flexDirection: 'row',
                   alignItems: 'center',
@@ -605,7 +615,7 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
                   }}>
                   {address}
                 </Text>
-              </View>
+              </Pressable>
             ) : null}
             {phone ? (
               <Pressable
@@ -808,7 +818,7 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
                     Session Media
                   </Text>
                   <Pressable
-                    onPress={promptPlaceMediaUpload}
+                    onPress={() => promptPlaceMediaUpload()}
                     disabled={placeMedia.uploading}
                     style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                     <Ionicons name="add-circle-outline" size={18} color={c.accent} />
@@ -898,6 +908,7 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
       </View>
 
       {visible ? <AlertHost /> : null}
+      {visible ? <ToastHost /> : null}
 
       <SessionMediaViewerModal
         visible={mediaViewer !== null}
@@ -969,7 +980,10 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
           if (!checkInActionsId) return;
           setCheckInActionsOpen(false);
           setReturnToCheckInActions(true);
-          promptPlaceMediaUpload();
+          promptPlaceMediaUpload(() => {
+            setReturnToCheckInActions(false);
+            setTimeout(() => setCheckInActionsOpen(true), 250);
+          });
         }}
         onUndo={checkInActionsId ? () => {
           setCheckInActionsOpen(false);
