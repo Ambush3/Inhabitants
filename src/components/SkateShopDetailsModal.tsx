@@ -207,11 +207,11 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
     if (res.error) showAlert('Upload failed', res.error, [{ text: 'OK' }]);
   }
 
-  function promptPlaceMediaUpload() {
+  function promptPlaceMediaUpload(onCancel?: () => void) {
     showAlert('Show location?', 'Choose whether the place name appears with this media.', [
       { text: 'Show place name', onPress: () => pickAndUploadPlaceMedia(true) },
       { text: 'Hide location', onPress: () => pickAndUploadPlaceMedia(false) },
-      { text: 'Cancel', style: 'cancel' },
+    { text: 'Cancel', style: 'cancel', onPress: onCancel },
     ]);
   }
 
@@ -808,7 +808,7 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
                     Session Media
                   </Text>
                   <Pressable
-                    onPress={promptPlaceMediaUpload}
+                    onPress={() => promptPlaceMediaUpload()}
                     disabled={placeMedia.uploading}
                     style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                     <Ionicons name="add-circle-outline" size={18} color={c.accent} />
@@ -969,7 +969,10 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
           if (!checkInActionsId) return;
           setCheckInActionsOpen(false);
           setReturnToCheckInActions(true);
-          promptPlaceMediaUpload();
+          promptPlaceMediaUpload(() => {
+            setReturnToCheckInActions(false);
+            setTimeout(() => setCheckInActionsOpen(true), 250);
+          });
         }}
         onUndo={checkInActionsId ? () => {
           setCheckInActionsOpen(false);

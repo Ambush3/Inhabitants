@@ -542,11 +542,15 @@ export function SpotDetailsModal({
     else toast.success(`${res.uploaded} item${res.uploaded === 1 ? '' : 's'} added.`);
   }
 
-  function promptSpotMediaUpload(spotId: string, checkInId: string | null) {
+  function promptSpotMediaUpload(
+    spotId: string,
+    checkInId: string | null,
+    onCancel?: () => void,
+  ) {
     showAlert('Show location?', 'Choose whether the place name appears with this media.', [
       { text: 'Show place name', onPress: () => pickAndUploadSpotMedia(spotId, checkInId, true) },
       { text: 'Hide location', onPress: () => pickAndUploadSpotMedia(spotId, checkInId, false) },
-      { text: 'Cancel', style: 'cancel' },
+    { text: 'Cancel', style: 'cancel', onPress: onCancel },
     ]);
   }
 
@@ -1876,7 +1880,10 @@ export function SpotDetailsModal({
           if (!checkInActionsId || !spot) return;
           setCheckInActionsOpen(false);
           setReturnToCheckInActions(true);
-          promptSpotMediaUpload(spot.id, checkInActionsId);
+          promptSpotMediaUpload(spot.id, checkInActionsId, () => {
+            setReturnToCheckInActions(false);
+            setTimeout(() => setCheckInActionsOpen(true), 250);
+          });
         }}
         onLogTrick={spot && !isShop ? () => {
           setCheckInActionsOpen(false);
