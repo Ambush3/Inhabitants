@@ -15,6 +15,7 @@ import {
   ActivityIndicator,
   AppState,
   Alert,
+  Dimensions,
 } from 'react-native';
 import { Image } from 'expo-image';
 import MapView, { Marker, Region, LongPressEvent, MapMarker, PROVIDER_GOOGLE } from 'react-native-maps';
@@ -162,6 +163,7 @@ const SpotMap = React.memo(
     clusterColor,
     markersVisible,
     mapType,
+    onMapLayout,
   }: any) => (
     <MapView
       key={`${mapProvider}-${mapDark ? 'dark' : 'light'}`}
@@ -171,6 +173,7 @@ const SpotMap = React.memo(
       customMapStyle={mapProvider === 'google' && mapType === 'standard' ? mapStyle : []}
       userInterfaceStyle={mapDark ? 'dark' : 'light'}
       style={{ flex: 1, marginBottom: -34 }}
+      onLayout={onMapLayout}
       initialRegion={initialRegion}
       onPress={onPress}
       onPanDrag={onPanDrag}
@@ -322,7 +325,6 @@ const SpotMap = React.memo(
               } else {
                 suppressMapPressRef.current = true;
                 setSelectedPlaceId(p.id);
-                animateToSpotWithModalOffset(p.lat, p.lng, 'small');
                 setSelectedPlace(p);
                 setPlaceDetailsOpen(true);
               }
@@ -573,6 +575,7 @@ export default function Index() {
 
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
   const [placeDetailsOpen, setPlaceDetailsOpen] = useState(false);
+  const mapGeometryRef = useRef({ top: 0, height: 0 });
 
   const [panelOpen, setPanelOpen] = useState(false);
 
@@ -1357,9 +1360,9 @@ export default function Index() {
           return;
         }
         const place = uniquePlaces[0];
+        animateToPlaceWithModalOffset(place.lat, place.lng);
         setSelectedPlaceId(place.id);
         setSelectedPlace(place);
-        animateToSpotWithModalOffset(place.lat, place.lng, 'small');
         setPlaceDetailsOpen(true);
         const full = await fetchPlaceById(place.id);
         if (full) setSelectedPlace(full);
@@ -1424,10 +1427,11 @@ export default function Index() {
   }, [activePlaceTypes, advFilters.types, advFilters.openNow]);
 
   const animateToSpotWithModalOffset = useCallback(
-    (lat: number, lng: number, modalSize: 'full' | 'small' | 'medium' = 'full') => {
+    (lat: number, lng: number, modalSize: 'full' | 'small' | 'medium' = 'full', customRatio?: number) => {
+      autoCenterRef.current = false;
       preModalRegionRef.current = mapRegionRef.current;
 
-      const MODAL_HEIGHT_RATIO = modalSize === 'small' ? 0.25 : modalSize === 'medium' ? 0.4 : 0.55;
+      const MODAL_HEIGHT_RATIO = customRatio ?? (modalSize === 'small' ? 0.25 : modalSize === 'medium' ? 0.35 : 0.55);
       const latDelta = 0.03;
       const offsetLat = lat - latDelta * MODAL_HEIGHT_RATIO;
 
@@ -1442,6 +1446,21 @@ export default function Index() {
       );
     },
     []
+  );
+
+  const animateToPlaceWithModalOffset = useCallback(
+    (lat: number, lng: number) => {
+      const screenHeight = Dimensions.get('window').height;
+      const mapTop = mapGeometryRef.current.top || headerHeight;
+      const mapHeight = mapGeometryRef.current.height || Math.max(1, screenHeight - mapTop);
+      const estimatedSheetTop = screenHeight * 0.35;
+      const visibleMapHeight = Math.max(1, Math.min(mapHeight, estimatedSheetTop - mapTop));
+      const midpointRatio = (mapHeight - visibleMapHeight) / (2 * mapHeight);
+      const pinVisualNudge = 0.12;
+      const ratio = Math.max(0.45, Math.min(0.65, midpointRatio + pinVisualNudge));
+      animateToSpotWithModalOffset(lat, lng, 'medium', ratio);
+    },
+    [animateToSpotWithModalOffset, headerHeight]
   );
 
   const openSpotPreview = useCallback(async (spot: Spot) => {
@@ -1463,9 +1482,9 @@ export default function Index() {
     const full = await fetchPlaceById(placeId);
     if (!full) return;
     setPanelOpen(false);
+    animateToPlaceWithModalOffset(full.lat, full.lng);
     setSelectedPlaceId(full.id);
     setSelectedPlace(full);
-    animateToSpotWithModalOffset(full.lat, full.lng, 'small');
     setPlaceDetailsOpen(true);
   }
 
@@ -2548,13 +2567,13 @@ export default function Index() {
         onSelectPlace={async (p) => {
           setPanelOpen(false);
           openedFromFavoritesRef.current = true;
+          animateToPlaceWithModalOffset(p.lat, p.lng);
           setSelectedPlaceId(p.id);
           setSelectedPlace(p);
           setPlaceDetailsOpen(true);
           setPlacesWithAutoClear((prev) =>
             prev.some((x) => x.id === p.id) ? prev : [...prev, p]
           );
-          animateToSpotWithModalOffset(p.lat, p.lng, 'small');
           const full = await fetchPlaceById(p.id);
           if (full) {
             setSelectedPlace(full);
@@ -2697,6 +2716,10 @@ export default function Index() {
       />
 
       <SpotMap
+        onMapLayout={(event: any) => {
+          const { y, height } = event.nativeEvent.layout;
+          mapGeometryRef.current = { top: y, height };
+        }}
         ownerMarkerStyles={ownerMarkerStyles}
         mapRef={mapRef}
         visibleSpots={visibleSpots}
@@ -3433,7 +3456,6 @@ export default function Index() {
           setSelectedPlace(p);
           setPlaceDetailsOpen(true);
           setPlacesWithAutoClear((prev) => (prev.some((x) => x.id === p.id) ? prev : [...prev, p]));
-          animateToSpotWithModalOffset(p.lat, p.lng, 'small');
           const full = await fetchPlaceById(p.id);
           if (full) {
             setSelectedPlace(full);
