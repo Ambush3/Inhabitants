@@ -22,6 +22,7 @@ import {
   Animated,
 } from 'react-native';
 import { Image } from 'expo-image';
+import * as Clipboard from 'expo-clipboard';
 import { Spot, Review } from '@/src/types';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -332,6 +333,12 @@ export function SpotDetailsModal({
     const website = spot?.website;
     if (!website) return;
     await Linking.openURL(website.startsWith('http') ? website : `https://${website}`);
+  }
+
+  async function copyAddress() {
+    if (!spot?.address) return;
+    await Clipboard.setStringAsync(spot.address);
+    toast.success('Address copied');
   }
 
   function openShopEditModal() {
@@ -1017,10 +1024,10 @@ export function SpotDetailsModal({
             {isPlaceType && (spot?.address || spot?.phone || spot?.website || spot?.hours) ? (
               <View style={{ marginBottom: 4 }}>
                 {spot?.address ? (
-                  <View style={styles.detailRow}>
+                  <Pressable onPress={copyAddress} style={styles.detailRow}>
                     <Ionicons name="location-outline" size={18} color={c.subtext} />
                     <Text style={{ flex: 1, opacity: 0.8, color: c.text }}>{spot.address}</Text>
-                  </View>
+                  </Pressable>
                 ) : null}
                 {spot?.phone ? (
                   <Pressable onPress={handlePhone} style={styles.detailRow}>
