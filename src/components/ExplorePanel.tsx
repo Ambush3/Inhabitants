@@ -1255,7 +1255,7 @@ export function ExplorePanel({
                   </Text>
                 ) : (
                   displayMySpots.map((s, index) => (
-                    <AnimatedSpotCard key={s.id} index={index}>
+                    <AnimatedSpotCard key={s.id} index={index} staggerDelay={15}>
                       <Swipeable
                         ref={setSwipeableRef(s.id) as any}
                         renderLeftActions={() => (
