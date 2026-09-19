@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { showAlert, AlertHost } from '@/src/components/ui/ThemedAlert';
-import { Modal, Pressable, ScrollView, Share, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Share, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/src/context/ThemeContext';
 import {
@@ -143,13 +143,15 @@ export function LiveSessionModal({
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       {visible ? <AlertHost /> : null}
-      <View style={{ flex: 1 }}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1, justifyContent: 'flex-end' }}>
         <Pressable onPress={onClose} style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)' }} />
-        <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, maxHeight: '88%', backgroundColor: c.surface, borderTopLeftRadius: 22, borderTopRightRadius: 22, paddingTop: 20, paddingBottom: 28 }}>
+        <View style={{ maxHeight: '88%', backgroundColor: c.surface, borderTopLeftRadius: 22, borderTopRightRadius: 22, paddingTop: 20, paddingBottom: 28 }}>
           {!activeSession && !lastCompleted ? (
             <>
               <Header label="Start a live session" />
-              <ScrollView contentContainerStyle={{ paddingHorizontal: 20 }}>
+              <ScrollView contentContainerStyle={{ paddingHorizontal: 20 }} keyboardShouldPersistTaps="handled">
                 <Text style={{ color: c.subtext, lineHeight: 20, marginBottom: 16 }}>
                   Track the spots you skate today and turn the session into a recap when you’re done.
                 </Text>
@@ -253,7 +255,7 @@ export function LiveSessionModal({
             </>
           )}
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
