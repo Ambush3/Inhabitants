@@ -60,6 +60,7 @@ type Props = {
   visible: boolean;
   place: Place | null;
   onClose: () => void;
+  onSheetHeightChange?: (height: number) => void;
   onToggleFavorite: () => void;
   isFavorite: boolean;
   userLocation?: { latitude: number; longitude: number } | null;
@@ -73,7 +74,7 @@ type Props = {
   liveSessionTitle?: string | null;
 };
 
-export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorite, isFavorite, userLocation, checkInState = 'available', checkingIn = false, onCheckIn, onUndoCheckIn, onAskAddToLiveSession, onAddParticipantsToLiveSession, onAddMediaToLiveSession, liveSessionTitle }: Props) {
+export function SkateShopDetailsModal({ visible, place, onClose, onSheetHeightChange, onToggleFavorite, isFavorite, userLocation, checkInState = 'available', checkingIn = false, onCheckIn, onUndoCheckIn, onAskAddToLiveSession, onAddParticipantsToLiveSession, onAddMediaToLiveSession, liveSessionTitle }: Props) {
   const { theme } = useTheme();
   const toast = useToast();
   const c = theme.colors;
@@ -457,6 +458,7 @@ export function SkateShopDetailsModal({ visible, place, onClose, onToggleFavorit
           onPress={onClose}
         />
         <View
+          onLayout={(event) => onSheetHeightChange?.(event.nativeEvent.layout.height)}
           style={{
             backgroundColor: c.surface,
             padding: 16,

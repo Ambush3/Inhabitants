@@ -109,6 +109,7 @@ type Props = {
   onChangeComment: (v: string) => void;
   onSubmitReview: (overrideRating?: number) => void;
   onClose: () => void;
+  onSheetHeightChange?: (height: number) => void;
   onDelete: (spot: Spot) => void;
   currentUserId: string | null;
   existingReviewId: string | null;
@@ -172,6 +173,7 @@ export function SpotDetailsModal({
   onChangeComment,
   onSubmitReview,
   onClose,
+  onSheetHeightChange,
   onDelete,
   currentUserId,
   existingReviewId,
@@ -805,7 +807,9 @@ export function SpotDetailsModal({
           }}
         />
 
-        <View style={[styles.sheet, { backgroundColor: c.surface }]}>
+        <View
+          onLayout={(event) => onSheetHeightChange?.(event.nativeEvent.layout.height)}
+          style={[styles.sheet, { backgroundColor: c.surface }]}>
           <View style={styles.dragHandleContainer}>
             <View style={[styles.dragHandle, { backgroundColor: c.border }]} />
           </View>

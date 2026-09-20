@@ -60,3 +60,13 @@ supabase/migrations
 
 # Markdown notes and handoffs
 *.md
+
+# Project-local OpenCode workflow
+!.opencode/**/*.md
+
+.serena/
+
+.serena/
+
+.serena/
+.opencode/

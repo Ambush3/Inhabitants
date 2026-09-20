@@ -146,6 +146,8 @@ const SpotMap = React.memo(
     setHighlightSpotId,
     highlightSpotIdRef,
     animateToSpotWithModalOffset,
+    animateToPlaceWithModalOffset,
+    animateToSpotDetailsWithModalOffset,
     openSpotDetails,
     openSpotPreview,
     onLiveSessionSelect,
@@ -291,7 +293,7 @@ const SpotMap = React.memo(
                 suppressMapPressRef.current = true;
                 setHighlightSpotId(s.id);
                 highlightSpotIdRef.current = s.id;
-                animateToSpotWithModalOffset(s.lat, s.lng, 'small');
+                animateToSpotDetailsWithModalOffset(s, 'small');
                 if (s.spot_type === 'skateshop') openSpotDetails(s);
                 else openSpotPreview(s);
               }}
@@ -320,10 +322,11 @@ const SpotMap = React.memo(
               if (communitySpot) {
                 setHighlightSpotId(communitySpot.id);
                 highlightSpotIdRef.current = communitySpot.id;
-                animateToSpotWithModalOffset(communitySpot.lat, communitySpot.lng);
+                animateToSpotDetailsWithModalOffset(communitySpot);
                 openSpotDetails(communitySpot);
               } else {
                 suppressMapPressRef.current = true;
+                animateToPlaceWithModalOffset(p.lat, p.lng);
                 setSelectedPlaceId(p.id);
                 setSelectedPlace(p);
                 setPlaceDetailsOpen(true);
@@ -378,7 +381,9 @@ const SpotMap = React.memo(
       prevProps.mapProvider === nextProps.mapProvider &&
       prevProps.mapType === nextProps.mapType &&
       prevProps.clusterColor === nextProps.clusterColor &&
-      prevProps.markersVisible === nextProps.markersVisible
+      prevProps.markersVisible === nextProps.markersVisible &&
+      prevProps.animateToPlaceWithModalOffset === nextProps.animateToPlaceWithModalOffset &&
+      prevProps.animateToSpotDetailsWithModalOffset === nextProps.animateToSpotDetailsWithModalOffset
     );
   }
 );
@@ -576,6 +581,8 @@ export default function Index() {
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
   const [placeDetailsOpen, setPlaceDetailsOpen] = useState(false);
   const mapGeometryRef = useRef({ top: 0, height: 0 });
+  const placeCenterTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const placeCenterRequestRef = useRef(0);
 
   const [panelOpen, setPanelOpen] = useState(false);
 
@@ -595,6 +602,15 @@ export default function Index() {
   const [selectedSpot, setSelectedSpot] = useState<Spot | null>(null);
   const [previewSpot, setPreviewSpot] = useState<Spot | null>(null);
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (detailsOpen || placeDetailsOpen) return;
+    placeCenterRequestRef.current += 1;
+    if (placeCenterTimerRef.current) {
+      clearTimeout(placeCenterTimerRef.current);
+      placeCenterTimerRef.current = null;
+    }
+  }, [detailsOpen, placeDetailsOpen]);
 
   const [crewsOpen, setCrewsOpen] = useState(false);
   const [crewDetailOpen, setCrewDetailOpen] = useState(false);
@@ -1145,6 +1161,11 @@ export default function Index() {
   }
 
   function closeDetailsModal() {
+    placeCenterRequestRef.current += 1;
+    if (placeCenterTimerRef.current) {
+      clearTimeout(placeCenterTimerRef.current);
+      placeCenterTimerRef.current = null;
+    }
     const idToHide = highlightSpotIdRef.current;
     const spotToCenter = selectedSpot;
 
@@ -1355,7 +1376,7 @@ export default function Index() {
           const spot = matchingSpots[0];
           setHighlightSpotId(spot.id);
           highlightSpotIdRef.current = spot.id;
-          animateToSpotWithModalOffset(spot.lat, spot.lng);
+          animateToSpotDetailsWithModalOffset(spot);
           setTimeout(() => openSpotDetails(spot), 450);
           return;
         }
@@ -1449,18 +1470,79 @@ export default function Index() {
   );
 
   const animateToPlaceWithModalOffset = useCallback(
-    (lat: number, lng: number) => {
-      const screenHeight = Dimensions.get('window').height;
+    (lat: number, lng: number, sheetHeight?: number) => {
+      const windowHeight = Dimensions.get('window').height;
       const mapTop = mapGeometryRef.current.top || headerHeight;
-      const mapHeight = mapGeometryRef.current.height || Math.max(1, screenHeight - mapTop);
-      const estimatedSheetTop = screenHeight * 0.35;
-      const visibleMapHeight = Math.max(1, Math.min(mapHeight, estimatedSheetTop - mapTop));
+      const mapHeight = mapGeometryRef.current.height || Math.max(1, windowHeight - mapTop);
+      const sheetTop = windowHeight - (sheetHeight ?? windowHeight * 0.65);
+      const visibleMapHeight = Math.max(0, Math.min(mapHeight, sheetTop - mapTop));
       const midpointRatio = (mapHeight - visibleMapHeight) / (2 * mapHeight);
-      const pinVisualNudge = 0.12;
-      const ratio = Math.max(0.45, Math.min(0.65, midpointRatio + pinVisualNudge));
-      animateToSpotWithModalOffset(lat, lng, 'medium', ratio);
+
+      if (sheetHeight == null) {
+        animateToSpotWithModalOffset(lat, lng, 'medium', midpointRatio);
+        return;
+      }
+      if (placeCenterTimerRef.current) clearTimeout(placeCenterTimerRef.current);
+      const requestId = ++placeCenterRequestRef.current;
+      placeCenterTimerRef.current = setTimeout(async () => {
+        placeCenterTimerRef.current = null;
+        const map = mapRef.current;
+        if (!map) return;
+
+        try {
+          const point = await map.pointForCoordinate({ latitude: lat, longitude: lng });
+          if (requestId !== placeCenterRequestRef.current) return;
+          const settledRegion = mapRegionRef.current;
+          const targetY = visibleMapHeight / 2;
+          const latitudeOffset = ((point.y - targetY) / mapHeight) * settledRegion.latitudeDelta;
+
+          map.animateToRegion(
+            {
+              ...settledRegion,
+              latitude: settledRegion.latitude - latitudeOffset,
+              longitude: lng,
+            },
+            250
+          );
+        } catch {
+          // The initial region animation remains a safe fallback if projection is unavailable.
+        }
+      }, 450);
     },
     [animateToSpotWithModalOffset, headerHeight]
+  );
+
+  const animateToSpotDetailsWithModalOffset = useCallback(
+    (spot: Spot, modalSize: 'full' | 'small' | 'medium' = 'full') => {
+      if (spot.spot_type === 'skatepark' || spot.spot_type === 'skateshop') {
+        animateToPlaceWithModalOffset(spot.lat, spot.lng);
+        return;
+      }
+      animateToSpotWithModalOffset(spot.lat, spot.lng, modalSize);
+    },
+    [animateToPlaceWithModalOffset, animateToSpotWithModalOffset]
+  );
+
+  const handleSpotDetailsSheetHeightChange = useCallback(
+    (height: number) => {
+      if (
+        !detailsOpen ||
+        !selectedSpot ||
+        (selectedSpot.spot_type !== 'skatepark' && selectedSpot.spot_type !== 'skateshop')
+      ) {
+        return;
+      }
+      animateToPlaceWithModalOffset(selectedSpot.lat, selectedSpot.lng, height);
+    },
+    [animateToPlaceWithModalOffset, detailsOpen, selectedSpot]
+  );
+
+  const handlePlaceDetailsSheetHeightChange = useCallback(
+    (height: number) => {
+      if (!placeDetailsOpen || !selectedPlace) return;
+      animateToPlaceWithModalOffset(selectedPlace.lat, selectedPlace.lng, height);
+    },
+    [animateToPlaceWithModalOffset, placeDetailsOpen, selectedPlace]
   );
 
   const openSpotPreview = useCallback(async (spot: Spot) => {
@@ -1595,7 +1677,11 @@ export default function Index() {
       setTimeout(() => {
         const spot = spots.find((s) => s.id === spotId);
         if (spot) {
-          animateToSpotWithModalOffset(lat, lng);
+          if (spot.spot_type === 'skatepark' || spot.spot_type === 'skateshop') {
+            animateToPlaceWithModalOffset(lat, lng);
+          } else {
+            animateToSpotWithModalOffset(lat, lng);
+          }
           openSpotDetails(spot);
         }
       }, 300);
@@ -2010,10 +2096,14 @@ export default function Index() {
       preModalRegionRef.current = spotRegion;
       openedFromDeepLinkRef.current = true;
       highlightSpotIdRef.current = spot.id;
-      mapRef.current?.animateToRegion(spotRegion, 400);
+      if (spot.spot_type === 'skatepark' || spot.spot_type === 'skateshop') {
+        animateToPlaceWithModalOffset(spot.lat, spot.lng);
+      } else {
+        mapRef.current?.animateToRegion(spotRegion, 400);
+      }
       openSpotDetails(spot);
     }, 1500);
-  }, [spots, locating]);
+  }, [spots, locating, animateToPlaceWithModalOffset]);
 
   useEffect(() => {
     if (!session) return;
@@ -2394,11 +2484,11 @@ export default function Index() {
                 ]
             );
             setTimeout(() => {
-              animateToSpotWithModalOffset(s.lat, s.lng);
+              animateToSpotDetailsWithModalOffset(s);
               openSpotDetails(s);
             }, 400);
           } else {
-            animateToSpotWithModalOffset(s.lat, s.lng);
+            animateToSpotDetailsWithModalOffset(s);
             openSpotDetails(s);
           }
         }}
@@ -2453,7 +2543,7 @@ export default function Index() {
             setPanelOpen(false);
             setHighlightSpotId(spot.id);
             highlightSpotIdRef.current = spot.id;
-            animateToSpotWithModalOffset(spot.lat, spot.lng);
+            animateToSpotDetailsWithModalOffset(spot);
             openSpotDetails(spot);
           }
         }}
@@ -2535,14 +2625,14 @@ export default function Index() {
                 ]
             );
             setTimeout(() => {
-              animateToSpotWithModalOffset(s.lat, s.lng);
+              animateToSpotDetailsWithModalOffset(s);
               openSpotDetails(s);
             }, 400);
           } else {
             setHighlightSpotId(s.id);
             highlightSpotIdRef.current = s.id;
             setTimeout(() => {
-              animateToSpotWithModalOffset(s.lat, s.lng);
+              animateToSpotDetailsWithModalOffset(s);
               openSpotDetails(s);
             }, 350);
           }
@@ -2631,7 +2721,7 @@ export default function Index() {
                           setDetailsOpen(false);
                           setHighlightSpotId(publicDup.id);
                           highlightSpotIdRef.current = publicDup.id;
-                          animateToSpotWithModalOffset(publicDup.lat, publicDup.lng);
+                          animateToSpotDetailsWithModalOffset(publicDup);
                           setTimeout(() => openSpotDetails(publicDup), 450);
                         },
                       },
@@ -2778,6 +2868,8 @@ export default function Index() {
         setHighlightSpotId={setHighlightSpotId}
         highlightSpotIdRef={highlightSpotIdRef}
         animateToSpotWithModalOffset={animateToSpotWithModalOffset}
+        animateToPlaceWithModalOffset={animateToPlaceWithModalOffset}
+        animateToSpotDetailsWithModalOffset={animateToSpotDetailsWithModalOffset}
         openSpotDetails={openSpotDetails}
         openSpotPreview={openSpotPreview}
         setSelectedPlaceId={setSelectedPlaceId}
@@ -2936,7 +3028,7 @@ export default function Index() {
             const s = previewSpot;
             setPreviewSpot(null);
             setPreviewImageUrl(null);
-            animateToSpotWithModalOffset(s.lat, s.lng);
+            animateToSpotDetailsWithModalOffset(s);
             openSpotDetails(s);
           }}
           style={{
@@ -3066,7 +3158,7 @@ export default function Index() {
                         closeCreateModal();
                         setHighlightSpotId(duplicate.id);
                         highlightSpotIdRef.current = duplicate.id;
-                        animateToSpotWithModalOffset(duplicate.lat, duplicate.lng);
+                        animateToSpotDetailsWithModalOffset(duplicate);
                         setTimeout(() => openSpotDetails(duplicate), 450);
                       }, 300);
                     },
@@ -3121,7 +3213,7 @@ export default function Index() {
             }
 
             closeCreateModal();
-            animateToSpotWithModalOffset(newSpot.lat, newSpot.lng);
+            animateToSpotDetailsWithModalOffset(newSpot);
             setHighlightSpotId(newSpot.id);
             highlightSpotIdRef.current = newSpot.id;
             setTimeout(() => {
@@ -3154,6 +3246,7 @@ export default function Index() {
       <SpotDetailsModal
         visible={detailsOpen}
         spot={selectedSpot}
+        onSheetHeightChange={handleSpotDetailsSheetHeightChange}
         isFlaggedByMe={selectedSpot ? isFlaggedByMe(selectedSpot.id) : false}
         flagCount={selectedSpot?.flag_count ?? 0}
         onToggleFlag={async (reason?: string) => {
@@ -3355,7 +3448,13 @@ export default function Index() {
       <SkateShopDetailsModal
         visible={placeDetailsOpen}
         place={selectedPlace}
+        onSheetHeightChange={handlePlaceDetailsSheetHeightChange}
         onClose={() => {
+          placeCenterRequestRef.current += 1;
+          if (placeCenterTimerRef.current) {
+            clearTimeout(placeCenterTimerRef.current);
+            placeCenterTimerRef.current = null;
+          }
           setPlaceDetailsOpen(false);
           setPreviewSpot(null);
           setPreviewImageUrl(null);
@@ -3474,6 +3573,7 @@ export default function Index() {
         }
         onSelectPlace={async (p) => {
           setProfileOpen(false);
+          animateToPlaceWithModalOffset(p.lat, p.lng);
           setSelectedPlaceId(p.id);
           setSelectedPlace(p);
           setPlaceDetailsOpen(true);
@@ -3526,11 +3626,11 @@ export default function Index() {
                 ]
             );
             setTimeout(() => {
-              animateToSpotWithModalOffset(s.lat, s.lng);
+              animateToSpotDetailsWithModalOffset(s);
               openSpotDetails(s);
             }, 400);
           } else {
-            animateToSpotWithModalOffset(s.lat, s.lng);
+            animateToSpotDetailsWithModalOffset(s);
             openSpotDetails(s);
           }
         }}
@@ -3582,7 +3682,7 @@ export default function Index() {
           reopenCrewDetailOnProfileCloseRef.current = false;
           setHighlightSpotId(s.id);
           highlightSpotIdRef.current = s.id;
-          animateToSpotWithModalOffset(s.lat, s.lng);
+          animateToSpotDetailsWithModalOffset(s);
           openSpotDetails(s);
         }}
         onFriendshipChange={() => {
@@ -3804,7 +3904,7 @@ export default function Index() {
               openedFromPanelRef.current = true;
               setHighlightSpotId(spot.id);
               highlightSpotIdRef.current = spot.id;
-              animateToSpotWithModalOffset(spot.lat, spot.lng);
+              animateToSpotDetailsWithModalOffset(spot);
               openSpotDetails(spot);
             }, 350);
           }
@@ -3863,7 +3963,7 @@ export default function Index() {
           setCrewDetailOpen(false);
           setCrewsOpen(false);
           setSelectedCrewId(null);
-          animateToSpotWithModalOffset(spot.lat, spot.lng);
+          animateToSpotDetailsWithModalOffset(spot);
           openSpotDetails(spot);
         }}
         onSelectMember={(userId) => {
