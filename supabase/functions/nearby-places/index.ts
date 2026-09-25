@@ -16,6 +16,8 @@ const OVERPASS_ENDPOINTS = [
 ];
 
 const USER_AGENT = 'InhabitantsApp/1.0 (skatespot discovery; contact: aaronbush3@gmail.com)';
+const OVERPASS_BUDGET_MS = 8000;
+const GOOGLE_TIMEOUT_MS = 5000;
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const EMPTY_TTL_MS = 24 * 60 * 60 * 1000;
 
@@ -27,7 +29,7 @@ function buildQuery(lat: number, lng: number, radiusMeters: number, type: string
     const nameFilter = name ? `["name"~"${name}",i]` : '';
     if (type === 'skatepark') {
         return `
-            [out:json][timeout:25];
+            [out:json][timeout:7];
             (
               nwr(around:${radiusMeters},${lat},${lng})["leisure"="skate_park"]${nameFilter};
               nwr(around:${radiusMeters},${lat},${lng})["leisure"="pitch"]["sport"="skateboard"]${nameFilter};
@@ -37,7 +39,7 @@ function buildQuery(lat: number, lng: number, radiusMeters: number, type: string
         `.trim();
     }
     return `
-        [out:json][timeout:25];
+        [out:json][timeout:7];
         (
           nwr(around:${radiusMeters},${lat},${lng})["shop"="skate"]${nameFilter};
           nwr(around:${radiusMeters},${lat},${lng})["shop"="sports"]["sport"="skateboard"]${nameFilter};
@@ -68,11 +70,15 @@ function normalizeOverpass(json: any, type: string): any[] {
 
 async function queryOverpass(lat: number, lng: number, radiusMeters: number, type: string, name?: string): Promise<any[]> {
     const query = buildQuery(lat, lng, radiusMeters, type, name);
+    const deadline = Date.now() + OVERPASS_BUDGET_MS;
     let lastError: Error | null = null;
     for (const endpoint of OVERPASS_ENDPOINTS) {
+        const remainingMs = deadline - Date.now();
+        if (remainingMs <= 0) break;
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), remainingMs);
         try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 20000);
             const resp = await fetch(endpoint, {
                 method: 'POST',
                 headers: {
@@ -82,15 +88,19 @@ async function queryOverpass(lat: number, lng: number, radiusMeters: number, typ
                 body: `data=${encodeURIComponent(query)}`,
                 signal: controller.signal,
             });
-            clearTimeout(timeoutId);
             if (!resp.ok) {
                 lastError = new Error(`Overpass HTTP ${resp.status}`);
                 continue;
             }
             const json = await resp.json();
+            if (json?.remark || !Array.isArray(json?.elements)) {
+                throw new Error(json?.remark ?? 'Invalid Overpass response');
+            }
             return normalizeOverpass(json, type);
         } catch (e) {
             lastError = e as Error;
+        } finally {
+            clearTimeout(timeoutId);
         }
     }
     throw lastError ?? new Error('Overpass failed');
@@ -98,16 +108,28 @@ async function queryOverpass(lat: number, lng: number, radiusMeters: number, typ
 
 async function queryGoogle(lat: number, lng: number, radiusMeters: number, type: string): Promise<any[]> {
     const key = Deno.env.get('GOOGLE_PLACES_API_KEY');
-    if (!key) return [];
+    if (!key) throw new Error('Google Places is not configured');
     const keyword = type === 'skatepark' ? 'skate park' : 'skateboard shop';
     const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=${radiusMeters}&keyword=${encodeURIComponent(keyword)}&key=${key}`;
-    const resp = await fetch(url);
-    if (!resp.ok) return [];
-    const json = await resp.json();
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), GOOGLE_TIMEOUT_MS);
+    let resp: Response;
+    let json: any;
+    try {
+        resp = await fetch(url, { signal: controller.signal });
+        if (!resp.ok) throw new Error(`Google Places HTTP ${resp.status}`);
+        json = await resp.json();
+    } finally {
+        clearTimeout(timeoutId);
+    }
+    if (json.status === 'ZERO_RESULTS') return [];
+    if (json.status !== 'OK' || !Array.isArray(json.results)) {
+        throw new Error(`Google Places failed: ${json.status ?? 'invalid response'}`);
+    }
     const skateKeywords = type === 'skatepark'
         ? ['skate', 'skateboard', 'skatepark', 'skate park']
         : ['skate', 'skateboard', 'skate shop'];
-    return (json.results ?? [])
+    return json.results
         .filter((el: any) => {
             const nm = (el.name ?? '').toLowerCase();
             return skateKeywords.some((k) => nm.includes(k));
@@ -130,7 +152,7 @@ Deno.serve(async (req) => {
             return new Response(JSON.stringify({ error: 'Invalid request' }), { status: 400, headers: JSON_HEADERS });
         }
 
-        const tileKey = `${round(lat)}:${round(lng)}:${radiusMeters}`;
+        const tileKey = `v2:${round(lat)}:${round(lng)}:${radiusMeters}`;
         const useCache = !name;
 
         if (useCache) {
@@ -154,12 +176,14 @@ Deno.serve(async (req) => {
         try {
             places = await queryOverpass(lat, lng, radiusMeters, type, name);
         } catch {
-            if (type === 'skatepark') {
+            try {
                 places = await queryGoogle(lat, lng, radiusMeters, type);
                 source = 'google';
-            } else {
-                places = [];
-                source = 'error';
+            } catch (err) {
+                return new Response(
+                    JSON.stringify({ places: [], source: 'error', error: String(err) }),
+                    { status: 502, headers: JSON_HEADERS }
+                );
             }
         }
 

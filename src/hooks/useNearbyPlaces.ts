@@ -11,14 +11,15 @@ export type NearbyResult = {
 
 const OVERPASS_ENDPOINTS = [
     'https://overpass-api.de/api/interpreter',
-    'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
     'https://overpass.kumi.systems/api/interpreter',
+    'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
 ];
 
-const PROXY_TIMEOUT_MS = 40000;
-const OVERPASS_TIMEOUT_MS = 25000;
+const PROXY_TIMEOUT_MS = 14000;
+const NEARBY_OVERPASS_TIMEOUT_MS = 5000;
+const PLACE_OVERPASS_TIMEOUT_MS = 25000;
 
-const CACHE_PREFIX = 'nearby_cache_v1';
+const CACHE_PREFIX = 'nearby_cache_v2';
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const EMPTY_TTL_MS = 24 * 60 * 60 * 1000;
 
@@ -77,7 +78,11 @@ export function useNearbyPlaces() {
         return fetchPlaces(lat, lng, radiusMeters, 'skateshop', name, onLoaded, silent);
     }
 
-    async function deliverPlaces(places: Place[], onLoaded?: (places: Place[]) => void): Promise<void> {
+    async function deliverPlaces(
+        places: Place[],
+        onLoaded?: (places: Place[]) => void,
+        isCurrent: () => boolean = () => true
+    ): Promise<boolean> {
         let merged = places;
         if (places.length > 0) {
             const ids = places.map((p) => p.id);
@@ -94,7 +99,9 @@ export function useNearbyPlaces() {
                 merged = places.map((p) => (nameById.has(p.id) ? { ...p, name: nameById.get(p.id)! } : p));
             }
         }
+        if (!isCurrent()) return false;
         if (onLoaded) onLoaded(merged); else setPlaces(merged);
+        return true;
     }
 
     async function fetchPlaces(lat: number, lng: number, radiusMeters: number, type: 'skatepark' | 'skateshop', name?: string, onLoaded?: (places: Place[]) => void, silent = false): Promise<NearbyResult> {
@@ -129,6 +136,7 @@ export function useNearbyPlaces() {
 
         if (!name) {
             const proxyController = new AbortController();
+            abortRef.current[type] = proxyController;
             const proxyTimeoutId = setTimeout(() => proxyController.abort(), PROXY_TIMEOUT_MS);
             try {
                 const { data, error: fnError } = await supabase.functions.invoke('nearby-places', {
@@ -146,28 +154,42 @@ export function useNearbyPlaces() {
                     }
                 }
 
-                if (!fnError && payload && Array.isArray(payload.places)) {
+                if (!fnError && payload?.source !== 'error' && Array.isArray(payload?.places)) {
+                    if (abortRef.current[type] !== proxyController) {
+                        return { status: 'error', count: 0 };
+                    }
                     const proxyPlaces = payload.places as Place[];
                     setError(proxyPlaces.length === 0 ? emptyMessage : null);
                     if (cacheKey) writeTileCache(cacheKey, proxyPlaces);
-                    await deliverPlaces(proxyPlaces, onLoaded);
-                    setLoading(false);
+                    const delivered = await deliverPlaces(
+                        proxyPlaces,
+                        onLoaded,
+                        () => abortRef.current[type] === proxyController
+                    );
+                    if (!delivered) return { status: 'error', count: 0 };
+                    if (abortRef.current[type] === proxyController) {
+                        abortRef.current[type] = null;
+                        setLoading(false);
+                    }
                     return { status: proxyPlaces.length === 0 ? 'empty' : 'ok', count: proxyPlaces.length };
                 }
             } catch {
             } finally {
                 clearTimeout(proxyTimeoutId);
             }
+            if (abortRef.current[type] !== proxyController) {
+                return { status: 'error', count: 0 };
+            }
         }
 
         const controller = new AbortController();
         abortRef.current[type] = controller;
-        const timeoutId = setTimeout(() => controller.abort(), OVERPASS_TIMEOUT_MS);
+        const timeoutId = setTimeout(() => controller.abort(), NEARBY_OVERPASS_TIMEOUT_MS);
 
         const nameFilter = buildNameFilter(name);
 
         const query = type === 'skatepark' ? `
-            [out:json][timeout:25];
+            [out:json][timeout:5];
             (
               nwr(around:${radiusMeters},${lat},${lng})["leisure"="skate_park"]${nameFilter};
               nwr(around:${radiusMeters},${lat},${lng})["leisure"="pitch"]["sport"="skateboard"]${nameFilter};
@@ -175,7 +197,7 @@ export function useNearbyPlaces() {
             );
             out center tags;
         `.trim() : `
-            [out:json][timeout:25];
+            [out:json][timeout:5];
             (
               nwr(around:${radiusMeters},${lat},${lng})["shop"="skate"]${nameFilter};
               nwr(around:${radiusMeters},${lat},${lng})["shop"="sports"]["sport"="skateboard"]${nameFilter};
@@ -203,6 +225,10 @@ export function useNearbyPlaces() {
                 }
 
                 const json = await resp.json();
+                if (json?.remark || !Array.isArray(json?.elements)) {
+                    lastError = json?.remark ?? 'Invalid Overpass response';
+                    continue;
+                }
                 const normalized: Place[] = (json.elements ?? [])
                     .map((el: any) => {
                         const pLat = el.lat ?? el.center?.lat;
@@ -222,7 +248,15 @@ export function useNearbyPlaces() {
 
                 setError(normalized.length === 0 ? emptyMessage : null);
                 if (cacheKey) writeTileCache(cacheKey, normalized);
-                await deliverPlaces(normalized, onLoaded);
+                const delivered = await deliverPlaces(
+                    normalized,
+                    onLoaded,
+                    () => abortRef.current[type] === controller
+                );
+                if (!delivered) {
+                    clearTimeout(timeoutId);
+                    return { status: 'error', count: 0 };
+                }
                 lastError = null;
                 outcome = { status: normalized.length === 0 ? 'empty' : 'ok', count: normalized.length };
                 break;
@@ -292,6 +326,33 @@ export function useNearbyPlaces() {
     }
 
     async function fetchPlaceById(placeId: string): Promise<Place | null> {
+        if (placeId.startsWith('google-')) {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return null;
+
+            const { data: favorite } = await supabase
+                .from('place_favorites')
+                .select('place_name, place_type, lat, lng')
+                .eq('user_id', user.id)
+                .eq('place_id', placeId)
+                .maybeSingle();
+            if (
+                !favorite
+                || (favorite.place_type !== 'skatepark' && favorite.place_type !== 'skateshop')
+                || typeof favorite.lat !== 'number'
+                || typeof favorite.lng !== 'number'
+            ) return null;
+
+            return {
+                id: placeId,
+                name: favorite.place_name,
+                type: favorite.place_type,
+                lat: favorite.lat,
+                lng: favorite.lng,
+                tags: {},
+            };
+        }
+
         const [type, id] = placeId.split('-') as ['node' | 'way' | 'relation', string];
 
         const { data: ov } = await supabase
@@ -308,7 +369,7 @@ export function useNearbyPlaces() {
     `.trim();
 
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), OVERPASS_TIMEOUT_MS);
+        const timeoutId = setTimeout(() => controller.abort(), PLACE_OVERPASS_TIMEOUT_MS);
 
         try {
             for (const endpoint of OVERPASS_ENDPOINTS) {
