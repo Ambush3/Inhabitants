@@ -487,6 +487,8 @@ export default function Index() {
     shopsLoading,
     loadNearbySkateParks,
     loadNearbySkateShops,
+    loadKnownPlacesNear,
+    cancelNearby,
     fetchPlaceById,
     searchKnownPlaces,
   } = useNearbyPlaces();
@@ -647,6 +649,7 @@ export default function Index() {
   const [activePlaceTypes, setActivePlaceTypes] = useState<Set<PlaceType>>(new Set());
   const placesPinnedRef = useRef(false);
   const lastPlaceLoadRef = useRef<{ lat: number; lng: number } | null>(null);
+  const placeLoadIdsRef = useRef<Record<PlaceType, number>>({ skatepark: 0, skateshop: 0 });
   const searchPinnedRef = useRef(false);
   const [searchingPlaces, setSearchingPlaces] = useState(false);
   const regionPlaceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1263,28 +1266,44 @@ export default function Index() {
   }
 
   async function loadPlacesForRegion(type: PlaceType, quiet = false) {
+    const requestId = ++placeLoadIdsRef.current[type];
     if (placesTimerRef.current) {
       clearTimeout(placesTimerRef.current);
       placesTimerRef.current = null;
     }
-    lastPlaceLoadRef.current = {
-      lat: mapRegionRef.current.latitude,
-      lng: mapRegionRef.current.longitude,
-    };
+    const { latitude, longitude } = mapRegionRef.current;
+    lastPlaceLoadRef.current = { lat: latitude, lng: longitude };
 
     const community = communityPlacesNear(type, 20000);
-    if (community.length) setPlaces((prev) => mergePlaces(prev, community));
+    setPlaces((prev) => prev.some((place) => place.type === type) ? prev : mergePlaces(prev, community));
+    let known: Place[] = [];
+    let nearby: Place[] = [];
+    const showResults = () => {
+      if (placeLoadIdsRef.current[type] !== requestId) return;
+      setPlaces((prev) => mergePlaces(
+        prev.filter((place) => place.type !== type),
+        mergePlaces(community, mergePlaces(known, nearby))
+      ));
+    };
+    const knownPromise = loadKnownPlacesNear(latitude, longitude, 20000, type).then((saved) => {
+      known = saved;
+      showResults();
+    });
 
     const loader = type === 'skatepark' ? loadNearbySkateParks : loadNearbySkateShops;
     const res = await loader(
-      mapRegionRef.current.latitude,
-      mapRegionRef.current.longitude,
+      latitude,
+      longitude,
       20000,
       undefined,
-      (osm) => setPlaces((prev) => mergePlaces(prev, osm))
+      (osm) => {
+        nearby = osm;
+        showResults();
+      }
     );
+    await knownPromise;
 
-    if (quiet || community.length + res.count > 0) return;
+    if (quiet || placeLoadIdsRef.current[type] !== requestId || community.length + known.length + res.count > 0) return;
     if (res.status === 'timeout') toast.error('Timed out');
     else if (res.status === 'error') toast.error('Couldn’t search right now');
     else toast.show(type === 'skatepark' ? 'No skate parks in this area' : 'No skate shops in this area');
@@ -1301,6 +1320,8 @@ export default function Index() {
     });
 
     if (!on) {
+      placeLoadIdsRef.current[type] += 1;
+      cancelNearby(type);
       setPlaces((prev) => prev.filter((p) => p.type !== type));
       return;
     }

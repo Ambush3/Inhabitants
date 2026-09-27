@@ -10,40 +10,49 @@ const supabase = createClient(
 );
 
 const OVERPASS_ENDPOINTS = [
+    'https://overpass.private.coffee/api/interpreter',
     'https://overpass-api.de/api/interpreter',
-    'https://overpass.kumi.systems/api/interpreter',
     'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
 ];
 
 const USER_AGENT = 'InhabitantsApp/1.0 (skatespot discovery; contact: aaronbush3@gmail.com)';
-const OVERPASS_BUDGET_MS = 8000;
+const OVERPASS_BUDGET_MS = 18000;
+const OVERPASS_ENDPOINT_TIMEOUT_MS = 9000;
 const GOOGLE_TIMEOUT_MS = 5000;
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-const EMPTY_TTL_MS = 24 * 60 * 60 * 1000;
+const GOOGLE_CACHE_TTL_MS = 30 * 60 * 1000;
+const EMPTY_TTL_MS = 60 * 60 * 1000;
 
 function round(n: number): string {
-    return (Math.round(n * 10) / 10).toFixed(1);
+    return (Math.round(n * 100) / 100).toFixed(2);
+}
+
+function boundingBox(lat: number, lng: number, radiusMeters: number): string {
+    const latDelta = radiusMeters / 111320;
+    const lngDelta = radiusMeters / (111320 * Math.max(0.01, Math.cos(lat * Math.PI / 180)));
+    return `${lat - latDelta},${lng - lngDelta},${lat + latDelta},${lng + lngDelta}`;
 }
 
 function buildQuery(lat: number, lng: number, radiusMeters: number, type: string, name?: string): string {
     const nameFilter = name ? `["name"~"${name}",i]` : '';
+    const bbox = boundingBox(lat, lng, radiusMeters);
     if (type === 'skatepark') {
         return `
-            [out:json][timeout:7];
+            [out:json][timeout:15];
             (
-              nwr(around:${radiusMeters},${lat},${lng})["leisure"="skate_park"]${nameFilter};
-              nwr(around:${radiusMeters},${lat},${lng})["leisure"="pitch"]["sport"="skateboard"]${nameFilter};
-              nwr(around:${radiusMeters},${lat},${lng})["leisure"="pitch"]["sport"="skateboarding"]${nameFilter};
+              nwr["leisure"="skate_park"]${nameFilter}(${bbox});
+              nwr["leisure"="pitch"]["sport"="skateboard"]${nameFilter}(${bbox});
+              nwr["leisure"="pitch"]["sport"="skateboarding"]${nameFilter}(${bbox});
             );
             out center tags;
         `.trim();
     }
     return `
-        [out:json][timeout:7];
+        [out:json][timeout:15];
         (
-          nwr(around:${radiusMeters},${lat},${lng})["shop"="skate"]${nameFilter};
-          nwr(around:${radiusMeters},${lat},${lng})["shop"="sports"]["sport"="skateboard"]${nameFilter};
-          nwr(around:${radiusMeters},${lat},${lng})["shop"="sports"]["sport"="skateboarding"]${nameFilter};
+          nwr["shop"="skate"]${nameFilter}(${bbox});
+          nwr["shop"="sports"]["sport"="skateboard"]${nameFilter}(${bbox});
+          nwr["shop"="sports"]["sport"="skateboarding"]${nameFilter}(${bbox});
         );
         out center tags;
     `.trim();
@@ -58,7 +67,7 @@ function normalizeOverpass(json: any, type: string): any[] {
             return {
                 id: `${el.type}-${el.id}`,
                 name: el.tags?.name ?? (type === 'skateshop' ? 'Skate Shop' : 'Skate Park'),
-                type: (el.tags?.shop === 'skate' || el.tags?.shop === 'sports') ? 'skateshop' : 'skatepark',
+                type,
                 lat: pLat,
                 lng: pLng,
                 tags: el.tags ?? {},
@@ -68,7 +77,7 @@ function normalizeOverpass(json: any, type: string): any[] {
         .filter((p: any) => p !== null);
 }
 
-async function queryOverpass(lat: number, lng: number, radiusMeters: number, type: string, name?: string): Promise<any[]> {
+async function queryOverpass(lat: number, lng: number, radiusMeters: number, type: string, name?: string): Promise<{ places: any[]; partial: boolean }> {
     const query = buildQuery(lat, lng, radiusMeters, type, name);
     const deadline = Date.now() + OVERPASS_BUDGET_MS;
     let lastError: Error | null = null;
@@ -77,7 +86,7 @@ async function queryOverpass(lat: number, lng: number, radiusMeters: number, typ
         if (remainingMs <= 0) break;
 
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), remainingMs);
+        const timeoutId = setTimeout(() => controller.abort(), Math.min(remainingMs, OVERPASS_ENDPOINT_TIMEOUT_MS));
         try {
             const resp = await fetch(endpoint, {
                 method: 'POST',
@@ -93,10 +102,10 @@ async function queryOverpass(lat: number, lng: number, radiusMeters: number, typ
                 continue;
             }
             const json = await resp.json();
-            if (json?.remark || !Array.isArray(json?.elements)) {
+            if (!Array.isArray(json?.elements) || (json.remark && json.elements.length === 0)) {
                 throw new Error(json?.remark ?? 'Invalid Overpass response');
             }
-            return normalizeOverpass(json, type);
+            return { places: normalizeOverpass(json, type), partial: Boolean(json.remark) };
         } catch (e) {
             lastError = e as Error;
         } finally {
@@ -126,13 +135,17 @@ async function queryGoogle(lat: number, lng: number, radiusMeters: number, type:
     if (json.status !== 'OK' || !Array.isArray(json.results)) {
         throw new Error(`Google Places failed: ${json.status ?? 'invalid response'}`);
     }
-    const skateKeywords = type === 'skatepark'
-        ? ['skate', 'skateboard', 'skatepark', 'skate park']
-        : ['skate', 'skateboard', 'skate shop'];
     return json.results
         .filter((el: any) => {
             const nm = (el.name ?? '').toLowerCase();
-            return skateKeywords.some((k) => nm.includes(k));
+            const parkName = /\b(skate\s*park|skatepark|diy\s*skate|pump\s*track)\b/.test(nm);
+            const shopName = /\b(shop|store)\b/.test(nm);
+            if (type === 'skateshop') {
+                return !parkName && !el.types?.includes('park') &&
+                    (shopName || /\bskateboards?\b/.test(nm) || /\bskate\b/.test(nm));
+            }
+            return !shopName && !el.types?.some((placeType: string) => placeType === 'store' || placeType.endsWith('_store')) &&
+                (parkName || /\bskate(board|boarding)?\b/.test(nm));
         })
         .map((el: any) => ({
             id: `google-${el.place_id}`,
@@ -145,6 +158,19 @@ async function queryGoogle(lat: number, lng: number, radiusMeters: number, type:
         }));
 }
 
+function mergeParks(osm: any[], google: any[]): any[] {
+    const merged = [...osm];
+    for (const place of google) {
+        const duplicate = osm.some((known) => {
+            const latMeters = (known.lat - place.lat) * 111320;
+            const lngMeters = (known.lng - place.lng) * 111320 * Math.cos(place.lat * Math.PI / 180);
+            return Math.hypot(latMeters, lngMeters) < 100;
+        });
+        if (!duplicate) merged.push(place);
+    }
+    return merged;
+}
+
 Deno.serve(async (req) => {
     try {
         const { lat, lng, radiusMeters = 20000, type, name } = await req.json();
@@ -152,7 +178,7 @@ Deno.serve(async (req) => {
             return new Response(JSON.stringify({ error: 'Invalid request' }), { status: 400, headers: JSON_HEADERS });
         }
 
-        const tileKey = `v2:${round(lat)}:${round(lng)}:${radiusMeters}`;
+        const tileKey = `v5:${type}:${round(lat)}:${round(lng)}:${radiusMeters}`;
         const useCache = !name;
 
         if (useCache) {
@@ -164,7 +190,9 @@ Deno.serve(async (req) => {
                 .maybeSingle();
             if (cached) {
                 const age = Date.now() - new Date(cached.updated_at).getTime();
-                const ttl = (cached.places?.length ?? 0) === 0 ? EMPTY_TTL_MS : CACHE_TTL_MS;
+                const ttl = (cached.places?.length ?? 0) === 0 ? EMPTY_TTL_MS
+                    : cached.places.some((place: any) => place.id?.startsWith('google-')) ? GOOGLE_CACHE_TTL_MS
+                    : CACHE_TTL_MS;
                 if (age < ttl) {
                     return new Response(JSON.stringify({ places: cached.places, source: 'cache' }), { status: 200, headers: JSON_HEADERS });
                 }
@@ -173,11 +201,46 @@ Deno.serve(async (req) => {
 
         let places: any[] = [];
         let source = 'overpass';
+        let fallbackReason: string | undefined;
+        const googleParks = !name && type === 'skatepark'
+            ? queryGoogle(lat, lng, radiusMeters, type)
+                .then((places) => ({ places, error: null }))
+                .catch((err) => ({ places: [] as any[], error: String(err) }))
+            : null;
         try {
-            places = await queryOverpass(lat, lng, radiusMeters, type, name);
-        } catch {
+            const result = await queryOverpass(lat, lng, radiusMeters, type, name);
+            places = result.places;
+            if (result.partial) source = 'overpass_partial';
+            if (googleParks) {
+                const googlePlaces = (await googleParks).places;
+                places = mergeParks(places, googlePlaces);
+                if (googlePlaces.length > 0) source = result.places.length > 0 ? 'mixed' : 'google';
+            } else if (!name && places.length === 0) {
+                try {
+                    const googlePlaces = await queryGoogle(lat, lng, radiusMeters, type);
+                    if (googlePlaces.length > 0) {
+                        places = googlePlaces;
+                        source = 'google';
+                    }
+                } catch { /* An empty Overpass result is still a valid response. */ }
+            }
+        } catch (err) {
+            fallbackReason = String(err);
+            console.warn(`Overpass ${type} lookup failed: ${fallbackReason}`);
+            if (name) {
+                return new Response(
+                    JSON.stringify({ places: [], source: 'error', error: fallbackReason }),
+                    { status: 502, headers: JSON_HEADERS }
+                );
+            }
             try {
-                places = await queryGoogle(lat, lng, radiusMeters, type);
+                if (googleParks) {
+                    const googleResult = await googleParks;
+                    if (googleResult.error) throw new Error(googleResult.error);
+                    places = googleResult.places;
+                } else {
+                    places = await queryGoogle(lat, lng, radiusMeters, type);
+                }
                 source = 'google';
             } catch (err) {
                 return new Response(
@@ -187,7 +250,7 @@ Deno.serve(async (req) => {
             }
         }
 
-        if (useCache && source !== 'error') {
+        if (useCache && (source === 'overpass' || source === 'mixed' || (source === 'google' && places.length > 0))) {
             await supabase
                 .from('place_cache')
                 .upsert(
@@ -196,7 +259,7 @@ Deno.serve(async (req) => {
                 );
         }
 
-        return new Response(JSON.stringify({ places, source }), { status: 200, headers: JSON_HEADERS });
+        return new Response(JSON.stringify({ places, source, fallbackReason }), { status: 200, headers: JSON_HEADERS });
     } catch (err) {
         return new Response(JSON.stringify({ error: String(err) }), { status: 500, headers: JSON_HEADERS });
     }

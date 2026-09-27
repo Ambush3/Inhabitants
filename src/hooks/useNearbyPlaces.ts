@@ -2,6 +2,7 @@ import  { useRef, useState } from 'react';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '@/src/libs/supabase';
+import { haversineMeters } from '@/src/libs/distance';
 import { Place } from '@/src/types';
 
 export type NearbyResult = {
@@ -10,18 +11,18 @@ export type NearbyResult = {
 };
 
 const OVERPASS_ENDPOINTS = [
+    'https://overpass.private.coffee/api/interpreter',
     'https://overpass-api.de/api/interpreter',
-    'https://overpass.kumi.systems/api/interpreter',
     'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
 ];
 
-const PROXY_TIMEOUT_MS = 14000;
-const NEARBY_OVERPASS_TIMEOUT_MS = 5000;
+const PROXY_TIMEOUT_MS = 25000;
+const NEARBY_OVERPASS_TIMEOUT_MS = 8000;
 const PLACE_OVERPASS_TIMEOUT_MS = 25000;
 
-const CACHE_PREFIX = 'nearby_cache_v2';
+const CACHE_PREFIX = 'nearby_cache_v5';
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-const EMPTY_TTL_MS = 24 * 60 * 60 * 1000;
+const EMPTY_TTL_MS = 60 * 60 * 1000;
 
 type CacheEntry = { ts: number; places: Place[] };
 
@@ -34,8 +35,14 @@ function buildNameFilter(name?: string): string {
 }
 
 function tileCacheKey(lat: number, lng: number, radiusMeters: number, type: string): string {
-    const round = (n: number) => (Math.round(n * 10) / 10).toFixed(1);
+    const round = (n: number) => (Math.round(n * 100) / 100).toFixed(2);
     return `${CACHE_PREFIX}:${type}:${round(lat)}:${round(lng)}:${radiusMeters}`;
+}
+
+function boundingBox(lat: number, lng: number, radiusMeters: number): string {
+    const latDelta = radiusMeters / 111320;
+    const lngDelta = radiusMeters / (111320 * Math.max(0.01, Math.cos(lat * Math.PI / 180)));
+    return `${lat - latDelta},${lng - lngDelta},${lat + latDelta},${lng + lngDelta}`;
 }
 
 async function readTileCache(key: string): Promise<Place[] | null> {
@@ -69,6 +76,41 @@ export function useNearbyPlaces() {
     const [shopsLoading, setShopsLoading] = useState(false);
 
     const abortRef = useRef<Record<string, AbortController | null>>({});
+
+    async function loadKnownPlacesNear(lat: number, lng: number, radiusMeters: number, type: 'skatepark' | 'skateshop'): Promise<Place[]> {
+        const bbox = boundingBox(lat, lng, radiusMeters).split(',').map(Number);
+        const { data, error } = await supabase
+            .from('places')
+            .select('id,name,lat,lng,type')
+            .eq('type', type)
+            .gte('lat', bbox[0])
+            .lte('lat', bbox[2])
+            .gte('lng', bbox[1])
+            .lte('lng', bbox[3])
+            .limit(500);
+        if (error) {
+            if (__DEV__) console.warn(`[nearby-places] saved ${type} lookup failed: ${error.message}`);
+            return [];
+        }
+        const nearby = (data ?? []).filter((place) =>
+            typeof place.lat === 'number' && typeof place.lng === 'number' &&
+            haversineMeters(lat, lng, place.lat, place.lng) <= radiusMeters
+        );
+        if (nearby.length === 0) return [];
+        const { data: overrides } = await supabase
+            .from('place_overrides')
+            .select('place_id,name')
+            .in('place_id', nearby.map((place) => place.id));
+        const names = new Map((overrides ?? []).filter((override) => override.name).map((override) => [override.place_id, override.name]));
+        return nearby.map((place) => ({
+            id: place.id,
+            name: names.get(place.id) ?? place.name,
+            type,
+            lat: place.lat,
+            lng: place.lng,
+            tags: {},
+        }));
+    }
 
     async function loadNearbySkateParks(lat: number, lng: number, radiusMeters = 8000, name?: string, onLoaded?: (places: Place[]) => void, silent = false): Promise<NearbyResult> {
         return fetchPlaces(lat, lng, radiusMeters, 'skatepark', name, onLoaded, silent);
@@ -120,16 +162,29 @@ export function useNearbyPlaces() {
             : 'No skate shops found nearby. Try zooming out and searching again.';
 
         abortRef.current[type]?.abort();
-        abortRef.current[type] = null;
+        const cacheController = new AbortController();
+        abortRef.current[type] = cacheController;
         setError(null);
 
         const cacheKey = !name ? tileCacheKey(lat, lng, radiusMeters, type) : null;
         if (cacheKey) {
             const cached = await readTileCache(cacheKey);
+            if (abortRef.current[type] !== cacheController) {
+                return { status: 'error', count: 0 };
+            }
             if (cached) {
+                if (__DEV__) console.log(`[nearby-places] ${type}: local cache, ${cached.length} places`);
                 setError(cached.length === 0 ? emptyMessage : null);
-                await deliverPlaces(cached, onLoaded);
-                setLoading(false);
+                const delivered = await deliverPlaces(
+                    cached,
+                    onLoaded,
+                    () => abortRef.current[type] === cacheController
+                );
+                if (!delivered) return { status: 'error', count: 0 };
+                if (abortRef.current[type] === cacheController) {
+                    abortRef.current[type] = null;
+                    setLoading(false);
+                }
                 return { status: cached.length === 0 ? 'empty' : 'ok', count: cached.length };
             }
         }
@@ -159,8 +214,14 @@ export function useNearbyPlaces() {
                         return { status: 'error', count: 0 };
                     }
                     const proxyPlaces = payload.places as Place[];
+                    if (__DEV__) {
+                        console.log(`[nearby-places] ${type}: ${payload.source ?? 'unknown'}, ${proxyPlaces.length} places${payload.fallbackReason ? ` (${payload.fallbackReason})` : ''}`);
+                    }
                     setError(proxyPlaces.length === 0 ? emptyMessage : null);
-                    if (cacheKey) writeTileCache(cacheKey, proxyPlaces);
+                    if (cacheKey && (payload.source === 'overpass' || payload.source === 'cache') &&
+                        !proxyPlaces.some((place) => place.id.startsWith('google-'))) {
+                        writeTileCache(cacheKey, proxyPlaces);
+                    }
                     const delivered = await deliverPlaces(
                         proxyPlaces,
                         onLoaded,
@@ -187,21 +248,22 @@ export function useNearbyPlaces() {
         const timeoutId = setTimeout(() => controller.abort(), NEARBY_OVERPASS_TIMEOUT_MS);
 
         const nameFilter = buildNameFilter(name);
+        const bbox = boundingBox(lat, lng, radiusMeters);
 
         const query = type === 'skatepark' ? `
-            [out:json][timeout:5];
+            [out:json][timeout:8];
             (
-              nwr(around:${radiusMeters},${lat},${lng})["leisure"="skate_park"]${nameFilter};
-              nwr(around:${radiusMeters},${lat},${lng})["leisure"="pitch"]["sport"="skateboard"]${nameFilter};
-              nwr(around:${radiusMeters},${lat},${lng})["leisure"="pitch"]["sport"="skateboarding"]${nameFilter};
+              nwr["leisure"="skate_park"]${nameFilter}(${bbox});
+              nwr["leisure"="pitch"]["sport"="skateboard"]${nameFilter}(${bbox});
+              nwr["leisure"="pitch"]["sport"="skateboarding"]${nameFilter}(${bbox});
             );
             out center tags;
         `.trim() : `
-            [out:json][timeout:5];
+            [out:json][timeout:8];
             (
-              nwr(around:${radiusMeters},${lat},${lng})["shop"="skate"]${nameFilter};
-              nwr(around:${radiusMeters},${lat},${lng})["shop"="sports"]["sport"="skateboard"]${nameFilter};
-              nwr(around:${radiusMeters},${lat},${lng})["shop"="sports"]["sport"="skateboarding"]${nameFilter};
+              nwr["shop"="skate"]${nameFilter}(${bbox});
+              nwr["shop"="sports"]["sport"="skateboard"]${nameFilter}(${bbox});
+              nwr["shop"="sports"]["sport"="skateboarding"]${nameFilter}(${bbox});
             );
             out center tags;
         `.trim();
@@ -225,7 +287,7 @@ export function useNearbyPlaces() {
                 }
 
                 const json = await resp.json();
-                if (json?.remark || !Array.isArray(json?.elements)) {
+                if (!Array.isArray(json?.elements) || (json.remark && json.elements.length === 0)) {
                     lastError = json?.remark ?? 'Invalid Overpass response';
                     continue;
                 }
@@ -237,7 +299,7 @@ export function useNearbyPlaces() {
                         return {
                             id: `${el.type}-${el.id}`,
                             name: el.tags?.name ?? (type === 'skateshop' ? 'Skate Shop' : 'Skate Park'),
-                            type: (el.tags?.shop === 'skate' || el.tags?.shop === 'sports') ? 'skateshop' : 'skatepark',
+                            type,
                             lat: pLat,
                             lng: pLng,
                             tags: el.tags ?? {},
@@ -247,7 +309,7 @@ export function useNearbyPlaces() {
                     .filter((p: Place | null): p is Place => p !== null);
 
                 setError(normalized.length === 0 ? emptyMessage : null);
-                if (cacheKey) writeTileCache(cacheKey, normalized);
+                if (cacheKey && !json.remark) writeTileCache(cacheKey, normalized);
                 const delivered = await deliverPlaces(
                     normalized,
                     onLoaded,
@@ -353,7 +415,7 @@ export function useNearbyPlaces() {
             };
         }
 
-        const [type, id] = placeId.split('-') as ['node' | 'way' | 'relation', string];
+        const [osmType, id] = placeId.split('-') as ['node' | 'way' | 'relation', string];
 
         const { data: ov } = await supabase
             .from('place_overrides')
@@ -364,7 +426,7 @@ export function useNearbyPlaces() {
 
         const query = `
         [out:json][timeout:15];
-        ${type}(${id});
+        ${osmType}(${id});
         out center tags;
     `.trim();
 
@@ -394,7 +456,8 @@ export function useNearbyPlaces() {
                     return {
                         id: placeId,
                         name: overrideName ?? el.tags?.name ?? 'Skate Location',
-                        type: (el.tags?.shop === 'skate' || el.tags?.shop === 'sports') ? 'skateshop' : 'skatepark',
+                        type: places.find((place) => place.id === placeId)?.type
+                            ?? ((el.tags?.shop === 'skate' || el.tags?.shop === 'sports') ? 'skateshop' : 'skatepark'),
                         lat: pLat,
                         lng: pLng,
                         tags: el.tags ?? {},
@@ -411,5 +474,12 @@ export function useNearbyPlaces() {
         return null;
     }
 
-    return { places, setPlaces, parksLoading, shopsLoading, error, loadNearbySkateParks, loadNearbySkateShops, fetchPlaceById, searchKnownPlaces };
+    function cancelNearby(type: 'skatepark' | 'skateshop') {
+        abortRef.current[type]?.abort();
+        abortRef.current[type] = null;
+        if (type === 'skatepark') setParksLoading(false);
+        else setShopsLoading(false);
+    }
+
+    return { places, setPlaces, parksLoading, shopsLoading, error, loadNearbySkateParks, loadNearbySkateShops, loadKnownPlacesNear, cancelNearby, fetchPlaceById, searchKnownPlaces };
 }
