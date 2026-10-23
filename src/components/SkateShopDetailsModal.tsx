@@ -449,10 +449,14 @@ export function SkateShopDetailsModal({ visible, place, onClose, onSheetHeightCh
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={{ flex: 1, justifyContent: 'flex-end' }}>
+      <View style={{ flex: 1 }}>
         <Pressable
           style={{
-            ...StyleSheet.absoluteFillObject,
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
             backgroundColor: 'rgba(0,0,0,0.3)',
           }}
           onPress={onClose}
@@ -460,6 +464,10 @@ export function SkateShopDetailsModal({ visible, place, onClose, onSheetHeightCh
         <View
           onLayout={(event) => onSheetHeightChange?.(event.nativeEvent.layout.height)}
           style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            bottom: 0,
             backgroundColor: c.surface,
             padding: 16,
             borderTopLeftRadius: 16,

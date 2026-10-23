@@ -15,9 +15,9 @@ type MapProviderContextType = {
 
 const MapProviderContext = createContext<MapProviderContextType>({
   mapProvider: 'google',
-  setMapProvider: () => {},
+  setMapProvider: () => { },
   mapType: 'standard',
-  setMapType: () => {},
+  setMapType: () => { },
 });
 
 export function MapProviderProvider({ children }: { children: React.ReactNode }) {
@@ -35,7 +35,7 @@ export function MapProviderProvider({ children }: { children: React.ReactNode })
   }
 
   return (
-    <MapProviderContext.Provider value={{ mapProvider: 'apple', setMapProvider: () => {}, mapType, setMapType }}>
+    <MapProviderContext.Provider value={{ mapProvider: 'apple', setMapProvider: () => { }, mapType, setMapType }}>
       {children}
     </MapProviderContext.Provider>
   );
