@@ -1,5 +1,15 @@
 export const changelog = [
   {
+    version: '1.17.0',
+    date: 'October 2026',
+    changes: [
+      'Open Now filter for skate parks and shops',
+      'More reliable nearby park and shop results',
+      'Fixed details views not closing when tapping outside',
+      'Compatibility updates for iOS 27',
+    ],
+  },
+  {
     version: '1.16.0',
     date: 'September 2026',
     changes: [
